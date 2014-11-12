@@ -1,0 +1,10 @@
+[package]
+name = "delivery"
+version = "0.0.1"
+authors = ["Adam Jacob <adam@getchef.com>"]
+
+[dependencies.docopt_macros]
+git = "git://github.com/docopt/docopt.rs"
+
+[dependencies.git2]
+git = "https://github.com/alexcrichton/git2-rs"
