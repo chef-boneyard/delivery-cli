@@ -24,13 +24,14 @@ Options:
   -p, --patchset=<number>  A patchset number [default: latest]
 ")
 
+#[cfg(not(test))]
 fn main() {
     let args: Args = Args::docopt().decode().unwrap_or_else(|e| e.exit());
     debug!("{}", args);
     let cmd_result = match args {
         Args {
             cmd_review: true, flag_for: ref for_pipeline, ..
-        } => review(for_pipeline),
+        } => review(for_pipeline.as_slice()),
         _ => no_matching_command(),
     };
     match cmd_result {
@@ -132,13 +133,57 @@ fn exit_with<T: error::Error>(e: T, i: int) {
     os::set_exit_status(i)
 }
 
-fn review(for_pipeline: &String) -> Result<bool, DeliveryError> {
-    debug!("Starting review for pipeline {}", for_pipeline);
+fn git_push(branch: &str, target: &str) -> Result<String, DeliveryError> {
+    let mut command = Command::new("git");
+    command.arg("push");
+    command.arg("--porcelain");
+    command.arg("origin");
+    command.arg(format!("{}:_for/{}/{}", branch, target, branch));
+    debug!("Running: {}", command);
+    let output = match command.output() {
+        Ok(o) => o,
+        Err(e) => { return Err(DeliveryError{ kind: FailedToExecute, detail: Some(format!("failed to execute git: {}", e.desc))}) },
+    };
+    if !output.status.success() {
+        return Err(DeliveryError{ kind: PushFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(output.output.as_slice()), String::from_utf8_lossy(output.error.as_slice())))});
+    }
+    let stdout = String::from_utf8_lossy(output.output.as_slice()).into_string();
+    parse_git_push_output(stdout.as_slice());
+    debug!("Git push: {}", stdout);
+    debug!("Git exited: {}", output.status);
+    Ok(stdout.into_string())
+}
+
+fn parse_git_push_output(push_output: &str) {
+    for line in push_output.lines_any() {
+        println!("piece: {}", line)
+    }
+}
+
+#[test]
+fn test_parse_git_push_output() {
+    let input = String::from_str("To ssh://adam@127.0.0.1/Users/adam/src/opscode/delivery/opscode/delivery-cli2
+=	refs/heads/foo:refs/heads/_for/master/foo	[up to date]
+Done");
+    let results: Vec<String> = parse_git_push_output(input);
+    let mut valid_result: Vec<String> = Vec::new();
+    valid_result.push(String::from_str("Review branch _for/master/foo is up to date"));
+    assert_eq!(valid_result, results);
+}
+
+fn review(for_pipeline: &str) -> Result<bool, DeliveryError> {
     let repo = try!(get_repository());
     let head = try!(get_head(repo));
-    println!("Head is {}", head);
-    say_greenln(format!("Delivery Review, current branch {}", head.as_slice()).as_slice());
-    // say_greenln(head);
+    if for_pipeline == head.as_slice() {
+        return Err(DeliveryError{ kind: CannotReviewSameBranch, detail: None })
+    }
+    say("green", "Delivery");
+    say("white", " review for change ");
+    say("yellow", head.as_slice());
+    say("white", " targeted for pipeline ");
+    sayln("magenta", for_pipeline.as_slice());
+    let output = try!(git_push(head.as_slice(), for_pipeline));
+    sayln("white", output.as_slice());
     Ok(true)
 }
 
