@@ -1,0 +1,1 @@
+# Rust has no linter

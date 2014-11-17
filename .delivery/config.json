@@ -1,0 +1,7 @@
+{
+    "version": "1",
+    "build_cookbook": "cookbooks/delivery_rust",
+    "build_nodes": {
+        "default"    : ["name:delivery-builder*"]
+    }
+}
