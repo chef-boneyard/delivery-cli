@@ -49,8 +49,6 @@ pub fn git_push(branch: &str, target: &str) -> Result<String, DeliveryError> {
     }
     let stdout = String::from_utf8_lossy(output.output.as_slice()).into_string();
     let stderr = String::from_utf8_lossy(output.error.as_slice()).into_string();
-    debug!("Git stdout: {}", stdout);
-    debug!("Git stderr: {}", stderr);
     debug!("Git exited: {}", output.status);
     let output = try!(parse_git_push_output(stdout.as_slice(), stderr.as_slice()));
     for result in output.iter() {
@@ -130,13 +128,24 @@ pub fn parse_git_push_output(push_output: &str, push_error: &str) -> Result<Vec<
 }
 
 #[test]
-fn test_parse_git_push_output() {
-    let input = "To ssh://adam@127.0.0.1/Users/adam/src/opscode/delivery/opscode/delivery-cli2
+fn test_parse_git_push_output_success() {
+    let stdout = "To ssh://adam@127.0.0.1/Users/adam/src/opscode/delivery/opscode/delivery-cli2
 =	refs/heads/foo:refs/heads/_for/master/foo	[up to date]
 Done";
-    let results: Vec<String> = parse_git_push_output(input);
-    let mut valid_result: Vec<String> = Vec::new();
-    valid_result.push(String::from_str("Review branch _for/master/foo is up to date"));
-    assert_eq!(valid_result, results);
+    let stderr = "Pushing to ssh://adam@Chef@172.31.6.130:8989/Chef/adam_universe/delivery-cli
+Total 0 (delta 0), reused 0 (delta 0)
+remote: Patchset already up to date, nothing to do 
+remote: https://172.31.6.130/e/Chef/#/organizations/adam_universe/projects/delivery-cli/changes/146a9573-1bd0-4a27-a106-528347761811
+updating local tracking ref 'refs/remotes/origin/_for/master/adam/test6'";
+    let result = parse_git_push_output(stdout, stderr);
+    match result {
+        Ok(pr_vec) => {
+            // assert!(r_vec[0].flag, UpToDate);
+            assert_eq!(pr_vec[0].from.as_slice(), "refs/heads/foo");
+            assert_eq!(pr_vec[0].to.as_slice(), "refs/heads/_for/master/foo");
+            assert_eq!(pr_vec[0].reason.as_slice(), "up to date");
+        },
+        Err(e) => panic!("No result")
+    };
 }
 
