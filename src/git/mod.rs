@@ -35,6 +35,8 @@ pub fn git_push(branch: &str, target: &str) -> Result<String, DeliveryError> {
     let mut command = Command::new("git");
     command.arg("push");
     command.arg("--porcelain");
+    command.arg("--progress");
+    command.arg("--verbose");
     command.arg("origin");
     command.arg(format!("{}:_for/{}/{}", branch, target, branch));
     debug!("Running: {}", command);
@@ -46,9 +48,11 @@ pub fn git_push(branch: &str, target: &str) -> Result<String, DeliveryError> {
         return Err(DeliveryError{ kind: errors::PushFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(output.output.as_slice()), String::from_utf8_lossy(output.error.as_slice())))});
     }
     let stdout = String::from_utf8_lossy(output.output.as_slice()).into_string();
-    debug!("Git push: {}", stdout);
+    let stderr = String::from_utf8_lossy(output.error.as_slice()).into_string();
+    debug!("Git stdout: {}", stdout);
+    debug!("Git stderr: {}", stderr);
     debug!("Git exited: {}", output.status);
-    let output = try!(parse_git_push_output(stdout.as_slice()));
+    let output = try!(parse_git_push_output(stdout.as_slice(), stderr.as_slice()));
     for result in output.iter() {
         match result.flag {
             SuccessfulFastForward => sayln("green", format!("Updated change: {}", result.reason).as_slice()),
@@ -78,10 +82,21 @@ pub struct PushResult {
     reason: String
 }
 
-pub fn parse_git_push_output(push_output: &str) -> Result<Vec<PushResult>, DeliveryError> {
+pub fn parse_git_push_output(push_output: &str, push_error: &str) -> Result<Vec<PushResult>, DeliveryError> {
     let mut push_results: Vec<PushResult> = Vec::new();
+    for line in push_error.lines_any() {
+        debug!("error: {}", line);
+        if line.starts_with("remote") {
+            let r = regex!(r"remote: (.+)");
+            let caps_result = r.captures(line);
+            match caps_result {
+                Some(caps) => sayln("white", format!("{}", caps.at(1)).as_slice()),
+                None => {}
+            }
+        }
+    }
     for line in push_output.lines_any() {
-        debug!("{}", line);
+        debug!("output: {}", line);
         if line.starts_with("To") {
             continue;
         } else if line.starts_with("Done") {
