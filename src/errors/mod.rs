@@ -10,6 +10,7 @@ pub enum ErrorKind {
     FailedToExecute,
     PushFailed,
     BadGitOutputMatch,
+    NoConfig,
     GitError(git2::Error),
 }
 
@@ -27,6 +28,7 @@ impl error::Error for DeliveryError {
             FailedToExecute => "Tried to fork a process, and failed",
             PushFailed => "Git Push failed!",
             BadGitOutputMatch => "A line of git porcelain did not match!",
+            NoConfig => "Cannot find a .git/config file",
             GitError(_) => "A git error occured",
         }
     }

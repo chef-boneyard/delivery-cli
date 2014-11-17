@@ -21,12 +21,18 @@ docopt!(Args deriving Show, "
 Usage: delivery review [--for=<pipeline>]
        delivery checkout <change> [--patchset=<number>]
        delivery rebase [--for=<pipeline>]
+       delivery setup --user=<user> --server=<server> --ent=<ent> --org=<org> --project=<project>
        delivery --help
 
 Options:
   -h, --help               Show this message.
   -f, --for=<pipeline>     A pipeline to target [default: master]
   -p, --patchset=<number>  A patchset number [default: latest]
+  -u, --user=<user>        A delivery username
+  -s, --server=<server>    A delivery server
+  -e, --ent=<ent>          A delivery enterprise
+  -o, --org=<org>          A delivery organization
+  -p, --project=<project>  The project name
 ")
 
 #[cfg(not(test))]
@@ -35,8 +41,19 @@ fn main() {
     debug!("{}", args);
     let cmd_result = match args {
         Args {
-            cmd_review: true, flag_for: ref for_pipeline, ..
+            cmd_review: true,
+            flag_for: ref for_pipeline,
+            ..
         } => review(for_pipeline.as_slice()),
+        Args {
+            cmd_setup: true,
+            flag_user: ref user,
+            flag_server: ref server,
+            flag_ent: ref ent,
+            flag_org: ref org,
+            flag_project: ref proj,
+            ..
+        } => setup(user.as_slice(), server.as_slice(), ent.as_slice(), org.as_slice(), proj.as_slice()),
         _ => no_matching_command(),
     };
     match cmd_result {
@@ -46,7 +63,7 @@ fn main() {
 }
 
 
-fn no_matching_command() -> Result<bool, DeliveryError> {
+fn no_matching_command() -> Result<(), DeliveryError> {
     Err(DeliveryError { kind: errors::NoMatchingCommand, detail: None })
 }
 
@@ -59,18 +76,25 @@ fn exit_with<T: error::Error>(e: T, i: int) {
     os::set_exit_status(i)
 }
 
-fn review(for_pipeline: &str) -> Result<bool, DeliveryError> {
+fn setup(user: &str, server: &str, ent: &str, org: &str, proj: &str) -> Result<(), DeliveryError> {
+    sayln("green", "Chef Delivery");
+    try!(git::set_config(user, server, ent, org, proj));
+    sayln("white", "Configuration added!");
+    Ok(())
+}
+
+fn review(for_pipeline: &str) -> Result<(), DeliveryError> {
     let repo = try!(git::get_repository());
     let head = try!(git::get_head(repo));
     if for_pipeline == head.as_slice() {
         return Err(DeliveryError{ kind: errors::CannotReviewSameBranch, detail: None })
     }
-    say("green", "Delivery");
-    say("white", " review for change ");
+    sayln("green", "Chef Delivery");
+    say("white", "Review for change ");
     say("yellow", head.as_slice());
     say("white", " targeted for pipeline ");
     sayln("magenta", for_pipeline.as_slice());
     try!(git::git_push(head.as_slice(), for_pipeline));
-    Ok(true)
+    Ok(())
 }
 

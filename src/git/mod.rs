@@ -10,8 +10,9 @@ extern crate term;
 
 pub use errors;
 
-use git2::Repository;
+use git2::{Repository, Config};
 use std::os;
+use std::io::fs::PathExtensions;
 use std::io::process::Command;
 use utils::say::sayln;
 use errors::{DeliveryError};
@@ -37,7 +38,7 @@ pub fn git_push(branch: &str, target: &str) -> Result<String, DeliveryError> {
     command.arg("--porcelain");
     command.arg("--progress");
     command.arg("--verbose");
-    command.arg("origin");
+    command.arg("delivery");
     command.arg(format!("{}:_for/{}/{}", branch, target, branch));
     debug!("Running: {}", command);
     let output = match command.output() {
@@ -149,3 +150,55 @@ updating local tracking ref 'refs/remotes/origin/_for/master/adam/test6'";
     };
 }
 
+fn check_dot_git(path: Path) -> Option<Path> {
+    let dot_git = path.join(".git");
+    let dot_git_config = dot_git.join("config");
+    debug!("Checking {}", dot_git_config.display());
+    let is_file: Option<Path> = if dot_git_config.is_file() {
+        Some(dot_git_config)
+    } else {
+        None
+    };
+    is_file
+}
+
+fn have_dot_git(orig_path: Path) -> Option<Path> {
+    let mut path = orig_path.clone();
+    loop {
+        let check_result: Option<Path> = check_dot_git(path.clone());
+        match check_result.as_ref() {
+            Some(_) => { return check_result }
+            None => {
+                if path.pop() { } else { return check_result }
+            }
+        }
+    };
+}
+
+fn show_config(cfg: &git2::Config) {
+    for entry in &cfg.entries(None).unwrap() {
+        debug!("Git Config: {} => {}", entry.name(), entry.value());
+    }
+}
+
+pub fn set_config(user: &str, server: &str, ent: &str, org: &str, proj: &str) -> Result<(), DeliveryError> {
+    let cwd = os::getcwd();
+    let check_result = have_dot_git(cwd.clone());
+    let dot_git_config = match check_result {
+        Some(path) => path,
+        None => { return Err(DeliveryError{ kind: errors::NoConfig, detail: None }) }
+    };
+    let mut cfg = try!(Config::open(&dot_git_config));
+    show_config(&cfg);
+    try!(cfg.set_str(
+        "remote.delivery.url",
+        format!("ssh://{}@{}@{}:8989/{}/{}/{}", user, ent, server, ent, org, proj).as_slice()
+    ));
+    try!(cfg.set_str(
+        "remote.delivery.fetch",
+        "+refs/heads/*:refs/remotes/delivery/*"
+    ));
+    debug!("...After Adding...");
+    show_config(&cfg);
+    Ok(())
+}
