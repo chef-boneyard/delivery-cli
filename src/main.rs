@@ -62,7 +62,6 @@ fn main() {
     }
 }
 
-
 fn no_matching_command() -> Result<(), DeliveryError> {
     Err(DeliveryError { kind: errors::NoMatchingCommand, detail: None })
 }
