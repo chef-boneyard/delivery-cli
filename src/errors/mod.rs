@@ -1,7 +1,4 @@
-extern crate git2;
-
 use std::error;
-use std::error::FromError;
 
 pub enum ErrorKind {
     NoMatchingCommand,
@@ -11,7 +8,8 @@ pub enum ErrorKind {
     PushFailed,
     BadGitOutputMatch,
     NoConfig,
-    GitError(git2::Error),
+    GitFailed,
+    GitSetupFailed,
 }
 
 pub struct DeliveryError {
@@ -27,9 +25,10 @@ impl error::Error for DeliveryError {
             CannotReviewSameBranch => "You cannot target code for review from the same branch as the review is targeted for",
             FailedToExecute => "Tried to fork a process, and failed",
             PushFailed => "Git Push failed!",
+            GitFailed => "Git command failed!",
+            GitSetupFailed => "Setup failed; you have already set up delivery.",
             BadGitOutputMatch => "A line of git porcelain did not match!",
             NoConfig => "Cannot find a .git/config file",
-            GitError(_) => "A git error occured",
         }
     }
 
@@ -39,16 +38,6 @@ impl error::Error for DeliveryError {
 
     fn cause(&self) -> Option<&error::Error> {
         self.cause()
-    }
-}
-
-impl FromError<git2::Error> for DeliveryError {
-    fn from_error(err: git2::Error) -> DeliveryError {
-        let message = err.message().clone();
-        DeliveryError {
-            kind: GitError(err),
-            detail: Some(message),
-        }
     }
 }
 

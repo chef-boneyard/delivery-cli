@@ -2,56 +2,85 @@
 extern crate regex_macros;
 extern crate regex;
 extern crate serialize;
-extern crate git2;
-extern crate docopt;
-#[phase(plugin)] extern crate docopt_macros;
 #[phase(plugin, link)] extern crate log;
-extern crate term;
 
 pub use errors;
 
-use git2::{Repository, Config};
-use std::os;
-use std::io::fs::PathExtensions;
 use std::io::process::Command;
 use utils::say::sayln;
 use errors::{DeliveryError};
 
-pub fn get_repository() -> Result<git2::Repository, DeliveryError> {
-    let repo = try!(git2::Repository::discover(&os::getcwd()));
-    Ok(repo)
+pub fn get_head() -> Result<String, DeliveryError> {
+    let gitr = try!(git_command(["branch"]));
+    let result = try!(parse_get_head(gitr.stdout.as_slice()));
+    Ok(result)
 }
 
-pub fn get_head(repo: git2::Repository) -> Result<String, DeliveryError> {
-    let head = try!(repo.head());
-    let shorthand = head.shorthand();
-    let result = match shorthand {
-        Some(result) => Ok(String::from_str(result)),
-        None => Err(DeliveryError{ kind: errors::NotOnABranch, detail: None })
+fn parse_get_head(stdout: &str) -> Result<String, DeliveryError> {
+    for line in stdout.lines_any() {
+        let r = regex!(r"(.) (.+)");
+        let caps_result = r.captures(line);
+        let caps = match caps_result {
+            Some(caps) => caps,
+            None => { return Err(DeliveryError{ kind: errors::BadGitOutputMatch, detail: Some(format!("Failed to match: {}", line)) }) }
+        };
+        if caps.at(1) == "*" {
+            return Ok(String::from_str(caps.at(2)));
+        }
+    }
+    return Err(DeliveryError{ kind: errors::NotOnABranch, detail: None });
+}
+
+#[test]
+fn test_parse_get_head() {
+    let stdout = "  adam/review
+  adam/test
+  adam/test6
+  builder
+  first
+  foo
+  foo2
+* master
+  snazzy
+  testerton";
+    let result = parse_get_head(stdout);
+    match result {
+        Ok(branch) => {
+            assert_eq!(branch.as_slice(), "master");
+        },
+        Err(e) => panic!("No result")
     };
-    result
 }
 
-pub fn git_push(branch: &str, target: &str) -> Result<String, DeliveryError> {
+pub struct GitResult {
+    stdout: String,
+    stderr: String
+}
+
+fn git_command(args: &[&str]) -> Result<GitResult, DeliveryError> {
     let mut command = Command::new("git");
-    command.arg("push");
-    command.arg("--porcelain");
-    command.arg("--progress");
-    command.arg("--verbose");
-    command.arg("delivery");
-    command.arg(format!("{}:_for/{}/{}", branch, target, branch));
-    debug!("Running: {}", command);
+    command.args(args);
+    debug!("Git command: {}", command);
     let output = match command.output() {
         Ok(o) => o,
         Err(e) => { return Err(DeliveryError{ kind: errors::FailedToExecute, detail: Some(format!("failed to execute git: {}", e.desc))}) },
     };
+    debug!("Git exited: {}", output.status);
     if !output.status.success() {
-        return Err(DeliveryError{ kind: errors::PushFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(output.output.as_slice()), String::from_utf8_lossy(output.error.as_slice())))});
+        return Err(DeliveryError{ kind: errors::GitFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(output.output.as_slice()), String::from_utf8_lossy(output.error.as_slice())))});
     }
     let stdout = String::from_utf8_lossy(output.output.as_slice()).into_string();
+    debug!("Git stdout: {}", stdout);
     let stderr = String::from_utf8_lossy(output.error.as_slice()).into_string();
-    debug!("Git exited: {}", output.status);
-    let output = try!(parse_git_push_output(stdout.as_slice(), stderr.as_slice()));
+    debug!("Git stderr: {}", stderr);
+    Ok(GitResult{ stdout: stdout, stderr: stderr })
+}
+
+pub fn git_push(branch: &str, target: &str) -> Result<String, DeliveryError> {
+    let gitr = try!(git_command([
+                     "push", "--porcelain", "--progress", "--verbose", "delivery", format!("{}:_for/{}/{}", branch, target, branch).as_slice()
+                     ]));
+    let output = try!(parse_git_push_output(gitr.stdout.as_slice(), gitr.stderr.as_slice()));
     for result in output.iter() {
         match result.flag {
             SuccessfulFastForward => sayln("green", format!("Updated change: {}", result.reason).as_slice()),
@@ -62,7 +91,7 @@ pub fn git_push(branch: &str, target: &str) -> Result<String, DeliveryError> {
             UpToDate => sayln("yellow", format!("Nothing added to the existing change").as_slice()),
         }
     }
-    Ok(stdout.into_string())
+    Ok(gitr.stdout.into_string())
 }
 
 pub enum PushResultFlags {
@@ -150,55 +179,22 @@ updating local tracking ref 'refs/remotes/origin/_for/master/adam/test6'";
     };
 }
 
-fn check_dot_git(path: Path) -> Option<Path> {
-    let dot_git = path.join(".git");
-    let dot_git_config = dot_git.join("config");
-    debug!("Checking {}", dot_git_config.display());
-    let is_file: Option<Path> = if dot_git_config.is_file() {
-        Some(dot_git_config)
-    } else {
-        None
-    };
-    is_file
-}
-
-fn have_dot_git(orig_path: Path) -> Option<Path> {
-    let mut path = orig_path.clone();
-    loop {
-        let check_result: Option<Path> = check_dot_git(path.clone());
-        match check_result.as_ref() {
-            Some(_) => { return check_result }
-            None => {
-                if path.pop() { } else { return check_result }
-            }
-        }
-    };
-}
-
-fn show_config(cfg: &git2::Config) {
-    for entry in &cfg.entries(None).unwrap() {
-        debug!("Git Config: {} => {}", entry.name(), entry.value());
-    }
-}
-
 pub fn set_config(user: &str, server: &str, ent: &str, org: &str, proj: &str) -> Result<(), DeliveryError> {
-    let cwd = os::getcwd();
-    let check_result = have_dot_git(cwd.clone());
-    let dot_git_config = match check_result {
-        Some(path) => path,
-        None => { return Err(DeliveryError{ kind: errors::NoConfig, detail: None }) }
-    };
-    let mut cfg = try!(Config::open(&dot_git_config));
-    show_config(&cfg);
-    try!(cfg.set_str(
-        "remote.delivery.url",
-        format!("ssh://{}@{}@{}:8989/{}/{}/{}", user, ent, server, ent, org, proj).as_slice()
-    ));
-    try!(cfg.set_str(
-        "remote.delivery.fetch",
-        "+refs/heads/*:refs/remotes/delivery/*"
-    ));
-    debug!("...After Adding...");
-    show_config(&cfg);
+    let result = git_command(["remote", "add", "delivery", format!("ssh://{}@{}@{}:8989/{}/{}/{}", user, ent, server, ent, org, proj).as_slice()]);
+    match result {
+        Ok(_) => return Ok(()),
+        Err(e) => {
+            match e.detail {
+                Some(msg) => {
+                    if msg.contains("remote delivery already exists") {
+                        return Err(DeliveryError{ kind: errors::GitSetupFailed, detail: None });
+                    }
+                },
+                None => {
+                    return Err(e)
+                }
+            }
+        },
+    }
     Ok(())
 }

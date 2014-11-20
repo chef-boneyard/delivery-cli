@@ -3,7 +3,6 @@
 extern crate regex_macros;
 extern crate regex;
 extern crate serialize;
-extern crate git2;
 extern crate docopt;
 #[phase(plugin)] extern crate docopt_macros;
 #[phase(plugin, link)] extern crate log;
@@ -20,7 +19,6 @@ pub mod utils;
 docopt!(Args deriving Show, "
 Usage: delivery review [--for=<pipeline>]
        delivery checkout <change> [--patchset=<number>]
-       delivery rebase [--for=<pipeline>]
        delivery setup --user=<user> --server=<server> --ent=<ent> --org=<org> --project=<project>
        delivery --help
 
@@ -83,8 +81,7 @@ fn setup(user: &str, server: &str, ent: &str, org: &str, proj: &str) -> Result<(
 }
 
 fn review(for_pipeline: &str) -> Result<(), DeliveryError> {
-    let repo = try!(git::get_repository());
-    let head = try!(git::get_head(repo));
+    let head = try!(git::get_head());
     if for_pipeline == head.as_slice() {
         return Err(DeliveryError{ kind: errors::CannotReviewSameBranch, detail: None })
     }
