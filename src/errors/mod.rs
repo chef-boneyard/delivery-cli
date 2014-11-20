@@ -1,6 +1,6 @@
 use std::error;
 
-pub enum ErrorKind {
+pub enum Kind {
     NoMatchingCommand,
     NotOnABranch,
     CannotReviewSameBranch,
@@ -13,22 +13,22 @@ pub enum ErrorKind {
 }
 
 pub struct DeliveryError {
-    pub kind: ErrorKind,
+    pub kind: Kind,
     pub detail: Option<String>,
 }
 
 impl error::Error for DeliveryError {
     fn description(&self) -> &str {
         match self.kind {
-            NoMatchingCommand => "No command matches your arguments - likely unimplemented feature",
-            NotOnABranch => "You must be on a branch",
-            CannotReviewSameBranch => "You cannot target code for review from the same branch as the review is targeted for",
-            FailedToExecute => "Tried to fork a process, and failed",
-            PushFailed => "Git Push failed!",
-            GitFailed => "Git command failed!",
-            GitSetupFailed => "Setup failed; you have already set up delivery.",
-            BadGitOutputMatch => "A line of git porcelain did not match!",
-            NoConfig => "Cannot find a .git/config file",
+            Kind::NoMatchingCommand => "No command matches your arguments - likely unimplemented feature",
+            Kind::NotOnABranch => "You must be on a branch",
+            Kind::CannotReviewSameBranch => "You cannot target code for review from the same branch as the review is targeted for",
+            Kind::FailedToExecute => "Tried to fork a process, and failed",
+            Kind::PushFailed => "Git Push failed!",
+            Kind::GitFailed => "Git command failed!",
+            Kind::GitSetupFailed => "Setup failed; you have already set up delivery.",
+            Kind::BadGitOutputMatch => "A line of git porcelain did not match!",
+            Kind::NoConfig => "Cannot find a .git/config file",
         }
     }
 

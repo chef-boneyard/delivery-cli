@@ -10,7 +10,7 @@ extern crate docopt;
 use std::os;
 use std::error;
 use utils::say::{say, sayln};
-use errors::{DeliveryError};
+use errors::{DeliveryError, Kind};
 
 pub mod errors;
 pub mod git;
@@ -61,7 +61,7 @@ fn main() {
 }
 
 fn no_matching_command() -> Result<(), DeliveryError> {
-    Err(DeliveryError { kind: errors::NoMatchingCommand, detail: None })
+    Err(DeliveryError { kind: Kind::NoMatchingCommand, detail: None })
 }
 
 fn exit_with<T: error::Error>(e: T, i: int) {
@@ -83,7 +83,7 @@ fn setup(user: &str, server: &str, ent: &str, org: &str, proj: &str) -> Result<(
 fn review(for_pipeline: &str) -> Result<(), DeliveryError> {
     let head = try!(git::get_head());
     if for_pipeline == head.as_slice() {
-        return Err(DeliveryError{ kind: errors::CannotReviewSameBranch, detail: None })
+        return Err(DeliveryError{ kind: Kind::CannotReviewSameBranch, detail: None })
     }
     sayln("green", "Chef Delivery");
     say("white", "Review for change ");

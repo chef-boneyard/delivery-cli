@@ -8,10 +8,10 @@ pub use errors;
 
 use std::io::process::Command;
 use utils::say::sayln;
-use errors::{DeliveryError};
+use errors::{DeliveryError, Kind};
 
 pub fn get_head() -> Result<String, DeliveryError> {
-    let gitr = try!(git_command(["branch"]));
+    let gitr = try!(git_command(&["branch"]));
     let result = try!(parse_get_head(gitr.stdout.as_slice()));
     Ok(result)
 }
@@ -22,13 +22,13 @@ fn parse_get_head(stdout: &str) -> Result<String, DeliveryError> {
         let caps_result = r.captures(line);
         let caps = match caps_result {
             Some(caps) => caps,
-            None => { return Err(DeliveryError{ kind: errors::BadGitOutputMatch, detail: Some(format!("Failed to match: {}", line)) }) }
+            None => { return Err(DeliveryError{ kind: Kind::BadGitOutputMatch, detail: Some(format!("Failed to match: {}", line)) }) }
         };
         if caps.at(1) == "*" {
             return Ok(String::from_str(caps.at(2)));
         }
     }
-    return Err(DeliveryError{ kind: errors::NotOnABranch, detail: None });
+    return Err(DeliveryError{ kind: Kind::NotOnABranch, detail: None });
 }
 
 #[test]
@@ -63,11 +63,11 @@ fn git_command(args: &[&str]) -> Result<GitResult, DeliveryError> {
     debug!("Git command: {}", command);
     let output = match command.output() {
         Ok(o) => o,
-        Err(e) => { return Err(DeliveryError{ kind: errors::FailedToExecute, detail: Some(format!("failed to execute git: {}", e.desc))}) },
+        Err(e) => { return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute git: {}", e.desc))}) },
     };
     debug!("Git exited: {}", output.status);
     if !output.status.success() {
-        return Err(DeliveryError{ kind: errors::GitFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(output.output.as_slice()), String::from_utf8_lossy(output.error.as_slice())))});
+        return Err(DeliveryError{ kind: Kind::GitFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(output.output.as_slice()), String::from_utf8_lossy(output.error.as_slice())))});
     }
     let stdout = String::from_utf8_lossy(output.output.as_slice()).into_string();
     debug!("Git stdout: {}", stdout);
@@ -77,18 +77,18 @@ fn git_command(args: &[&str]) -> Result<GitResult, DeliveryError> {
 }
 
 pub fn git_push(branch: &str, target: &str) -> Result<String, DeliveryError> {
-    let gitr = try!(git_command([
+    let gitr = try!(git_command(&[
                      "push", "--porcelain", "--progress", "--verbose", "delivery", format!("{}:_for/{}/{}", branch, target, branch).as_slice()
                      ]));
     let output = try!(parse_git_push_output(gitr.stdout.as_slice(), gitr.stderr.as_slice()));
     for result in output.iter() {
         match result.flag {
-            SuccessfulFastForward => sayln("green", format!("Updated change: {}", result.reason).as_slice()),
-            SuccessfulForcedUpdate => sayln("green", format!("Force updated change: {}", result.reason).as_slice()),
-            SuccessfulDeletedRef => sayln("red", format!("Deleted change: {}", result.reason).as_slice()),
-            SuccessfulPushedNewRef => sayln("green", format!("Created change: {}", result.reason).as_slice()),
-            Rejected => sayln("red", format!("Rejected change: {}", result.reason).as_slice()),
-            UpToDate => sayln("yellow", format!("Nothing added to the existing change").as_slice()),
+            PushResultFlags::SuccessfulFastForward => sayln("green", format!("Updated change: {}", result.reason).as_slice()),
+            PushResultFlags::SuccessfulForcedUpdate => sayln("green", format!("Force updated change: {}", result.reason).as_slice()),
+            PushResultFlags::SuccessfulDeletedRef => sayln("red", format!("Deleted change: {}", result.reason).as_slice()),
+            PushResultFlags::SuccessfulPushedNewRef => sayln("green", format!("Created change: {}", result.reason).as_slice()),
+            PushResultFlags::Rejected => sayln("red", format!("Rejected change: {}", result.reason).as_slice()),
+            PushResultFlags::UpToDate => sayln("yellow", format!("Nothing added to the existing change").as_slice()),
         }
     }
     Ok(gitr.stdout.into_string())
@@ -134,16 +134,16 @@ pub fn parse_git_push_output(push_output: &str, push_error: &str) -> Result<Vec<
         let caps_result = r.captures(line);
         let caps = match caps_result {
             Some(caps) => caps,
-            None => { return Err(DeliveryError{ kind: errors::BadGitOutputMatch, detail: Some(format!("Failed to match: {}", line)) }) }
+            None => { return Err(DeliveryError{ kind: Kind::BadGitOutputMatch, detail: Some(format!("Failed to match: {}", line)) }) }
         };
         let result_flag = match caps.at(1) {
-            " " => SuccessfulFastForward,
-            "+" => SuccessfulForcedUpdate,
-            "-" => SuccessfulDeletedRef,
-            "*" => SuccessfulPushedNewRef,
-            "!" => Rejected,
-            "=" => UpToDate,
-            _ => { return Err(DeliveryError{ kind: errors::BadGitOutputMatch, detail: Some(format!("Unknown result flag")) }) }
+            " " => PushResultFlags::SuccessfulFastForward,
+            "+" => PushResultFlags::SuccessfulForcedUpdate,
+            "-" => PushResultFlags::SuccessfulDeletedRef,
+            "*" => PushResultFlags::SuccessfulPushedNewRef,
+            "!" => PushResultFlags::Rejected,
+            "=" => PushResultFlags::UpToDate,
+            _ => { return Err(DeliveryError{ kind: Kind::BadGitOutputMatch, detail: Some(format!("Unknown result flag")) }) }
         };
         push_results.push(
             PushResult{
@@ -180,14 +180,14 @@ updating local tracking ref 'refs/remotes/origin/_for/master/adam/test6'";
 }
 
 pub fn set_config(user: &str, server: &str, ent: &str, org: &str, proj: &str) -> Result<(), DeliveryError> {
-    let result = git_command(["remote", "add", "delivery", format!("ssh://{}@{}@{}:8989/{}/{}/{}", user, ent, server, ent, org, proj).as_slice()]);
+    let result = git_command(&["remote", "add", "delivery", format!("ssh://{}@{}@{}:8989/{}/{}/{}", user, ent, server, ent, org, proj).as_slice()]);
     match result {
         Ok(_) => return Ok(()),
         Err(e) => {
             match e.detail {
                 Some(msg) => {
                     if msg.contains("remote delivery already exists") {
-                        return Err(DeliveryError{ kind: errors::GitSetupFailed, detail: None });
+                        return Err(DeliveryError{ kind: Kind::GitSetupFailed, detail: None });
                     }
                 },
                 None => {
