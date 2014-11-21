@@ -81,12 +81,12 @@ fn setup(user: &str, server: &str, ent: &str, org: &str, proj: &str) -> Result<(
 }
 
 fn review(for_pipeline: &str) -> Result<(), DeliveryError> {
+    sayln("green", "Chef Delivery");
+    say("white", "Review for change  ");
     let head = try!(git::get_head());
     if for_pipeline == head.as_slice() {
         return Err(DeliveryError{ kind: Kind::CannotReviewSameBranch, detail: None })
     }
-    sayln("green", "Chef Delivery");
-    say("white", "Review for change ");
     say("yellow", head.as_slice());
     say("white", " targeted for pipeline ");
     sayln("magenta", for_pipeline.as_slice());

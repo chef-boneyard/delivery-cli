@@ -7,7 +7,7 @@ extern crate serialize;
 pub use errors;
 
 use std::io::process::Command;
-use utils::say::sayln;
+use utils::say::{sayln, spinner};
 use errors::{DeliveryError, Kind};
 
 pub fn get_head() -> Result<String, DeliveryError> {
@@ -57,15 +57,21 @@ pub struct GitResult {
     stderr: String
 }
 
+
 fn git_command(args: &[&str]) -> Result<GitResult, DeliveryError> {
+    let (tx, rx) = channel::<int>();
+    let (tx2, rx2) = channel::<int>();
+    spawn(proc() spinner(rx, tx2));
     let mut command = Command::new("git");
     command.args(args);
     debug!("Git command: {}", command);
     let output = match command.output() {
         Ok(o) => o,
-        Err(e) => { return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute git: {}", e.desc))}) },
+        Err(e) => { tx.send(1); return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute git: {}", e.desc))}) },
     };
     debug!("Git exited: {}", output.status);
+    tx.send(1);
+    rx2.recv();
     if !output.status.success() {
         return Err(DeliveryError{ kind: Kind::GitFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(output.output.as_slice()), String::from_utf8_lossy(output.error.as_slice())))});
     }

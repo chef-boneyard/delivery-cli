@@ -1,4 +1,26 @@
 extern crate term;
+use std::io::timer;
+use std::time::Duration;
+
+pub fn spinner(rx: Receiver<int>, tx: Sender<int>) {
+    let spinner = vec!["|", "/", "-", "\\",];
+    for spin in spinner.iter().cycle() {
+        say("white", "\x08");
+        say("yellow", *spin);
+        let r = rx.try_recv();
+        match r {
+            Ok(_) => {
+                say("white", "\x08");
+                tx.send(1);
+                break;
+            },
+            Err(_) => {
+                timer::sleep(Duration::seconds(1));
+                continue;
+            }
+        }
+    }
+}
 
 pub fn say(color: &str, to_say: &str) {
     let mut t = term::stdout().unwrap();
