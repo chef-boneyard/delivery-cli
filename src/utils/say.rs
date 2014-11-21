@@ -1,6 +1,4 @@
 extern crate term;
-use std::io::timer;
-use std::time::Duration;
 
 pub fn spinner(rx: Receiver<int>, tx: Sender<int>) {
     let spinner = vec!["|", "/", "-", "\\",];
