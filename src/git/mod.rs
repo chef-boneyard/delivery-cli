@@ -176,12 +176,11 @@ updating local tracking ref 'refs/remotes/origin/_for/master/adam/test6'";
     let result = parse_git_push_output(stdout, stderr);
     match result {
         Ok(pr_vec) => {
-            // assert!(r_vec[0].flag, UpToDate);
             assert_eq!(pr_vec[0].from.as_slice(), "refs/heads/foo");
             assert_eq!(pr_vec[0].to.as_slice(), "refs/heads/_for/master/foo");
             assert_eq!(pr_vec[0].reason.as_slice(), "up to date");
         },
-        Err(e) => panic!("No result")
+        Err(_) => panic!("No result")
     };
 }
 
