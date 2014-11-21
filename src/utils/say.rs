@@ -15,7 +15,6 @@ pub fn spinner(rx: Receiver<int>, tx: Sender<int>) {
                 break;
             },
             Err(_) => {
-                timer::sleep(Duration::seconds(1));
                 continue;
             }
         }
