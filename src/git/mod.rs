@@ -212,6 +212,17 @@ pub fn checkout_branch_name(change: &str, patchset: &str) -> String {
     }
 }
 
+pub fn diff(change: &str, patchset: &str, pipeline: &str, local: &bool) -> Result<(), DeliveryError> {
+    try!(git_command(&["fetch", "delivery"]));
+    let mut first_branch = format!("delivery/{}", pipeline);
+    if *local {
+        first_branch = String::from_str("HEAD");
+    }
+    let diff = try!(git_command(&["diff", "--color=always", first_branch.as_slice(), format!("delivery/_reviews/{}/{}/{}", pipeline, change, patchset).as_slice()]));
+    sayln("white", diff.stdout.as_slice());
+    Ok(())
+}
+
 pub fn checkout_review(change: &str, patchset: &str, pipeline: &str) -> Result<(), DeliveryError> {
     try!(git_command(&["fetch", "delivery"]));
     let branchname = checkout_branch_name(change, patchset);

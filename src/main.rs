@@ -19,6 +19,7 @@ pub mod utils;
 docopt!(Args deriving Show, "
 Usage: delivery review [--for=<pipeline>]
        delivery checkout <change> [--for=<pipeline>] [--patchset=<number>]
+       delivery diff <change> [--for=<pipeline>] [--patchset=<number>] [--local]
        delivery setup --user=<user> --server=<server> --ent=<ent> --org=<org> --project=<project>
        delivery --help
 
@@ -31,6 +32,7 @@ Options:
   -e, --ent=<ent>          A delivery enterprise
   -o, --org=<org>          A delivery organization
   -p, --project=<project>  The project name
+  -l, --local              Diff against the local branch, not remote target
   <change>                 The change to checkout
 ")
 
@@ -60,6 +62,14 @@ fn main() {
             flag_for: ref pipeline,
             ..
         } => checkout(change.as_slice(), patchset.as_slice(), pipeline.as_slice()),
+        Args {
+            cmd_diff: true,
+            arg_change: ref change,
+            flag_patchset: ref patchset,
+            flag_for: ref pipeline,
+            flag_local: ref local,
+            ..
+        } => diff(change.as_slice(), patchset.as_slice(), pipeline.as_slice(), local),
         _ => no_matching_command(),
     };
     match cmd_result {
@@ -116,6 +126,23 @@ fn checkout(change: &str, patchset: &str, pipeline: &str) -> Result<(), Delivery
         sayln("yellow", patchset.as_slice());
     }
     try!(git::checkout_review(change, patchset, pipeline));
+    Ok(())
+}
+
+fn diff(change: &str, patchset: &str, pipeline: &str, local: &bool) -> Result<(), DeliveryError> {
+    sayln("green", "Chef Delivery");
+    say("white", "Showing diff for ");
+    say("yellow", change.as_slice());
+    say("white", " targeted for pipeline ");
+    say("magenta", pipeline.as_slice());
+
+    if patchset == "latest" {
+        sayln("white", " latest patchset");
+    } else {
+        say("white", " at patchset ");
+        sayln("yellow", patchset.as_slice());
+    }
+    try!(git::diff(change, patchset, pipeline, local));
     Ok(())
 }
 
