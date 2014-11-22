@@ -18,7 +18,7 @@ pub mod utils;
 
 docopt!(Args deriving Show, "
 Usage: delivery review [--for=<pipeline>]
-       delivery checkout <change> [--patchset=<number>]
+       delivery checkout <change> [--for=<pipeline>] [--patchset=<number>]
        delivery setup --user=<user> --server=<server> --ent=<ent> --org=<org> --project=<project>
        delivery --help
 
@@ -31,6 +31,7 @@ Options:
   -e, --ent=<ent>          A delivery enterprise
   -o, --org=<org>          A delivery organization
   -p, --project=<project>  The project name
+  <change>                 The change to checkout
 ")
 
 #[cfg(not(test))]
@@ -52,6 +53,13 @@ fn main() {
             flag_project: ref proj,
             ..
         } => setup(user.as_slice(), server.as_slice(), ent.as_slice(), org.as_slice(), proj.as_slice()),
+        Args {
+            cmd_checkout: true,
+            arg_change: ref change,
+            flag_patchset: ref patchset,
+            flag_for: ref pipeline,
+            ..
+        } => checkout(change.as_slice(), patchset.as_slice(), pipeline.as_slice()),
         _ => no_matching_command(),
     };
     match cmd_result {
@@ -91,6 +99,23 @@ fn review(for_pipeline: &str) -> Result<(), DeliveryError> {
     say("white", " targeted for pipeline ");
     sayln("magenta", for_pipeline.as_slice());
     try!(git::git_push(head.as_slice(), for_pipeline));
+    Ok(())
+}
+
+fn checkout(change: &str, patchset: &str, pipeline: &str) -> Result<(), DeliveryError> {
+    sayln("green", "Chef Delivery");
+    say("white", "Checking out ");
+    say("yellow", change.as_slice());
+    say("white", " targeted for pipeline ");
+    say("magenta", pipeline.as_slice());
+
+    if patchset == "latest" {
+        sayln("white", " tracking latest changes");
+    } else {
+        say("white", " at patchset ");
+        sayln("yellow", patchset.as_slice());
+    }
+    try!(git::checkout_review(change, patchset, pipeline));
     Ok(())
 }
 

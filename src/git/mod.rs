@@ -203,3 +203,41 @@ pub fn set_config(user: &str, server: &str, ent: &str, org: &str, proj: &str) ->
     }
     Ok(())
 }
+
+pub fn checkout_branch_name(change: &str, patchset: &str) -> String {
+    if patchset == "latest" {
+        return String::from_str(change);
+    } else {
+        return format!("{}/{}", change, patchset);
+    }
+}
+
+pub fn checkout_review(change: &str, patchset: &str, pipeline: &str) -> Result<(), DeliveryError> {
+    try!(git_command(&["fetch", "delivery"]));
+    let branchname = checkout_branch_name(change, patchset);
+    let result = git_command(&["branch", "--track", branchname.as_slice(), format!("delivery/_reviews/{}/{}/{}", pipeline, change, patchset).as_slice()]);
+    match result {
+        Ok(_) => {
+            try!(git_command(&["checkout", branchname.as_slice()]));
+            return Ok(())
+        },
+        Err(e) => {
+            match e.detail {
+                Some(msg) => {
+                    if msg.contains("already exists.") {
+                        try!(git_command(&["checkout", branchname.as_slice()]));
+                        sayln("white", "Branch already exists, checking it out.");
+                        let r = try!(git_command(&["status"]));
+                        sayln("white", r.stdout.as_slice());
+                        return Ok(())
+                    } else {
+                        return Err(DeliveryError{kind: Kind::GitFailed, detail: Some(msg)});
+                    }
+                },
+                None => {
+                    return Err(e)
+                }
+            }
+        },
+    }
+}
