@@ -32,7 +32,7 @@ Options:
   -e, --ent=<ent>          A delivery enterprise
   -o, --org=<org>          A delivery organization
   -p, --project=<project>  The project name
-  -l, --local              Diff against the local branch, not remote target
+  -l, --local              Diff against the local branch HEAD
   <change>                 The change to checkout
 ")
 
