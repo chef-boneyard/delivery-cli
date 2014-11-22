@@ -8,7 +8,7 @@ pub fn spinner(rx: Receiver<int>, tx: Sender<int>) {
         let r = rx.try_recv();
         match r {
             Ok(_) => {
-                say("white", "\x08");
+                say("white", "\x08 ");
                 tx.send(1);
                 break;
             },
