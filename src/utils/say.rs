@@ -1,5 +1,8 @@
 extern crate term;
 
+use std::time::duration::Duration;
+use std::io::timer::{sleep};
+
 pub fn spinner(rx: Receiver<int>, tx: Sender<int>) {
     let spinner = vec!["|", "/", "-", "\\",];
     for spin in spinner.iter().cycle() {
@@ -13,6 +16,7 @@ pub fn spinner(rx: Receiver<int>, tx: Sender<int>) {
                 break;
             },
             Err(_) => {
+                sleep(Duration::milliseconds(100i64));
                 continue;
             }
         }
