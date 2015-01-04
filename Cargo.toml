@@ -4,4 +4,10 @@ version = "0.0.1"
 authors = ["Adam Jacob <adam@getchef.com>"]
 
 [dependencies.docopt_macros]
-git = "git://github.com/docopt/docopt.rs"
+
+[dependencies.regex]
+
+[dependencies.log]
+
+[dependencies.rustc-serialize]
+

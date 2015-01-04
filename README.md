@@ -25,3 +25,5 @@ cargo run -- review ...
 Where "review" and friends are the arguments you would pass to the delivery cli.
 
 Whee... This is awesome.
+
+Showing some awesome sauce for the Gap
