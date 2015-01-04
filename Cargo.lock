@@ -2,19 +2,44 @@
 name = "delivery"
 version = "0.0.1"
 dependencies = [
- "docopt_macros 0.6.8 (git+git://github.com/docopt/docopt.rs)",
+ "docopt_macros 0.6.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "regex 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "docopt"
-version = "0.6.8"
-source = "git+git://github.com/docopt/docopt.rs#be2e3b6b91ab1912d79f1e840d9397dead6e6a6e"
+version = "0.6.22"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "regex 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "docopt_macros"
-version = "0.6.8"
-source = "git+git://github.com/docopt/docopt.rs#be2e3b6b91ab1912d79f1e840d9397dead6e6a6e"
+version = "0.6.22"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "docopt 0.6.8 (git+git://github.com/docopt/docopt.rs)",
+ "docopt 0.6.22 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "log"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "regex 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "regex"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "rustc-serialize"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 

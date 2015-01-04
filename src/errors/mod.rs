@@ -12,6 +12,8 @@ pub enum Kind {
     GitSetupFailed,
 }
 
+impl Copy for Kind { }
+
 pub struct DeliveryError {
     pub kind: Kind,
     pub detail: Option<String>,

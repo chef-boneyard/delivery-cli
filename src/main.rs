@@ -1,8 +1,9 @@
 #![feature(phase)]
+#![feature(old_orphan_check)]
 #[phase(plugin)]
 extern crate regex_macros;
 extern crate regex;
-extern crate serialize;
+extern crate "rustc-serialize" as rustc_serialize;
 extern crate docopt;
 #[phase(plugin)] extern crate docopt_macros;
 #[phase(plugin, link)] extern crate log;
@@ -16,7 +17,7 @@ pub mod errors;
 pub mod git;
 pub mod utils;
 
-docopt!(Args deriving Show, "
+docopt!(Args derive Show, "
 Usage: delivery review [--for=<pipeline>]
        delivery checkout <change> [--for=<pipeline>] [--patchset=<number>]
        delivery diff <change> [--for=<pipeline>] [--patchset=<number>] [--local]
@@ -34,7 +35,7 @@ Options:
   -p, --project=<project>  The project name
   -l, --local              Diff against the local branch HEAD
   <change>                 The change to checkout
-")
+");
 
 #[cfg(not(test))]
 fn main() {

@@ -1,6 +1,7 @@
 extern crate term;
 
 use std::time::duration::Duration;
+use std::sync::mpsc::{Sender, Receiver};
 use std::io::timer::{sleep};
 
 pub fn spinner(rx: Receiver<int>, tx: Sender<int>) {
@@ -12,7 +13,7 @@ pub fn spinner(rx: Receiver<int>, tx: Sender<int>) {
         match r {
             Ok(_) => {
                 say("white", "\x08 \x08");
-                tx.send(1);
+                let _ = tx.send(1);
                 break;
             },
             Err(_) => {
