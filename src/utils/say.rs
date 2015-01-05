@@ -3,22 +3,41 @@ extern crate term;
 use std::time::duration::Duration;
 use std::sync::mpsc::{Sender, Receiver};
 use std::io::timer::{sleep};
+use std::sync::mpsc::channel;
+use std::thread::{Thread, JoinGuard};
 
-pub fn spinner(rx: Receiver<int>, tx: Sender<int>) {
-    let spinner = vec!["|", "/", "-", "\\",];
-    for spin in spinner.iter().cycle() {
-        say("white", "\x08");
-        say("yellow", *spin);
-        let r = rx.try_recv();
-        match r {
-            Ok(_) => {
-                say("white", "\x08 \x08");
-                let _ = tx.send(1);
-                break;
-            },
-            Err(_) => {
-                sleep(Duration::milliseconds(100i64));
-                continue;
+pub struct Spinner {
+    tx: Sender<int>,
+    guard: JoinGuard<()>
+}
+
+impl Spinner {
+    pub fn start() -> Spinner {
+        let (tx, rx) = channel::<int>();
+        let spinner = Thread::spawn(move|| { Spinner::spin(rx) });
+        Spinner{ tx: tx, guard: spinner }
+    }
+
+    pub fn stop(self) {
+        let _ = self.tx.send(1);
+        let _ = self.guard.join();
+    }
+
+    fn spin(rx: Receiver<int>) {
+        let spinner_chars = vec!["|", "/", "-", "\\",];
+        for spin in spinner_chars.iter().cycle() {
+            say("white", "\x08");
+            say("yellow", *spin);
+            let r = rx.try_recv();
+            match r {
+                Ok(_) => {
+                    say("white", "\x08 \x08");
+                    break;
+                },
+                Err(_) => {
+                    sleep(Duration::milliseconds(100i64));
+                    continue;
+                }
             }
         }
     }
