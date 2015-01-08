@@ -7,10 +7,8 @@ extern crate "rustc-serialize" as rustc_serialize;
 pub use errors;
 
 use std::io::process::Command;
-use utils::say::{say, sayln, spinner};
+use utils::say::{say, sayln, Spinner};
 use errors::{DeliveryError, Kind};
-use std::sync::mpsc::channel;
-use std::thread::Thread;
 
 pub fn get_head() -> Result<String, DeliveryError> {
     let gitr = try!(git_command(&["branch"]));
@@ -61,22 +59,17 @@ pub struct GitResult {
     stderr: String
 }
 
-
 fn git_command(args: &[&str]) -> Result<GitResult, DeliveryError> {
-    let (tx, rx) = channel::<int>();
-    let (tx2, rx2) = channel::<int>();
-    let thread_guard = Thread::spawn(move|| { spinner(rx, tx2) });
+    let spinner = Spinner::start();
     let mut command = Command::new("git");
     command.args(args);
     debug!("Git command: {}", command);
     let output = match command.output() {
         Ok(o) => o,
-        Err(e) => { let _ = tx.send(1); return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute git: {}", e.desc))}) },
+        Err(e) => { spinner.stop(); return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute git: {}", e.desc))}) },
     };
     debug!("Git exited: {}", output.status);
-    let _ = tx.send(1);
-    let _ = rx2.recv();
-    let _ = thread_guard.join();
+    spinner.stop();
     if !output.status.success() {
         return Err(DeliveryError{ kind: Kind::GitFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(output.output.as_slice()), String::from_utf8_lossy(output.error.as_slice())))});
     }
