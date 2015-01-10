@@ -7,14 +7,14 @@ use std::sync::mpsc::channel;
 use std::thread::{Thread, JoinGuard};
 
 pub struct Spinner {
-    tx: Sender<int>,
-    guard: JoinGuard<()>
+    tx: Sender<isize>,
+    guard: JoinGuard<'static ()>
 }
 
 impl Spinner {
     pub fn start() -> Spinner {
-        let (tx, rx) = channel::<int>();
-        let spinner = Thread::spawn(move|| { Spinner::spin(rx) });
+        let (tx, rx) = channel::<isize>();
+        let spinner = Thread::scoped(move|| { Spinner::spin(rx) });
         Spinner{ tx: tx, guard: spinner }
     }
 
@@ -23,7 +23,7 @@ impl Spinner {
         let _ = self.guard.join();
     }
 
-    fn spin(rx: Receiver<int>) {
+    fn spin(rx: Receiver<isize>) {
         let spinner_chars = vec!["|", "/", "-", "\\",];
         for spin in spinner_chars.iter().cycle() {
             say("white", "\x08");

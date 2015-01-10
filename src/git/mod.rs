@@ -1,8 +1,7 @@
-#[phase(plugin)]
-extern crate regex_macros;
+#[no_link] extern crate regex_macros;
 extern crate regex;
 extern crate "rustc-serialize" as rustc_serialize;
-#[phase(plugin, link)] extern crate log;
+extern crate log;
 
 pub use errors;
 

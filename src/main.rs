@@ -1,12 +1,11 @@
-#![feature(phase)]
-#![feature(old_orphan_check)]
-#[phase(plugin)]
-extern crate regex_macros;
+#![feature(plugin)]
 extern crate regex;
+#[plugin] #[no_link] extern crate regex_macros;
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate docopt;
-#[phase(plugin)] extern crate docopt_macros;
-#[phase(plugin, link)] extern crate log;
+#[plugin] extern crate docopt_macros;
+#[macro_use] extern crate log;
+extern crate term;
 
 use std::os;
 use std::error;
@@ -40,7 +39,7 @@ Options:
 #[cfg(not(test))]
 fn main() {
     let args: Args = Args::docopt().decode().unwrap_or_else(|e| e.exit());
-    debug!("{}", args);
+    // debug!("{}", args);
     let cmd_result = match args {
         Args {
             cmd_review: true,
@@ -83,7 +82,7 @@ fn no_matching_command() -> Result<(), DeliveryError> {
     Err(DeliveryError { kind: Kind::NoMatchingCommand, detail: None })
 }
 
-fn exit_with<T: error::Error>(e: T, i: int) {
+fn exit_with<T: error::Error>(e: T, i: isize) {
     sayln("red", e.description());
     match e.detail() {
         Some(deets) => sayln("red", deets.as_slice()),
