@@ -3,17 +3,23 @@ name = "delivery"
 version = "0.0.1"
 authors = ["Adam Jacob <adam@getchef.com>"]
 
-[dependencies.docopt]
+[lib]
+name = "delivery"
+path = "src/delivery/lib.rs"
 
-[dependencies.docopt_macros]
+[[bin]]
+name = "delivery"
 
-[dependencies.regex]
+[[test]]
+name = "lib"
 
-[dependencies.regex_macros]
-
-[dependencies.log]
-
-[dependencies.rustc-serialize]
-
-[dependencies.term]
+[dependencies]
+docopt = "*"
+docopt_macros = "*"
+regex = "*"
+regex_macros = "*"
+log = "*"
+rustc-serialize = "*"
+term = "*"
+toml = "*"
 

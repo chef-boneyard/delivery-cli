@@ -2,6 +2,19 @@
 
 The CLI for Chef Delivery. Written in Rust, super experimental, will probably hurt your kittens.
 
+## Usage
+
+Start using `delivery` by issuing the setup command:
+
+```shell
+$ delivery setup --user USER --server SERVER --ent ENTERPRISE --org ORGANIZATION --config-path /Users/adam
+```
+
+This will configure delivery to, by default, contact the delivery server at SERVER, with a default
+ENTERPRISE and ORGANIZATION.
+
+## Development
+
 While the Rust Language is now moving towards 1.0, and things should begin to stabilize, follow-on releases sometimes introduce non-backwardly-compatable changes, which can break this build. Until Rust truly stabilizes, you'll need to install rust (the easiest way on mac):
 
 ```bash
