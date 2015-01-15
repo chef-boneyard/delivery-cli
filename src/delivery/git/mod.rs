@@ -159,8 +159,12 @@ pub fn parse_git_push_output(push_output: &str, push_error: &str) -> Result<Vec<
     Ok(push_results)
 }
 
+pub fn delivery_ssh_url(user: &str, server: &str, ent: &str, org: &str, proj: &str) -> String {
+    format!("ssh://{}@{}@{}:8989/{}/{}/{}", user, ent, server, ent, org, proj)
+}
+
 pub fn config_repo(user: &str, server: &str, ent: &str, org: &str, proj: &str) -> Result<(), DeliveryError> {
-    let result = git_command(&["remote", "add", "delivery", format!("ssh://{}@{}@{}:8989/{}/{}/{}", user, ent, server, ent, org, proj).as_slice()]);
+    let result = git_command(&["remote", "add", "delivery", delivery_ssh_url(user, server, ent, org, proj).as_slice()]);
     match result {
         Ok(_) => return Ok(()),
         Err(e) => {
@@ -196,6 +200,11 @@ pub fn diff(change: &str, patchset: &str, pipeline: &str, local: &bool) -> Resul
     let diff = try!(git_command(&["diff", "--color=always", first_branch.as_slice(), format!("delivery/_reviews/{}/{}/{}", pipeline, change, patchset).as_slice()]));
     say("white", "\n");
     sayln("white", diff.stdout.as_slice());
+    Ok(())
+}
+
+pub fn clone(project: &str, git_url: &str) -> Result<(), DeliveryError> {
+    try!(git_command(&["clone", git_url, project]));
     Ok(())
 }
 

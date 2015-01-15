@@ -18,6 +18,7 @@ use delivery::git;
 
 docopt!(Args derive Show, "
 Usage: delivery review [--for=<pipeline>]
+       delivery clone <project> [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--git-url=<url>]
        delivery checkout <change> [--for=<pipeline>] [--patchset=<number>]
        delivery diff <change> [--for=<pipeline>] [--patchset=<number>] [--local]
        delivery init [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--project=<project>]
@@ -35,6 +36,7 @@ Options:
   -p, --project=<project>  The project name
   -c, --config-path=<dir>  The directory to write a config to
   -l, --local              Diff against the local branch HEAD
+  -g, --git-url=<url>      A raw git URL
   <change>                 The change to checkout
 ");
 
@@ -87,6 +89,16 @@ fn main() {
             flag_local: ref local,
             ..
         } => diff(change.as_slice(), patchset.as_slice(), pipeline.as_slice(), local),
+        Args {
+            cmd_clone: true,
+            arg_project: ref project,
+            flag_user: ref user,
+            flag_server: ref server,
+            flag_ent: ref ent,
+            flag_org: ref org,
+            flag_git_url: ref git_url,
+            ..
+        } => clone(project.as_slice(), user.as_slice(), server.as_slice(), ent.as_slice(), org.as_slice(), git_url.as_slice()),
         _ => no_matching_command(),
     };
     match cmd_result {
@@ -216,6 +228,38 @@ fn diff(change: &str, patchset: &str, pipeline: &str, local: &bool) -> Result<()
         sayln("yellow", patchset);
     }
     try!(git::diff(change, patchset, target.as_slice(), local));
+    Ok(())
+}
+
+fn clone(project: &str, user: &str, server: &str, ent: &str, org: &str, git_url: &str) -> Result<(), DeliveryError> {
+    sayln("green", "Chef Delivery");
+    let mut config = try!(Config::load_config(&cwd()));
+    config = config.set_user(user)
+        .set_server(server)
+        .set_enterprise(ent)
+        .set_organization(org);
+    let u = validate!(config, user);
+    let s = validate!(config, server);
+    let e = validate!(config, enterprise);
+    let o = validate!(config, organization);
+    say("white", "Cloning ");
+    let clone_url = if git_url.is_empty() {
+        say("yellow", format!("{}/{}/{}", e, o, project).as_slice());
+        git::delivery_ssh_url(u.as_slice(), s.as_slice(), e.as_slice(), o.as_slice(), project)
+    } else {
+        say("yellow", git_url);
+        String::from_str(git_url)
+    };
+    say("white", " to ");
+    sayln("magenta", format!("{}", project).as_slice());
+    try!(git::clone(project, clone_url.as_slice()));
+    let project_root = cwd().join(project);
+    try!(os::change_dir(&project_root));
+    try!(git::config_repo(u.as_slice(),
+                          s.as_slice(),
+                          e.as_slice(),
+                          o.as_slice(),
+                          project));
     Ok(())
 }
 
