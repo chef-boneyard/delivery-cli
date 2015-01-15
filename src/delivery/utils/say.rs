@@ -1,3 +1,4 @@
+#![allow(unstable)]
 extern crate term;
 
 use std::time::duration::Duration;
@@ -43,8 +44,7 @@ impl Spinner {
     }
 }
 
-pub fn say(color: &str, to_say: &str) {
-    let mut t = term::stdout().unwrap();
+fn say_term(mut t: Box<term::Terminal<term::WriterWrapper> + Send>, color: &str, to_say: &str) {
     let color_const = match color {
         "green" => term::color::BRIGHT_GREEN,
         "yellow" => term::color::BRIGHT_YELLOW,
@@ -58,9 +58,15 @@ pub fn say(color: &str, to_say: &str) {
     t.reset().unwrap()
 }
 
+pub fn say(color: &str, to_say: &str) {
+    match term::stdout() {
+        Some(t) => say_term(t, color, to_say),
+        None => print!("{}", to_say)
+    }
+}
+
 pub fn sayln(color: &str, to_say: &str) {
-    let mut t = term::stdout().unwrap();
     say(color, to_say);
-    (write!(t, "\n")).unwrap();
+    say(color, "\n");
 }
 

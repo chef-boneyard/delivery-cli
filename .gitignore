@@ -1,1 +1,4 @@
 /target
+.delivery/cli.toml
+.kitchen/
+.kitchen.local.yml
