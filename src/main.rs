@@ -181,7 +181,7 @@ fn review(for_pipeline: &str) -> Result<(), DeliveryError> {
     let target = validate!(config, pipeline);
     say("white", "Review for change  ");
     let head = try!(git::get_head());
-    if for_pipeline == head.as_slice() {
+    if target.as_slice() == head.as_slice() {
         return Err(DeliveryError{ kind: Kind::CannotReviewSameBranch, detail: None })
     }
     say("yellow", head.as_slice());
