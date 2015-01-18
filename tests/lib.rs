@@ -1,6 +1,7 @@
 #![allow(unstable)]
 extern crate delivery;
 #[macro_use] extern crate log;
+extern crate uuid;
 
 mod support;
 
@@ -16,4 +17,4 @@ macro_rules! test {
 }
 
 mod config;
-
+mod job;

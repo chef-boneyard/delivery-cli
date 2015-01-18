@@ -121,8 +121,6 @@ impl Config {
     }
 
     fn read_file(path: &Path) -> Result<String, DeliveryError>  {
-        say("white", "Loading configuration from ");
-        sayln("yellow", format!("{}", path.display()).as_slice());
         let toml = try!(File::open(path).read_to_string());
         Ok(toml)
     }

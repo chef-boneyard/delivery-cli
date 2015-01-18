@@ -1,4 +1,6 @@
 #![allow(unstable)]
+extern crate "rustc-serialize" as rustc_serialize;
+use rustc_serialize::json;
 use std::error;
 use std::io;
 
@@ -16,7 +18,10 @@ pub enum Kind {
     ConfigParse,
     MissingConfig,
     ConfigValidation,
-    IoError(io::IoError)
+    IoError(io::IoError),
+    JsonError(json::ParserError),
+    NoBuildCookbook,
+    NoHomedir
 }
 
 #[derive(Show)]
@@ -40,7 +45,10 @@ impl error::Error for DeliveryError {
             Kind::ConfigParse => "Failed to parse the cli config file",
             Kind::MissingConfig => "A configuration value is missing",
             Kind::ConfigValidation => "A required option is missing - use the command line options or 'delivery setup'",
-            Kind::IoError(_) => "An I/O Error occured"
+            Kind::IoError(_) => "An I/O Error occured",
+            Kind::JsonError(_) => "A JSON Parser error occured",
+            Kind::NoBuildCookbook => "No build_cookbook entry in .delivery/config.json",
+            Kind::NoHomedir => "Cannot find a homedir"
         }
     }
 
@@ -61,3 +69,13 @@ impl error::FromError<io::IoError> for DeliveryError {
         }
     }
 }
+
+impl error::FromError<json::ParserError> for DeliveryError {
+    fn from_error(err: json::ParserError) -> DeliveryError {
+        DeliveryError{
+            kind: Kind::JsonError(err),
+            detail: None
+        }
+    }
+}
+

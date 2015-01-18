@@ -9,9 +9,14 @@ pub use errors;
 use std::io::process::Command;
 use utils::say::{say, sayln, Spinner};
 use errors::{DeliveryError, Kind};
+use std::os;
+
+fn cwd() -> Path {
+    os::getcwd().unwrap()
+}
 
 pub fn get_head() -> Result<String, DeliveryError> {
-    let gitr = try!(git_command(&["branch"]));
+    let gitr = try!(git_command(&["branch"], &cwd()));
     let result = try!(parse_get_head(gitr.stdout.as_slice()));
     Ok(result)
 }
@@ -55,14 +60,15 @@ fn test_parse_get_head() {
 }
 
 pub struct GitResult {
-    stdout: String,
-    stderr: String
+    pub stdout: String,
+    pub stderr: String
 }
 
-fn git_command(args: &[&str]) -> Result<GitResult, DeliveryError> {
+pub fn git_command(args: &[&str], cwd: &Path) -> Result<GitResult, DeliveryError> {
     let spinner = Spinner::start();
     let mut command = Command::new("git");
     command.args(args);
+    command.cwd(cwd);
     debug!("Git command: {}", command);
     let output = match command.output() {
         Ok(o) => o,
@@ -83,7 +89,8 @@ fn git_command(args: &[&str]) -> Result<GitResult, DeliveryError> {
 pub fn git_push(branch: &str, target: &str) -> Result<String, DeliveryError> {
     let gitr = try!(git_command(&[
                      "push", "--porcelain", "--progress", "--verbose", "delivery", format!("{}:_for/{}/{}", branch, target, branch).as_slice()
-                     ]));
+                     ],
+                     &cwd()));
     let output = try!(parse_git_push_output(gitr.stdout.as_slice(), gitr.stderr.as_slice()));
     for result in output.iter() {
         match result.flag {
@@ -163,8 +170,8 @@ pub fn delivery_ssh_url(user: &str, server: &str, ent: &str, org: &str, proj: &s
     format!("ssh://{}@{}@{}:8989/{}/{}/{}", user, ent, server, ent, org, proj)
 }
 
-pub fn config_repo(user: &str, server: &str, ent: &str, org: &str, proj: &str) -> Result<(), DeliveryError> {
-    let result = git_command(&["remote", "add", "delivery", delivery_ssh_url(user, server, ent, org, proj).as_slice()]);
+pub fn config_repo(user: &str, server: &str, ent: &str, org: &str, proj: &str, path: &Path) -> Result<(), DeliveryError> {
+    let result = git_command(&["remote", "add", "delivery", delivery_ssh_url(user, server, ent, org, proj).as_slice()], path);
     match result {
         Ok(_) => return Ok(()),
         Err(e) => {
@@ -192,38 +199,38 @@ pub fn checkout_branch_name(change: &str, patchset: &str) -> String {
 }
 
 pub fn diff(change: &str, patchset: &str, pipeline: &str, local: &bool) -> Result<(), DeliveryError> {
-    try!(git_command(&["fetch", "delivery"]));
+    try!(git_command(&["fetch", "delivery"], &cwd()));
     let mut first_branch = format!("delivery/{}", pipeline);
     if *local {
         first_branch = String::from_str("HEAD");
     }
-    let diff = try!(git_command(&["diff", "--color=always", first_branch.as_slice(), format!("delivery/_reviews/{}/{}/{}", pipeline, change, patchset).as_slice()]));
+    let diff = try!(git_command(&["diff", "--color=always", first_branch.as_slice(), format!("delivery/_reviews/{}/{}/{}", pipeline, change, patchset).as_slice()], &cwd()));
     say("white", "\n");
     sayln("white", diff.stdout.as_slice());
     Ok(())
 }
 
 pub fn clone(project: &str, git_url: &str) -> Result<(), DeliveryError> {
-    try!(git_command(&["clone", git_url, project]));
+    try!(git_command(&["clone", git_url, project], &cwd()));
     Ok(())
 }
 
 pub fn checkout_review(change: &str, patchset: &str, pipeline: &str) -> Result<(), DeliveryError> {
-    try!(git_command(&["fetch", "delivery"]));
+    try!(git_command(&["fetch", "delivery"], &cwd()));
     let branchname = checkout_branch_name(change, patchset);
-    let result = git_command(&["branch", "--track", branchname.as_slice(), format!("delivery/_reviews/{}/{}/{}", pipeline, change, patchset).as_slice()]);
+    let result = git_command(&["branch", "--track", branchname.as_slice(), format!("delivery/_reviews/{}/{}/{}", pipeline, change, patchset).as_slice()], &cwd());
     match result {
         Ok(_) => {
-            try!(git_command(&["checkout", branchname.as_slice()]));
+            try!(git_command(&["checkout", branchname.as_slice()], &cwd()));
             return Ok(())
         },
         Err(e) => {
             match e.detail {
                 Some(msg) => {
                     if msg.contains("already exists.") {
-                        try!(git_command(&["checkout", branchname.as_slice()]));
+                        try!(git_command(&["checkout", branchname.as_slice()], &cwd()));
                         sayln("white", "Branch already exists, checking it out.");
-                        let r = try!(git_command(&["status"]));
+                        let r = try!(git_command(&["status"], &cwd()));
                         sayln("white", r.stdout.as_slice());
                         return Ok(())
                     } else {
