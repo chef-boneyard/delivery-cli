@@ -25,6 +25,8 @@ use delivery::job::workspace::{Workspace, Privilege};
 use delivery::utils::path_join_many::PathJoinMany;
 use delivery::getpass;
 use delivery::token;
+use rustc_serialize::json;
+use delivery::http::APIClient;
 
 docopt!(Args derive Debug, "
 Usage: delivery review [--for=<pipeline>]
@@ -34,6 +36,8 @@ Usage: delivery review [--for=<pipeline>]
        delivery init [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--project=<project>]
        delivery setup [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--config-path=<dir>] [--for=<pipeline>]
        delivery job <stage> <phase> [--change=<change>] [--for=<pipeline>] [--job-root=<dir>] [--project=<project>] [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--patchset=<number>] [--git-url=<url>] [--shasum=<gitsha>] [--change-id=<id>] [--no-spinner]
+       delivery pipeline [--for=<pipeline>] [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--project=<project>] [--config-path=<dir>]
+       delivery api <method> <path> [--user=<user>] [--server=<server>] [--ent=<ent>] [--config-path=<dir>] [--data=<data>]
        delivery --help
        delivery token [--user=<user>] [--server=<server>] [--ent=<ent>]
 
@@ -109,6 +113,29 @@ fn main() {
             flag_local: ref local,
             ..
         } => diff(&change, &patchset, &pipeline, local),
+        Args {
+            cmd_pipeline: true,
+            flag_user: ref user,
+            flag_server: ref server,
+            flag_ent: ref ent,
+            flag_org: ref org,
+            flag_project: ref proj,
+            flag_for: ref pipeline,
+            ..
+        } => init_pipeline(server.as_slice(), user.as_slice(), ent.as_slice(),
+                           org.as_slice(), proj.as_slice(), pipeline.as_slice()),
+        Args {
+            cmd_api: true,
+            arg_method: ref method,
+            arg_path: ref path,
+            flag_user: ref user,
+            flag_server: ref server,
+            flag_ent: ref ent,
+            flag_data: ref data,
+            ..
+        } => api_req(method.as_slice(), path.as_slice(), data.as_slice(),
+                     server.as_slice(), ent.as_slice(),
+                     user.as_slice()),
         Args {
             cmd_clone: true,
             arg_project: ref project,
@@ -472,5 +499,66 @@ fn api_token(server: &str, ent: &str,
 
     try!(tstore.write_token(&s, &e, &u, "exampletoken"));
     sayln("green", &format!("saved API token to: {}", token_path.display()));
+    Ok(())
+}
+
+fn init_pipeline(server: &str, user: &str,
+                 ent: &str, org: &str, proj: &str,
+                 pipeline: &str) -> Result<(), DeliveryError> {
+    sayln("green", "Chef Delivery: baking a new pipeline");
+    let mut config = try!(Config::load_config(&cwd()));
+    let cwd = try!(env::current_dir());
+    let final_proj = if proj.is_empty() {
+        // let cwd_name = cwd.file_name().unwrap().to_str().unwrap();
+        // std::str::from_utf8(cwd_name.clone()).unwrap()
+        cwd.file_name().unwrap().to_str().unwrap()
+    } else {
+        proj
+    };
+    config = config.set_user(user)
+        .set_server(server)
+        .set_enterprise(ent)
+        .set_organization(org)
+        .set_project(final_proj);
+    let p = validate!(config, project);
+    let u = validate!(config, user);
+    let s = validate!(config, server);
+    let e = validate!(config, enterprise);
+    let o = validate!(config, organization);
+    say("white", "hello, pipeline\n");
+    sayln("white", format!("e: {} o: {} p: {}", e, o, p).as_slice());
+    // create the project
+    // setup the remote
+    // push master
+    // create the pipeline
+    // checkout a feature branch
+    // add a config file and commit it
+    // push the review
+    // maybe back to master?
+    Ok(())
+}
+
+fn api_req(method: &str, path: &str, data: &str,
+           server: &str, ent: &str, user: &str) -> Result<(), DeliveryError> {
+    let mut config = try!(Config::load_config(&cwd()));
+    config = config.set_user(user)
+        .set_server(server)
+        .set_enterprise(ent);
+    let u = validate!(config, user);
+    let s = validate!(config, server);
+    let e = validate!(config, enterprise);
+
+    let client = APIClient::new_https(s.as_slice(), e.as_slice());
+    let result = match method {
+        "get" => client.get(path),
+        "post" => client.post(path, data),
+        _ => return Err(DeliveryError{ kind: Kind::UnsupportedHttpMethod,
+                                       detail: None })
+    };
+    match APIClient::extract_pretty_json(result) {
+        Ok(v) => println!("{}", v),
+        Err(e) => return Err(DeliveryError{ kind: Kind::JsonParseError,
+                                            detail: Some(e) })
+    };
     Ok(())
 }
