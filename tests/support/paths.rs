@@ -17,3 +17,4 @@ pub fn fixtures() -> Path {
 pub fn fixture_file(names: &str) -> Path {
     fixtures().join_many(&[names])
 }
+

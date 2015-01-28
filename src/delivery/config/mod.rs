@@ -1,6 +1,4 @@
 #![allow(unstable)]
-extern crate "rustc-serialize" as rustc_serialize;
-extern crate toml;
 
 pub use errors;
 use errors::{DeliveryError, Kind};
@@ -10,6 +8,7 @@ use std::io::fs::{PathExtensions, mkdir_recursive};
 use std::default::Default;
 use utils::say::{say, sayln};
 use rustc_serialize::Encodable;
+use toml;
 
 #[derive(RustcEncodable, Clone)]
 pub struct Config {
@@ -121,8 +120,6 @@ impl Config {
     }
 
     fn read_file(path: &Path) -> Result<String, DeliveryError>  {
-        say("white", "Loading configuration from ");
-        sayln("yellow", format!("{}", path.display()).as_slice());
         let toml = try!(File::open(path).read_to_string());
         Ok(toml)
     }

@@ -1,6 +1,5 @@
 #![allow(unstable)]
-extern crate term;
-
+use term;
 use std::time::duration::Duration;
 use std::sync::mpsc::{Sender, Receiver};
 use std::io::timer::{sleep};
@@ -44,18 +43,18 @@ impl Spinner {
     }
 }
 
-fn say_term(mut t: Box<term::Terminal<term::WriterWrapper> + Send>, color: &str, to_say: &str) {
+fn say_term(mut t: Box<term::StdTerminal>, color: &str, to_say: &str) {
     let color_const = match color {
-        "green" => term::color::BRIGHT_GREEN,
-        "yellow" => term::color::BRIGHT_YELLOW,
-        "red" => term::color::BRIGHT_RED,
-        "magenta" => term::color::BRIGHT_MAGENTA,
+        "green" => term::color::GREEN,
+        "yellow" => term::color::YELLOW,
+        "red" => term::color::RED,
+        "magenta" => term::color::MAGENTA,
         "white" => term::color::WHITE,
         _ => term::color::WHITE
     };
     t.fg(color_const).unwrap();
-    (write!(t, "{}", to_say)).unwrap();
-    t.reset().unwrap()
+    t.write(to_say.as_bytes()).unwrap();
+    t.reset().unwrap();
 }
 
 pub fn say(color: &str, to_say: &str) {

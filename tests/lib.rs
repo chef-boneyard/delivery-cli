@@ -1,6 +1,7 @@
 #![allow(unstable)]
 extern crate delivery;
 #[macro_use] extern crate log;
+extern crate uuid;
 
 mod support;
 
@@ -15,5 +16,16 @@ macro_rules! test {
     )
 }
 
-mod config;
+macro_rules! panic_on_error {
+    ($expr:expr) => (
+        match $expr {
+            Ok(val) => val,
+            Err(e) => {
+                panic!("{:?}", e)
+            }
+        }
+    )
+}
 
+mod config;
+mod job;
