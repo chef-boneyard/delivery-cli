@@ -10,7 +10,7 @@ extern crate delivery;
 extern crate "rustc-serialize" as rustc_serialize;
 
 use std::os;
-use std::error;
+use std::error::Error;
 use std::io::{self, fs};
 use delivery::utils::say::{say, sayln};
 use delivery::errors::{DeliveryError, Kind};
@@ -141,7 +141,7 @@ fn no_matching_command() -> Result<(), DeliveryError> {
 }
 
 #[allow(dead_code)]
-fn exit_with<T: error::Error>(e: T, i: isize) {
+fn exit_with(e: DeliveryError, i: isize) {
     sayln("red", e.description());
     match e.detail() {
         Some(deets) => sayln("red", deets.as_slice()),

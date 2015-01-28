@@ -1,7 +1,4 @@
 #![allow(unstable)]
-extern crate "rustc-serialize" as rustc_serialize;
-extern crate uuid;
-
 use std::io::{self, File};
 use std::io::fs;
 use errors::{DeliveryError, Kind};
@@ -165,7 +162,8 @@ file_backup_path File.expand_path(File.join(File.dirname(__FILE__), 'cache', 'jo
             delivery: top
         };
         let mut dna_json = File::create(&self.chef.join("dna.json"));
-        try!(dna_json.write(json::encode(&dna).as_bytes()));
+        let data = try!(json::encode(&dna));
+        try!(dna_json.write(data.as_bytes()));
         Ok(())
     }
 

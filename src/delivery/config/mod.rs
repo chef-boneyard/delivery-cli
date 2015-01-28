@@ -1,6 +1,4 @@
 #![allow(unstable)]
-extern crate "rustc-serialize" as rustc_serialize;
-extern crate toml;
 
 pub use errors;
 use errors::{DeliveryError, Kind};
@@ -10,6 +8,7 @@ use std::io::fs::{PathExtensions, mkdir_recursive};
 use std::default::Default;
 use utils::say::{say, sayln};
 use rustc_serialize::Encodable;
+use toml;
 
 #[derive(RustcEncodable, Clone)]
 pub struct Config {

@@ -1,5 +1,4 @@
 #![allow(unstable)]
-extern crate "rustc-serialize" as rustc_serialize;
 use rustc_serialize::json;
 use job::workspace::Workspace;
 use job::change::Change;

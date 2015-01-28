@@ -1,10 +1,10 @@
 #![allow(unstable)]
-extern crate "rustc-serialize" as rustc_serialize;
 use rustc_serialize::json;
-use std::error;
+use std::error::{self, Error};
 use std::io;
+use std::fmt;
 
-#[derive(Show)]
+#[derive(Debug)]
 pub enum Kind {
     NoMatchingCommand,
     NotOnABranch,
@@ -20,14 +20,21 @@ pub enum Kind {
     ConfigValidation,
     IoError(io::IoError),
     JsonError(json::ParserError),
+    JsonEncode(json::EncoderError),
     NoBuildCookbook,
     NoHomedir
 }
 
-#[derive(Show)]
+#[derive(Debug)]
 pub struct DeliveryError {
     pub kind: Kind,
     pub detail: Option<String>,
+}
+
+impl DeliveryError {
+    pub fn detail(&self) -> Option<String> {
+        self.detail.clone()
+    }
 }
 
 impl error::Error for DeliveryError {
@@ -47,17 +54,36 @@ impl error::Error for DeliveryError {
             Kind::ConfigValidation => "A required option is missing - use the command line options or 'delivery setup'",
             Kind::IoError(_) => "An I/O Error occured",
             Kind::JsonError(_) => "A JSON Parser error occured",
+            Kind::JsonEncode(_) => "A JSON Encoding error occured",
             Kind::NoBuildCookbook => "No build_cookbook entry in .delivery/config.json",
             Kind::NoHomedir => "Cannot find a homedir"
         }
     }
 
-    fn detail(&self) -> Option<String> {
-        self.detail.clone()
-    }
 
     fn cause(&self) -> Option<&error::Error> {
-        self.cause()
+        match self.kind {
+            Kind::IoError(ref err) => Some(err as &error::Error),
+            Kind::JsonError(ref err) => Some(err as &error::Error),
+            Kind::JsonEncode(ref err) => Some(err as &error::Error),
+            _ => None
+        }
+    }
+}
+
+impl fmt::Display for DeliveryError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.description().fmt(f)
+    }
+}
+
+
+impl error::FromError<json::EncoderError> for DeliveryError {
+    fn from_error(err: json::EncoderError) -> DeliveryError {
+        DeliveryError{
+            kind: Kind::JsonEncode(err),
+            detail: None
+        }
     }
 }
 

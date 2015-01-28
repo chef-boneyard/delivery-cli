@@ -1,5 +1,4 @@
 #![allow(unstable)]
-extern crate "rustc-serialize" as rustc_serialize;
 use rustc_serialize::json::{Json};
 use errors::{DeliveryError};
 use std::io::{File};

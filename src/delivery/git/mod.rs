@@ -1,9 +1,4 @@
 #![allow(unstable)]
-#[no_link] extern crate regex_macros;
-extern crate regex;
-extern crate "rustc-serialize" as rustc_serialize;
-extern crate log;
-
 pub use errors;
 
 use std::io::process::Command;
@@ -69,7 +64,7 @@ pub fn git_command(args: &[&str], cwd: &Path) -> Result<GitResult, DeliveryError
     let mut command = Command::new("git");
     command.args(args);
     command.cwd(cwd);
-    debug!("Git command: {}", command);
+    debug!("Git command: {:?}", command);
     let output = match command.output() {
         Ok(o) => o,
         Err(e) => { spinner.stop(); return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute git: {}", e.desc))}) },

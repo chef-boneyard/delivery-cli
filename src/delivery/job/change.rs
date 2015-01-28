@@ -1,8 +1,4 @@
 #![allow(unstable)]
-extern crate "rustc-serialize" as rustc_serialize;
-
-extern crate uuid;
-
 use uuid::Uuid;
 
 #[derive(RustcDecodable, RustcEncodable)]
