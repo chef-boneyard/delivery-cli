@@ -16,5 +16,16 @@ macro_rules! test {
     )
 }
 
+macro_rules! panic_on_error {
+    ($expr:expr) => (
+        match $expr {
+            Ok(val) => val,
+            Err(e) => {
+                panic!("{:?}", e)
+            }
+        }
+    )
+}
+
 mod config;
 mod job;

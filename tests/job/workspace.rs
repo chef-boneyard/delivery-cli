@@ -19,7 +19,6 @@ test!(build {
     for p in [
       &ws.root,
       &ws.chef,
-      &ws.chef.join("cookbooks"),
       &ws.cache,
       &ws.repo
     ].iter() {
@@ -96,20 +95,14 @@ test!(setup_chef_for_job {
     let tmpdir = TempDir::new("chef_job_test").unwrap();
     let root = tmpdir.path().join("root");
     let ws = Workspace::new(&root);
-    let _ = ws.build();
-    let r = ws.setup_repo_for_change(
+    panic_on_error!(ws.build());
+    panic_on_error!(ws.setup_repo_for_change(
         test_repo.path().as_str().unwrap(),
         "rust/test",
         "master",
         ""
-    );
-    match r {
-        Ok(()) => { },
-        Err(e) => {
-            panic!("{:?}", e);
-        }
-    }
-    let _ = ws.setup_chef_for_job();
+    ));
+    panic_on_error!(ws.setup_chef_for_job());
     assert!(ws.chef.join("config.rb").is_file());
     assert!(ws.chef.join("dna.json").is_file());
     assert!(ws.chef.join_many(&["cookbooks", "delivery_test"]).is_dir());

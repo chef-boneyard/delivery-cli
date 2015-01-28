@@ -10,7 +10,6 @@ use job::dna::{Top, DNA};
 use job::change::Change;
 use uuid::Uuid;
 use job;
-use utils;
 use std::io::process::Command;
 
 #[derive(RustcDecodable)]
@@ -48,7 +47,6 @@ impl Workspace {
     pub fn build(&self) -> Result<(), DeliveryError> {
         try!(fs::mkdir_recursive(&self.root, io::USER_RWX));
         try!(fs::mkdir_recursive(&self.chef, io::USER_RWX));
-        try!(fs::mkdir_recursive(&self.chef.join("cookbooks"), io::USER_RWX));
         try!(fs::mkdir_recursive(&self.cache, io::USER_RWX));
         try!(fs::mkdir_recursive(&self.repo, io::USER_RWX));
         Ok(())
@@ -60,31 +58,21 @@ impl Workspace {
         Ok(())
     }
 
-    fn build_cookbook(&self, config: &Json) -> Result<(), DeliveryError> {
-        let build_cookbook = match config.find("build_cookbook") {
-            Some(ref bc) => bc.as_string().unwrap(),
-            None => return Err(DeliveryError{kind: Kind::NoBuildCookbook, detail: None})
-        };
-        try!(utils::copy_recursive(&self.repo.join(build_cookbook.as_slice()), &self.chef.join("cookbooks")));
-        Ok(())
-    }
-
     fn berks_vendor(&self, config: &Json) -> Result<(), DeliveryError> {
         let build_cookbook = match config.find("build_cookbook") {
             Some(ref bc) => bc.as_string().unwrap(),
             None => return Err(DeliveryError{kind: Kind::NoBuildCookbook, detail: None})
         };
-        let bc_path = Path::new(build_cookbook);
         let mut command = Command::new("berks");
         command.arg("vendor");
         command.arg(&self.chef.join("cookbooks"));
-        command.cwd(&self.chef.join_many(&["cookbooks", String::from_utf8_lossy(bc_path.filename().unwrap()).as_slice()]));
+        command.cwd(&self.repo.join(build_cookbook.as_slice()));
         let output = match command.output() {
             Ok(o) => o,
             Err(e) => { return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute berks vendor: {}", e.desc))}) },
         };
         if !output.status.success() {
-            return Err(DeliveryError{ kind: Kind::GitFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(output.output.as_slice()), String::from_utf8_lossy(output.error.as_slice())))});
+            return Err(DeliveryError{ kind: Kind::BerksFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(output.output.as_slice()), String::from_utf8_lossy(output.error.as_slice())))});
         }
         let stdout = String::from_utf8_lossy(output.output.as_slice()).to_string();
         debug!("berks vendor stdout: {}", stdout);
@@ -151,7 +139,6 @@ file_backup_path File.expand_path(File.join(File.dirname(__FILE__), 'cache', 'jo
             token: Some(String::from_str(""))
         };
         let config = try!(job::config::load_config(&self.repo.join_many(&[".delivery", "config.json"])));
-        try!(self.build_cookbook(&config));
         try!(self.berks_vendor(&config));
         let top = Top{
             workspace: Workspace::new(&self.root),

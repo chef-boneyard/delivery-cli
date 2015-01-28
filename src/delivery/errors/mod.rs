@@ -22,7 +22,8 @@ pub enum Kind {
     JsonError(json::ParserError),
     JsonEncode(json::EncoderError),
     NoBuildCookbook,
-    NoHomedir
+    NoHomedir,
+    BerksFailed
 }
 
 #[derive(Debug)]
@@ -56,7 +57,8 @@ impl error::Error for DeliveryError {
             Kind::JsonError(_) => "A JSON Parser error occured",
             Kind::JsonEncode(_) => "A JSON Encoding error occured",
             Kind::NoBuildCookbook => "No build_cookbook entry in .delivery/config.json",
-            Kind::NoHomedir => "Cannot find a homedir"
+            Kind::NoHomedir => "Cannot find a homedir",
+            Kind::BerksFailed => "Berkshelf command failed"
         }
     }
 
