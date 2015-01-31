@@ -2,9 +2,9 @@
 
 pub use errors;
 use errors::{DeliveryError, Kind};
-use std::io;
-use std::io::File;
-use std::io::fs::{PathExtensions, mkdir_recursive};
+use std::old_io;
+use std::old_io::File;
+use std::old_io::fs::{PathExtensions, mkdir_recursive};
 use std::default::Default;
 use utils::say::{say, sayln};
 use rustc_serialize::Encodable;
@@ -81,7 +81,7 @@ impl Config {
     pub fn write_file(&self, path: &Path) -> Result<(), DeliveryError> {
         let write_dir = path.join_many(&[".delivery"]);
         if !write_dir.is_dir() {
-            try!(mkdir_recursive(&write_dir, io::USER_RWX));
+            try!(mkdir_recursive(&write_dir, old_io::USER_RWX));
         }
         let write_path = path.join_many(&[".delivery", "cli.toml"]);
         say("white", "Writing configuration to ");

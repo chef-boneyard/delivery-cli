@@ -1,5 +1,5 @@
 #![allow(unstable)]
-use std::io::process::Command;
+use std::old_io::process::Command;
 use errors::{DeliveryError};
 
 pub mod say;

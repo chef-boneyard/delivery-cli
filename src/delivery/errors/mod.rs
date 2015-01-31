@@ -1,7 +1,7 @@
 #![allow(unstable)]
 use rustc_serialize::json;
 use std::error::{self, Error};
-use std::io;
+use std::old_io;
 use std::fmt;
 
 #[derive(Debug)]
@@ -18,7 +18,7 @@ pub enum Kind {
     ConfigParse,
     MissingConfig,
     ConfigValidation,
-    IoError(io::IoError),
+    IoError(old_io::IoError),
     JsonError(json::ParserError),
     JsonEncode(json::EncoderError),
     NoBuildCookbook,
@@ -89,8 +89,8 @@ impl error::FromError<json::EncoderError> for DeliveryError {
     }
 }
 
-impl error::FromError<io::IoError> for DeliveryError {
-    fn from_error(err: io::IoError) -> DeliveryError {
+impl error::FromError<old_io::IoError> for DeliveryError {
+    fn from_error(err: old_io::IoError) -> DeliveryError {
         DeliveryError{
             kind: Kind::IoError(err),
             detail: None

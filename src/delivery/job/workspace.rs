@@ -1,8 +1,8 @@
 #![allow(unstable)]
-use std::io::{self, File};
-use std::io::fs;
+use std::old_io::{self, File};
+use std::old_io::fs;
 use errors::{DeliveryError, Kind};
-use std::io::fs::PathExtensions;
+use std::old_io::fs::PathExtensions;
 use git;
 use rustc_serialize::{Encodable, Encoder};
 use rustc_serialize::json::{self, Json};
@@ -10,7 +10,7 @@ use job::dna::{Top, DNA};
 use job::change::Change;
 use uuid::Uuid;
 use job;
-use std::io::process::Command;
+use std::old_io::process::Command;
 
 #[derive(RustcDecodable)]
 pub struct Workspace {
@@ -45,10 +45,10 @@ impl Workspace {
     }
 
     pub fn build(&self) -> Result<(), DeliveryError> {
-        try!(fs::mkdir_recursive(&self.root, io::USER_RWX));
-        try!(fs::mkdir_recursive(&self.chef, io::USER_RWX));
-        try!(fs::mkdir_recursive(&self.cache, io::USER_RWX));
-        try!(fs::mkdir_recursive(&self.repo, io::USER_RWX));
+        try!(fs::mkdir_recursive(&self.root, old_io::USER_RWX));
+        try!(fs::mkdir_recursive(&self.chef, old_io::USER_RWX));
+        try!(fs::mkdir_recursive(&self.cache, old_io::USER_RWX));
+        try!(fs::mkdir_recursive(&self.repo, old_io::USER_RWX));
         Ok(())
     }
 
@@ -97,8 +97,8 @@ impl Workspace {
         command.arg(self.chef.join("config.rb").as_str().unwrap().as_slice());
         command.arg("-r");
         command.arg(format!("{}::{}", bc_name, phase).as_slice());
-        command.stdout(io::process::StdioContainer::InheritFd(1));
-        command.stderr(io::process::StdioContainer::InheritFd(2));
+        command.stdout(old_io::process::StdioContainer::InheritFd(1));
+        command.stderr(old_io::process::StdioContainer::InheritFd(2));
         command.cwd(&self.repo);
         let output = match command.output() {
             Ok(o) => o,

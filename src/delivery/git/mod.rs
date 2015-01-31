@@ -1,7 +1,7 @@
 #![allow(unstable)]
 pub use errors;
 
-use std::io::process::Command;
+use std::old_io::process::Command;
 use utils::say::{say, sayln, Spinner};
 use errors::{DeliveryError, Kind};
 use std::os;
