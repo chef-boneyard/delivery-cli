@@ -3,10 +3,10 @@ extern crate delivery;
 
 use delivery::job::workspace::{Workspace};
 use delivery::git::git_command;
-use std::io::{self, TempDir, File};
-use std::io::fs::PathExtensions;
+use std::old_io::{self, TempDir, File};
+use std::old_io::fs::PathExtensions;
 use support::paths::fixture_file;
-use std::io::process::Command;
+use std::old_io::process::Command;
 use std::os;
 
 fn setup() { }
@@ -23,7 +23,7 @@ test!(build {
       &ws.repo
     ].iter() {
         assert!(p.is_dir());
-        assert_eq!(p.stat().unwrap().perm, io::USER_RWX);
+        assert_eq!(p.stat().unwrap().perm, old_io::USER_RWX);
     }
 });
 

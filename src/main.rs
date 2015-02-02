@@ -11,7 +11,7 @@ extern crate "rustc-serialize" as rustc_serialize;
 
 use std::os;
 use std::error::Error;
-use std::io::{self, fs};
+use std::old_io::{self, fs};
 use delivery::utils::say::{say, sayln};
 use delivery::errors::{DeliveryError, Kind};
 use delivery::config::Config;
@@ -334,7 +334,7 @@ fn job(stage: &str, phase: &str, change: &str, pipeline: &str, job_root: &str, p
             Some(path) => path.join_many(&[".delivery", s.as_slice(), e.as_slice(), o.as_slice(), p.as_slice(), pi.as_slice(), stage, phase]),
             None => return Err(DeliveryError{ kind: Kind::NoHomedir, detail: None })
         };
-        try!(fs::mkdir_recursive(&homedir_path, io::USER_RWX));
+        try!(fs::mkdir_recursive(&homedir_path, old_io::USER_RWX));
         homedir_path
     } else {
         Path::new(job_root)

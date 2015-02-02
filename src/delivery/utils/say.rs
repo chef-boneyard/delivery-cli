@@ -2,7 +2,7 @@
 use term;
 use std::time::duration::Duration;
 use std::sync::mpsc::{Sender, Receiver};
-use std::io::timer::{sleep};
+use std::old_io::timer::{sleep};
 use std::sync::mpsc::channel;
 use std::thread::{Thread, JoinGuard};
 
