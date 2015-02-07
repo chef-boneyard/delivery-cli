@@ -1,4 +1,4 @@
-#![allow(unstable)]
+#![feature(io, path, core, os)]
 extern crate delivery;
 #[macro_use] extern crate log;
 extern crate uuid;

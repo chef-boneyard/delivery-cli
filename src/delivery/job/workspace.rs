@@ -1,4 +1,3 @@
-#![allow(unstable)]
 use std::old_io::{self, File};
 use std::old_io::fs;
 use errors::{DeliveryError, Kind};
@@ -66,17 +65,17 @@ impl Workspace {
         let mut command = Command::new("berks");
         command.arg("vendor");
         command.arg(&self.chef.join("cookbooks"));
-        command.cwd(&self.repo.join(build_cookbook.as_slice()));
+        command.cwd(&self.repo.join(&build_cookbook));
         let output = match command.output() {
             Ok(o) => o,
             Err(e) => { return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute berks vendor: {}", e.desc))}) },
         };
         if !output.status.success() {
-            return Err(DeliveryError{ kind: Kind::BerksFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(output.output.as_slice()), String::from_utf8_lossy(output.error.as_slice())))});
+            return Err(DeliveryError{ kind: Kind::BerksFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(&output.output), String::from_utf8_lossy(&output.error)))});
         }
-        let stdout = String::from_utf8_lossy(output.output.as_slice()).to_string();
+        let stdout = String::from_utf8_lossy(&output.output).to_string();
         debug!("berks vendor stdout: {}", stdout);
-        let stderr = String::from_utf8_lossy(output.error.as_slice()).to_string();
+        let stderr = String::from_utf8_lossy(&output.error).to_string();
         debug!("berks vendor stderr: {}", stderr);
         Ok(())
     }
@@ -92,11 +91,11 @@ impl Workspace {
         let mut command = Command::new("chef-client");
         command.arg("-z");
         command.arg("-j");
-        command.arg(self.chef.join("dna.json").as_str().unwrap().as_slice());
+        command.arg(&self.chef.join("dna.json").as_str().unwrap());
         command.arg("-c");
-        command.arg(self.chef.join("config.rb").as_str().unwrap().as_slice());
+        command.arg(&self.chef.join("config.rb").as_str().unwrap());
         command.arg("-r");
-        command.arg(format!("{}::{}", bc_name, phase).as_slice());
+        command.arg(&format!("{}::{}", bc_name, phase));
         command.stdout(old_io::process::StdioContainer::InheritFd(1));
         command.stderr(old_io::process::StdioContainer::InheritFd(2));
         command.cwd(&self.repo);
@@ -105,14 +104,14 @@ impl Workspace {
             Err(e) => { return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute chef-client: {}", e.desc))}) },
         };
         if !output.status.success() {
-            return Err(DeliveryError{ kind: Kind::GitFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(output.output.as_slice()), String::from_utf8_lossy(output.error.as_slice())))});
+            return Err(DeliveryError{ kind: Kind::GitFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(&output.output), String::from_utf8_lossy(&output.error)))});
         }
         Ok(())
     }
 
     pub fn setup_chef_for_job(&self) -> Result<(), DeliveryError> {
         let mut config_rb = File::create(&self.chef.join("config.rb"));
-        try!(config_rb.write(b"file_cache_path File.expand_path(File.join(File.dirname(__FILE__), '..', 'cache'))
+        try!(config_rb.write_all(b"file_cache_path File.expand_path(File.join(File.dirname(__FILE__), '..', 'cache'))
 cache_type 'BasicFile'
 cache_options(:path => File.join(file_cache_path, 'checksums'))
 cookbook_path File.expand_path(File.join(File.dirname(__FILE__), 'cookbooks'))
@@ -150,7 +149,7 @@ file_backup_path File.expand_path(File.join(File.dirname(__FILE__), 'cache', 'jo
         };
         let mut dna_json = File::create(&self.chef.join("dna.json"));
         let data = try!(json::encode(&dna));
-        try!(dna_json.write(data.as_bytes()));
+        try!(dna_json.write_all(data.as_bytes()));
         Ok(())
     }
 
@@ -161,7 +160,7 @@ file_backup_path File.expand_path(File.join(File.dirname(__FILE__), 'cache', 'jo
         try!(git::git_command(&["remote", "update"], &self.repo));
         try!(self.reset_repo("HEAD"));
         try!(git::git_command(&["checkout", pipeline], &self.repo));
-        try!(self.reset_repo(format!("remotes/origin/{}", pipeline).as_slice()));
+        try!(self.reset_repo(&format!("remotes/origin/{}", pipeline)));
         if sha.is_empty() {
             try!(git::git_command(&["fetch", "origin", change_branch], &self.repo));
             try!(git::git_command(&["merge", "--strategy", "resolve", "FETCH_HEAD"], &self.repo));

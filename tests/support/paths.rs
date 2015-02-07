@@ -1,4 +1,4 @@
-#![allow(unstable)]
+use std::env;
 use std::os;
 
 pub fn exe_path() -> Path {

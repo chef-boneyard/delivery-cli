@@ -1,4 +1,3 @@
-#![allow(unstable)]
 extern crate delivery;
 extern crate log;
 
@@ -14,7 +13,7 @@ fn _load_test_config_file() -> Config {
 
 test!(load_config {
     let config = _load_test_config_file();
-    assert_eq!(config.server, Some(String::from_str("127.0.0.1")));
+    assert_eq!(config.server, Some("127.0.0.1".to_string()));
 });
 
 test!(load_config_returns_defaults_on_failure {
@@ -27,6 +26,6 @@ test!(load_config_returns_defaults_on_failure {
     assert_eq!(config.organization, None);
     assert_eq!(config.project, None);
     assert_eq!(config.user, None);
-    assert_eq!(config.git_port, Some(String::from_str("8989")));
+    assert_eq!(config.git_port, Some("8989".to_string()));
 });
 

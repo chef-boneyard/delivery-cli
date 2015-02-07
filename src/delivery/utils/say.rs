@@ -1,4 +1,3 @@
-#![allow(unstable)]
 use term;
 use std::time::duration::Duration;
 use std::sync::mpsc::{Sender, Receiver};
@@ -53,7 +52,7 @@ fn say_term(mut t: Box<term::StdTerminal>, color: &str, to_say: &str) {
         _ => term::color::WHITE
     };
     t.fg(color_const).unwrap();
-    t.write(to_say.as_bytes()).unwrap();
+    t.write_all(to_say.as_bytes()).unwrap();
     t.reset().unwrap();
 }
 

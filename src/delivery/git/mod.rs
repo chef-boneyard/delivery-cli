@@ -1,18 +1,17 @@
-#![allow(unstable)]
 pub use errors;
 
 use std::old_io::process::Command;
 use utils::say::{say, sayln, Spinner};
 use errors::{DeliveryError, Kind};
-use std::os;
+use std::env;
 
 fn cwd() -> Path {
-    os::getcwd().unwrap()
+    env::current_dir().unwrap()
 }
 
 pub fn get_head() -> Result<String, DeliveryError> {
     let gitr = try!(git_command(&["branch"], &cwd()));
-    let result = try!(parse_get_head(gitr.stdout.as_slice()));
+    let result = try!(parse_get_head(&gitr.stdout));
     Ok(result)
 }
 
@@ -48,7 +47,7 @@ fn test_parse_get_head() {
     let result = parse_get_head(stdout);
     match result {
         Ok(branch) => {
-            assert_eq!(branch.as_slice(), "master");
+            assert_eq!(&branch[], "master");
         },
         Err(_) => panic!("No result")
     };
@@ -72,29 +71,29 @@ pub fn git_command(args: &[&str], cwd: &Path) -> Result<GitResult, DeliveryError
     debug!("Git exited: {}", output.status);
     spinner.stop();
     if !output.status.success() {
-        return Err(DeliveryError{ kind: Kind::GitFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(output.output.as_slice()), String::from_utf8_lossy(output.error.as_slice())))});
+        return Err(DeliveryError{ kind: Kind::GitFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(&output.output), String::from_utf8_lossy(&output.error)))});
     }
-    let stdout = String::from_utf8_lossy(output.output.as_slice()).to_string();
+    let stdout = String::from_utf8_lossy(&output.output).to_string();
     debug!("Git stdout: {}", stdout);
-    let stderr = String::from_utf8_lossy(output.error.as_slice()).to_string();
+    let stderr = String::from_utf8_lossy(&output.error).to_string();
     debug!("Git stderr: {}", stderr);
     Ok(GitResult{ stdout: stdout, stderr: stderr })
 }
 
 pub fn git_push(branch: &str, target: &str) -> Result<String, DeliveryError> {
     let gitr = try!(git_command(&[
-                     "push", "--porcelain", "--progress", "--verbose", "delivery", format!("{}:_for/{}/{}", branch, target, branch).as_slice()
+                     "push", "--porcelain", "--progress", "--verbose", "delivery", &format!("{}:_for/{}/{}", branch, target, branch)
                      ],
                      &cwd()));
-    let output = try!(parse_git_push_output(gitr.stdout.as_slice(), gitr.stderr.as_slice()));
+    let output = try!(parse_git_push_output(&gitr.stdout, &gitr.stderr));
     for result in output.iter() {
         match result.flag {
-            PushResultFlags::SuccessfulFastForward => sayln("green", format!("Updated change: {}", result.reason).as_slice()),
-            PushResultFlags::SuccessfulForcedUpdate => sayln("green", format!("Force updated change: {}", result.reason).as_slice()),
-            PushResultFlags::SuccessfulDeletedRef => sayln("red", format!("Deleted change: {}", result.reason).as_slice()),
-            PushResultFlags::SuccessfulPushedNewRef => sayln("green", format!("Created change: {}", result.reason).as_slice()),
-            PushResultFlags::Rejected => sayln("red", format!("Rejected change: {}", result.reason).as_slice()),
-            PushResultFlags::UpToDate => sayln("yellow", format!("Nothing added to the existing change").as_slice()),
+            PushResultFlags::SuccessfulFastForward => sayln("green", &format!("Updated change: {}", result.reason)),
+            PushResultFlags::SuccessfulForcedUpdate => sayln("green", &format!("Force updated change: {}", result.reason)),
+            PushResultFlags::SuccessfulDeletedRef => sayln("red", &format!("Deleted change: {}", result.reason)),
+            PushResultFlags::SuccessfulPushedNewRef => sayln("green", &format!("Created change: {}", result.reason)),
+            PushResultFlags::Rejected => sayln("red", &format!("Rejected change: {}", result.reason)),
+            PushResultFlags::UpToDate => sayln("yellow", &format!("Nothing added to the existing change")),
         }
     }
     Ok(gitr.stdout.to_string())
@@ -124,7 +123,7 @@ pub fn parse_git_push_output(push_output: &str, push_error: &str) -> Result<Vec<
             let r = regex!(r"remote: (.+)");
             let caps_result = r.captures(line);
             match caps_result {
-                Some(caps) => sayln("white", format!("{}", caps.at(1).unwrap()).as_slice()),
+                Some(caps) => { sayln("white", &format!("{}", caps.at(1).unwrap())); },
                 None => {}
             }
         }
@@ -166,7 +165,7 @@ pub fn delivery_ssh_url(user: &str, server: &str, ent: &str, org: &str, proj: &s
 }
 
 pub fn config_repo(user: &str, server: &str, ent: &str, org: &str, proj: &str, path: &Path) -> Result<(), DeliveryError> {
-    let result = git_command(&["remote", "add", "delivery", delivery_ssh_url(user, server, ent, org, proj).as_slice()], path);
+    let result = git_command(&["remote", "add", "delivery", &delivery_ssh_url(user, server, ent, org, proj)], path);
     match result {
         Ok(_) => return Ok(()),
         Err(e) => {
@@ -199,9 +198,9 @@ pub fn diff(change: &str, patchset: &str, pipeline: &str, local: &bool) -> Resul
     if *local {
         first_branch = String::from_str("HEAD");
     }
-    let diff = try!(git_command(&["diff", "--color=always", first_branch.as_slice(), format!("delivery/_reviews/{}/{}/{}", pipeline, change, patchset).as_slice()], &cwd()));
+    let diff = try!(git_command(&["diff", "--color=always", &first_branch, &format!("delivery/_reviews/{}/{}/{}", pipeline, change, patchset)], &cwd()));
     say("white", "\n");
-    sayln("white", diff.stdout.as_slice());
+    sayln("white", &diff.stdout);
     Ok(())
 }
 
@@ -213,20 +212,20 @@ pub fn clone(project: &str, git_url: &str) -> Result<(), DeliveryError> {
 pub fn checkout_review(change: &str, patchset: &str, pipeline: &str) -> Result<(), DeliveryError> {
     try!(git_command(&["fetch", "delivery"], &cwd()));
     let branchname = checkout_branch_name(change, patchset);
-    let result = git_command(&["branch", "--track", branchname.as_slice(), format!("delivery/_reviews/{}/{}/{}", pipeline, change, patchset).as_slice()], &cwd());
+    let result = git_command(&["branch", "--track", &branchname, &format!("delivery/_reviews/{}/{}/{}", pipeline, change, patchset)], &cwd());
     match result {
         Ok(_) => {
-            try!(git_command(&["checkout", branchname.as_slice()], &cwd()));
+            try!(git_command(&["checkout", &branchname], &cwd()));
             return Ok(())
         },
         Err(e) => {
             match e.detail {
                 Some(msg) => {
                     if msg.contains("already exists.") {
-                        try!(git_command(&["checkout", branchname.as_slice()], &cwd()));
+                        try!(git_command(&["checkout", &branchname], &cwd()));
                         sayln("white", "Branch already exists, checking it out.");
                         let r = try!(git_command(&["status"], &cwd()));
-                        sayln("white", r.stdout.as_slice());
+                        sayln("white", &r.stdout);
                         return Ok(())
                     } else {
                         return Err(DeliveryError{kind: Kind::GitFailed, detail: Some(msg)});

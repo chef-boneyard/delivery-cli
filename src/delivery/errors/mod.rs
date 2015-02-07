@@ -1,4 +1,3 @@
-#![allow(unstable)]
 use rustc_serialize::json;
 use std::error::{self, Error};
 use std::old_io;

@@ -1,5 +1,4 @@
-#![allow(unstable)]
-#![feature(plugin)]
+#![feature(plugin, collections, path, env, core, io)]
 extern crate regex;
 #[plugin] #[no_link] extern crate regex_macros;
 extern crate docopt;
@@ -9,7 +8,7 @@ extern crate term;
 extern crate delivery;
 extern crate "rustc-serialize" as rustc_serialize;
 
-use std::os;
+use std::env;
 use std::error::Error;
 use std::old_io::{self, fs};
 use delivery::utils::say::{say, sayln};
@@ -18,7 +17,7 @@ use delivery::config::Config;
 use delivery::git;
 use delivery::job::workspace::Workspace;
 
-docopt!(Args derive Show, "
+docopt!(Args derive Debug, "
 Usage: delivery review [--for=<pipeline>]
        delivery clone <project> [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--git-url=<url>]
        delivery checkout <change> [--for=<pipeline>] [--patchset=<number>]
@@ -61,7 +60,7 @@ fn main() {
             cmd_review: true,
             flag_for: ref for_pipeline,
             ..
-        } => review(&for_pipeline[]),
+        } => review(&for_pipeline),
         Args {
             cmd_setup: true,
             flag_user: ref user,
@@ -71,7 +70,7 @@ fn main() {
             flag_config_path: ref path,
             flag_for: ref pipeline,
             ..
-        } => setup(user.as_slice(), server.as_slice(), ent.as_slice(), org.as_slice(), path.as_slice(), pipeline.as_slice()),
+        } => setup(&user, &server, &ent, &org, &path, &pipeline),
         Args {
             cmd_init: true,
             flag_user: ref user,
@@ -80,14 +79,14 @@ fn main() {
             flag_org: ref org,
             flag_project: ref proj,
             ..
-        } => init(user.as_slice(), server.as_slice(), ent.as_slice(), org.as_slice(), proj.as_slice()),
+        } => init(&user, &server, &ent, &org, &proj),
         Args {
             cmd_checkout: true,
             arg_change: ref change,
             flag_patchset: ref patchset,
             flag_for: ref pipeline,
             ..
-        } => checkout(change.as_slice(), patchset.as_slice(), pipeline.as_slice()),
+        } => checkout(&change, &patchset, &pipeline),
         Args {
             cmd_diff: true,
             arg_change: ref change,
@@ -95,7 +94,7 @@ fn main() {
             flag_for: ref pipeline,
             flag_local: ref local,
             ..
-        } => diff(change.as_slice(), patchset.as_slice(), pipeline.as_slice(), local),
+        } => diff(&change, &patchset, &pipeline, local),
         Args {
             cmd_clone: true,
             arg_project: ref project,
@@ -105,7 +104,7 @@ fn main() {
             flag_org: ref org,
             flag_git_url: ref git_url,
             ..
-        } => clone(project.as_slice(), user.as_slice(), server.as_slice(), ent.as_slice(), org.as_slice(), git_url.as_slice()),
+        } => clone(&project, &user, &server, &ent, &org, &git_url),
         Args {
             cmd_job: true,
             arg_stage: ref stage,
@@ -121,7 +120,7 @@ fn main() {
             flag_git_url: ref git_url,
             flag_shasum: ref shasum,
             ..
-        } => job(stage.as_slice(), phase.as_slice(), change.as_slice(), pipeline.as_slice(), job_root.as_slice(), project.as_slice(), user.as_slice(), server.as_slice(), ent.as_slice(), org.as_slice(), git_url.as_slice(), shasum.as_slice()),
+        } => job(&stage, &phase, &change, &pipeline, &job_root, &project, &user, &server, &ent, &org, &git_url, &shasum),
         _ => no_matching_command(),
     };
     match cmd_result {
@@ -132,7 +131,7 @@ fn main() {
 
 #[allow(dead_code)]
 fn cwd() -> Path {
-    os::getcwd().unwrap()
+    env::current_dir().unwrap()
 }
 
 #[allow(dead_code)]
@@ -144,16 +143,18 @@ fn no_matching_command() -> Result<(), DeliveryError> {
 fn exit_with(e: DeliveryError, i: isize) {
     sayln("red", e.description());
     match e.detail() {
-        Some(deets) => sayln("red", deets.as_slice()),
+        Some(deets) => sayln("red", &deets),
         None => {}
     }
-    os::set_exit_status(i)
+    let x = i as i32;
+    env::set_exit_status(x)
 }
 
 #[allow(dead_code)]
 fn load_config(path: &Path) -> Result<Config, DeliveryError> {
     say("white", "Loading configuration from ");
-    sayln("yellow", format!("{}", path.display()).as_slice());
+    let msg = format!("{}", path.display());
+    sayln("yellow", &msg);
     let config = try!(Config::load_config(&cwd()));
     Ok(config)
 }
@@ -184,7 +185,7 @@ fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str) -> Result<()
     // have its scope be the entire method. Sadly, it means we call it
     // whether we need to or not. We could probably abstract this into
     // a function and get the lifetimes right, but.. meh :)
-    let cwd = try!(os::getcwd());
+    let cwd = try!(env::current_dir());
     let final_proj = if proj.is_empty() {
         let cwd_name = cwd.filename().unwrap();
         std::str::from_utf8(cwd_name.clone()).unwrap()
@@ -202,11 +203,11 @@ fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str) -> Result<()
     let o = validate!(config, organization);
     let p = validate!(config, project);
     try!(git::config_repo(
-            u.as_slice(),
-            s.as_slice(),
-            e.as_slice(),
-            o.as_slice(),
-            p.as_slice(),
+            &u,
+            &s,
+            &e,
+            &o,
+            &p,
             &cwd));
     sayln("white", "Configuration added!");
     Ok(())
@@ -220,13 +221,13 @@ fn review(for_pipeline: &str) -> Result<(), DeliveryError> {
     let target = validate!(config, pipeline);
     say("white", "Review for change  ");
     let head = try!(git::get_head());
-    if target.as_slice() == head.as_slice() {
+    if &target == &head {
         return Err(DeliveryError{ kind: Kind::CannotReviewSameBranch, detail: None })
     }
-    say("yellow", head.as_slice());
+    say("yellow", &head);
     say("white", " targeted for pipeline ");
-    sayln("magenta", target.as_slice());
-    try!(git::git_push(head.as_slice(), target.as_slice()));
+    sayln("magenta", &target);
+    try!(git::git_push(&head, &target));
     Ok(())
 }
 
@@ -239,7 +240,7 @@ fn checkout(change: &str, patchset: &str, pipeline: &str) -> Result<(), Delivery
     say("white", "Checking out ");
     say("yellow", change);
     say("white", " targeted for pipeline ");
-    say("magenta", target.as_slice());
+    say("magenta", &target);
 
     if patchset == "latest" {
         sayln("white", " tracking latest changes");
@@ -247,7 +248,7 @@ fn checkout(change: &str, patchset: &str, pipeline: &str) -> Result<(), Delivery
         say("white", " at patchset ");
         sayln("yellow", patchset);
     }
-    try!(git::checkout_review(change, patchset, target.as_slice()));
+    try!(git::checkout_review(change, patchset, &target));
     Ok(())
 }
 
@@ -260,7 +261,7 @@ fn diff(change: &str, patchset: &str, pipeline: &str, local: &bool) -> Result<()
     say("white", "Showing diff for ");
     say("yellow", change);
     say("white", " targeted for pipeline ");
-    say("magenta", target.as_slice());
+    say("magenta", &target);
 
     if patchset == "latest" {
         sayln("white", " latest patchset");
@@ -268,7 +269,7 @@ fn diff(change: &str, patchset: &str, pipeline: &str, local: &bool) -> Result<()
         say("white", " at patchset ");
         sayln("yellow", patchset);
     }
-    try!(git::diff(change, patchset, target.as_slice(), local));
+    try!(git::diff(change, patchset, &target, local));
     Ok(())
 }
 
@@ -286,20 +287,20 @@ fn clone(project: &str, user: &str, server: &str, ent: &str, org: &str, git_url:
     let o = validate!(config, organization);
     say("white", "Cloning ");
     let clone_url = if git_url.is_empty() {
-        say("yellow", format!("{}/{}/{}", e, o, project).as_slice());
-        git::delivery_ssh_url(u.as_slice(), s.as_slice(), e.as_slice(), o.as_slice(), project)
+        say("yellow", &format!("{}/{}/{}", e, o, project));
+        git::delivery_ssh_url(&u, &s, &e, &o, project)
     } else {
         say("yellow", git_url);
         String::from_str(git_url)
     };
     say("white", " to ");
-    sayln("magenta", format!("{}", project).as_slice());
-    try!(git::clone(project, clone_url.as_slice()));
+    sayln("magenta", &format!("{}", project));
+    try!(git::clone(project, &clone_url));
     let project_root = cwd().join(project);
-    try!(git::config_repo(u.as_slice(),
-                          s.as_slice(),
-                          e.as_slice(),
-                          o.as_slice(),
+    try!(git::config_repo(&u,
+                          &s,
+                          &e,
+                          &o,
                           project,
                           &project_root));
     Ok(())
@@ -310,7 +311,7 @@ fn job(stage: &str, phase: &str, change: &str, pipeline: &str, job_root: &str, p
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
     config = if project.is_empty() {
-        config.set_project(String::from_utf8_lossy(cwd().filename().unwrap()).as_slice())
+        config.set_project(&String::from_utf8_lossy(cwd().filename().unwrap()))
     } else {
         config.set_project(project)
     };
@@ -326,12 +327,12 @@ fn job(stage: &str, phase: &str, change: &str, pipeline: &str, job_root: &str, p
     let o = validate!(config, organization);
     let pi = validate!(config, pipeline);
     say("white", "Starting job for ");
-    say("green", format!("{}", p.as_slice()).as_slice());
-    say("yellow", format!(" {}", stage).as_slice());
-    sayln("magenta", format!(" {}", phase).as_slice());
+    say("green", &format!("{}", &p));
+    say("yellow", &format!(" {}", stage));
+    sayln("magenta", &format!(" {}", phase));
     let job_root_path = if job_root.is_empty() {
-        let homedir_path = match os::homedir() {
-            Some(path) => path.join_many(&[".delivery", s.as_slice(), e.as_slice(), o.as_slice(), p.as_slice(), pi.as_slice(), stage, phase]),
+        let homedir_path = match env::home_dir() {
+            Some(path) => path.join_many(&[".delivery", &s, &e, &o, &p, &pi, stage, phase]),
             None => return Err(DeliveryError{ kind: Kind::NoHomedir, detail: None })
         };
         try!(fs::mkdir_recursive(&homedir_path, old_io::USER_RWX));
@@ -348,28 +349,28 @@ fn job(stage: &str, phase: &str, change: &str, pipeline: &str, job_root: &str, p
         if shasum.is_empty() {
             local = true;
             let v = try!(git::get_head());
-            say("yellow", v.as_slice());
+            say("yellow", &v);
             v
         } else {
             say("yellow", shasum);
             String::new()
         }
     } else {
-        say("yellow", change.as_slice());
+        say("yellow", &change);
         format!("_reviews/{}/{}/latest", pi, change)
     };
     say("white", " to ");
-    sayln("magenta", pi.as_slice());
+    sayln("magenta", &pi);
     let clone_url = if git_url.is_empty() {
         if local {
             String::from_str(cwd().as_str().unwrap())
         } else {
-            git::delivery_ssh_url(u.as_slice(), s.as_slice(), e.as_slice(), o.as_slice(), p.as_slice())
+            git::delivery_ssh_url(&u, &s, &e, &o, &p)
         }
     } else {
         String::from_str(git_url)
     };
-    try!(ws.setup_repo_for_change(clone_url.as_slice(), c.as_slice(), pi.as_slice(), shasum));
+    try!(ws.setup_repo_for_change(&clone_url, &c, &pi, shasum));
     sayln("white", "Configuring the job");
     try!(ws.setup_chef_for_job());
     sayln("white", "Running the job");

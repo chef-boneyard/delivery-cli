@@ -1,4 +1,4 @@
-#![feature(plugin)]
+#![feature(plugin, io, path, collections, std_misc, core, env)]
 extern crate regex;
 #[plugin] #[no_link] extern crate regex_macros;
 extern crate docopt;

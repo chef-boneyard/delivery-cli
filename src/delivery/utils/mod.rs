@@ -1,4 +1,3 @@
-#![allow(unstable)]
 use std::old_io::process::Command;
 use errors::{DeliveryError};
 

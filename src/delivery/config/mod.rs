@@ -1,5 +1,3 @@
-#![allow(unstable)]
-
 pub use errors;
 use errors::{DeliveryError, Kind};
 use std::old_io;
@@ -69,7 +67,7 @@ impl Config {
         match have_config.as_ref() {
             Some(path) => {
                 let toml = try!(Config::read_file(path));
-                match Config::parse_config(toml.as_slice()) {
+                match Config::parse_config(&toml) {
                     Ok(c) => return Ok(c),
                     Err(_) => return Ok(Default::default())
                 }
@@ -85,13 +83,13 @@ impl Config {
         }
         let write_path = path.join_many(&[".delivery", "cli.toml"]);
         say("white", "Writing configuration to ");
-        sayln("yellow", format!("{}", write_path.display()).as_slice());
+        sayln("yellow", &format!("{}", write_path.display()));
         let mut f = try!(File::create(&write_path));
         let toml_string = toml::encode_str(self);
         sayln("magenta", "New configuration");
         sayln("magenta", "-----------------");
-        say("white", toml_string.as_slice());
-        try!(f.write(toml_string.as_bytes()));
+        say("white", &toml_string);
+        try!(f.write_all(toml_string.as_bytes()));
         Ok(())
     }
 
