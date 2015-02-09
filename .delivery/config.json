@@ -1,6 +1,17 @@
 {
     "version": "1",
     "build_cookbook": "cookbooks/delivery_rust",
+    "skip_phases": [
+      "lint",
+      "quality",
+      "security",
+      "publish",
+      "smoke",
+      "provision",
+      "publish",
+      "deploy",
+      "functional"
+    ],
     "build_nodes": {
         "default"    : ["name:delivery-builder*"]
     }
