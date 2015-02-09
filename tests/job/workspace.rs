@@ -1,4 +1,3 @@
-#![allow(unstable)]
 extern crate delivery;
 
 use delivery::job::workspace::{Workspace};
@@ -7,7 +6,7 @@ use std::old_io::{self, TempDir, File};
 use std::old_io::fs::PathExtensions;
 use support::paths::fixture_file;
 use std::old_io::process::Command;
-use std::os;
+use std::env;
 
 fn setup() { }
 
@@ -36,9 +35,9 @@ fn copy_to_tmpdir(path: &str, tmpdir: &TempDir) {
         .arg(tmpdir.path().as_str().unwrap())
         .output().unwrap();
     if ! cp_res.status.success() {
-        let output = String::from_utf8_lossy(cp_res.output.as_slice());
-        let error = String::from_utf8_lossy(cp_res.error.as_slice());
-        println!("{}\n{}\n{}", output.as_slice(), error.as_slice(), tmpdir.path().as_str().unwrap());
+        let output = String::from_utf8_lossy(&cp_res.output);
+        let error = String::from_utf8_lossy(&cp_res.error);
+        println!("{}\n{}\n{}", &output, &error, tmpdir.path().as_str().unwrap());
         panic!("Failed to copy data");
     }
 }
@@ -48,17 +47,17 @@ fn copy_to_tmpdir(path: &str, tmpdir: &TempDir) {
 fn setup_test_repo(hedge: &str) -> (TempDir, String) {
     let tmpdir = TempDir::new(hedge).unwrap();
     let test_repo_path = fixture_file("test_repo");
-    copy_to_tmpdir(format!("{}/.delivery", test_repo_path.as_str().unwrap().as_slice()).as_slice(), &tmpdir);
-    copy_to_tmpdir(format!("{}/README.md", test_repo_path.as_str().unwrap().as_slice()).as_slice(), &tmpdir);
-    copy_to_tmpdir(format!("{}/cookbooks", test_repo_path.as_str().unwrap().as_slice()).as_slice(), &tmpdir);
-    os::change_dir(tmpdir.path()).unwrap();
+    copy_to_tmpdir(&format!("{}/.delivery", &test_repo_path.as_str().unwrap()), &tmpdir);
+    copy_to_tmpdir(&format!("{}/README.md", &test_repo_path.as_str().unwrap()), &tmpdir);
+    copy_to_tmpdir(&format!("{}/cookbooks", &test_repo_path.as_str().unwrap()), &tmpdir);
+    env::set_current_dir(tmpdir.path()).unwrap();
     git_command(&["init", tmpdir.path().as_str().unwrap()], tmpdir.path());
     git_command(&["add", "."], tmpdir.path()).unwrap();
     git_command(&["commit", "-a", "-m", "Initial Commit"], tmpdir.path()).unwrap();
     git_command(&["branch", "rust/test"], tmpdir.path()).unwrap();
     {
         let mut f = File::create(&tmpdir.path().join("freaky"));
-        f.write(b"I like cookies");
+        f.write_all(b"I like cookies");
     }
     git_command(&["add", "."], tmpdir.path()).unwrap();
     git_command(&["commit", "-a", "-m", "New file"], tmpdir.path()).unwrap();

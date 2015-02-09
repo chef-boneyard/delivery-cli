@@ -1,4 +1,3 @@
-#![allow(unstable)]
 use uuid::Uuid;
 
 #[derive(RustcDecodable, RustcEncodable)]

@@ -1,4 +1,3 @@
-#![allow(unstable)]
 use rustc_serialize::json;
 use job::workspace::Workspace;
 use job::change::Change;
