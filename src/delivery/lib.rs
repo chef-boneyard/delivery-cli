@@ -1,8 +1,9 @@
 #![feature(plugin, io, path, collections, std_misc, core, env)]
+#![plugin(regex_macros, docopt_macros)]
 extern crate regex;
-#[plugin] #[no_link] extern crate regex_macros;
+#[no_link] extern crate regex_macros;
 extern crate docopt;
-#[plugin] #[no_link] extern crate docopt_macros;
+#[no_link] extern crate docopt_macros;
 #[macro_use] extern crate log;
 extern crate term;
 extern crate toml;
