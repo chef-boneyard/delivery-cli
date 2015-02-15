@@ -1,9 +1,11 @@
 #![feature(plugin, collections, path, env, core, io)]
+#![plugin(regex_macros, docopt_macros)]
 extern crate regex;
-#[plugin] #[no_link] extern crate regex_macros;
+#[no_link] extern crate regex_macros;
 extern crate docopt;
-#[plugin] #[no_link] extern crate docopt_macros;
+#[no_link] extern crate docopt_macros;
 #[macro_use] extern crate log;
+extern crate env_logger;
 extern crate term;
 extern crate delivery;
 extern crate "rustc-serialize" as rustc_serialize;
@@ -53,6 +55,8 @@ macro_rules! validate {
 
 #[cfg(not(test))]
 fn main() {
+    env_logger::init().unwrap();
+
     let args: Args = Args::docopt().decode().unwrap_or_else(|e| e.exit());
     // debug!("{}", args);
     let cmd_result = match args {
