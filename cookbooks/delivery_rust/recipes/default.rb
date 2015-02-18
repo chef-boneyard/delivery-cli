@@ -10,5 +10,5 @@ remote_file "#{Chef::Config[:file_cache_path]}/rustup.sh" do
 end
 
 execute "install rust and cargo" do
-  command "bash #{Chef::Config[:file_cache_path]}/rustup.sh"
+  command "bash #{Chef::Config[:file_cache_path]}/rustup.sh --date=2015-02-22"
 end

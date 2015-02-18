@@ -1,8 +1,8 @@
 {
     "version": "2",
     "build_cookbook": {
-      "name": "delivery_test",
-      "path": "cookbooks/delivery_test"
+      "name": "httpd",
+      "server": "true"
     },
     "build_nodes": {
         "default"    : ["name:delivery-builder*"]

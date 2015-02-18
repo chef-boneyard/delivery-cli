@@ -4,5 +4,10 @@ execute "cargo clean" do
 end
 
 execute "cargo test" do
+  if Chef::VERSION !~ /^12/
+    environment({
+      'RUST_TEST_TASKS' => "1"
+    })
+  end
   cwd node['delivery_builder']['repo']
 end

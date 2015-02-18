@@ -47,7 +47,7 @@ fn test_parse_get_head() {
     let result = parse_get_head(stdout);
     match result {
         Ok(branch) => {
-            assert_eq!(&branch[], "master");
+            assert_eq!(&branch[..], "master");
         },
         Err(_) => panic!("No result")
     };

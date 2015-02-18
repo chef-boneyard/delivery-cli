@@ -22,7 +22,19 @@ pub enum Kind {
     JsonEncode(json::EncoderError),
     NoBuildCookbook,
     NoHomedir,
-    BerksFailed
+    ExpectedJsonString,
+    BerksFailed,
+    NoValidBuildCookbook,
+    CopyFailed,
+    MissingBuildCookbookName,
+    SupermarketFailed,
+    MoveFailed,
+    TarFailed,
+    MissingBuildCookbookField,
+    ChefServerFailed,
+    ChownFailed,
+    ChefFailed,
+    ChmodFailed
 }
 
 #[derive(Debug)]
@@ -57,7 +69,19 @@ impl error::Error for DeliveryError {
             Kind::JsonEncode(_) => "A JSON Encoding error occured",
             Kind::NoBuildCookbook => "No build_cookbook entry in .delivery/config.json",
             Kind::NoHomedir => "Cannot find a homedir",
-            Kind::BerksFailed => "Berkshelf command failed"
+            Kind::BerksFailed => "Berkshelf command failed",
+            Kind::ExpectedJsonString => "Expected a JSON string",
+            Kind::NoValidBuildCookbook => "Cannot find a valid build_cookbook entry in .delivery/config.json",
+            Kind::MissingBuildCookbookName => "You must have a name field in you build_cookbook",
+            Kind::CopyFailed => "Failed to copy files",
+            Kind::SupermarketFailed => "Failed to download a cookbook from the supermarket",
+            Kind::TarFailed => "Cannot untar a file",
+            Kind::MoveFailed => "Cannot move a file",
+            Kind::MissingBuildCookbookField => "Missing a required field in your build_cookbook",
+            Kind::ChefServerFailed => "Failed to download a cookbook from the Chef Server",
+            Kind::ChownFailed => "Cannot set ownership to the dbuild user and group",
+            Kind::ChefFailed => "Chef Client failed",
+            Kind::ChmodFailed => "Cannot set permissions"
         }
     }
 
