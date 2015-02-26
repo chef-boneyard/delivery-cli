@@ -14,14 +14,16 @@ name = "delivery"
 name = "lib"
 
 [dependencies]
-docopt = "*"
+docopt = "0.6.38"
 docopt_macros = "*"
 regex = "*"
 regex_macros = "*"
 log = "*"
 env_logger = "*"
 rustc-serialize = "*"
-toml = "*"
 time = "*"
-uuid = "*"
 term = "*"
+libc = "*"
+
+[dependencies.toml]
+git = "https://github.com/alexcrichton/toml-rs.git"

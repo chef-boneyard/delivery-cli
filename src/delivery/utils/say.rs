@@ -5,6 +5,9 @@ use std::old_io::timer::{sleep};
 use std::sync::mpsc::channel;
 use std::thread::{Thread, JoinGuard};
 
+/// Because sometimes, you just want a global variable.
+static mut show_spinner: bool = true;
+
 pub struct Spinner {
     tx: Sender<isize>,
     guard: JoinGuard<'static ()>
@@ -23,18 +26,30 @@ impl Spinner {
     }
 
     fn spin(rx: Receiver<isize>) {
-        let spinner_chars = vec!["|", "/", "-", "\\",];
+        let spinner_chars = vec!["|", "/", "-", "\\"];
         for spin in spinner_chars.iter().cycle() {
-            say("white", "\x08");
-            say("yellow", *spin);
+            unsafe {
+                if show_spinner {
+                    say("yellow", *spin);
+                }
+            }
             let r = rx.try_recv();
             match r {
                 Ok(_) => {
-                    say("white", "\x08 \x08");
+                    unsafe {
+                        if show_spinner {
+                            say("white", "\x08 \x08");
+                        }
+                    }
                     break;
                 },
                 Err(_) => {
                     sleep(Duration::milliseconds(100i64));
+                    unsafe {
+                        if show_spinner {
+                            say("white", "\x08");
+                        }
+                    }
                     continue;
                 }
             }
@@ -42,12 +57,18 @@ impl Spinner {
     }
 }
 
+pub fn turn_off_spinner() {
+    unsafe {
+        show_spinner = false;
+    }
+}
+
 fn say_term(mut t: Box<term::StdTerminal>, color: &str, to_say: &str) {
     let color_const = match color {
-        "green" => term::color::GREEN,
-        "yellow" => term::color::YELLOW,
-        "red" => term::color::RED,
-        "magenta" => term::color::MAGENTA,
+        "green" => term::color::BRIGHT_GREEN,
+        "yellow" => term::color::BRIGHT_YELLOW,
+        "red" => term::color::BRIGHT_RED,
+        "magenta" => term::color::BRIGHT_MAGENTA,
         "white" => term::color::WHITE,
         _ => term::color::WHITE
     };

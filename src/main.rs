@@ -13,11 +13,13 @@ extern crate "rustc-serialize" as rustc_serialize;
 use std::env;
 use std::error::Error;
 use std::old_io::{self, fs};
-use delivery::utils::say::{say, sayln};
+use delivery::utils::{self, privileged_process};
+use delivery::utils::say::{self, say, sayln};
 use delivery::errors::{DeliveryError, Kind};
 use delivery::config::Config;
 use delivery::git;
-use delivery::job::workspace::Workspace;
+use delivery::job::change::Change;
+use delivery::job::workspace::{Workspace, Privilege};
 
 docopt!(Args derive Debug, "
 Usage: delivery review [--for=<pipeline>]
@@ -26,7 +28,7 @@ Usage: delivery review [--for=<pipeline>]
        delivery diff <change> [--for=<pipeline>] [--patchset=<number>] [--local]
        delivery init [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--project=<project>]
        delivery setup [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--config-path=<dir>] [--for=<pipeline>]
-       delivery job <stage> <phase> [--change=<change>] [--for=<pipeline>] [--job-root=<dir>] [--project=<project>] [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--git-url=<url>] [--shasum=<gitsha>]
+       delivery job <stage> <phase> [--change=<change>] [--for=<pipeline>] [--job-root=<dir>] [--project=<project>] [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--patchset=<number>] [--git-url=<url>] [--shasum=<gitsha>] [--change-id=<id>] [--no-spinner]
        delivery --help
 
 Options:
@@ -43,7 +45,9 @@ Options:
   -g, --git-url=<url>      A raw git URL
   -j, --job-root=<path>    The path to the job root
   -S, --shasum=<gitsha>    A Git SHA
-  -c, --change=<change>    A delivery change branch name
+  -C, --change=<change>    A delivery change branch name
+  -i, --change-id=<id>     A delivery change ID
+  -n, --no-spinner         Turn off the delightful spinner :(
   <change>                 A delivery change branch name
 ");
 
@@ -58,7 +62,7 @@ fn main() {
     env_logger::init().unwrap();
 
     let args: Args = Args::docopt().decode().unwrap_or_else(|e| e.exit());
-    // debug!("{}", args);
+    debug!("{:?}", args);
     let cmd_result = match args {
         Args {
             cmd_review: true,
@@ -121,10 +125,16 @@ fn main() {
             flag_server: ref server,
             flag_ent: ref ent,
             flag_org: ref org,
+            flag_patchset: ref patchset,
+            flag_change_id: ref change_id,
             flag_git_url: ref git_url,
             flag_shasum: ref shasum,
+            flag_no_spinner: no_spinner,
             ..
-        } => job(&stage, &phase, &change, &pipeline, &job_root, &project, &user, &server, &ent, &org, &git_url, &shasum),
+        } => {
+            if no_spinner { say::turn_off_spinner() };
+            job(&stage, &phase, &change, &pipeline, &job_root, &project, &user, &server, &ent, &org, &patchset, &change_id, &git_url, &shasum)
+        },
         _ => no_matching_command(),
     };
     match cmd_result {
@@ -223,7 +233,7 @@ fn review(for_pipeline: &str) -> Result<(), DeliveryError> {
     let mut config = try!(load_config(&cwd()));
     config = config.set_pipeline(for_pipeline);
     let target = validate!(config, pipeline);
-    say("white", "Review for change  ");
+    say("white", "Review for change ");
     let head = try!(git::get_head());
     if &target == &head {
         return Err(DeliveryError{ kind: Kind::CannotReviewSameBranch, detail: None })
@@ -311,8 +321,21 @@ fn clone(project: &str, user: &str, server: &str, ent: &str, org: &str, git_url:
 }
 
 #[allow(dead_code)]
-fn job(stage: &str, phase: &str, change: &str, pipeline: &str, job_root: &str, project: &str, user: &str, server: &str, ent: &str, org: &str, git_url: &str, shasum: &str) -> Result<(), DeliveryError> {
-    sayln("green", "Chef Delivery");
+fn job(stage: &str,
+       phase: &str,
+       change: &str,
+       pipeline: &str,
+       job_root: &str,
+       project: &str,
+       user: &str,
+       server: &str,
+       ent: &str,
+       org: &str,
+       patchset: &str,
+       change_id: &str,
+       git_url: &str,
+       shasum: &str) ->
+Result<(), DeliveryError> { sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
     config = if project.is_empty() {
         config.set_project(&String::from_utf8_lossy(cwd().filename().unwrap()))
@@ -335,33 +358,36 @@ fn job(stage: &str, phase: &str, change: &str, pipeline: &str, job_root: &str, p
     say("yellow", &format!(" {}", stage));
     sayln("magenta", &format!(" {}", phase));
     let job_root_path = if job_root.is_empty() {
-        let homedir_path = match env::home_dir() {
-            Some(path) => path.join_many(&[".delivery", &s, &e, &o, &p, &pi, stage, phase]),
-            None => return Err(DeliveryError{ kind: Kind::NoHomedir, detail: None })
-        };
-        try!(fs::mkdir_recursive(&homedir_path, old_io::USER_RWX));
-        homedir_path
+        if privileged_process() {
+            Path::new("/var/opt/delivery/workspace").join_many(&[&s[], &e, &o, &p, &pi, stage, phase])
+        } else {
+            match env::home_dir() {
+                Some(path) => path.join_many(&[".delivery", &s, &e, &o, &p, &pi, stage, phase]),
+                None => return Err(DeliveryError{ kind: Kind::NoHomedir, detail: None })
+            }
+        }
     } else {
         Path::new(job_root)
     };
     let ws = Workspace::new(&job_root_path);
     sayln("white", "Creating workspace");
     try!(ws.build());
-    say("white", "Cloning repository, and merging ");
+    say("white", "Cloning repository, and merging");
     let mut local = false;
+    let patch = if patchset.is_empty() { "latest" } else { patchset };
     let c = if change.is_empty() {
         if shasum.is_empty() {
             local = true;
             let v = try!(git::get_head());
-            say("yellow", &v);
+            say("yellow", &format!(" {}", &v));
             v
         } else {
-            say("yellow", shasum);
+            say("yellow", &format!(" {}", shasum));
             String::new()
         }
     } else {
-        say("yellow", &change);
-        format!("_reviews/{}/{}/latest", pi, change)
+        say("yellow", &format!(" {}", &change));
+        format!("_reviews/{}/{}/{}", pi, change, patch)
     };
     say("white", " to ");
     sayln("magenta", &pi);
@@ -376,8 +402,30 @@ fn job(stage: &str, phase: &str, change: &str, pipeline: &str, job_root: &str, p
     };
     try!(ws.setup_repo_for_change(&clone_url, &c, &pi, shasum));
     sayln("white", "Configuring the job");
-    try!(ws.setup_chef_for_job());
+    // This can be optimized out, almost certainly
+    try!(utils::remove_recursive(&ws.chef.join("build_cookbook")));
+    let change = Change{
+        enterprise: e.to_string(),
+        organization: o.to_string(),
+        project: p.to_string(),
+        pipeline: pi.to_string(),
+        stage: stage.to_string(),
+        phase: phase.to_string(),
+        git_url: clone_url.to_string(),
+        sha: shasum.to_string(),
+        patchset_branch: c.to_string(),
+        change_id: change_id.to_string(),
+        patchset_number: patch.to_string()
+    };
+    try!(ws.setup_chef_for_job(&u, &s, change));
     sayln("white", "Running the job");
-    try!(ws.run_job(phase));
+    if privileged_process() {
+        sayln("yellow", "Setting up the builder");
+        try!(ws.run_job("default", Privilege::NoDrop));
+        sayln("magenta", &format!("Running phase {}", phase));
+        try!(ws.run_job(phase, Privilege::Drop));
+    } else {
+        try!(ws.run_job(phase, Privilege::NoDrop));
+    }
     Ok(())
 }

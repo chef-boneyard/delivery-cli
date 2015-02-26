@@ -1,6 +1,6 @@
 use rustc_serialize::json;
 use job::workspace::Workspace;
-use job::change::Change;
+use job::change::{Change, BuilderCompat};
 
 #[derive(RustcEncodable)]
 pub struct Top {
@@ -12,5 +12,6 @@ pub struct Top {
 #[derive(RustcEncodable)]
 pub struct DNA {
     pub delivery: Top,
+    pub delivery_builder: BuilderCompat
 }
 

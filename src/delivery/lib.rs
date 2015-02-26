@@ -8,8 +8,8 @@ extern crate docopt;
 extern crate term;
 extern crate toml;
 extern crate time;
-extern crate uuid;
 extern crate "rustc-serialize" as rustc_serialize;
+extern crate libc;
 
 pub mod errors;
 pub mod git;

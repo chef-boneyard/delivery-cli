@@ -1,9 +1,6 @@
 #![feature(io, path, core, os)]
 extern crate delivery;
 #[macro_use] extern crate log;
-extern crate uuid;
-
-mod support;
 
 // Thanks, Cargo.
 macro_rules! test {
@@ -27,5 +24,7 @@ macro_rules! panic_on_error {
     )
 }
 
+mod support;
 mod config;
 mod job;
+mod cli;
