@@ -1,4 +1,4 @@
-omnibus_path = File.join(node['delivery']['workspace']['repo'], 'omnibus-delivery-cli')
+omnibus_path = File.join(node['delivery_builder']['repo'], 'omnibus-delivery-cli')
 
 execute "bundle install --binstubs=#{omnibus_path}/bin" do
   cwd omnibus_path
