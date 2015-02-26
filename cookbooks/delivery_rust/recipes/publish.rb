@@ -1,6 +1,6 @@
 omnibus_path = File.join(node['delivery_builder']['repo'], 'omnibus-delivery-cli')
 
-execute "bundle install --binstubs=#{omnibus_path}/bin" do
+execute "bundle install --binstubs=#{omnibus_path}/bin --path=#{File.join(node['delivery_builder']['cache'], 'gems')}" do
   cwd omnibus_path
 end
 
