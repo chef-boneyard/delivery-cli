@@ -12,3 +12,7 @@ end
 execute "install rust and cargo" do
   command "bash #{Chef::Config[:file_cache_path]}/rustup.sh --date=2015-02-22"
 end
+
+node.set['omnibus']['build_user'] = "dbuild"
+node.set['omnibus']['build_user_group'] = "dbuild"
+include_recipe "omnibus"
