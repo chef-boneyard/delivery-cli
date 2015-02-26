@@ -7,3 +7,4 @@ long_description 'Installs/Configures delivery_rust'
 version          '0.1.0'
 
 depends 'build-essential'
+depends 'omnibus'

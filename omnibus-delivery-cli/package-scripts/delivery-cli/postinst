@@ -1,0 +1,18 @@
+#!/bin/bash
+#
+# Perform necessary delivery-cli setup steps
+# after package is installed.
+#
+
+PROGNAME=$(basename $0)
+
+function error_exit
+{
+  echo "${PROGNAME}: ${1:-"Unknown Error"}" 1>&2
+  exit 1
+}
+
+ln -sf /opt/delivery-cli/bin/delivery /usr/bin
+echo "Thank you for installing delivery-cli!"
+
+exit 0

@@ -1,0 +1,11 @@
+#!/bin/bash
+#
+# Perform necessary delivery-cli removal steps
+# after package is uninstalled.
+#
+
+rm /usr/bin/delivery
+
+echo "delivery-cli has been uninstalled!"
+
+exit 0

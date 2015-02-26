@@ -8,7 +8,6 @@
       "publish",
       "smoke",
       "provision",
-      "publish",
       "deploy",
       "functional"
     ],
