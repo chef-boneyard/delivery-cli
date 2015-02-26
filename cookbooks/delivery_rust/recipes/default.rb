@@ -16,3 +16,7 @@ end
 node.set['omnibus']['build_user'] = "dbuild"
 node.set['omnibus']['build_user_group'] = "dbuild"
 include_recipe "omnibus"
+
+directory "/opt/delivery-cli" do
+  owner 'dbuild'
+end
