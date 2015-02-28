@@ -23,6 +23,8 @@ use delivery::git;
 use delivery::job::change::Change;
 use delivery::job::workspace::{Workspace, Privilege};
 use delivery::utils::path_join_many::PathJoinMany;
+use delivery::getpass;
+use delivery::token;
 
 docopt!(Args derive Debug, "
 Usage: delivery review [--for=<pipeline>]
@@ -33,6 +35,7 @@ Usage: delivery review [--for=<pipeline>]
        delivery setup [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--config-path=<dir>] [--for=<pipeline>]
        delivery job <stage> <phase> [--change=<change>] [--for=<pipeline>] [--job-root=<dir>] [--project=<project>] [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--patchset=<number>] [--git-url=<url>] [--shasum=<gitsha>] [--change-id=<id>] [--no-spinner]
        delivery --help
+       delivery token [--user=<user>] [--server=<server>] [--ent=<ent>]
 
 Options:
   -h, --help               Show this message.
@@ -138,6 +141,13 @@ fn main() {
             if no_spinner { say::turn_off_spinner() };
             job(&stage, &phase, &change, &pipeline, &job_root, &project, &user, &server, &ent, &org, &patchset, &change_id, &git_url, &shasum)
         },
+        Args {
+            cmd_token: true,
+            flag_server: ref server,
+            flag_ent: ref ent,
+            flag_user: ref user,
+            ..
+        } => api_token(&server, &ent, &user),
         _ => no_matching_command(),
     };
     match cmd_result {
@@ -431,5 +441,35 @@ Result<(), DeliveryError> { sayln("green", "Chef Delivery");
     } else {
         try!(ws.run_job(phase, Privilege::NoDrop));
     }
+    Ok(())
+}
+
+fn api_token(server: &str, ent: &str,
+             user: &str) -> Result<(), DeliveryError> {
+    sayln("green", "Chef Delivery");
+    let mut config = try!(load_config(&cwd()));
+    config = config.set_server(server)
+        .set_enterprise(ent)
+        .set_user(user);
+    let s = validate!(config, server);
+    let e = validate!(config, enterprise);
+    let u = validate!(config, user);
+
+    let home_dot_delivery = match env::home_dir() {
+        Some(home) => home.join_many(&[".delivery"]),
+        None => {
+            let msg = "unable to find home dir".to_string();
+            return Err(DeliveryError{ kind: Kind::NoHomedir,
+                                      detail: Some(msg) })
+        }
+    };
+    try!(utils::mkdir_recursive(&home_dot_delivery));
+    let token_path = home_dot_delivery.join_many(&["api-tokens"]);
+    let mut tstore = try!(token::TokenStore::from_file(&token_path));
+    say("yellow", "delivery password: ");
+    let pass = getpass::read("");
+
+    try!(tstore.write_token(&s, &e, &u, "exampletoken"));
+    sayln("green", &format!("saved API token to: {}", token_path.display()));
     Ok(())
 }
