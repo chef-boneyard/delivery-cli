@@ -6,6 +6,7 @@ use std::old_io::fs::{self, PathExtensions};
 use support::paths::fixture_file;
 use std::old_io::process::Command;
 use std::env;
+use rustc_serialize::json::Json;
 
 // ** Functions used in tests **
 
@@ -191,5 +192,61 @@ test!(job_verify_unit_with_supermarket_config {
     }
     assert!(job_root.path().join_many(&["chef", "cookbooks", "httpd"]).is_dir());
     assert!(job_root.path().join_many(&["chef", "cookbooks", "httpd", "templates", "default", "magic.erb"]).is_file());
+});
+
+test!(job_verify_dna_json {
+    let delivery_project_git = setup_mock_delivery_project_git("path_config.json");
+    let local_project = setup_local_project_clone(&delivery_project_git);
+    let job_root = TempDir::new("job-root").unwrap();
+    setup_change(&local_project, "rust/test", "freaky");
+    let result = panic_on_error!(delivery_cmd().
+                                 arg("job").
+                                 arg("verify").
+                                 arg("unit").
+                                 arg("--no-spinner").
+                                 arg("--job-root").arg(job_root.path().as_str().unwrap()).
+                                 cwd(local_project.path()).output());
+    if ! result.status.success() {
+        let output = String::from_utf8_lossy(&result.output);
+        let error = String::from_utf8_lossy(&result.error);
+        panic!("Failed 'delivery job verify unit'\nOUT: {}\nERR: {}\nPath: {}", &output, &error, local_project.path().as_str().unwrap());
+    }
+    let dna_json = panic_on_error!(File::open(&job_root.path().join_many(&["chef", "dna.json"])).read_to_string());
+    let dna_data = panic_on_error!(Json::from_str(&dna_json));
+    match dna_data.find_path(&["delivery", "workspace", "repo"]) {
+        Some(data) => {
+            assert!(data.is_string());
+            assert_eq!(data.as_string().unwrap(), job_root.path().join("repo").as_str().unwrap());
+        },
+        None => panic!("No delivery/workspace/repo, {}", dna_data)
+    };
+    match dna_data.find_path(&["delivery", "workspace", "chef"]) {
+        Some(data) => {
+            assert!(data.is_string());
+            assert_eq!(data.as_string().unwrap(), job_root.path().join("chef").as_str().unwrap());
+        },
+        None => panic!("No delivery/workspace/chef, {}", dna_data)
+    };
+    match dna_data.find_path(&["delivery", "workspace", "cache"]) {
+        Some(data) => {
+            assert!(data.is_string());
+            assert_eq!(data.as_string().unwrap(), job_root.path().join("cache").as_str().unwrap());
+        },
+        None => panic!("No delivery/workspace/cache, {}", dna_data)
+    };
+    match dna_data.find_path(&["delivery", "workspace", "root"]) {
+        Some(data) => {
+            assert!(data.is_string());
+            assert_eq!(data.as_string().unwrap(), job_root.path().as_str().unwrap());
+        },
+        None => panic!("No delivery/workspace/root, {}", dna_data)
+    };
+    match dna_data.find_path(&["delivery_builder", "build_user"]) {
+        Some(data) => {
+            assert!(data.is_string());
+            assert_eq!(data.as_string().unwrap(), "dbuild");
+        },
+        None => panic!("No delivery_builderl/build_user, {}", dna_data)
+    };
 });
 

@@ -359,7 +359,7 @@ Result<(), DeliveryError> { sayln("green", "Chef Delivery");
     sayln("magenta", &format!(" {}", phase));
     let job_root_path = if job_root.is_empty() {
         if privileged_process() {
-            Path::new("/var/opt/delivery/workspace").join_many(&[&s[], &e, &o, &p, &pi, stage, phase])
+            Path::new("/var/opt/delivery/workspace").join_many(&[&s[..], &e, &o, &p, &pi, stage, phase])
         } else {
             match env::home_dir() {
                 Some(path) => path.join_many(&[".delivery", &s, &e, &o, &p, &pi, stage, phase]),
