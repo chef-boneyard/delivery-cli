@@ -4,7 +4,7 @@ use job::change::{Change, BuilderCompat};
 
 #[derive(RustcEncodable)]
 pub struct Top {
-    pub workspace: Workspace,
+    pub workspace: WorkspaceCompat,
     pub change: Change,
     pub config: json::Json
 }
@@ -15,3 +15,10 @@ pub struct DNA {
     pub delivery_builder: BuilderCompat
 }
 
+#[derive(RustcEncodable)]
+pub struct WorkspaceCompat {
+    pub root: String,
+    pub chef: String,
+    pub cache: String,
+    pub repo: String
+}

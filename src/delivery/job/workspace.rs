@@ -5,7 +5,7 @@ use std::old_io::fs::PathExtensions;
 use git;
 use rustc_serialize::{Encodable, Encoder};
 use rustc_serialize::json::{self, Json};
-use job::dna::{Top, DNA};
+use job::dna::{Top, DNA, WorkspaceCompat};
 use job::change::{Change, BuilderCompat};
 use job;
 use std::old_io::process::Command;
@@ -342,6 +342,7 @@ impl Workspace {
         command.arg(&format!("{}::{}", bc_name, phase));
         command.stdout(old_io::process::StdioContainer::InheritFd(1));
         command.stderr(old_io::process::StdioContainer::InheritFd(2));
+        command.env("HOME", &self.cache.as_str().unwrap());
         match phase {
             "default" => command.env("DELIVERY_BUILD_SETUP", "TRUE"),
             _ => command.env("DELIVERY_BUILD_SETUP", "FALSE")
@@ -379,8 +380,14 @@ end
         let config = try!(job::config::load_config(&self.repo.join_many(&[".delivery", "config.json"])));
         try!(self.setup_build_cookbook(&config, user, server));
         try!(self.berks_vendor(&config));
+        let workspace_data = WorkspaceCompat{
+            root: self.root.as_str().unwrap().to_string(),
+            chef: self.chef.as_str().unwrap().to_string(),
+            cache: self.cache.as_str().unwrap().to_string(),
+            repo: self.repo.as_str().unwrap().to_string(),
+        };
         let top = Top{
-            workspace: Workspace::new(&self.root),
+            workspace: workspace_data,
             change: change,
             config: config
         };
@@ -388,7 +395,8 @@ end
             workspace: self.root.as_str().unwrap().to_string(),
             repo: self.repo.as_str().unwrap().to_string(),
             cache: self.cache.as_str().unwrap().to_string(),
-            build_id: "deprecated".to_string()
+            build_id: "deprecated".to_string(),
+            build_user: String::from_str("dbuild")
         };
         let dna = DNA{
             delivery: top,

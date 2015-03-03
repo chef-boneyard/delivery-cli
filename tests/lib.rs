@@ -1,5 +1,6 @@
 #![feature(io, path, core, os)]
 extern crate delivery;
+extern crate "rustc-serialize" as rustc_serialize;
 #[macro_use] extern crate log;
 
 // Thanks, Cargo.
