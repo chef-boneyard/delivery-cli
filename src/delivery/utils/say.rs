@@ -3,7 +3,7 @@ use std::time::duration::Duration;
 use std::sync::mpsc::{Sender, Receiver};
 use std::old_io::timer::{sleep};
 use std::sync::mpsc::channel;
-use std::thread::{Thread, JoinGuard};
+use std::thread::{self, JoinGuard};
 
 /// Because sometimes, you just want a global variable.
 static mut show_spinner: bool = true;
@@ -16,7 +16,7 @@ pub struct Spinner {
 impl Spinner {
     pub fn start() -> Spinner {
         let (tx, rx) = channel::<isize>();
-        let spinner = Thread::scoped(move|| { Spinner::spin(rx) });
+        let spinner = thread::scoped(move|| { Spinner::spin(rx) });
         Spinner{ tx: tx, guard: spinner }
     }
 

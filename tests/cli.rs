@@ -1,12 +1,14 @@
 use delivery::git::git_command;
 use delivery::utils::copy_recursive;
 use delivery::utils::say;
-use std::old_io::{TempDir, File};
-use std::old_io::fs::{self, PathExtensions};
+use std::io::prelude::*;
+use std::fs::TempDir;
+use std::fs::File;
 use support::paths::fixture_file;
-use std::old_io::process::Command;
+use std::process::Command;
 use std::env;
 use rustc_serialize::json::Json;
+use delivery::utils::path_join_many::PathJoinMany;
 
 // ** Functions used in tests **
 
@@ -20,11 +22,11 @@ fn setup() {
 fn setup_mock_delivery_project_git(dot_config: &str) -> TempDir {
     let tmpdir = TempDir::new("mock-delivery-remote").unwrap();
     let test_repo_path = fixture_file("test_repo");
-    panic_on_error!(copy_recursive(&test_repo_path.join(".delivery"), &tmpdir.path()));
-    panic_on_error!(copy_recursive(&test_repo_path.join("README.md"), &tmpdir.path()));
-    panic_on_error!(copy_recursive(&test_repo_path.join("cookbooks"), &tmpdir.path()));
+    panic_on_error!(copy_recursive(&test_repo_path.join(".delivery"), &tmpdir.path().to_path_buf()));
+    panic_on_error!(copy_recursive(&test_repo_path.join("README.md"), &tmpdir.path().to_path_buf()));
+    panic_on_error!(copy_recursive(&test_repo_path.join("cookbooks"), &tmpdir.path().to_path_buf()));
     panic_on_error!(copy_recursive(&fixture_file(dot_config), &tmpdir.path().join_many(&[".delivery", "config.json"])));
-    panic_on_error!(git_command(&["init", tmpdir.path().as_str().unwrap()], tmpdir.path()));
+    panic_on_error!(git_command(&["init", tmpdir.path().to_str().unwrap()], tmpdir.path()));
     panic_on_error!(git_command(&["add", "."], tmpdir.path()));
     panic_on_error!(git_command(&["commit", "-a", "-m", "Initial Commit"], tmpdir.path()));
     tmpdir
@@ -34,8 +36,8 @@ fn setup_mock_delivery_project_git(dot_config: &str) -> TempDir {
 /// into a git repository
 fn setup_build_cookbook_project(tmpdir: &TempDir) {
     let build_cookbook_path = fixture_file("delivery_test");
-    panic_on_error!(copy_recursive(&build_cookbook_path, &tmpdir.path()));
-    panic_on_error!(git_command(&["init", tmpdir.path().join("delivery_test").as_str().unwrap()], &tmpdir.path().join("delivery_test")));
+    panic_on_error!(copy_recursive(&build_cookbook_path, &tmpdir.path().to_path_buf()));
+    panic_on_error!(git_command(&["init", tmpdir.path().join("delivery_test").to_str().unwrap()], &tmpdir.path().join("delivery_test")));
     panic_on_error!(git_command(&["add", "."], &tmpdir.path().join("delivery_test")));
     panic_on_error!(git_command(&["commit", "-a", "-m", "Initial Commit"], &tmpdir.path().join("delivery_test")));
 }
@@ -46,10 +48,10 @@ fn setup_build_cookbook_project(tmpdir: &TempDir) {
 fn setup_local_project_clone(delivery_project_git: &TempDir) -> TempDir {
     let tmpdir = TempDir::new("local-project").unwrap();
     panic_on_error!(git_command(&["clone",
-                                  delivery_project_git.path().as_str().unwrap(),
-                                  tmpdir.path().as_str().unwrap()
+                                  delivery_project_git.path().to_str().unwrap(),
+                                  tmpdir.path().to_str().unwrap()
                                  ], tmpdir.path()));
-    panic_on_error!(git_command(&["remote", "add", "delivery", delivery_project_git.path().as_str().unwrap()], tmpdir.path()));
+    panic_on_error!(git_command(&["remote", "add", "delivery", delivery_project_git.path().to_str().unwrap()], tmpdir.path()));
     let result = panic_on_error!(delivery_cmd()
                     .arg("setup")
                     .arg("--user").arg("cavalera")
@@ -57,12 +59,12 @@ fn setup_local_project_clone(delivery_project_git: &TempDir) -> TempDir {
                     .arg("--ent").arg("family")
                     .arg("--org").arg("sepultura")
                     .arg("--for").arg("master")
-                    .arg("--config-path").arg(tmpdir.path().as_str().unwrap())
-                    .cwd(tmpdir.path()).output());
+                    .arg("--config-path").arg(tmpdir.path().to_str().unwrap())
+                    .current_dir(tmpdir.path()).output());
     if ! result.status.success() {
-        let output = String::from_utf8_lossy(&result.output);
-        let error = String::from_utf8_lossy(&result.error);
-        panic!("Failed 'delivery setup'\nOUT: {}\nERR: {}\nPath: {}", &output, &error, tmpdir.path().as_str().unwrap());
+        let output = String::from_utf8_lossy(&result.stdout);
+        let error = String::from_utf8_lossy(&result.stderr);
+        panic!("Failed 'delivery setup'\nOUT: {}\nERR: {}\nPath: {}", &output, &error, tmpdir.path().to_str().unwrap());
     }
     tmpdir
 }
@@ -76,7 +78,7 @@ fn setup_change(tmpdir: &TempDir, branch: &str, filename: &str) {
     panic_on_error!(git_command(&["checkout", "master"], tmpdir.path()));
     panic_on_error!(git_command(&["branch", branch], tmpdir.path()));
     {
-        let mut f = File::create(&tmpdir.path().join(filename));
+        let mut f = panic_on_error!(File::create(&tmpdir.path().join(filename)));
         panic_on_error!(f.write_all(b"I like cookies"));
     }
     panic_on_error!(git_command(&["add", "."], tmpdir.path()));
@@ -92,11 +94,11 @@ fn setup_checkout_branch(tmpdir: &TempDir, branch: &str) {
 /// api would create (`_reviews/PIPELINE/BRANCH/1` and `_reviews/PIPELINE/BRANCH/latest`)
 fn delivery_review(local: &TempDir, remote: &TempDir, branch: &str, pipeline: &str) {
     panic_on_error!(git_command(&["checkout", branch], local.path()));
-    let result = panic_on_error!(delivery_cmd().arg("review").arg("--for").arg(pipeline).cwd(&local.path()).output());
+    let result = panic_on_error!(delivery_cmd().arg("review").arg("--for").arg(pipeline).current_dir(&local.path()).output());
     if ! result.status.success() {
-        let output = String::from_utf8_lossy(&result.output);
-        let error = String::from_utf8_lossy(&result.error);
-        panic!("Failed 'delivery review'\nOUT: {}\nERR: {}\nPath: {}", &output, &error, local.path().as_str().unwrap());
+        let output = String::from_utf8_lossy(&result.stdout);
+        let error = String::from_utf8_lossy(&result.stderr);
+        panic!("Failed 'delivery review'\nOUT: {}\nERR: {}\nPath: {}", &output, &error, local.path().to_str().unwrap());
     }
     // Stub out the behavior of the delivery-api
     panic_on_error!(git_command(&["branch", &format!("_reviews/{}/{}/1", pipeline, branch)], remote.path()));
@@ -108,7 +110,7 @@ fn delivery_review(local: &TempDir, remote: &TempDir, branch: &str, pipeline: &s
 fn delivery_cmd() -> Command {
     let mut delivery_path = env::current_exe().unwrap();
     delivery_path.pop();
-    Command::new(delivery_path.join("delivery").as_str().unwrap())
+    Command::new(delivery_path.join("delivery").to_str().unwrap())
 }
 
 /// A handy debugging function. Insert it when you want to sleep,
@@ -144,12 +146,12 @@ test!(job_verify_unit_with_path_config {
                                  arg("verify").
                                  arg("unit").
                                  arg("--no-spinner").
-                                 arg("--job-root").arg(job_root.path().as_str().unwrap()).
-                                 cwd(local_project.path()).output());
+                                 arg("--job-root").arg(job_root.path().to_str().unwrap()).
+                                 current_dir(local_project.path()).output());
     if ! result.status.success() {
-        let output = String::from_utf8_lossy(&result.output);
-        let error = String::from_utf8_lossy(&result.error);
-        panic!("Failed 'delivery job verify unit'\nOUT: {}\nERR: {}\nPath: {}", &output, &error, local_project.path().as_str().unwrap());
+        let output = String::from_utf8_lossy(&result.stdout);
+        let error = String::from_utf8_lossy(&result.stderr);
+        panic!("Failed 'delivery job verify unit'\nOUT: {}\nERR: {}\nPath: {}", &output, &error, local_project.path().to_str().unwrap());
     }
 });
 
@@ -164,12 +166,12 @@ test!(job_verify_unit_with_git_config {
                                  arg("verify").
                                  arg("unit").
                                  arg("--no-spinner").
-                                 arg("--job-root").arg(job_root.path().as_str().unwrap()).
-                                 cwd(local_project.path()).output());
+                                 arg("--job-root").arg(job_root.path().to_str().unwrap()).
+                                 current_dir(local_project.path()).output());
     if ! result.status.success() {
-        let output = String::from_utf8_lossy(&result.output);
-        let error = String::from_utf8_lossy(&result.error);
-        panic!("Failed 'delivery verify unit'\nOUT: {}\nERR: {}\nPath: {}", &output, &error, local_project.path().as_str().unwrap());
+        let output = String::from_utf8_lossy(&result.stdout);
+        let error = String::from_utf8_lossy(&result.stderr);
+        panic!("Failed 'delivery verify unit'\nOUT: {}\nERR: {}\nPath: {}", &output, &error, local_project.path().to_str().unwrap());
     }
 });
 
@@ -183,12 +185,12 @@ test!(job_verify_unit_with_supermarket_config {
                                  arg("verify").
                                  arg("unit").
                                  arg("--no-spinner").
-                                 arg("--job-root").arg(job_root.path().as_str().unwrap()).
-                                 cwd(local_project.path()).output());
+                                 arg("--job-root").arg(job_root.path().to_str().unwrap()).
+                                 current_dir(local_project.path()).output());
     if result.status.success() {
-        let output = String::from_utf8_lossy(&result.output);
-        let error = String::from_utf8_lossy(&result.error);
-        panic!("The 'delivery verify unit' ought to have failed\nOUT: {}\nERR: {}\nPath: {}", &output, &error, local_project.path().as_str().unwrap());
+        let output = String::from_utf8_lossy(&result.stdout);
+        let error = String::from_utf8_lossy(&result.stderr);
+        panic!("The 'delivery verify unit' ought to have failed\nOUT: {}\nERR: {}\nPath: {}", &output, &error, local_project.path().to_str().unwrap());
     }
     assert!(job_root.path().join_many(&["chef", "cookbooks", "httpd"]).is_dir());
     assert!(job_root.path().join_many(&["chef", "cookbooks", "httpd", "templates", "default", "magic.erb"]).is_file());
@@ -204,40 +206,42 @@ test!(job_verify_dna_json {
                                  arg("verify").
                                  arg("unit").
                                  arg("--no-spinner").
-                                 arg("--job-root").arg(job_root.path().as_str().unwrap()).
-                                 cwd(local_project.path()).output());
+                                 arg("--job-root").arg(job_root.path().to_str().unwrap()).
+                                 current_dir(local_project.path()).output());
     if ! result.status.success() {
-        let output = String::from_utf8_lossy(&result.output);
-        let error = String::from_utf8_lossy(&result.error);
-        panic!("Failed 'delivery job verify unit'\nOUT: {}\nERR: {}\nPath: {}", &output, &error, local_project.path().as_str().unwrap());
+        let output = String::from_utf8_lossy(&result.stdout);
+        let error = String::from_utf8_lossy(&result.stderr);
+        panic!("Failed 'delivery job verify unit'\nOUT: {}\nERR: {}\nPath: {}", &output, &error, local_project.path().to_str().unwrap());
     }
-    let dna_json = panic_on_error!(File::open(&job_root.path().join_many(&["chef", "dna.json"])).read_to_string());
+    let mut dna_file = panic_on_error!(File::open(&job_root.path().join_many(&["chef", "dna.json"])));
+    let mut dna_json = String::new();
+    panic_on_error!(dna_file.read_to_string(&mut dna_json));
     let dna_data = panic_on_error!(Json::from_str(&dna_json));
     match dna_data.find_path(&["delivery", "workspace", "repo"]) {
         Some(data) => {
             assert!(data.is_string());
-            assert_eq!(data.as_string().unwrap(), job_root.path().join("repo").as_str().unwrap());
+            assert_eq!(data.as_string().unwrap(), job_root.path().join("repo").to_str().unwrap());
         },
         None => panic!("No delivery/workspace/repo, {}", dna_data)
     };
     match dna_data.find_path(&["delivery", "workspace", "chef"]) {
         Some(data) => {
             assert!(data.is_string());
-            assert_eq!(data.as_string().unwrap(), job_root.path().join("chef").as_str().unwrap());
+            assert_eq!(data.as_string().unwrap(), job_root.path().join("chef").to_str().unwrap());
         },
         None => panic!("No delivery/workspace/chef, {}", dna_data)
     };
     match dna_data.find_path(&["delivery", "workspace", "cache"]) {
         Some(data) => {
             assert!(data.is_string());
-            assert_eq!(data.as_string().unwrap(), job_root.path().join("cache").as_str().unwrap());
+            assert_eq!(data.as_string().unwrap(), job_root.path().join("cache").to_str().unwrap());
         },
         None => panic!("No delivery/workspace/cache, {}", dna_data)
     };
     match dna_data.find_path(&["delivery", "workspace", "root"]) {
         Some(data) => {
             assert!(data.is_string());
-            assert_eq!(data.as_string().unwrap(), job_root.path().as_str().unwrap());
+            assert_eq!(data.as_string().unwrap(), job_root.path().to_str().unwrap());
         },
         None => panic!("No delivery/workspace/root, {}", dna_data)
     };

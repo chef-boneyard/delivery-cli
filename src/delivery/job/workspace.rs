@@ -1,22 +1,23 @@
-use std::old_io::{self, File};
-use std::old_io::fs;
 use errors::{DeliveryError, Kind};
-use std::old_io::fs::PathExtensions;
 use git;
 use rustc_serialize::{Encodable, Encoder};
 use rustc_serialize::json::{self, Json};
 use job::dna::{Top, DNA, WorkspaceCompat};
 use job::change::{Change, BuilderCompat};
 use job;
-use std::old_io::process::Command;
+use std::process::{Command, Stdio};
+use std::path::PathBuf;
+use std::fs::File;
+use std::io::prelude::*;
 use utils;
+use utils::path_join_many::PathJoinMany;
 
 #[derive(RustcDecodable, Debug)]
 pub struct Workspace {
-    pub root: Path,
-    pub chef: Path,
-    pub cache: Path,
-    pub repo: Path
+    pub root: PathBuf,
+    pub chef: PathBuf,
+    pub cache: PathBuf,
+    pub repo: PathBuf
 }
 
 #[derive(Debug)]
@@ -30,17 +31,17 @@ pub enum Privilege {
 impl Encodable for Workspace {
     fn encode<S: Encoder>(&self, encoder: &mut S) -> Result<(), S::Error> {
         encoder.emit_struct("Workspace", 0, |encoder| {
-            try!(encoder.emit_struct_field( "root", 0usize, |encoder| self.root.as_str().unwrap().encode(encoder)));
-            try!(encoder.emit_struct_field( "chef", 1usize, |encoder| self.chef.as_str().unwrap().encode(encoder)));
-            try!(encoder.emit_struct_field( "cache", 2usize, |encoder| self.cache.as_str().unwrap().encode(encoder)));
-            try!(encoder.emit_struct_field( "repo", 3usize, |encoder| self.repo.as_str().unwrap().encode(encoder)));
+            try!(encoder.emit_struct_field( "root", 0usize, |encoder| self.root.to_str().unwrap().encode(encoder)));
+            try!(encoder.emit_struct_field( "chef", 1usize, |encoder| self.chef.to_str().unwrap().encode(encoder)));
+            try!(encoder.emit_struct_field( "cache", 2usize, |encoder| self.cache.to_str().unwrap().encode(encoder)));
+            try!(encoder.emit_struct_field( "repo", 3usize, |encoder| self.repo.to_str().unwrap().encode(encoder)));
             Ok(())
         })
     }
 }
 
 impl Workspace {
-    pub fn new(root: &Path) -> Workspace {
+    pub fn new(root: &PathBuf) -> Workspace {
         Workspace{
             root: root.clone(),
             chef: root.join("chef"),
@@ -63,7 +64,7 @@ impl Workspace {
         Ok(())
     }
 
-    fn setup_build_cookbook_from_path(&self, path: &Path) -> Result<(), DeliveryError> {
+    fn setup_build_cookbook_from_path(&self, path: &PathBuf) -> Result<(), DeliveryError> {
         utils::copy_recursive(path, &self.chef.join("build_cookbook"))
     }
 
@@ -75,7 +76,7 @@ impl Workspace {
             })),
             None => "master"
         };
-        try!(git::git_command(&["clone", git_url, self.chef.join("build_cookbook").as_str().unwrap()], &self.chef));
+        try!(git::git_command(&["clone", git_url, self.chef.join("build_cookbook").to_str().unwrap()], &self.chef));
         try!(git::git_command(&["checkout", &branch], &self.chef.join("build_cookbook")));
         Ok(())
     }
@@ -98,32 +99,32 @@ impl Workspace {
                  .arg("download")
                  .arg(&name)
                  .arg("-f")
-                 .arg(self.chef.join("build_cookbook.tgz").as_str().unwrap())
-                 .cwd(&self.chef)
+                 .arg(self.chef.join("build_cookbook.tgz").to_str().unwrap())
+                 .current_dir(&self.chef)
                  .output());
             if ! result.status.success() {
-                let output = String::from_utf8_lossy(&result.output);
-                let error = String::from_utf8_lossy(&result.error);
+                let output = String::from_utf8_lossy(&result.stdout);
+                let error = String::from_utf8_lossy(&result.stderr);
                 return Err(DeliveryError{kind: Kind::SupermarketFailed, detail: Some(format!("Failed 'knife cookbook site download'\nOUT: {}\nERR: {}", &output, &error).to_string())});
             }
             let tar_result = try!(Command::new("tar")
                  .arg("zxf")
-                 .arg(self.chef.join("build_cookbook.tgz").as_str().unwrap())
-                 .cwd(&self.chef)
+                 .arg(self.chef.join("build_cookbook.tgz").to_str().unwrap())
+                 .current_dir(&self.chef)
                  .output());
             if ! tar_result.status.success() {
-                let output = String::from_utf8_lossy(&tar_result.output);
-                let error = String::from_utf8_lossy(&tar_result.error);
+                let output = String::from_utf8_lossy(&tar_result.stdout);
+                let error = String::from_utf8_lossy(&tar_result.stderr);
                 return Err(DeliveryError{kind: Kind::TarFailed, detail: Some(format!("Failed 'tar zxf'\nOUT: {}\nERR: {}", &output, &error).to_string())});
             }
             let mv_result = try!(Command::new("mv")
-                 .arg(self.chef.join(name).as_str().unwrap())
-                 .arg(self.chef.join("build_cookbook").as_str().unwrap())
-                 .cwd(&self.chef)
+                 .arg(self.chef.join(name).to_str().unwrap())
+                 .arg(self.chef.join("build_cookbook").to_str().unwrap())
+                 .current_dir(&self.chef)
                  .output());
             if ! mv_result.status.success() {
-                let output = String::from_utf8_lossy(&mv_result.output);
-                let error = String::from_utf8_lossy(&mv_result.error);
+                let output = String::from_utf8_lossy(&mv_result.stdout);
+                let error = String::from_utf8_lossy(&mv_result.stderr);
                 return Err(DeliveryError{kind: Kind::MoveFailed, detail: Some(format!("Failed 'mv'\nOUT: {}\nERR: {}", &output, &error).to_string())});
             }
         } else {
@@ -133,27 +134,27 @@ impl Workspace {
     }
 
     fn setup_build_cookbook_from_chef_server(&self, name: &str) -> Result<(), DeliveryError> {
-        utils::mkdir_recursive(&self.chef.join("tmp_cookbook"));
+        try!(utils::mkdir_recursive(&self.chef.join("tmp_cookbook")));
         let result = try!(Command::new("knife")
                           .arg("download")
                           .arg(&format!("/cookbooks/{}", &name))
                           .arg("--chef-repo-path")
-                          .arg(self.chef.join("tmp_cookbook").as_str().unwrap())
-                          .cwd(&self.chef)
+                          .arg(self.chef.join("tmp_cookbook").to_str().unwrap())
+                          .current_dir(&self.chef)
                           .output());
         if ! result.status.success() {
-            let output = String::from_utf8_lossy(&result.output);
-            let error = String::from_utf8_lossy(&result.error);
+            let output = String::from_utf8_lossy(&result.stdout);
+            let error = String::from_utf8_lossy(&result.stderr);
             return Err(DeliveryError{kind: Kind::ChefServerFailed, detail: Some(format!("Failed 'knife cookbook download'\nOUT: {}\nERR: {}", &output, &error).to_string())});
         }
         let mv_result = try!(Command::new("mv")
-                             .arg(self.chef.join_many(&["tmp_cookbook", "cookbooks", &name]).as_str().unwrap())
-                             .arg(self.chef.join("build_cookbook").as_str().unwrap())
-                             .cwd(&self.chef)
+                             .arg(self.chef.join_many(&["tmp_cookbook", "cookbooks", &name]).to_str().unwrap())
+                             .arg(self.chef.join("build_cookbook").to_str().unwrap())
+                             .current_dir(&self.chef)
                              .output());
         if ! mv_result.status.success() {
-            let output = String::from_utf8_lossy(&mv_result.output);
-            let error = String::from_utf8_lossy(&mv_result.error);
+            let output = String::from_utf8_lossy(&mv_result.stdout);
+            let error = String::from_utf8_lossy(&mv_result.stderr);
             return Err(DeliveryError{kind: Kind::MoveFailed, detail: Some(format!("Failed 'mv'\nOUT: {}\nERR: {}", &output, &error).to_string())});
         }
         Ok(())
@@ -176,7 +177,7 @@ impl Workspace {
             detail: Some("Build cookbook 'organization' value must be a string".to_string())
         }));
         let url = git::delivery_ssh_url(user, server, &ent, &org, &name);
-        try!(git::git_command(&["clone", &url, self.chef.join("build_cookbook").as_str().unwrap()], &self.chef));
+        try!(git::git_command(&["clone", &url, self.chef.join("build_cookbook").to_str().unwrap()], &self.chef));
         Ok(())
     }
 
@@ -236,30 +237,30 @@ impl Workspace {
             let mut command = Command::new("berks");
             command.arg("vendor");
             command.arg(&self.chef.join("cookbooks"));
-            command.cwd(&self.chef.join("build_cookbook"));
+            command.current_dir(&self.chef.join("build_cookbook"));
             let output = match command.output() {
                 Ok(o) => o,
-                Err(e) => { return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute berks vendor: {}", e.desc))}) },
+                Err(e) => { return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute berks vendor: {}", e.description()))}) },
             };
             if !output.status.success() {
-                return Err(DeliveryError{ kind: Kind::BerksFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(&output.output), String::from_utf8_lossy(&output.error)))});
+                return Err(DeliveryError{ kind: Kind::BerksFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(&output.stdout), String::from_utf8_lossy(&output.stderr)))});
             }
-            let stdout = String::from_utf8_lossy(&output.output).to_string();
+            let stdout = String::from_utf8_lossy(&output.stdout).to_string();
             debug!("berks vendor stdout: {}", stdout);
-            let stderr = String::from_utf8_lossy(&output.error).to_string();
+            let stderr = String::from_utf8_lossy(&output.stderr).to_string();
             debug!("berks vendor stderr: {}", stderr);
         } else {
             debug!("No Berksfile found; simply moving the cookbook");
             try!(utils::mkdir_recursive(&self.chef.join("cookbooks")));
             let bc_name = try!(self.build_cookbook_name(&config));
             let mv_result = try!(Command::new("mv")
-                                 .arg(self.chef.join("build_cookbook").as_str().unwrap())
-                                 .arg(self.chef.join_many(&["cookbooks", &bc_name]).as_str().unwrap())
-                                 .cwd(&self.chef)
+                                 .arg(self.chef.join("build_cookbook").to_str().unwrap())
+                                 .arg(self.chef.join_many(&["cookbooks", &bc_name]).to_str().unwrap())
+                                 .current_dir(&self.chef)
                                  .output());
             if ! mv_result.status.success() {
-                let output = String::from_utf8_lossy(&mv_result.output);
-                let error = String::from_utf8_lossy(&mv_result.error);
+                let output = String::from_utf8_lossy(&mv_result.stdout);
+                let error = String::from_utf8_lossy(&mv_result.stderr);
                 return Err(DeliveryError{kind: Kind::MoveFailed, detail: Some(format!("Failed 'mv'\nOUT: {}\nERR: {}", &output, &error).to_string())});
             }
         }
@@ -272,21 +273,21 @@ impl Workspace {
         let result = Command::new("chown")
             .arg("-R")
             .arg("dbuild:dbuild")
-            .arg(self.repo.as_str().unwrap())
-            .arg(self.chef.join("cookbooks").as_str().unwrap())
-            .arg(self.chef.join("nodes").as_str().unwrap())
-            .arg(self.cache.as_str().unwrap())
+            .arg(self.repo.to_str().unwrap())
+            .arg(self.chef.join("cookbooks").to_str().unwrap())
+            .arg(self.chef.join("nodes").to_str().unwrap())
+            .arg(self.cache.to_str().unwrap())
             .output();
        let output = match result {
             Ok(o) => o,
-            Err(e) => { return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute chown: {}", e.desc))}) },
+            Err(e) => { return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute chown: {}", e.description()))}) },
         };
         if !output.status.success() {
-            return Err(DeliveryError{ kind: Kind::ChownFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(&output.output), String::from_utf8_lossy(&output.error)))});
+            return Err(DeliveryError{ kind: Kind::ChownFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(&output.stdout), String::from_utf8_lossy(&output.stderr)))});
         }
-        let stdout = String::from_utf8_lossy(&output.output).to_string();
+        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
         debug!("chmod stdout: {}", stdout);
-        let stderr = String::from_utf8_lossy(&output.error).to_string();
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
         debug!("chmod stderr: {}", stderr);
         Ok(())
     }
@@ -335,31 +336,31 @@ impl Workspace {
             _ => {}
         }
         command.arg("-j");
-        command.arg(&self.chef.join("dna.json").as_str().unwrap());
+        command.arg(&self.chef.join("dna.json").to_str().unwrap());
         command.arg("-c");
-        command.arg(&self.chef.join("config.rb").as_str().unwrap());
+        command.arg(&self.chef.join("config.rb").to_str().unwrap());
         command.arg("-r");
         command.arg(&format!("{}::{}", bc_name, phase));
-        command.stdout(old_io::process::StdioContainer::InheritFd(1));
-        command.stderr(old_io::process::StdioContainer::InheritFd(2));
-        command.env("HOME", &self.cache.as_str().unwrap());
+        command.stdout(Stdio::inherit());
+        command.stderr(Stdio::inherit());
+        command.env("HOME", &self.cache.to_str().unwrap());
         match phase {
             "default" => command.env("DELIVERY_BUILD_SETUP", "TRUE"),
             _ => command.env("DELIVERY_BUILD_SETUP", "FALSE")
         };
-        command.cwd(&self.repo);
+        command.current_dir(&self.repo);
         let output = match command.output() {
             Ok(o) => o,
-            Err(e) => { return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute chef-client: {}", e.desc))}) },
+            Err(e) => { return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute chef-client: {}", e.description()))}) },
         };
         if !output.status.success() {
-            return Err(DeliveryError{ kind: Kind::ChefFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(&output.output), String::from_utf8_lossy(&output.error)))});
+            return Err(DeliveryError{ kind: Kind::ChefFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(&output.stdout), String::from_utf8_lossy(&output.stderr)))});
         }
         Ok(())
     }
 
     pub fn setup_chef_for_job(&self, user: &str, server: &str, change: Change) -> Result<(), DeliveryError> {
-        let mut config_rb = File::create(&self.chef.join("config.rb"));
+        let mut config_rb = try!(File::create(&self.chef.join("config.rb")));
         try!(config_rb.write_all(b"file_cache_path File.expand_path(File.join(File.dirname(__FILE__), '..', 'cache'))
 cache_type 'BasicFile'
 cache_options(:path => File.join(file_cache_path, 'checksums'))
@@ -381,10 +382,10 @@ end
         try!(self.setup_build_cookbook(&config, user, server));
         try!(self.berks_vendor(&config));
         let workspace_data = WorkspaceCompat{
-            root: self.root.as_str().unwrap().to_string(),
-            chef: self.chef.as_str().unwrap().to_string(),
-            cache: self.cache.as_str().unwrap().to_string(),
-            repo: self.repo.as_str().unwrap().to_string(),
+            root: self.root.to_str().unwrap().to_string(),
+            chef: self.chef.to_str().unwrap().to_string(),
+            cache: self.cache.to_str().unwrap().to_string(),
+            repo: self.repo.to_str().unwrap().to_string(),
         };
         let top = Top{
             workspace: workspace_data,
@@ -392,9 +393,9 @@ end
             config: config
         };
         let compat = BuilderCompat{
-            workspace: self.root.as_str().unwrap().to_string(),
-            repo: self.repo.as_str().unwrap().to_string(),
-            cache: self.cache.as_str().unwrap().to_string(),
+            workspace: self.root.to_str().unwrap().to_string(),
+            repo: self.repo.to_str().unwrap().to_string(),
+            cache: self.cache.to_str().unwrap().to_string(),
             build_id: "deprecated".to_string(),
             build_user: String::from_str("dbuild")
         };
@@ -402,7 +403,7 @@ end
             delivery: top,
             delivery_builder: compat
         };
-        let mut dna_json = File::create(&self.chef.join("dna.json"));
+        let mut dna_json = try!(File::create(&self.chef.join("dna.json")));
         let data = try!(json::encode(&dna));
         try!(dna_json.write_all(data.as_bytes()));
         try!(utils::chmod(&self.chef.join("dna.json"), "0644"));
@@ -430,10 +431,11 @@ end
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::path::PathBuf;
 
     #[test]
     fn new() {
-        let root = Path::new("clown");
+        let root = PathBuf::new("clown");
         let w = Workspace::new(&root);
         assert_eq!(w.root, root);
         assert_eq!(w.chef, root.join("chef"));

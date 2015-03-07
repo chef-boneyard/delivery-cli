@@ -1,11 +1,12 @@
 pub use errors;
 
-use std::old_io::process::Command;
+use std::process::Command;
 use utils::say::{say, sayln, Spinner};
 use errors::{DeliveryError, Kind};
 use std::env;
+use std::path::{AsPath, PathBuf};
 
-fn cwd() -> Path {
+fn cwd() -> PathBuf {
     env::current_dir().unwrap()
 }
 
@@ -58,24 +59,29 @@ pub struct GitResult {
     pub stderr: String
 }
 
-pub fn git_command(args: &[&str], cwd: &Path) -> Result<GitResult, DeliveryError> {
+// What is this crazy type signature, you ask? Let me explain!
+//
+// Where <P: ?Sized> == Any Type (Sized or Unsized)
+// Where P: AsPath == Any type that implements the AsPath trait
+pub fn git_command<P: ?Sized>(args: &[&str], c: &P) -> Result<GitResult, DeliveryError> where P: AsPath {
+    let cwd = c.as_path();
     let spinner = Spinner::start();
     let mut command = Command::new("git");
     command.args(args);
-    command.cwd(cwd);
+    command.current_dir(cwd);
     debug!("Git command: {:?}", command);
     let output = match command.output() {
         Ok(o) => o,
-        Err(e) => { spinner.stop(); return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute git: {}", e.desc))}) },
+        Err(e) => { spinner.stop(); return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute git: {}", e.description()))}) },
     };
     debug!("Git exited: {}", output.status);
     spinner.stop();
     if !output.status.success() {
-        return Err(DeliveryError{ kind: Kind::GitFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(&output.output), String::from_utf8_lossy(&output.error)))});
+        return Err(DeliveryError{ kind: Kind::GitFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(&output.stdout), String::from_utf8_lossy(&output.stderr)))});
     }
-    let stdout = String::from_utf8_lossy(&output.output).to_string();
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
     debug!("Git stdout: {}", stdout);
-    let stderr = String::from_utf8_lossy(&output.error).to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
     debug!("Git stderr: {}", stderr);
     Ok(GitResult{ stdout: stdout, stderr: stderr })
 }
@@ -164,7 +170,7 @@ pub fn delivery_ssh_url(user: &str, server: &str, ent: &str, org: &str, proj: &s
     format!("ssh://{}@{}@{}:8989/{}/{}/{}", user, ent, server, ent, org, proj)
 }
 
-pub fn config_repo(user: &str, server: &str, ent: &str, org: &str, proj: &str, path: &Path) -> Result<(), DeliveryError> {
+pub fn config_repo(user: &str, server: &str, ent: &str, org: &str, proj: &str, path: &PathBuf) -> Result<(), DeliveryError> {
     let result = git_command(&["remote", "add", "delivery", &delivery_ssh_url(user, server, ent, org, proj)], path);
     match result {
         Ok(_) => return Ok(()),

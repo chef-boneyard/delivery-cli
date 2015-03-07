@@ -1,20 +1,20 @@
 use std::env;
-use std::os;
+use std::path::PathBuf;
+use delivery::utils::path_join_many::PathJoinMany;
 
-pub fn exe_path() -> Path {
-    os::self_exe_path().unwrap()
+pub fn exe_path() -> PathBuf {
+    env::current_exe().unwrap()
 }
 
-pub fn root() -> Path {
-    let root_path = exe_path().join_many(&["..", "tests"]);
-    os::make_absolute(&root_path).unwrap()
+pub fn root() -> PathBuf {
+    exe_path().parent().unwrap().parent().unwrap().join("tests")
 }
 
-pub fn fixtures() -> Path {
+pub fn fixtures() -> PathBuf {
     root().join_many(&["fixtures"])
 }
 
-pub fn fixture_file(names: &str) -> Path {
+pub fn fixture_file(names: &str) -> PathBuf {
     fixtures().join_many(&[names])
 }
 
