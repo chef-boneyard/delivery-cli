@@ -1,12 +1,14 @@
 pub use errors;
 use errors::{DeliveryError, Kind};
-use std::old_io;
-use std::old_io::File;
-use std::old_io::fs::{PathExtensions, mkdir_recursive};
+use std::fs::File;
 use std::default::Default;
 use utils::say::{say, sayln};
 use rustc_serialize::Encodable;
+use std::path::PathBuf;
 use toml;
+use utils::mkdir_recursive;
+use std::io::prelude::*;
+use utils::path_join_many::PathJoinMany;
 
 #[derive(RustcEncodable, Clone)]
 pub struct Config {
@@ -62,7 +64,7 @@ config_accessor_for!(git_port, set_git_port, "Git Port not set");
 config_accessor_for!(pipeline, set_pipeline, "Pipeline not set; try --for");
 
 impl Config {
-    pub fn load_config(cwd: &Path) -> Result<Config, DeliveryError> {
+    pub fn load_config(cwd: &PathBuf) -> Result<Config, DeliveryError> {
         let have_config = Config::have_dot_delivery_cli(cwd);
         match have_config.as_ref() {
             Some(path) => {
@@ -76,10 +78,10 @@ impl Config {
         }
     }
 
-    pub fn write_file(&self, path: &Path) -> Result<(), DeliveryError> {
+    pub fn write_file(&self, path: &PathBuf) -> Result<(), DeliveryError> {
         let write_dir = path.join_many(&[".delivery"]);
         if !write_dir.is_dir() {
-            try!(mkdir_recursive(&write_dir, old_io::USER_RWX));
+            try!(mkdir_recursive(&write_dir));
         }
         let write_path = path.join_many(&[".delivery", "cli.toml"]);
         say("white", "Writing configuration to ");
@@ -117,8 +119,10 @@ impl Config {
         return Ok(config);
     }
 
-    fn read_file(path: &Path) -> Result<String, DeliveryError>  {
-        let toml = try!(File::open(path).read_to_string());
+    fn read_file(path: &PathBuf) -> Result<String, DeliveryError>  {
+        let mut toml_file = try!(File::open(path));
+        let mut toml = String::new();
+        try!(toml_file.read_to_string(&mut toml));
         Ok(toml)
     }
 
@@ -137,10 +141,10 @@ impl Config {
         }
     }
 
-    fn check_dot_delivery_cli(path: Path) -> Option<Path> {
+    fn check_dot_delivery_cli(path: PathBuf) -> Option<PathBuf> {
         let dot_git = path.join_many(&[".delivery", "cli.toml"]);
         debug!("Checking {}", dot_git.display());
-        let is_file: Option<Path> = if dot_git.is_file() {
+        let is_file: Option<PathBuf> = if dot_git.is_file() {
             Some(dot_git)
         } else {
             None
@@ -148,10 +152,10 @@ impl Config {
         is_file
     }
 
-    fn have_dot_delivery_cli(orig_path: &Path) -> Option<Path> {
+    fn have_dot_delivery_cli(orig_path: &PathBuf) -> Option<PathBuf> {
         let mut path = orig_path.clone();
         loop {
-            let check_result: Option<Path> = Config::check_dot_delivery_cli(path.clone());
+            let check_result: Option<PathBuf> = Config::check_dot_delivery_cli(path.clone());
             match check_result.as_ref() {
                 Some(_) => { return check_result.clone() }
                 None => {

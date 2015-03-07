@@ -1,4 +1,4 @@
-#![feature(io, path, core, os)]
+#![feature(io, path, tempdir, fs)]
 extern crate delivery;
 extern crate "rustc-serialize" as rustc_serialize;
 #[macro_use] extern crate log;
@@ -27,5 +27,4 @@ macro_rules! panic_on_error {
 
 mod support;
 mod config;
-mod job;
 mod cli;

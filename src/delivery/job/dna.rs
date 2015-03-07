@@ -1,5 +1,4 @@
 use rustc_serialize::json;
-use job::workspace::Workspace;
 use job::change::{Change, BuilderCompat};
 
 #[derive(RustcEncodable)]

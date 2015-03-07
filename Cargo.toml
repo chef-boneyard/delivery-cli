@@ -24,6 +24,10 @@ rustc-serialize = "*"
 time = "*"
 term = "*"
 libc = "*"
+toml = "*"
 
-[dependencies.toml]
-git = "https://github.com/alexcrichton/toml-rs.git"
+[profile.dev]
+debug = false
+
+[profile.test]
+debug = false

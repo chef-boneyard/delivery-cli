@@ -1,4 +1,4 @@
-#![feature(plugin, collections, path, env, core, io)]
+#![feature(plugin, collections, path, os, core, exit_status)]
 #![plugin(regex_macros, docopt_macros)]
 extern crate regex;
 #[no_link] extern crate regex_macros;
@@ -12,14 +12,17 @@ extern crate "rustc-serialize" as rustc_serialize;
 
 use std::env;
 use std::error::Error;
-use std::old_io::{self, fs};
+use std::path::PathBuf;
 use delivery::utils::{self, privileged_process};
+// Allowing this, mostly just for testing.
+#[allow(unused_imports)]
 use delivery::utils::say::{self, say, sayln};
 use delivery::errors::{DeliveryError, Kind};
 use delivery::config::Config;
 use delivery::git;
 use delivery::job::change::Change;
 use delivery::job::workspace::{Workspace, Privilege};
+use delivery::utils::path_join_many::PathJoinMany;
 
 docopt!(Args derive Debug, "
 Usage: delivery review [--for=<pipeline>]
@@ -144,7 +147,7 @@ fn main() {
 }
 
 #[allow(dead_code)]
-fn cwd() -> Path {
+fn cwd() -> PathBuf {
     env::current_dir().unwrap()
 }
 
@@ -165,7 +168,7 @@ fn exit_with(e: DeliveryError, i: isize) {
 }
 
 #[allow(dead_code)]
-fn load_config(path: &Path) -> Result<Config, DeliveryError> {
+fn load_config(path: &PathBuf) -> Result<Config, DeliveryError> {
     say("white", "Loading configuration from ");
     let msg = format!("{}", path.display());
     sayln("yellow", &msg);
@@ -179,7 +182,7 @@ fn setup(user: &str, server: &str, ent: &str, org: &str, path: &str, pipeline: &
     let config_path = if path.is_empty() {
         cwd()
     } else {
-        Path::new(path)
+        PathBuf::new(path)
     };
     let mut config = try!(load_config(&config_path));
     config = config.set_server(server)
@@ -200,9 +203,9 @@ fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str) -> Result<()
     // whether we need to or not. We could probably abstract this into
     // a function and get the lifetimes right, but.. meh :)
     let cwd = try!(env::current_dir());
+    let filename = String::from_str(cwd.file_name().unwrap().to_str().unwrap());
     let final_proj = if proj.is_empty() {
-        let cwd_name = cwd.filename().unwrap();
-        std::str::from_utf8(cwd_name.clone()).unwrap()
+        &filename[..]
     } else {
         proj
     };
@@ -338,7 +341,8 @@ fn job(stage: &str,
 Result<(), DeliveryError> { sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
     config = if project.is_empty() {
-        config.set_project(&String::from_utf8_lossy(cwd().filename().unwrap()))
+        let filename = String::from_str(cwd().file_name().unwrap().to_str().unwrap());
+        config.set_project(&filename)
     } else {
         config.set_project(project)
     };
@@ -359,7 +363,7 @@ Result<(), DeliveryError> { sayln("green", "Chef Delivery");
     sayln("magenta", &format!(" {}", phase));
     let job_root_path = if job_root.is_empty() {
         if privileged_process() {
-            Path::new("/var/opt/delivery/workspace").join_many(&[&s[..], &e, &o, &p, &pi, stage, phase])
+            PathBuf::new("/var/opt/delivery/workspace").join_many(&[&s[..], &e, &o, &p, &pi, stage, phase])
         } else {
             match env::home_dir() {
                 Some(path) => path.join_many(&[".delivery", &s, &e, &o, &p, &pi, stage, phase]),
@@ -367,7 +371,7 @@ Result<(), DeliveryError> { sayln("green", "Chef Delivery");
             }
         }
     } else {
-        Path::new(job_root)
+        PathBuf::new(job_root)
     };
     let ws = Workspace::new(&job_root_path);
     sayln("white", "Creating workspace");
@@ -393,7 +397,7 @@ Result<(), DeliveryError> { sayln("green", "Chef Delivery");
     sayln("magenta", &pi);
     let clone_url = if git_url.is_empty() {
         if local {
-            String::from_str(cwd().as_str().unwrap())
+            cwd().into_os_string().to_string_lossy().into_owned()
         } else {
             git::delivery_ssh_url(&u, &s, &e, &o, &p)
         }

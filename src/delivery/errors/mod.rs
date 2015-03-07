@@ -1,6 +1,6 @@
 use rustc_serialize::json;
 use std::error::{self, Error};
-use std::old_io;
+use std::io;
 use std::fmt;
 
 #[derive(Debug)]
@@ -17,9 +17,9 @@ pub enum Kind {
     ConfigParse,
     MissingConfig,
     ConfigValidation,
-    IoError(old_io::IoError),
-    JsonError(json::ParserError),
-    JsonEncode(json::EncoderError),
+    IoError,
+    JsonError,
+    JsonEncode,
     NoBuildCookbook,
     NoHomedir,
     ExpectedJsonString,
@@ -64,9 +64,9 @@ impl error::Error for DeliveryError {
             Kind::ConfigParse => "Failed to parse the cli config file",
             Kind::MissingConfig => "A configuration value is missing",
             Kind::ConfigValidation => "A required option is missing - use the command line options or 'delivery setup'",
-            Kind::IoError(_) => "An I/O Error occured",
-            Kind::JsonError(_) => "A JSON Parser error occured",
-            Kind::JsonEncode(_) => "A JSON Encoding error occured",
+            Kind::IoError => "An I/O Error occurred",
+            Kind::JsonError => "A JSON Parser error occured",
+            Kind::JsonEncode => "A JSON Encoding error occured",
             Kind::NoBuildCookbook => "No build_cookbook entry in .delivery/config.json",
             Kind::NoHomedir => "Cannot find a homedir",
             Kind::BerksFailed => "Berkshelf command failed",
@@ -84,16 +84,6 @@ impl error::Error for DeliveryError {
             Kind::ChmodFailed => "Cannot set permissions"
         }
     }
-
-
-    fn cause(&self) -> Option<&error::Error> {
-        match self.kind {
-            Kind::IoError(ref err) => Some(err as &error::Error),
-            Kind::JsonError(ref err) => Some(err as &error::Error),
-            Kind::JsonEncode(ref err) => Some(err as &error::Error),
-            _ => None
-        }
-    }
 }
 
 impl fmt::Display for DeliveryError {
@@ -106,17 +96,17 @@ impl fmt::Display for DeliveryError {
 impl error::FromError<json::EncoderError> for DeliveryError {
     fn from_error(err: json::EncoderError) -> DeliveryError {
         DeliveryError{
-            kind: Kind::JsonEncode(err),
-            detail: None
+            kind: Kind::JsonEncode,
+            detail: Some(err.description().to_string())
         }
     }
 }
 
-impl error::FromError<old_io::IoError> for DeliveryError {
-    fn from_error(err: old_io::IoError) -> DeliveryError {
+impl error::FromError<io::Error> for DeliveryError {
+    fn from_error(err: io::Error) -> DeliveryError {
         DeliveryError{
-            kind: Kind::IoError(err),
-            detail: None
+            kind: Kind::IoError,
+            detail: Some(format!("{}", err))
         }
     }
 }
@@ -124,8 +114,8 @@ impl error::FromError<old_io::IoError> for DeliveryError {
 impl error::FromError<json::ParserError> for DeliveryError {
     fn from_error(err: json::ParserError) -> DeliveryError {
         DeliveryError{
-            kind: Kind::JsonError(err),
-            detail: None
+            kind: Kind::JsonError,
+            detail: Some(err.description().to_string())
         }
     }
 }
