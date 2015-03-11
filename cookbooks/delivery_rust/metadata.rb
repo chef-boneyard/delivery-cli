@@ -4,7 +4,7 @@ maintainer_email 'adam@getchef.com'
 license          'All Rights Reserved'
 description      'Installs/Configures delivery_rust'
 long_description 'Installs/Configures delivery_rust'
-version          '0.1.0'
+version          '0.1.1'
 
 depends 'build-essential'
 depends 'omnibus'

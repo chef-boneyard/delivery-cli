@@ -16,3 +16,5 @@ pub mod git;
 pub mod utils;
 pub mod config;
 pub mod job;
+pub mod getpass;
+pub mod token;
