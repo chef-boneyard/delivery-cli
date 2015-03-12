@@ -444,7 +444,7 @@ Result<(), DeliveryError> { sayln("green", "Chef Delivery");
     Ok(())
 }
 
-#[warn(dead_code)]
+#[allow(dead_code)]
 fn api_token(server: &str, ent: &str,
              user: &str) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
