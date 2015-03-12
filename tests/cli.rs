@@ -2,7 +2,7 @@ use delivery::git::git_command;
 use delivery::utils::copy_recursive;
 use delivery::utils::say;
 use std::io::prelude::*;
-use std::fs::TempDir;
+use tempdir::TempDir;
 use std::fs::File;
 use support::paths::fixture_file;
 use std::process::Command;

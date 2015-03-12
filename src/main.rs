@@ -1,4 +1,4 @@
-#![feature(plugin, collections, path, os, core, exit_status)]
+#![feature(plugin, collections, path, core, exit_status)]
 #![plugin(regex_macros, docopt_macros)]
 extern crate regex;
 #[no_link] extern crate regex_macros;
@@ -444,6 +444,7 @@ Result<(), DeliveryError> { sayln("green", "Chef Delivery");
     Ok(())
 }
 
+#[warn(dead_code)]
 fn api_token(server: &str, ent: &str,
              user: &str) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
@@ -467,7 +468,7 @@ fn api_token(server: &str, ent: &str,
     let token_path = home_dot_delivery.join_many(&["api-tokens"]);
     let mut tstore = try!(token::TokenStore::from_file(&token_path));
     say("yellow", "delivery password: ");
-    let pass = getpass::read("");
+    let _pass = getpass::read("");
 
     try!(tstore.write_token(&s, &e, &u, "exampletoken"));
     sayln("green", &format!("saved API token to: {}", token_path.display()));

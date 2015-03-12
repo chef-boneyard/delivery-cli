@@ -1,6 +1,7 @@
-#![feature(io, path, tempdir, fs)]
+#![feature(io, path, path_ext)]
 extern crate delivery;
 extern crate "rustc-serialize" as rustc_serialize;
+extern crate tempdir;
 #[macro_use] extern crate log;
 
 // Thanks, Cargo.
