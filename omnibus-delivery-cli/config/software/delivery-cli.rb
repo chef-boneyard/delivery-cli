@@ -16,9 +16,9 @@
 
 # These options are required for all software definitions
 name "delivery-cli"
-default_version Time.now.utc.strftime("%Y%m%d%H%M%S")
+default_version "master"
 
-source path: File.expand_path(File.join(File.dirname(__FILE__), "..", "..", ".."))
+source git: File.expand_path(File.join(File.dirname(__FILE__), "..", "..", ".."))
 
 build do
   # Setup a default environment from Omnibus - you should use this Omnibus
