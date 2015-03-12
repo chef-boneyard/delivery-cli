@@ -25,6 +25,7 @@ time = "*"
 term = "*"
 libc = "*"
 toml = "*"
+tempdir = "*"
 
 [profile.dev]
 debug = false

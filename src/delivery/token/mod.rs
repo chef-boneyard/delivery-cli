@@ -97,7 +97,8 @@ impl TokenStore {
 mod tests {
     use super::TokenStore;
     use std::io::prelude::*;
-    use std::fs::{TempDir, File};
+    use std::fs::File;
+    use tempdir::TempDir;
     use utils::path_join_many::PathJoinMany;
 
     #[test]

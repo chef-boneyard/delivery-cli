@@ -1,4 +1,4 @@
-#![feature(plugin, io, path, collections, std_misc, core, fs, old_io)]
+#![feature(plugin, io, path, collections, std_misc, core, old_io, path_ext)]
 #![plugin(regex_macros, docopt_macros)]
 extern crate regex;
 #[no_link] extern crate regex_macros;
@@ -10,6 +10,7 @@ extern crate toml;
 extern crate time;
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate libc;
+extern crate tempdir;
 
 pub mod errors;
 pub mod git;
