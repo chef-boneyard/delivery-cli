@@ -2,8 +2,8 @@ use hyper::header::{Header, HeaderFormat};
 use std::fmt;
 use hyper::header::parsing::from_one_raw_str;
 
-// Create a hyper header type for an HTTP header with name $h_string
-// whose value is a string.
+/// Create a hyper header type for an HTTP header with name $h_string
+/// whose value is a string.
 macro_rules! hyper_header {
     ($h_name:ident, $h_string:expr) => (
         #[derive(Clone, PartialEq, Debug)]
@@ -28,14 +28,3 @@ macro_rules! hyper_header {
 
 hyper_header!(ChefDeliveryToken, "chef-delivery-token");
 hyper_header!(ChefDeliveryUser,  "chef-delivery-user");
-
-// // crazy!("foo-bar");
-
-// // generate
-// struct FooBar;
-// impl FooBar {
-//     pub fn name() -> String {
-//         String::from_str("foo-bar")
-//     }
-// }
-

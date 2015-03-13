@@ -88,7 +88,7 @@ impl error::Error for DeliveryError {
             Kind::ChownFailed => "Cannot set ownership to the dbuild user and group",
             Kind::ChefFailed => "Chef Client failed",
             Kind::ChmodFailed => "Cannot set permissions",
-            Kind::UnsupportedHttpMethod => "unsupported HTTP method",
+            Kind::UnsupportedHttpMethod => "Unsupported HTTP method",
             Kind::HttpError(_) => "An HTTP Error occured",
             Kind::ApiError(_, _) => "An API Error occured",
             Kind::JsonParseError => "Attempted to parse invalid JSON"
