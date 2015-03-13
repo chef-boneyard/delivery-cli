@@ -94,7 +94,7 @@ fn setup_checkout_branch(tmpdir: &TempDir, branch: &str) {
 /// api would create (`_reviews/PIPELINE/BRANCH/1` and `_reviews/PIPELINE/BRANCH/latest`)
 fn delivery_review(local: &TempDir, remote: &TempDir, branch: &str, pipeline: &str) {
     panic_on_error!(git_command(&["checkout", branch], local.path()));
-    let result = panic_on_error!(delivery_cmd().arg("review").arg("--for").arg(pipeline).current_dir(&local.path()).output());
+    let result = panic_on_error!(delivery_cmd().arg("review").arg("--no-open").arg("--for").arg(pipeline).current_dir(&local.path()).output());
     if ! result.status.success() {
         let output = String::from_utf8_lossy(&result.stdout);
         let error = String::from_utf8_lossy(&result.stderr);

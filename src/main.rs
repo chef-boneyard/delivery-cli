@@ -29,7 +29,7 @@ use rustc_serialize::json;
 use delivery::http::APIClient;
 
 docopt!(Args derive Debug, "
-Usage: delivery review [--for=<pipeline>]
+Usage: delivery review [--for=<pipeline>] [--no-open]
        delivery clone <project> [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--git-url=<url>]
        delivery checkout <change> [--for=<pipeline>] [--patchset=<number>]
        delivery diff <change> [--for=<pipeline>] [--patchset=<number>] [--local]
@@ -77,8 +77,9 @@ fn main() {
         Args {
             cmd_review: true,
             flag_for: ref for_pipeline,
+            flag_no_open: ref no_open,
             ..
-        } => review(&for_pipeline),
+        } => review(&for_pipeline, &no_open),
         Args {
             cmd_setup: true,
             flag_user: ref user,
@@ -268,7 +269,7 @@ fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str) -> Result<()
 }
 
 #[allow(dead_code)]
-fn review(for_pipeline: &str) -> Result<(), DeliveryError> {
+fn review(for_pipeline: &str, no_open: &bool) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
     config = config.set_pipeline(for_pipeline);
@@ -286,7 +287,12 @@ fn review(for_pipeline: &str) -> Result<(), DeliveryError> {
         sayln("white", line);
     }
     match review.url {
-        Some(url) => sayln("magenta", &url),
+        Some(url) => {
+            sayln("magenta", &url);
+            if !no_open {
+                try!(utils::open::item(&url));
+            }
+        },
         None => {}
     };
     Ok(())

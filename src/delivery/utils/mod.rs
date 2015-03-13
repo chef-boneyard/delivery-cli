@@ -6,6 +6,7 @@ use std::fs;
 
 pub mod say;
 pub mod path_join_many;
+pub mod open;
 
 // This will need a windows implementation
 pub fn copy_recursive<P: ?Sized>(f: &P, t: &P) -> Result<(), DeliveryError> where P: AsPath {

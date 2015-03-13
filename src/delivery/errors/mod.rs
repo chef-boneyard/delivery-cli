@@ -40,7 +40,8 @@ pub enum Kind {
     UnsupportedHttpMethod,
     HttpError(hyper::HttpError),
     ApiError(hyper::status::StatusCode, Result<String, io::Error>),
-    JsonParseError
+    JsonParseError,
+    OpenFailed
 }
 
 #[derive(Debug)]
@@ -91,7 +92,8 @@ impl error::Error for DeliveryError {
             Kind::UnsupportedHttpMethod => "Unsupported HTTP method",
             Kind::HttpError(_) => "An HTTP Error occured",
             Kind::ApiError(_, _) => "An API Error occured",
-            Kind::JsonParseError => "Attempted to parse invalid JSON"
+            Kind::JsonParseError => "Attempted to parse invalid JSON",
+            Kind::OpenFailed => "Open command failed"
         }
     }
 }
