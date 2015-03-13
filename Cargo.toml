@@ -26,6 +26,9 @@ term = "*"
 libc = "*"
 toml = "*"
 tempdir = "*"
+hyper = "*"
+uuid = "*"
+mime = "*"
 
 [profile.dev]
 debug = false

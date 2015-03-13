@@ -11,6 +11,9 @@ extern crate time;
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate libc;
 extern crate tempdir;
+extern crate uuid;
+extern crate hyper;
+extern crate mime;
 
 pub mod errors;
 pub mod git;
@@ -19,3 +22,5 @@ pub mod config;
 pub mod job;
 pub mod getpass;
 pub mod token;
+pub mod http;
+

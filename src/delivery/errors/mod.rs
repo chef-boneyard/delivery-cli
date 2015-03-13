@@ -2,6 +2,8 @@ use rustc_serialize::json;
 use std::error::{self, Error};
 use std::io;
 use std::fmt;
+use hyper;
+use hyper::HttpError;
 
 #[derive(Debug)]
 pub enum Kind {
@@ -34,7 +36,11 @@ pub enum Kind {
     ChefServerFailed,
     ChownFailed,
     ChefFailed,
-    ChmodFailed
+    ChmodFailed,
+    UnsupportedHttpMethod,
+    HttpError(hyper::HttpError),
+    ApiError(hyper::status::StatusCode, Result<String, io::Error>),
+    JsonParseError
 }
 
 #[derive(Debug)]
@@ -81,7 +87,11 @@ impl error::Error for DeliveryError {
             Kind::ChefServerFailed => "Failed to download a cookbook from the Chef Server",
             Kind::ChownFailed => "Cannot set ownership to the dbuild user and group",
             Kind::ChefFailed => "Chef Client failed",
-            Kind::ChmodFailed => "Cannot set permissions"
+            Kind::ChmodFailed => "Cannot set permissions",
+            Kind::UnsupportedHttpMethod => "Unsupported HTTP method",
+            Kind::HttpError(_) => "An HTTP Error occured",
+            Kind::ApiError(_, _) => "An API Error occured",
+            Kind::JsonParseError => "Attempted to parse invalid JSON"
         }
     }
 }
