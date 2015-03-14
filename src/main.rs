@@ -281,7 +281,7 @@ fn review(for_pipeline: &str) -> Result<(), DeliveryError> {
     say("yellow", &head);
     say("white", " targeted for pipeline ");
     sayln("magenta", &target);
-    try!(git::git_push(&head, &target));
+    try!(git::git_push_review(&head, &target));
     Ok(())
 }
 

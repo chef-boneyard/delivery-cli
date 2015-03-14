@@ -86,7 +86,7 @@ pub fn git_command<P: ?Sized>(args: &[&str], c: &P) -> Result<GitResult, Deliver
     Ok(GitResult{ stdout: stdout, stderr: stderr })
 }
 
-pub fn git_push(branch: &str, target: &str) -> Result<String, DeliveryError> {
+pub fn git_push_review(branch: &str, target: &str) -> Result<String, DeliveryError> {
     let gitr = try!(git_command(&[
                      "push", "--porcelain", "--progress", "--verbose", "delivery", &format!("{}:_for/{}/{}", branch, target, branch)
                      ],
