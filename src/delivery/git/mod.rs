@@ -86,25 +86,40 @@ pub fn git_command<P: ?Sized>(args: &[&str], c: &P) -> Result<GitResult, Deliver
     Ok(GitResult{ stdout: stdout, stderr: stderr })
 }
 
-pub fn git_push_review(branch: &str, target: &str) -> Result<String, DeliveryError> {
-    let gitr = try!(git_command(&[
-                     "push", "--porcelain", "--progress", "--verbose", "delivery", &format!("{}:_for/{}/{}", branch, target, branch)
-                     ],
-                     &cwd()));
-    let output = try!(parse_git_push_output(&gitr.stdout, &gitr.stderr));
-    for result in output.iter() {
-        match result.flag {
-            PushResultFlag::SuccessfulFastForward => sayln("green", &format!("Updated change: {}", result.reason)),
-            PushResultFlag::SuccessfulForcedUpdate => sayln("green", &format!("Force updated change: {}", result.reason)),
-            PushResultFlag::SuccessfulDeletedRef => sayln("red", &format!("Deleted change: {}", result.reason)),
-            PushResultFlag::SuccessfulPushedNewRef => sayln("green", &format!("Created change: {}", result.reason)),
-            PushResultFlag::Rejected => sayln("red", &format!("Rejected change: {}", result.reason)),
-            PushResultFlag::UpToDate => sayln("yellow", &format!("Nothing added to the existing change")),
-        }
-    }
-    Ok(gitr.stdout.to_string())
+pub fn git_push_review(branch: &str,
+                       target: &str) -> Result<ReviewResult, DeliveryError> {
+    let gitr = try!(git_command(&["push",
+                                  "--porcelain", "--progress",
+                                  "--verbose", "delivery",
+                                  &format!("{}:_for/{}/{}",
+                                           branch, target, branch)],
+                                &cwd()));
+    parse_git_push_output(&gitr.stdout, &gitr.stderr)
 }
 
+/// Output via `sayln` results of a git push.
+pub fn say_push_results(results: Vec<PushResult>) {
+    for result in results.iter() {
+        match result.flag {
+            PushResultFlag::SuccessfulFastForward =>
+                sayln("green", &format!("Updated change: {}", result.reason)),
+            PushResultFlag::SuccessfulForcedUpdate =>
+                sayln("green",
+                      &format!("Force updated change: {}", result.reason)),
+            PushResultFlag::SuccessfulDeletedRef =>
+                sayln("red", &format!("Deleted change: {}", result.reason)),
+            PushResultFlag::SuccessfulPushedNewRef =>
+                sayln("green", &format!("Created change: {}", result.reason)),
+            PushResultFlag::Rejected =>
+                sayln("red", &format!("Rejected change: {}", result.reason)),
+            PushResultFlag::UpToDate =>
+                sayln("yellow",
+                      &format!("Nothing added to the existing change")),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub enum PushResultFlag {
     SuccessfulFastForward,
     SuccessfulForcedUpdate,
@@ -116,20 +131,45 @@ pub enum PushResultFlag {
 
 impl Copy for PushResultFlag { }
 
+/// Returned by `git_push_review`. The `push_results` field is a
+/// vector of `PushResult` each indicating a `PushResultFalg` and a
+/// reason message. The `messages` field is a vector of output lines
+/// returned from the server managing the git protocol (as you'd see
+/// on the command line prefixed with `remote: $LINE`. The `url` field
+/// will contain the last line that looks like a URL returned as
+/// remote data.
+#[derive(Debug)]
+pub struct ReviewResult {
+    pub push_results: Vec<PushResult>,
+    pub messages: Vec<String>,
+    pub url: Option<String>
+}
+
+#[derive(Debug)]
 pub struct PushResult {
     flag: PushResultFlag,
     reason: String
 }
 
-pub fn parse_git_push_output(push_output: &str, push_error: &str) -> Result<Vec<PushResult>, DeliveryError> {
+pub fn parse_git_push_output(push_output: &str,
+                             push_error: &str) -> Result<ReviewResult, DeliveryError> {
     let mut push_results: Vec<PushResult> = Vec::new();
+    let mut r_messages: Vec<String> = Vec::new();
+    let mut r_url = None;
     for line in push_error.lines_any() {
         debug!("error: {}", line);
         if line.starts_with("remote") {
-            let r = regex!(r"remote: (.+)");
+            let r = regex!(r"remote: ([^ ]+)");
             let caps_result = r.captures(line);
             match caps_result {
-                Some(caps) => { sayln("white", &format!("{}", caps.at(1).unwrap())); },
+                Some(caps) => {
+                    let cap = caps.at(1).unwrap();
+                    if cap.starts_with("http") {
+                        r_url = Some(cap.trim().to_string());
+                    } else {
+                        r_messages.push(cap.to_string());
+                    }
+                 },
                 None => {}
             }
         }
@@ -145,7 +185,11 @@ pub fn parse_git_push_output(push_output: &str, push_error: &str) -> Result<Vec<
         let caps_result = r.captures(line);
         let caps = match caps_result {
             Some(caps) => caps,
-            None => { return Err(DeliveryError{ kind: Kind::BadGitOutputMatch, detail: Some(format!("Failed to match: {}", line)) }) }
+            None => {
+                let detail = Some(format!("Failed to match: {}", line));
+                return Err(DeliveryError{ kind: Kind::BadGitOutputMatch,
+                                          detail: detail })
+            }
         };
         let result_flag = match caps.at(1).unwrap() {
             " " => PushResultFlag::SuccessfulFastForward,
@@ -154,16 +198,22 @@ pub fn parse_git_push_output(push_output: &str, push_error: &str) -> Result<Vec<
             "*" => PushResultFlag::SuccessfulPushedNewRef,
             "!" => PushResultFlag::Rejected,
             "=" => PushResultFlag::UpToDate,
-            _ => { return Err(DeliveryError{ kind: Kind::BadGitOutputMatch, detail: Some(format!("Unknown result flag")) }) }
+            _ => {
+                return Err(DeliveryError{
+                    kind: Kind::BadGitOutputMatch,
+                    detail: Some(format!("Unknown result flag"))})
+            }
         };
         push_results.push(
             PushResult{
                 flag: result_flag,
                 reason: String::from_str(caps.at(4).unwrap())
             }
-        )
+            )
     }
-    Ok(push_results)
+    Ok(ReviewResult { push_results: push_results,
+                      messages: r_messages,
+                      url: r_url })
 }
 
 pub fn delivery_ssh_url(user: &str, server: &str, ent: &str, org: &str, proj: &str) -> String {
