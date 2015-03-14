@@ -94,18 +94,18 @@ pub fn git_push(branch: &str, target: &str) -> Result<String, DeliveryError> {
     let output = try!(parse_git_push_output(&gitr.stdout, &gitr.stderr));
     for result in output.iter() {
         match result.flag {
-            PushResultFlags::SuccessfulFastForward => sayln("green", &format!("Updated change: {}", result.reason)),
-            PushResultFlags::SuccessfulForcedUpdate => sayln("green", &format!("Force updated change: {}", result.reason)),
-            PushResultFlags::SuccessfulDeletedRef => sayln("red", &format!("Deleted change: {}", result.reason)),
-            PushResultFlags::SuccessfulPushedNewRef => sayln("green", &format!("Created change: {}", result.reason)),
-            PushResultFlags::Rejected => sayln("red", &format!("Rejected change: {}", result.reason)),
-            PushResultFlags::UpToDate => sayln("yellow", &format!("Nothing added to the existing change")),
+            PushResultFlag::SuccessfulFastForward => sayln("green", &format!("Updated change: {}", result.reason)),
+            PushResultFlag::SuccessfulForcedUpdate => sayln("green", &format!("Force updated change: {}", result.reason)),
+            PushResultFlag::SuccessfulDeletedRef => sayln("red", &format!("Deleted change: {}", result.reason)),
+            PushResultFlag::SuccessfulPushedNewRef => sayln("green", &format!("Created change: {}", result.reason)),
+            PushResultFlag::Rejected => sayln("red", &format!("Rejected change: {}", result.reason)),
+            PushResultFlag::UpToDate => sayln("yellow", &format!("Nothing added to the existing change")),
         }
     }
     Ok(gitr.stdout.to_string())
 }
 
-pub enum PushResultFlags {
+pub enum PushResultFlag {
     SuccessfulFastForward,
     SuccessfulForcedUpdate,
     SuccessfulDeletedRef,
@@ -114,10 +114,10 @@ pub enum PushResultFlags {
     UpToDate,
 }
 
-impl Copy for PushResultFlags { }
+impl Copy for PushResultFlag { }
 
 pub struct PushResult {
-    flag: PushResultFlags,
+    flag: PushResultFlag,
     reason: String
 }
 
@@ -148,12 +148,12 @@ pub fn parse_git_push_output(push_output: &str, push_error: &str) -> Result<Vec<
             None => { return Err(DeliveryError{ kind: Kind::BadGitOutputMatch, detail: Some(format!("Failed to match: {}", line)) }) }
         };
         let result_flag = match caps.at(1).unwrap() {
-            " " => PushResultFlags::SuccessfulFastForward,
-            "+" => PushResultFlags::SuccessfulForcedUpdate,
-            "-" => PushResultFlags::SuccessfulDeletedRef,
-            "*" => PushResultFlags::SuccessfulPushedNewRef,
-            "!" => PushResultFlags::Rejected,
-            "=" => PushResultFlags::UpToDate,
+            " " => PushResultFlag::SuccessfulFastForward,
+            "+" => PushResultFlag::SuccessfulForcedUpdate,
+            "-" => PushResultFlag::SuccessfulDeletedRef,
+            "*" => PushResultFlag::SuccessfulPushedNewRef,
+            "!" => PushResultFlag::Rejected,
+            "=" => PushResultFlag::UpToDate,
             _ => { return Err(DeliveryError{ kind: Kind::BadGitOutputMatch, detail: Some(format!("Unknown result flag")) }) }
         };
         push_results.push(
