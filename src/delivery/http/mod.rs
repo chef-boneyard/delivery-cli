@@ -88,7 +88,7 @@ impl APIClient {
                     _ => {
                         let mut detail = String::new();
                         let e = match res.read_to_string(&mut detail) {
-                            Ok(()) => Ok(detail),
+                            Ok(_) => Ok(detail),
                             Err(e) => Err(e)
                         };
                         Err(DelivError::ApiError(res.status, e))
@@ -117,7 +117,7 @@ impl APIClient {
                     _ => {
                         let mut detail = String::new();
                         let e = match res.read_to_string(&mut detail) {
-                            Ok(()) => Ok(detail),
+                            Ok(_) => Ok(detail),
                             Err(e) => Err(e)
                         };
                         Err(DelivError::ApiError(res.status, e))
@@ -164,7 +164,7 @@ impl APIClient {
             Ok(mut b) => {
                 let mut body_string = String::new();
                 match b.read_to_string(&mut body_string) {
-                    Ok(()) => body_string,
+                    Ok(_) => body_string,
                     Err(e) => {
                         debug!("extract_pretty_json: {}", e);
                         return Err(String::from_str("response read failed"))
