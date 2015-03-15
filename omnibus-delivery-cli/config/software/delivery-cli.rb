@@ -17,6 +17,7 @@
 # These options are required for all software definitions
 name "delivery-cli"
 default_version "master"
+dependency "openssl"
 
 source git: File.expand_path(File.join(File.dirname(__FILE__), "..", "..", ".."))
 

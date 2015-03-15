@@ -1,6 +1,6 @@
 GIT
   remote: git://github.com/opscode/omnibus-software.git
-  revision: 7373d41ca891650557165fd1a06e844df9d1f135
+  revision: 66107fabf9494fe8f89859961d1af46bfac7e640
   specs:
     omnibus-software (4.0.0)
 
@@ -48,7 +48,7 @@ GEM
     erubis (2.7.0)
     faraday (0.9.1)
       multipart-post (>= 1.2, < 3)
-    ffi (1.9.6)
+    ffi (1.9.8)
     ffi-yajl (1.4.0)
       ffi (~> 1.5)
       libyajl2 (~> 1.2)
