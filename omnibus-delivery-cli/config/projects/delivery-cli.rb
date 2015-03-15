@@ -26,3 +26,5 @@ dependency "version-manifest"
 
 exclude "**/.git"
 exclude "**/bundler/git"
+
+override :zlib, version: "1.2.8"

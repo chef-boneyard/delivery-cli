@@ -2,3 +2,4 @@
 .delivery/cli.toml
 .kitchen/
 .kitchen.local.yml
+/omnibus-delivery-cli/local/
