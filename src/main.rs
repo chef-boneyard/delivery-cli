@@ -281,7 +281,14 @@ fn review(for_pipeline: &str) -> Result<(), DeliveryError> {
     say("yellow", &head);
     say("white", " targeted for pipeline ");
     sayln("magenta", &target);
-    try!(git::git_push(&head, &target));
+    let review = try!(git::git_push_review(&head, &target));
+    for line in review.messages.iter() {
+        sayln("white", line);
+    }
+    match review.url {
+        Some(url) => sayln("magenta", &url),
+        None => {}
+    };
     Ok(())
 }
 
