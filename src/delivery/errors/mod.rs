@@ -96,6 +96,19 @@ impl error::Error for DeliveryError {
             Kind::OpenFailed => "Open command failed"
         }
     }
+
+    fn cause(&self) -> Option<&Error> {
+        match self.kind {
+            Kind::HttpError(ref e) => Some(e),
+            Kind::ApiError(_, ref e) => {
+                match *e {
+                    Ok(_) => None,
+                    Err(ref e) => Some(e)
+                }
+            },
+            _ => None
+        }
+    }
 }
 
 impl fmt::Display for DeliveryError {
@@ -103,7 +116,6 @@ impl fmt::Display for DeliveryError {
         self.description().fmt(f)
     }
 }
-
 
 impl error::FromError<json::EncoderError> for DeliveryError {
     fn from_error(err: json::EncoderError) -> DeliveryError {

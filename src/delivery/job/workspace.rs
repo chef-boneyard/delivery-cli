@@ -11,6 +11,7 @@ use std::fs::File;
 use std::io::prelude::*;
 use utils;
 use utils::path_join_many::PathJoinMany;
+use std::error;
 
 #[derive(RustcDecodable, Debug)]
 pub struct Workspace {
@@ -240,7 +241,7 @@ impl Workspace {
             command.current_dir(&self.chef.join("build_cookbook"));
             let output = match command.output() {
                 Ok(o) => o,
-                Err(e) => { return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute berks vendor: {}", e.description()))}) },
+                Err(e) => { return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute berks vendor: {}", error::Error::description(&e)))}) },
             };
             if !output.status.success() {
                 return Err(DeliveryError{ kind: Kind::BerksFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(&output.stdout), String::from_utf8_lossy(&output.stderr)))});
@@ -280,7 +281,7 @@ impl Workspace {
             .output();
        let output = match result {
             Ok(o) => o,
-            Err(e) => { return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute chown: {}", e.description()))}) },
+            Err(e) => { return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute chown: {}", error::Error::description(&e)))}) },
         };
         if !output.status.success() {
             return Err(DeliveryError{ kind: Kind::ChownFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(&output.stdout), String::from_utf8_lossy(&output.stderr)))});
@@ -351,7 +352,7 @@ impl Workspace {
         command.current_dir(&self.repo);
         let output = match command.output() {
             Ok(o) => o,
-            Err(e) => { return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute chef-client: {}", e.description()))}) },
+            Err(e) => { return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute chef-client: {}", error::Error::description(&e)))}) },
         };
         if !output.status.success() {
             return Err(DeliveryError{ kind: Kind::ChefFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(&output.stdout), String::from_utf8_lossy(&output.stderr)))});

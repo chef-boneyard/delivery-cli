@@ -5,6 +5,7 @@ use utils::say::{say, sayln, Spinner};
 use errors::{DeliveryError, Kind};
 use std::env;
 use std::path::{AsPath, PathBuf};
+use std::error;
 
 fn cwd() -> PathBuf {
     env::current_dir().unwrap()
@@ -72,7 +73,7 @@ pub fn git_command<P: ?Sized>(args: &[&str], c: &P) -> Result<GitResult, Deliver
     debug!("Git command: {:?}", command);
     let output = match command.output() {
         Ok(o) => o,
-        Err(e) => { spinner.stop(); return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute git: {}", e.description()))}) },
+        Err(e) => { spinner.stop(); return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute git: {}", error::Error::description(&e)))}) },
     };
     debug!("Git exited: {}", output.status);
     spinner.stop();

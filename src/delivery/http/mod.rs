@@ -217,9 +217,7 @@ impl APIAuth {
 mod tests {
     use super::APIClient;
     use super::APIAuth;
-    use super::HProto;
-    use rustc_serialize::json;
-    use std::os;
+    use std::env;
 
     #[test]
     fn api_auth() {
@@ -250,8 +248,8 @@ mod tests {
     }
 
     fn fake_test_env() {
-        os::setenv("DEL_USER", "pete");
-        os::setenv("TOKEN", "deadbeefcafe");
+        env::set_var("DEL_USER", "pete");
+        env::set_var("TOKEN", "deadbeefcafe");
     }
     // #[test]
     // fn something() {
