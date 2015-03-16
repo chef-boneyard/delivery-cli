@@ -1,4 +1,4 @@
-#![feature(plugin, collections, path, core, exit_status)]
+#![feature(plugin, collections, core, exit_status)]
 #![plugin(regex_macros, docopt_macros)]
 extern crate regex;
 #[no_link] extern crate regex_macros;
@@ -25,7 +25,6 @@ use delivery::job::workspace::{Workspace, Privilege};
 use delivery::utils::path_join_many::PathJoinMany;
 use delivery::getpass;
 use delivery::token;
-use rustc_serialize::json;
 use delivery::http::APIClient;
 
 docopt!(Args derive Debug, "
@@ -515,6 +514,7 @@ fn api_token(server: &str, ent: &str,
     Ok(())
 }
 
+#[allow(dead_code)]
 fn init_pipeline(server: &str, user: &str,
                  ent: &str, org: &str, proj: &str,
                  pipeline: &str) -> Result<(), DeliveryError> {
@@ -551,6 +551,7 @@ fn init_pipeline(server: &str, user: &str,
     Ok(())
 }
 
+#[allow(dead_code)]
 fn api_req(method: &str, path: &str, data: &str,
            server: &str, ent: &str, user: &str) -> Result<(), DeliveryError> {
     let mut config = try!(Config::load_config(&cwd()));
