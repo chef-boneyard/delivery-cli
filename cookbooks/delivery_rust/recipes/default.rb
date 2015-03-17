@@ -20,3 +20,11 @@ include_recipe "omnibus"
 directory "/opt/delivery-cli" do
   owner 'dbuild'
 end
+
+chef_gem "omnibus" do
+#  compile_time false if Chef::Resource::ChefGem.method_defined?(:compile_time)
+end
+
+chef_gem "artifactory" do
+#  compile_time false if Chef::Resource::ChefGem.method_defined?(:compile_time)
+end
