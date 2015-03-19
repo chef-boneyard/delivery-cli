@@ -118,7 +118,7 @@ impl Workspace {
                  .arg(&name)
                  .arg("-f")
                  .arg(self.chef.join("build_cookbook.tgz").to_str().unwrap())
-                 .current_dir(&self.chef)
+                 .current_dir(&self.root)
                  .output());
             if ! result.status.success() {
                 let output = String::from_utf8_lossy(&result.stdout);
