@@ -158,7 +158,7 @@ impl Workspace {
                           .arg(&format!("/cookbooks/{}", &name))
                           .arg("--chef-repo-path")
                           .arg(self.chef.join("tmp_cookbook").to_str().unwrap())
-                          .current_dir(&self.chef)
+                          .current_dir(&self.root)
                           .output());
         if ! result.status.success() {
             let output = String::from_utf8_lossy(&result.stdout);
