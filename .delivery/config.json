@@ -11,6 +11,6 @@
       "functional"
     ],
     "build_nodes": {
-        "default"    : ["name:delivery-builder*"]
+        "default"    : ["name:builder*.shd.chef.co"]
     }
 }

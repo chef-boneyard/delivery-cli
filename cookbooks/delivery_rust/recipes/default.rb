@@ -15,7 +15,21 @@ end
 
 node.set['omnibus']['build_user'] = "dbuild"
 node.set['omnibus']['build_user_group'] = "dbuild"
+node.set['omnibus']['build_user_home'] = '/var/opt/delivery/workspace'
+
 include_recipe "omnibus"
+
+# The omnibus cookbook will try to take over the dbuild user/group. This is
+# causing unhappiness with the overall pipeline. The follow code will disable
+# those resources so they don't cause the unhappiness.
+u = resources(user: 'dbuild')
+u.action :nothing
+
+g = resources(group: 'dbuild')
+g.action :nothing
+
+d = resources(directory: '/var/opt/delivery/workspace')
+d.action :nothing
 
 directory "/opt/delivery-cli" do
   owner 'dbuild'

@@ -1,7 +1,7 @@
-delivery_builder_exec "cargo clean" do
+execute "cargo clean" do
   cwd node['delivery_builder']['repo']
 end
 
-delivery_builder_exec "cargo build" do
+execute "cargo build" do
   cwd node['delivery_builder']['repo']
 end
