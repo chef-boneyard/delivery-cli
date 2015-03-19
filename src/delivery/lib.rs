@@ -36,6 +36,7 @@ pub mod errors;
 pub mod git;
 pub mod utils;
 pub mod config;
+pub mod delivery_config;
 pub mod job;
 pub mod getpass;
 pub mod token;
