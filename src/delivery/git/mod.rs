@@ -238,15 +238,18 @@ pub fn delivery_ssh_url(user: &str, server: &str, ent: &str, org: &str, proj: &s
     format!("ssh://{}@{}@{}:8989/{}/{}/{}", user, ent, server, ent, org, proj)
 }
 
-pub fn config_repo(user: &str, server: &str, ent: &str, org: &str, proj: &str, path: &PathBuf) -> Result<(), DeliveryError> {
-    let result = git_command(&["remote", "add", "delivery", &delivery_ssh_url(user, server, ent, org, proj)], path);
+pub fn config_repo(user: &str, server: &str, ent: &str, org: &str, proj: &str, path: &PathBuf) -> Result<bool, DeliveryError> {
+    let url = delivery_ssh_url(user, server, ent, org, proj);
+    let result = git_command(&["remote", "add", "delivery", &url], path);
     match result {
-        Ok(_) => return Ok(()),
+        Ok(_) => return Ok(true),
         Err(e) => {
-            match e.detail {
+            match e.detail.clone() {
                 Some(msg) => {
                     if msg.contains("remote delivery already exists") {
-                        return Err(DeliveryError{ kind: Kind::GitSetupFailed, detail: None });
+                        return Ok(false);
+                    } else {
+                        return Err(e)
                     }
                 },
                 None => {
@@ -255,7 +258,6 @@ pub fn config_repo(user: &str, server: &str, ent: &str, org: &str, proj: &str, p
             }
         },
     }
-    Ok(())
 }
 
 pub fn checkout_branch_name(change: &str, patchset: &str) -> String {

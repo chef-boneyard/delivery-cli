@@ -36,6 +36,7 @@ use delivery::utils::{self, privileged_process};
 use delivery::utils::say::{self, say, sayln};
 use delivery::errors::{DeliveryError, Kind};
 use delivery::config::Config;
+use delivery::delivery_config::DeliveryConfig;
 use delivery::git;
 use delivery::job::change::Change;
 use delivery::job::workspace::{Workspace, Privilege};
@@ -49,7 +50,7 @@ Usage: delivery review [--for=<pipeline>] [--no-open]
        delivery clone <project> [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--git-url=<url>]
        delivery checkout <change> [--for=<pipeline>] [--patchset=<number>]
        delivery diff <change> [--for=<pipeline>] [--patchset=<number>] [--local]
-       delivery init [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--project=<project>]
+       delivery init [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--project=<project>] [--type=<type>]
        delivery setup [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--config-path=<dir>] [--for=<pipeline>]
        delivery job <stage> <phase> [--change=<change>] [--for=<pipeline>] [--job-root=<dir>] [--project=<project>] [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--patchset=<number>] [--git-url=<url>] [--shasum=<gitsha>] [--change-id=<id>] [--no-spinner]
        delivery pipeline [--for=<pipeline>] [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--project=<project>] [--config-path=<dir>]
@@ -75,6 +76,7 @@ Options:
   -i, --change-id=<id>     A delivery change ID
   -n, --no-spinner         Turn off the delightful spinner :(
   <change>                 A delivery change branch name
+  <type>                   The type of project (currently supported: cookbook)
 ");
 
 macro_rules! validate {
@@ -113,8 +115,9 @@ fn main() {
             flag_ent: ref ent,
             flag_org: ref org,
             flag_project: ref proj,
+            flag_type: ref proj_type,
             ..
-        } => init(&user, &server, &ent, &org, &proj),
+        } => init(&user, &server, &ent, &org, &proj, &proj_type),
         Args {
             cmd_checkout: true,
             arg_change: ref change,
@@ -249,7 +252,7 @@ fn setup(user: &str, server: &str, ent: &str, org: &str, path: &str, pipeline: &
 }
 
 #[allow(dead_code)]
-fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str) -> Result<(), DeliveryError> {
+fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str, proj_type: &str) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
     // Since we wind up taking the filename as a reference, we need to
@@ -273,14 +276,13 @@ fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str) -> Result<()
     let e = validate!(config, enterprise);
     let o = validate!(config, organization);
     let p = validate!(config, project);
-    try!(git::config_repo(
-            &u,
-            &s,
-            &e,
-            &o,
-            &p,
-            &cwd));
-    sayln("white", "Configuration added!");
+    if try!(git::config_repo(&u, &s, &e, &o, &p, &cwd)) {
+        sayln("white", "Remote 'delivery' added to git config!");
+    }
+
+    // now to adding the .delivery/config.json
+    try!(DeliveryConfig::init(&cwd, proj_type));
+
     Ok(())
 }
 

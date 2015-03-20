@@ -154,6 +154,9 @@ This may update the Cargo.lock file, which is currently checked in. If there are
 
 If there are syntax or other errors, well, good luck!
 
+Note that you can set the logging level by exporting the `RUST_LOG` env var
+(e.g to `debug`).
+
 ## Build me
 
 ```bash
