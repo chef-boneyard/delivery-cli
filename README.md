@@ -135,6 +135,41 @@ The cache has a deadline of 24 hours - when it passes, we run it again no matter
 
 The guard statement is optional.
 
+## Node Attributes
+
+When you run `delivery job` a `dna.json` file specific to your change is created
+in your workspace that contains node attributes that you can reference in your
+build cookbooks.
+
+### Workspace Details
+Attributes in the `node['delivery']['workspace']` namespace provide paths to the
+various directories in your change's workspace on your build node.
+
+* `node['delivery']['workspace']['root']`
+* `node['delivery']['workspace']['repo']`
+* `node['delivery']['workspace']['chef']`
+* `node['delivery']['workspace']['cache']`
+
+### Change Details
+Attributes in the `node['delivery']['change']` namespace provide details about
+this particular job execution.
+
+* `node['delivery']['change']['enterprise']`
+* `node['delivery']['change']['organization']`
+* `node['delivery']['change']['project']`
+* `node['delivery']['change']['pipeline']`
+* `node['delivery']['change']['change_id']`
+* `node['delivery']['change']['patchset_number']`
+* `node['delivery']['change']['stage']`
+* `node['delivery']['change']['phase']`
+* `node['delivery']['change']['git_url']`
+* `node['delivery']['change']['sha']`
+* `node['delivery']['change']['patchset_branch']`
+
+### Project Configuration Details
+The contents of your `.delivery/config.json` file are made available to you in the
+`node['delivery']['config']` namespace.
+
 ## Development
 
 While the Rust Language is now moving towards 1.0, and things should begin to stabilize, follow-on releases sometimes introduce non-backwardly-compatable changes, which can break this build. Until Rust truly stabilizes, you'll need to install rust (the easiest way on mac):
