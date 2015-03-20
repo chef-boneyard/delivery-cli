@@ -28,6 +28,7 @@ use std::error;
 use std::io::prelude::*;
 use errors::{DeliveryError, Kind};
 use token::TokenStore;
+use utils::say::{sayln};
 
 mod headers;
 pub mod token;
@@ -89,6 +90,15 @@ impl APIClient {
         }
     }
 
+    pub fn get_auth_from_home(&mut self, server: &str, ent: &str, user: &str) -> Result<APIAuth, DeliveryError> {
+        match TokenStore::from_home() {
+            Ok(tstore) => {
+                APIAuth::from_token_store(tstore, server, ent, user)
+            },
+            Err(e) => Err(e)
+        }
+    }
+
     pub fn set_auth(&mut self, auth: APIAuth) {
         self.auth = Some(auth);
     }
@@ -96,6 +106,29 @@ impl APIClient {
     pub fn api_url(&self, path: &str) -> String {
         format!("{}://{}/api/v0/e/{}/{}",
                 self.proto, self.host, self.enterprise, path)
+    }
+
+    pub fn project_exists(&self,
+                          org: &str,
+                          proj: &str) -> bool {
+
+        let path = format!("orgs/{}/projects/{}", org, proj);
+        match self.get(&path) {
+            Ok(res) => {
+                match res.status {
+                    StatusCode::Ok => {
+                        return true;
+                    },
+                    _ => {
+                        return false;
+                    }
+                }
+            },
+            Err(e) => {
+                sayln("red", &format!("project_exists: HttpError: {:?}", e));
+                return false;
+            }
+        }
     }
 
     pub fn create_project(&self,
@@ -134,7 +167,7 @@ impl APIClient {
         let base_branch = "master";
         let payload = format!("{{\"name\":\"{}\",\"base\":\"{}\"}}",
                               pipe, base_branch);
-                match self.post(path.as_slice(), payload.as_slice()) {
+        match self.post(&path, &payload) {
             Ok(mut res) => {
                 match res.status {
                     StatusCode::Created =>
@@ -281,7 +314,6 @@ impl APIAuth {
          headers::ChefDeliveryToken(self.token.clone()))
     }
 }
-
 
 #[cfg(test)]
 mod tests {
