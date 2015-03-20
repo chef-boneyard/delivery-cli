@@ -35,6 +35,12 @@ directory "/opt/delivery-cli" do
   owner 'dbuild'
 end
 
+# Make sure all the files are owned by us - keeps us safe after package upgrades
+execute "chown -R dbuild /opt/delivery-cli"
+
+# Make a backup so that if the build fails, we can rescue ourselves
+execute "rsync -aP --delete /opt/delivery-cli/ /opt/delivery-cli-safe"
+
 chef_gem "omnibus" do
 #  compile_time false if Chef::Resource::ChefGem.method_defined?(:compile_time)
 end
