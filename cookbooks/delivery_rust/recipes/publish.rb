@@ -1,3 +1,16 @@
+require 'chef/handler'
+
+class OmnibusErrorHandler < Chef::Handler
+  extend Chef::Mixin::ShellOut
+
+  def report
+    Chef::Log.error("Rolling back to previous delivery-cli")
+    shell_out!("rsync -aP /opt/delivery-cli-safe/ /opt/delivery-cli")
+  end
+end
+
+Chef::Config.error_handlers << OmnibusErrorHandler.new()
+
 omnibus_path = File.join(node['delivery_builder']['repo'], 'omnibus-delivery-cli')
 
 execute "bundle install --binstubs=#{omnibus_path}/bin --path=#{File.join(node['delivery_builder']['cache'], 'gems')}" do
