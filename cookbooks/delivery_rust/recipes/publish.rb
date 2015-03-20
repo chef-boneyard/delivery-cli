@@ -9,7 +9,7 @@ class OmnibusErrorHandler < Chef::Handler
   end
 end
 
-Chef::Config.error_handlers << OmnibusErrorHandler.new()
+Chef::Config.exception_handlers << OmnibusErrorHandler.new()
 
 omnibus_path = File.join(node['delivery_builder']['repo'], 'omnibus-delivery-cli')
 
