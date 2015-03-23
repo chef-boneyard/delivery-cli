@@ -80,7 +80,7 @@ pub fn turn_off_spinner() {
     }
 }
 
-fn say_term(mut t: Box<term::StdTerminal>, color: &str, to_say: &str) {
+fn say_term(mut t: Box<term::StdoutTerminal>, color: &str, to_say: &str) {
     let color_const = match color {
         "green" => term::color::BRIGHT_GREEN,
         "yellow" => term::color::BRIGHT_YELLOW,
