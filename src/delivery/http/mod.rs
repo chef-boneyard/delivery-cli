@@ -195,10 +195,6 @@ impl APIClient {
                 let mut body_string = String::new();
                 let _x = try!(b.read_to_string(&mut body_string));
                 body_string
-                // match b.read_to_string(&mut body_string) {
-                //     Ok(_) => body_string,
-                //     Err(e) => return Err(e)
-                // }
             },
             Err(e) => return Err(DeliveryError{kind: Kind::HttpError(e),
                                                detail: None})
