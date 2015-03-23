@@ -29,7 +29,10 @@ use std::io::BufReader;
 use std::path::PathBuf;
 use std::fs::{File, OpenOptions};
 use std::collections::BTreeMap;
-use errors::DeliveryError;
+use std::env;
+use errors::{DeliveryError, Kind};
+use utils;
+use utils::path_join_many::PathJoinMany;
 
 #[derive(Debug)]
 pub struct TokenStore {
@@ -38,10 +41,28 @@ pub struct TokenStore {
 }
 
 impl TokenStore {
+    pub fn from_home() -> Result<TokenStore, DeliveryError> {
+        let home_dot_delivery = match env::home_dir() {
+            Some(home) => home.join_many(&[".delivery"]),
+            None => {
+                let msg = "unable to find home dir".to_string();
+                return Err(DeliveryError{ kind: Kind::NoHomedir,
+                                          detail: Some(msg) })
+            }
+        };
+        try!(utils::mkdir_recursive(&home_dot_delivery));
+        let token_path = home_dot_delivery.join_many(&["api-tokens"]);
+        TokenStore::from_file(&token_path)
+    }
+
     pub fn from_file(path: &PathBuf) -> Result<TokenStore, DeliveryError> {
         let tokens = try!(TokenStore::read_config(&path));
         let tstore = TokenStore {path: path.clone(), tokens: tokens};
         Ok(tstore)
+    }
+
+    pub fn path(&self) -> PathBuf {
+        self.path.clone()
     }
 
     pub fn lookup(&self,
@@ -112,13 +133,13 @@ impl TokenStore {
 
 #[cfg(test)]
 mod tests {
-    use super::TokenStore;
+    use super::*;
     use std::io::prelude::*;
     use std::fs::File;
     use tempdir::TempDir;
     use utils::path_join_many::PathJoinMany;
 
-    #[test]
+     #[test]
     fn create_from_empty_test() {
         let tempdir = TempDir::new("t1").ok().expect("TempDir failed");
         let path = tempdir.path();

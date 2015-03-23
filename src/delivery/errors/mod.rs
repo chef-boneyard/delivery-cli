@@ -24,6 +24,7 @@ use hyper::HttpError;
 
 #[derive(Debug)]
 pub enum Kind {
+    AuthenticationFailed,
     NoMatchingCommand,
     NotOnABranch,
     CannotReviewSameBranch,
@@ -58,7 +59,8 @@ pub enum Kind {
     HttpError(hyper::HttpError),
     ApiError(hyper::status::StatusCode, Result<String, io::Error>),
     JsonParseError,
-    OpenFailed
+    OpenFailed,
+    NoToken
 }
 
 #[derive(Debug)]
@@ -110,7 +112,9 @@ impl error::Error for DeliveryError {
             Kind::HttpError(_) => "An HTTP Error occured",
             Kind::ApiError(_, _) => "An API Error occured",
             Kind::JsonParseError => "Attempted to parse invalid JSON",
-            Kind::OpenFailed => "Open command failed"
+            Kind::OpenFailed => "Open command failed",
+            Kind::AuthenticationFailed => "Authentication failed",
+            Kind::NoToken => "Missing API token. Try `delivery token` to create one"
         }
     }
 
@@ -143,6 +147,15 @@ impl error::FromError<json::EncoderError> for DeliveryError {
     }
 }
 
+impl error::FromError<json::DecoderError> for DeliveryError {
+    fn from_error(err: json::DecoderError) -> DeliveryError {
+        DeliveryError{
+            kind: Kind::JsonParseError,
+            detail: Some(err.description().to_string())
+        }
+    }
+}
+
 impl error::FromError<io::Error> for DeliveryError {
     fn from_error(err: io::Error) -> DeliveryError {
         DeliveryError{
@@ -156,6 +169,15 @@ impl error::FromError<json::ParserError> for DeliveryError {
     fn from_error(err: json::ParserError) -> DeliveryError {
         DeliveryError{
             kind: Kind::JsonError,
+            detail: Some(err.description().to_string())
+        }
+    }
+}
+
+impl error::FromError<hyper::HttpError> for DeliveryError {
+    fn from_error(err: hyper::HttpError) -> DeliveryError {
+        DeliveryError{
+            kind: Kind::HttpError(err.clone()),
             detail: Some(err.description().to_string())
         }
     }

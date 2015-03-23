@@ -43,7 +43,7 @@ use delivery::job::workspace::{Workspace, Privilege};
 use delivery::utils::path_join_many::PathJoinMany;
 use delivery::getpass;
 use delivery::token;
-use delivery::http::APIClient;
+use delivery::http::{self, APIClient, APIAuth};
 
 docopt!(Args derive Debug, "
 Usage: delivery review [--for=<pipeline>] [--no-open]
@@ -514,22 +514,12 @@ fn api_token(server: &str, ent: &str,
     let e = validate!(config, enterprise);
     let u = validate!(config, user);
 
-    let home_dot_delivery = match env::home_dir() {
-        Some(home) => home.join_many(&[".delivery"]),
-        None => {
-            let msg = "unable to find home dir".to_string();
-            return Err(DeliveryError{ kind: Kind::NoHomedir,
-                                      detail: Some(msg) })
-        }
-    };
-    try!(utils::mkdir_recursive(&home_dot_delivery));
-    let token_path = home_dot_delivery.join_many(&["api-tokens"]);
-    let mut tstore = try!(token::TokenStore::from_file(&token_path));
-    say("yellow", "delivery password: ");
-    let _pass = getpass::read("");
-
-    try!(tstore.write_token(&s, &e, &u, "exampletoken"));
-    sayln("green", &format!("saved API token to: {}", token_path.display()));
+    let mut tstore = try!(token::TokenStore::from_home());
+    let pass = getpass::read("Delivery password: ");
+    let token = try!(http::token::request(&s, &e, &u, &pass));
+    sayln("magenta", &format!("token: {}", &token));
+    try!(tstore.write_token(&s, &e, &u, &token));
+    sayln("green", &format!("saved API token to: {}", tstore.path().display()));
     Ok(())
 }
 
@@ -581,7 +571,12 @@ fn api_req(method: &str, path: &str, data: &str,
     let s = validate!(config, server);
     let e = validate!(config, enterprise);
 
-    let client = APIClient::new_https(s.as_slice(), e.as_slice());
+    let mut client = APIClient::new_https(&s, &e);
+
+    let tstore = try!(token::TokenStore::from_home());
+    
+    let auth = try!(APIAuth::from_token_store(tstore, &s, &e, &u));
+    client.set_auth(auth);
     let result = match method {
         "get" => client.get(path),
         "post" => client.post(path, data),

@@ -26,7 +26,11 @@ use rustc_serialize::json;
 use errors::Kind as DelivError;
 use std::error;
 use std::io::prelude::*;
+use errors::{DeliveryError, Kind};
+use token::TokenStore;
+
 mod headers;
+pub mod token;
 
 #[derive(Debug)]
 enum HProto {
@@ -59,7 +63,7 @@ pub struct APIClient {
     proto: HProto,
     host: String,
     enterprise: String,
-    auth: APIAuth
+    auth: Option<APIAuth>
 }
 
 impl APIClient {
@@ -81,10 +85,14 @@ impl APIClient {
             proto: proto,
             host: String::from_str(host),
             enterprise: String::from_str(ent),
-            auth: APIAuth::from_env()
+            auth: None
         }
     }
 
+    pub fn set_auth(&mut self, auth: APIAuth) {
+        self.auth = Some(auth);
+    }
+    
     pub fn api_url(&self, path: &str) -> String {
         format!("{}://{}/api/v0/e/{}/{}",
                 self.proto, self.host, self.enterprise, path)
@@ -149,11 +157,14 @@ impl APIClient {
         let url = self.api_url(path);
         let mut client = hyper::Client::new();
         let req = client.get(url.as_slice());
-        let auth = APIAuth::from_env();
-        let (deliv_user, deliv_token) = auth.auth_headers();
-        let req = req.header(self.json_content())
-            .header(deliv_user)
-            .header(deliv_token);
+        let req = req.header(self.json_content());
+        let req = match self.auth {
+            Some(ref auth) => {
+                let (deliv_user, deliv_token) = auth.auth_headers();
+                req.header(deliv_user).header(deliv_token)
+            },
+            None => req
+        };
         req.send()
     }
 
@@ -163,16 +174,32 @@ impl APIClient {
         let url = self.api_url(path);
         let mut client = hyper::Client::new();
         let req = client.post(url.as_slice());
-        let auth = APIAuth::from_env();
-        let (deliv_user, deliv_token) = auth.auth_headers();
-        let req = req.header(self.json_content())
-            .header(deliv_user)
-            .header(deliv_token);
+        let req = req.header(self.json_content());
+        let req = match self.auth {
+            Some(ref auth) => {
+                let (deliv_user, deliv_token) = auth.auth_headers();
+                req.header(deliv_user).header(deliv_token)
+            },
+            None => req
+        };
         if !payload.is_empty() {
             req.body(payload).send()
         } else {
             req.send()
         }
+    }
+
+    pub fn parse_json(result: Result<HyperResponse, hyper::HttpError>) -> Result<json::Json, DeliveryError> {
+        let body = match result {
+            Ok(mut b) => {
+                let mut body_string = String::new();
+                let _x = try!(b.read_to_string(&mut body_string));
+                body_string
+            },
+            Err(e) => return Err(DeliveryError{kind: Kind::HttpError(e),
+                                               detail: None})
+        };
+        Ok(try!(json::Json::from_str(&body)))
     }
 
     pub fn extract_pretty_json<T: error::Error>(
@@ -211,7 +238,7 @@ impl APIClient {
 }
 
 #[derive(Debug)]
-struct APIAuth {
+pub struct APIAuth {
     user: String,
     token: String
 }
@@ -223,6 +250,31 @@ impl APIAuth {
         APIAuth { user: user, token: token }
     }
 
+    pub fn from_token_store(tstore: TokenStore,
+                            server: &str, ent: &str,
+                            user: &str) -> Result<APIAuth, DeliveryError> {
+        match tstore.lookup(server, ent, user) {
+            Some(token) => {
+                Ok(APIAuth{ user: String::from_str(user),
+                             token: String::from_str(token)})
+            },
+            None => {
+                let msg = format!("server: {}, ent: {}, user: {}",
+                                  server, ent, user);
+                Err(DeliveryError{ kind: Kind::NoToken,
+                                   detail: Some(msg)})
+            }
+        }
+    }
+
+    pub fn user(&self) -> String {
+        self.user.clone()
+    }
+
+    pub fn token(&self) -> String {
+        self.token.clone()
+    }
+    
     pub fn auth_headers(&self) -> (headers::ChefDeliveryUser,
                                    headers::ChefDeliveryToken) {
         (headers::ChefDeliveryUser(self.user.clone()),
@@ -230,12 +282,15 @@ impl APIAuth {
     }
 }
 
+
 #[cfg(test)]
 mod tests {
-    use super::APIClient;
-    use super::APIAuth;
+    use super::*;
+    use token::TokenStore;
     use std::env;
-
+    use tempdir::TempDir;
+    use utils::path_join_many::PathJoinMany;
+    
     #[test]
     fn api_auth() {
         fake_test_env();
@@ -248,18 +303,22 @@ mod tests {
 
     #[test]
     fn http_api_url_test() {
-        fake_test_env();
-        let client = APIClient::new_http("localhost:4343",
+        let mut client = APIClient::new_http("localhost:4343",
                                          "Chef");
+        fake_test_env();
+        let auth = APIAuth::from_env();        
+        client.set_auth(auth);
         let url = client.api_url("foo/bar");
         assert_eq!("http://localhost:4343/api/v0/e/Chef/foo/bar", url)
     }
 
     #[test]
     fn https_api_url_test() {
-        fake_test_env();
-        let client = APIClient::new_https("localhost:4343",
+        let mut client = APIClient::new_https("localhost:4343",
                                           "Chef");
+        fake_test_env();
+        let auth = APIAuth::from_env();        
+        client.set_auth(auth);
         let url = client.api_url("foo/bar");
         assert_eq!("https://localhost:4343/api/v0/e/Chef/foo/bar", url)
     }
@@ -268,19 +327,39 @@ mod tests {
         env::set_var("DEL_USER", "pete");
         env::set_var("TOKEN", "deadbeefcafe");
     }
-    // #[test]
-    // fn something() {
-    //     let client = APIClient::new_https("172.31.6.130", "Chef");
-    //     client.call();
-    //     assert_eq!(1, 2);
-    // }
 
-    // #[test]
-    // fn post_test() {
-    //     let client = APIClient;
-    //     let payme = "{\"a\":1}";
-    //     let resp_body = client.post("localhost:4343", "foo/bra", payme);
-    //     println!("result of post: {}", resp_body);
-    //     assert_eq!("abc", resp_body);
-    // }
+    #[test]
+    fn from_empty_token_store_test() {
+        let tempdir = TempDir::new("t1").ok().expect("TempDir failed");
+        let path = tempdir.path();
+        let tfile = path.join_many(&["api-tokens"]);
+        let tstore = TokenStore::from_file(&tfile).ok().expect("tstore sad");
+
+        // token store is empty so we expect an Err()
+        let from_empty = APIAuth::from_token_store(tstore,
+                                                   "127.0.0.1", "acme", "bob");
+        assert_eq!(true, from_empty.or_else(|e| {
+            let msg = "server: 127.0.0.1, ent: acme, user: bob";
+            assert_eq!(msg, e.detail().unwrap());
+            Err(e)
+        }).is_err());
+    }
+
+    #[test]
+    fn from_non_empty_token_store_test() {
+        let tempdir = TempDir::new("t1").ok().expect("TempDir failed");
+        let path = tempdir.path();
+        let tfile = path.join_many(&["api-tokens"]);
+        let mut tstore = TokenStore::from_file(&tfile).ok().expect("tstore sad");
+        let write_result = tstore.write_token("127.0.0.1", "acme", "bob",
+                                              "beefbeef");
+        assert_eq!(true, write_result.is_ok());
+        let auth = APIAuth::from_token_store(tstore, "127.0.0.1", "acme", "bob");
+        assert_eq!(true, 
+                   auth.and_then(|a| {
+                       assert_eq!("bob", a.user());
+                       assert_eq!("beefbeef", a.token());
+                       Ok(a)
+                   }).is_ok());
+    }
 }
