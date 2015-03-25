@@ -44,6 +44,7 @@ use delivery::utils::path_join_many::PathJoinMany;
 use delivery::getpass;
 use delivery::token;
 use delivery::http::{self, APIClient, APIAuth};
+use delivery::project;
 
 docopt!(Args derive Debug, "
 Usage: delivery review [--for=<pipeline>] [--no-open]
@@ -266,6 +267,7 @@ fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str, proj_type: &
     } else {
         proj
     };
+
     config = config.set_user(user)
         .set_server(server)
         .set_enterprise(ent)
@@ -276,9 +278,8 @@ fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str, proj_type: &
     let e = validate!(config, enterprise);
     let o = validate!(config, organization);
     let p = validate!(config, project);
-    if try!(git::config_repo(&u, &s, &e, &o, &p, &cwd)) {
-        sayln("white", "Remote 'delivery' added to git config!");
-    }
+
+    try!(project::import(&u, &s, &e, &o, &p, &cwd));
 
     // now to adding the .delivery/config.json
     try!(DeliveryConfig::init(&cwd, proj_type));
@@ -345,7 +346,7 @@ fn diff(change: &str, patchset: &str, pipeline: &str, local: &bool) -> Result<()
     let target = validate!(config, pipeline);
     say("white", "Showing diff for ");
     say("yellow", change);
-    say("white", " targeted for pipeline ");
+   say("white", " targeted for pipeline ");
     say("magenta", &target);
 
     if patchset == "latest" {
@@ -543,11 +544,11 @@ fn init_pipeline(server: &str, user: &str,
         .set_organization(org)
         .set_project(final_proj);
     let p = validate!(config, project);
-    let u = validate!(config, user);
-    let s = validate!(config, server);
+    let _ = validate!(config, user);
+    let _ = validate!(config, server);
     let e = validate!(config, enterprise);
     let o = validate!(config, organization);
-    say("white", "hello, pipeline\n");
+    say("white", &format!("hello, pipeline {}\n", pipeline));
     sayln("white", format!("e: {} o: {} p: {}", e, o, p).as_slice());
     // create the project
     // setup the remote

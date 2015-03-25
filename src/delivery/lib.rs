@@ -41,3 +41,4 @@ pub mod job;
 pub mod getpass;
 pub mod token;
 pub mod http;
+pub mod project;

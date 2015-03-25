@@ -21,8 +21,9 @@ use std::process::Command;
 use utils::say::{say, sayln, Spinner};
 use errors::{DeliveryError, Kind};
 use std::env;
-use std::path::{AsPath, PathBuf};
+use std::path::{Path, AsPath, PathBuf};
 use std::error;
+use std::fs::PathExt;
 
 fn cwd() -> PathBuf {
     env::current_dir().unwrap()
@@ -238,7 +239,39 @@ pub fn delivery_ssh_url(user: &str, server: &str, ent: &str, org: &str, proj: &s
     format!("ssh://{}@{}@{}:8989/{}/{}/{}", user, ent, server, ent, org, proj)
 }
 
+pub fn init_repo(path: &PathBuf) -> Result<(), DeliveryError> {
+    say("white", "Is ");
+    say("magenta", &format!("{} ", path.display()));
+    say("white", "a git repo?  ");
+
+    let git_dir = Path::new("./.git");
+
+    if git_dir.exists() {
+        sayln("white", "yes");
+        return Ok(())
+    } else {
+        sayln("red", "no. Run 'git init' here and then 'delivery init' again.");
+        return Err(DeliveryError{ kind: Kind::GitSetupFailed, detail: None })
+    }
+}
+
+// This function is not currently used, but will be when we
+// add a --force option to the init command.
+pub fn create_repo(path: &PathBuf) -> Result<(), DeliveryError> {
+    say("white", "Creating repo in: ");
+    say("magenta", &format!("{} ", path.display()));
+    let result = git_command(&["init"], path);
+    match result {
+        Ok(_) => {
+            sayln("white", "'git init' done.");
+            return Ok(());
+        },
+        Err(e) => return Err(e)
+    }
+}
+
 pub fn config_repo(user: &str, server: &str, ent: &str, org: &str, proj: &str, path: &PathBuf) -> Result<bool, DeliveryError> {
+    sayln("white", &format!("adding remote: {}", &delivery_ssh_url(user, server, ent, org, proj)));
     let url = delivery_ssh_url(user, server, ent, org, proj);
     let result = git_command(&["remote", "add", "delivery", &url], path);
     match result {
@@ -312,5 +345,48 @@ pub fn checkout_review(change: &str, patchset: &str, pipeline: &str) -> Result<(
                 }
             }
         },
+    }
+}
+
+pub fn server_content() -> bool {
+    match git_command(&["ls-remote", "delivery", "refs/heads/master"], &cwd()) {
+        Ok(msg) => {
+            if msg.stdout.contains("refs/heads/master") {
+                say("red", &format!("{}", msg.stdout));
+                return true
+            } else {
+                sayln("white", "No upstream content");
+                return false
+            }
+        },
+        Err(e) => {
+            sayln("red", &format!("got error {:?}", e));
+            return false
+        }
+    }
+}
+
+pub fn git_push_master() -> Result<(), DeliveryError> {
+    match git_command(&["push", "--set-upstream",
+                       "--porcelain", "--progress",
+                       "--verbose", "delivery", "master"],
+                      &cwd()) {
+        Ok(msg) => {
+            sayln("white", &format!("{}", msg.stdout));
+            return Ok(())
+        },
+        Err(e) => {
+            match e.detail {
+                Some(msg) => {
+                    if msg.contains("failed to push some refs") {
+                        sayln("red", &format!("Failed to push; perhaps there are no local commits?"));
+                    }
+                    return Ok(())
+                },
+                None => {
+                    return Err(e)
+                }
+            }
+        }
     }
 }
