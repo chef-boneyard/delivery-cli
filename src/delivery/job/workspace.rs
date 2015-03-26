@@ -432,7 +432,7 @@ end
         if ! self.repo.join(".git").is_dir() {
             try!(git::git_command(&["clone", git_url, "."], &self.repo));
         }
-        try!(git::git_command(&["remote", "update"], &self.repo));
+        try!(git::git_command(&["remote", "update", "origin"], &self.repo));
         try!(self.reset_repo("HEAD"));
         try!(git::git_command(&["checkout", pipeline], &self.repo));
         try!(self.reset_repo(&format!("remotes/origin/{}", pipeline)));
