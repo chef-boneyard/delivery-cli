@@ -1,5 +1,8 @@
-
 execute "cargo clean" do
+  cwd node['delivery_builder']['repo']
+end
+
+execute "cargo build --release" do
   cwd node['delivery_builder']['repo']
 end
 
@@ -9,5 +12,10 @@ execute "cargo test" do
       'RUST_TEST_TASKS' => "1"
     })
   end
+  cwd node['delivery_builder']['repo']
+end
+
+execute "Cucumber Behavioral Tests" do
+  command "make cucumber"
   cwd node['delivery_builder']['repo']
 end

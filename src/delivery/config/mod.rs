@@ -30,6 +30,7 @@ use utils::path_join_many::PathJoinMany;
 #[derive(RustcEncodable, Clone)]
 pub struct Config {
     pub server: Option<String>,
+    pub api_port: Option<String>,
     pub user: Option<String>,
     pub enterprise: Option<String>,
     pub organization: Option<String>,
@@ -42,6 +43,7 @@ impl Default for Config {
     fn default() -> Config {
         Config{
             server: None,
+            api_port: None,
             enterprise: None,
             organization: None,
             project: None,
@@ -73,6 +75,7 @@ macro_rules! config_accessor_for {
 }
 
 config_accessor_for!(server, set_server, "Server not set; try --server or set it in your .toml config file");
+config_accessor_for!(api_port, set_api_port, "API port not set; try --api-port or set it in your .toml config file");
 config_accessor_for!(user, set_user, "User not set; try --user or set it in your .toml config file");
 config_accessor_for!(enterprise, set_enterprise, "Enterprise not set; try --ent or set it in your .toml config file");
 config_accessor_for!(organization, set_organization, "Organization not set; try --org or set it in your .toml config file");
@@ -81,6 +84,30 @@ config_accessor_for!(git_port, set_git_port, "Git Port not set; please set it in
 config_accessor_for!(pipeline, set_pipeline, "Pipeline not set; try --for or set it in your .toml config file");
 
 impl Config {
+
+    /// Return the host and port at which we can access the Delivery
+    /// API. By default, we assume the use of HTTPS on the standard
+    /// port `443`. Unless a port is specified in the configuration,
+    /// we'll just return the server name; otherwise we append the
+    /// port.
+    pub fn api_host_and_port(self) -> Result<String,DeliveryError> {
+        let s = try!(self.clone().server());
+        return Ok(match self.api_port {
+            Some(p) => format!("{}:{}", s, p),
+            None    => s
+        });
+    }
+
+    /// Return the host and port at which we can access the Delivery
+    /// Git server.
+    pub fn git_host_and_port(self) -> Result<String,DeliveryError> {
+        let s = try!(self.clone().server());
+        return Ok(match self.git_port {
+            Some(p) => format!("{}:{}", s, p),
+            None    => s // TODO: Currently we *always* have a git port
+        });
+    }
+
     pub fn load_config(cwd: &PathBuf) -> Result<Config, DeliveryError> {
         let have_config = Config::have_dot_delivery_cli(cwd);
         match have_config.as_ref() {
@@ -128,6 +155,7 @@ impl Config {
     fn set_values_from_toml_table(table: toml::Table) -> Result<Config, DeliveryError> {
         let mut config: Config = Default::default();
         config.server = Config::stringify_values(table.get("server"));
+        config.api_port = Config::stringify_values(table.get("api_port"));
         config.project = Config::stringify_values(table.get("project"));
         config.enterprise = Config::stringify_values(table.get("enterprise"));
         config.organization = Config::stringify_values(table.get("organization"));
@@ -186,6 +214,7 @@ impl Config {
 #[cfg(test)]
 mod tests {
     use super::Config;
+    use std::default::Default;
 
     #[test]
     fn parse_config() {
@@ -205,5 +234,54 @@ mod tests {
                 panic!("Failed to parse: {:?}", e.detail)
             }
         }
+    }
+
+    #[test]
+    fn test_api_url_with_port() {
+        let mut conf  = Config::default();
+        conf.server   = Some("127.0.0.1".to_string());
+        conf.api_port = Some("2112".to_string());
+        assert_eq!(conf.api_host_and_port().ok().unwrap(),
+                   "127.0.0.1:2112".to_string());
+    }
+
+    #[test]
+    fn test_api_url_without_port() {
+        let mut conf = Config::default();
+        conf.server  = Some("127.0.0.1".to_string());
+        assert!(conf.api_port.is_none());
+        assert_eq!(conf.api_host_and_port().ok().unwrap(),
+                   "127.0.0.1".to_string());
+    }
+
+    #[test]
+    fn test_api_url_without_server() {
+        let conf = Config::default();
+        assert!(conf.server.is_none());
+        assert!(conf.api_host_and_port().is_err());
+    }
+
+    #[test]
+    fn test_git_url_with_default_port() {
+        let mut conf  = Config::default();
+        conf.server   = Some("127.0.0.1".to_string());
+        assert_eq!(conf.git_host_and_port().ok().unwrap(),
+                   "127.0.0.1:8989".to_string());
+    }
+
+    #[test]
+    fn test_git_url_with_port() {
+        let mut conf  = Config::default();
+        conf.server   = Some("127.0.0.1".to_string());
+        conf.git_port = Some("2112".to_string());
+        assert_eq!(conf.git_host_and_port().ok().unwrap(),
+                   "127.0.0.1:2112".to_string());
+    }
+
+    #[test]
+    fn test_git_url_without_server() {
+        let conf = Config::default();
+        assert!(conf.server.is_none());
+        assert!(conf.git_host_and_port().is_err());
     }
 }

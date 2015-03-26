@@ -45,3 +45,14 @@ rustup:
 	$(RUST_UP_COMMAND)
 
 .PHONY: all build clean check test rustcheck
+
+bin/cucumber: Gemfile
+	bundle install --binstubs=bin --path=vendor/bundle
+
+# Our fake api server generates its own self-signed certificate, and
+# outputs some noice on standard error; redirecting it to /dev/null
+# cleans up the output a little bit.
+#
+# Depends on the target/release/delivery executable having been built
+cucumber: build bin/cucumber
+	bin/cucumber 2>/dev/null
