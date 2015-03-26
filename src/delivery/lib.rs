@@ -15,7 +15,7 @@
 // limitations under the License.
 //
 
-#![feature(plugin, collections, std_misc, core, old_io, path_ext)]
+#![feature(plugin, collections, std_misc, core, old_io, path_ext, convert)]
 #![plugin(regex_macros, docopt_macros)]
 extern crate regex;
 #[no_link] extern crate regex_macros;
@@ -25,7 +25,7 @@ extern crate docopt;
 extern crate term;
 extern crate toml;
 extern crate time;
-extern crate "rustc-serialize" as rustc_serialize;
+extern crate rustc_serialize;
 extern crate libc;
 extern crate tempdir;
 extern crate uuid;

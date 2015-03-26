@@ -15,7 +15,7 @@
 // limitations under the License.
 //
 
-#![feature(plugin, collections, core, exit_status)]
+#![feature(plugin, collections, core, exit_status, convert)]
 #![plugin(regex_macros, docopt_macros)]
 extern crate regex;
 #[no_link] extern crate regex_macros;
@@ -25,7 +25,7 @@ extern crate docopt;
 extern crate env_logger;
 extern crate term;
 extern crate delivery;
-extern crate "rustc-serialize" as rustc_serialize;
+extern crate rustc_serialize;
 
 use std::env;
 use std::error::Error;
@@ -240,7 +240,7 @@ fn setup(user: &str, server: &str, ent: &str, org: &str, path: &str, pipeline: &
     let config_path = if path.is_empty() {
         cwd()
     } else {
-        PathBuf::new(path)
+        PathBuf::from(path)
     };
     let mut config = try!(load_config(&config_path));
     config = config.set_server(server)
@@ -432,7 +432,7 @@ Result<(), DeliveryError> { sayln("green", "Chef Delivery");
     sayln("magenta", &format!(" {}", phase));
     let job_root_path = if job_root.is_empty() {
         if privileged_process() {
-            PathBuf::new("/var/opt/delivery/workspace").join_many(&[&s[..], &e, &o, &p, &pi, stage, phase])
+            PathBuf::from("/var/opt/delivery/workspace").join_many(&[&s[..], &e, &o, &p, &pi, stage, phase])
         } else {
             match env::home_dir() {
                 Some(path) => path.join_many(&[".delivery", &s, &e, &o, &p, &pi, stage, phase]),
@@ -440,7 +440,7 @@ Result<(), DeliveryError> { sayln("green", "Chef Delivery");
             }
         }
     } else {
-        PathBuf::new(job_root)
+        PathBuf::from(job_root)
     };
     let ws = Workspace::new(&job_root_path);
     sayln("white", "Creating workspace");
