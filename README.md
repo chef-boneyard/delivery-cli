@@ -2,6 +2,8 @@
 
 The CLI for Chef Delivery. Written in Rust, super experimental, will probably hurt your kittens.
 
+_This is alpha stage software, and is in a state of perpetual change. Use at your own risk!_
+
 ## Usage
 
 Start using `delivery` by issuing the setup command:
