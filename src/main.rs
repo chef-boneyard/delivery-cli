@@ -283,7 +283,9 @@ fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str, proj_type: &
 
     // now to adding the .delivery/config.json
     try!(DeliveryConfig::init(&cwd, proj_type));
-
+    // if we got here, we've checked out a feature branch, added a
+    // config file, and made a local commit. Let's create the review!
+    try!(review("master", &false));
     Ok(())
 }
 
