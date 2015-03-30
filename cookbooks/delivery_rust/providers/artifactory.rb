@@ -6,13 +6,24 @@ end
 
 action :create do
   require 'artifactory'
-  require 'omnibus'
-  require 'omnibus/config'
 
-  Omnibus::Config.artifactory_endpoint(new_resource.endpoint)
-  Omnibus::Config.artifactory_base_path(new_resource.base_path)
-  Omnibus::Config.artifactory_username(new_resource.username)
-  Omnibus::Config.artifactory_password(new_resource.password)
+  omnibus_config = File.join(node['delivery']['workspace']['cache'], 'omnibus-publish.rb')
+
+  # Render an Omnibus config file for publishing
+  file omnibus_config do
+    content <<-EOH
+# This file is written by Chef for #{node['fqdn']}.
+# Do NOT modify this file by hand.
+
+artifactory_endpoint  '#{new_resource.endpoint}
+artifactory_base_path '#{new_resource.base_path}'
+artifactory_username  '#{new_resource.username}'
+artifactory_password  '#{new_resource.password}'
+  EOH
+    mode '0600'
+    owner 'dbuild'
+    group 'dbuild'
+  end
 
   packages = []
   if new_resource.package_path
@@ -24,16 +35,11 @@ action :create do
   end
 
   packages.each do |pkg|
-    converge_by("Publishing artifact '#{new_resource.name}' package #{pkg}") do
-      publisher = Omnibus::ArtifactoryPublisher.new(
-        pkg,
-        repository: new_resource.repository,
-        platform: new_resource.platform,
-        platform_version: new_resource.platform_version,
-      )
-      publisher.publish do |package|
-        Chef::Log.debug("Published #{new_resource.name} #{package} to #{new_resource.endpoint}")
-      end
+    execute "publish artifact '#{new_resource.name}' package #{pkg}" do
+      command "omnibus publish artifactory #{new_resource.repository} #{pkg} " \
+              "--config #{omnibus_config} " \
+              "--platform #{new_resource.platform} " \
+              "--platform-version #{new_resource.platform_version}"
     end
   end
 end
