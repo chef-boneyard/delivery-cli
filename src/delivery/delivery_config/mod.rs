@@ -60,7 +60,18 @@ impl DeliveryConfig {
             debug!("Delivery config file already exists, skipping");
             return Ok(())
         }
-        debug!("Creating a new config file");
+        debug!("proj_path: {:?}\nproj_type_in: {:?}",
+               proj_path, proj_type_in);
+        let proj_type = if proj_type_in.is_empty() {
+            if proj_path.join_many(&["metadata.rb"]).is_file() {
+                "cookbook"
+            } else {
+                "other"
+            }
+        } else {
+            proj_type_in
+        };
+        debug!("Creating a new config file for type: {}", proj_type);
 
         let mut config = DeliveryConfig::default();
         if proj_type == "cookbook" {
