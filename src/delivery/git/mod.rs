@@ -21,7 +21,8 @@ use std::process::Command;
 use utils::say::{say, sayln, Spinner};
 use errors::{DeliveryError, Kind};
 use std::env;
-use std::path::{Path, AsPath, PathBuf};
+use std::path::{Path, PathBuf};
+use std::convert::AsRef;
 use std::error;
 use std::fs::PathExt;
 
@@ -81,9 +82,9 @@ pub struct GitResult {
 // What is this crazy type signature, you ask? Let me explain!
 //
 // Where <P: ?Sized> == Any Type (Sized or Unsized)
-// Where P: AsPath == Any type that implements the AsPath trait
-pub fn git_command<P: ?Sized>(args: &[&str], c: &P) -> Result<GitResult, DeliveryError> where P: AsPath {
-    let cwd = c.as_path();
+// Where P: AsRef<Path> == Any type that implements the AsRef<Path> trait
+pub fn git_command<P: ?Sized>(args: &[&str], c: &P) -> Result<GitResult, DeliveryError> where P: AsRef<Path> {
+    let cwd = c.as_ref();
     let spinner = Spinner::start();
     let mut command = Command::new("git");
     command.args(args);
