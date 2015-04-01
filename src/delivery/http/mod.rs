@@ -138,7 +138,7 @@ impl APIClient {
         // FIXME: we'd like to use the native struct->json stuff, but
         // seeing link issues.
         let payload = format!("{{\"name\":\"{}\"}}", proj);
-        match self.post(path.as_slice(), payload.as_slice()) {
+        match self.post(&path, &payload) {
             Ok(mut res) => {
                 match res.status {
                     StatusCode::Created =>
@@ -189,7 +189,7 @@ impl APIClient {
     pub fn get(&self, path: &str) -> Result<HyperResponse, HttpError> {
         let url = self.api_url(path);
         let mut client = hyper::Client::new();
-        let req = client.get(url.as_slice());
+        let req = client.get(url.as_ref());
         let req = req.header(self.json_content());
         let req = match self.auth {
             Some(ref auth) => {
@@ -206,7 +206,7 @@ impl APIClient {
                 payload: &str) -> Result<HyperResponse, HttpError> {
         let url = self.api_url(path);
         let mut client = hyper::Client::new();
-        let req = client.post(url.as_slice());
+        let req = client.post(url.as_ref());
         let req = req.header(self.json_content());
         let req = match self.auth {
             Some(ref auth) => {
@@ -253,7 +253,7 @@ impl APIClient {
                 return Err(String::from_str("HTTP Error"))
             }
         };
-        let json = match json::Json::from_str(body.as_slice()) {
+        let json = match json::Json::from_str(&body) {
             Ok(j) => j,
             Err(_) => {
                 return Err(String::from_str("invalid JSON"))
