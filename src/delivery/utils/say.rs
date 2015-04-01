@@ -18,7 +18,6 @@
 use term;
 use std::time::duration::Duration;
 use std::sync::mpsc::{Sender, Receiver};
-use std::old_io::timer::{sleep};
 use std::sync::mpsc::channel;
 use std::thread::{self, JoinGuard};
 
@@ -61,7 +60,7 @@ impl Spinner {
                     break;
                 },
                 Err(_) => {
-                    sleep(Duration::milliseconds(100i64));
+                    thread::sleep(Duration::milliseconds(100i64));
                     unsafe {
                         if show_spinner {
                             say("white", "\x08");
