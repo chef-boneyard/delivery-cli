@@ -143,8 +143,8 @@ fn main() {
             flag_project: ref proj,
             flag_for: ref pipeline,
             ..
-        } => init_pipeline(server.as_slice(), user.as_slice(), ent.as_slice(),
-                           org.as_slice(), proj.as_slice(), pipeline.as_slice()),
+        } => init_pipeline(&server, &user, &ent,
+                           &org, &proj, &pipeline),
         Args {
             cmd_api: true,
             arg_method: ref method,
@@ -154,9 +154,9 @@ fn main() {
             flag_ent: ref ent,
             flag_data: ref data,
             ..
-        } => api_req(method.as_slice(), path.as_slice(), data.as_slice(),
-                     server.as_slice(), ent.as_slice(),
-                     user.as_slice()),
+        } => api_req(&method, &path, &data,
+                     &server, &ent,
+                     &user),
         Args {
             cmd_clone: true,
             arg_project: ref project,
@@ -549,7 +549,7 @@ fn init_pipeline(server: &str, user: &str,
     let e = validate!(config, enterprise);
     let o = validate!(config, organization);
     say("white", &format!("hello, pipeline {}\n", pipeline));
-    sayln("white", format!("e: {} o: {} p: {}", e, o, p).as_slice());
+    sayln("white", &format!("e: {} o: {} p: {}", e, o, p));
     // create the project
     // setup the remote
     // push master
