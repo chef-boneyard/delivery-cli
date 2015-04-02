@@ -21,7 +21,7 @@ test!(load_config_returns_defaults_on_failure {
     // I suppose someone might have a bogonista, and that would make this
     // test unstable. Maybe those people are good people, maybe they are
     // bad people. I do not judge. But I use the path anyway.
-    let config = Config::load_config(&PathBuf::new("/bogonista")).unwrap();
+    let config = Config::load_config(&PathBuf::from("/bogonista")).unwrap();
     assert_eq!(config.server, None);
     assert_eq!(config.enterprise, None);
     assert_eq!(config.organization, None);

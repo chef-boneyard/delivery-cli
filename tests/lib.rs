@@ -1,6 +1,6 @@
-#![feature(path_ext)]
+#![feature(path_ext, convert)]
 extern crate delivery;
-extern crate "rustc-serialize" as rustc_serialize;
+extern crate rustc_serialize;
 extern crate tempdir;
 #[macro_use] extern crate log;
 

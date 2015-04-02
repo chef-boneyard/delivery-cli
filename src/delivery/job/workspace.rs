@@ -453,7 +453,7 @@ mod test {
 
     #[test]
     fn new() {
-        let root = PathBuf::new("clown");
+        let root = PathBuf::from("clown");
         let w = Workspace::new(&root);
         assert_eq!(w.root, root);
         assert_eq!(w.chef, root.join("chef"));
