@@ -178,21 +178,29 @@ While the Rust Language is now moving towards 1.0, and things should begin to st
 
 ```bash
 $ curl -s https://static.rust-lang.org/rustup.sh | sudo sh
-```bash
+```
 
-If this repo fails to build, using the instructions below, you might try:
+If this repo fails to build, using the instructions above, you might try:
 
 ```bash
 $ cargo clean
 $ cargo update
-```bash
+```
 
-This may update the Cargo.lock file, which is currently checked in. If there are changes, they should likely be included in your CR.
+This may update the Cargo.lock file, which is currently checked in. If there are changes, they should likely be included in your PR.
 
 If there are syntax or other errors, well, good luck!
 
 Note that you can set the logging level by exporting the `RUST_LOG` env var
 (e.g to `debug`).
+
+Yet another approach:
+
+* Download the `rustup.sh` file https://static.rust-lang.org/rustup.sh
+* `rustup.sh --date=2015-03-23 --channel=nightly`
+* `cargo test`
+* `cargo build --release`
+* Add the release directory to your path (delivery-cli/target/release)
 
 ## Build me
 
