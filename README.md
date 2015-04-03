@@ -178,14 +178,14 @@ While the Rust Language is now moving towards 1.0, and things should begin to st
 
 ```bash
 $ curl -s https://static.rust-lang.org/rustup.sh | sudo sh
-```bash
+```
 
 If this repo fails to build, using the instructions below, you might try:
 
 ```bash
 $ cargo clean
 $ cargo update
-```bash
+```
 
 This may update the Cargo.lock file, which is currently checked in. If there are changes, they should likely be included in your CR.
 
