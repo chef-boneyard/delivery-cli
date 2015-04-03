@@ -187,7 +187,7 @@ $ cargo clean
 $ cargo update
 ```
 
-This may update the Cargo.lock file, which is currently checked in. If there are changes, they should likely be included in your CR.
+This may update the Cargo.lock file, which is currently checked in. If there are changes, they should likely be included in your PR.
 
 If there are syntax or other errors, well, good luck!
 
