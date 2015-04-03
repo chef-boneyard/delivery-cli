@@ -194,6 +194,14 @@ If there are syntax or other errors, well, good luck!
 Note that you can set the logging level by exporting the `RUST_LOG` env var
 (e.g to `debug`).
 
+Yet another approach:
+
+* Download the `rustup.sh` file https://static.rust-lang.org/rustup.sh
+* `rustup.sh --date=2015-03-23 --channel=nightly`
+* `cargo test`
+* `cargo build --release`
+* Add the release directory to your path (delivery-cli/target/release)
+
 ## Build me
 
 ```bash
