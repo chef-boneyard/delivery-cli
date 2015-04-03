@@ -180,7 +180,7 @@ While the Rust Language is now moving towards 1.0, and things should begin to st
 $ curl -s https://static.rust-lang.org/rustup.sh | sudo sh
 ```
 
-If this repo fails to build, using the instructions below, you might try:
+If this repo fails to build, using the instructions above, you might try:
 
 ```bash
 $ cargo clean
