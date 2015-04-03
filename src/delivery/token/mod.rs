@@ -151,13 +151,13 @@ mod tests {
         let write_result = tstore.write_token("127.0.0.1", "acme", "bob",
                                               "beefbeef");
         assert_eq!(true, write_result.is_ok());
-        assert_eq!("beefbeef", &tstore.lookup("127.0.0.1",
+        assert_eq!(&"beefbeef", tstore.lookup("127.0.0.1",
                                              "acme", "bob").unwrap());
         // why doesn't this work in this context?
         // let mut f = try!(File::open(&tfile));
         let mut f = File::open(&tfile).ok().expect("tfile open error");
         let mut content = String::new();
         assert_eq!(true, f.read_to_string(&mut content).is_ok());
-        assert_eq!("127.0.0.1,acme,bob|beefbeef\n", &content);
+        assert_eq!("127.0.0.1,acme,bob|beefbeef\n", content);
     }
 }

@@ -106,7 +106,7 @@ looks for its `build_cookbook` parameter. It takes 3 forms:
 {
     "version": "1",
     "build_cookbook": {
-      name": "delivery_rust",
+      "name": "delivery_rust",
       "supermarket": "https://supermarket.chef.io"
     },
     "build_nodes": {
