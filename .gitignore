@@ -3,3 +3,8 @@
 .kitchen/
 .kitchen.local.yml
 /omnibus-delivery-cli/local/
+
+# Cucumber Stuff
+vendor/
+.bundle/
+bin/
