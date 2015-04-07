@@ -71,12 +71,13 @@ To setup a job, the delivery cli reads the `.delivery/config.json` file, and
 looks for its `build_cookbook` parameter. It takes 3 forms:
 
 #### From a local directory
+
 ```json
 {
     "version": "1",
     "build_cookbook": {
-      name: "delivery_rust",
-      path: "cookbooks/delivery_rust"
+      "name": "delivery_rust",
+      "path": "cookbooks/delivery_rust"
     },
     "build_nodes": {
         "default"    : ["name:delivery-builder*"]
@@ -85,12 +86,13 @@ looks for its `build_cookbook` parameter. It takes 3 forms:
 ```
 
 #### From a Git source
+
 ```json
 {
     "version": "1",
     "build_cookbook": {
-      name: "delivery_rust",
-      git: "ssh://..."
+      "name": "delivery_rust",
+      "git": "ssh://..."
     },
     "build_nodes": {
         "default"    : ["name:delivery-builder*"]
@@ -99,12 +101,13 @@ looks for its `build_cookbook` parameter. It takes 3 forms:
 ```
 
 #### From a Supermarket
+
 ```json
 {
     "version": "1",
     "build_cookbook": {
-      name: "delivery_rust",
-      supermarket: "https://supermarket.chef.io"
+      "name": "delivery_rust",
+      "supermarket": "https://supermarket.chef.io"
     },
     "build_nodes": {
         "default"    : ["name:delivery-builder*"]
@@ -178,14 +181,14 @@ While the Rust Language is now moving towards 1.0, and things should begin to st
 
 ```bash
 $ curl -s https://static.rust-lang.org/rustup.sh | sudo sh
-```bash
+```
 
 If this repo fails to build, using the instructions below, you might try:
 
 ```bash
 $ cargo clean
 $ cargo update
-```bash
+```
 
 This may update the Cargo.lock file, which is currently checked in. If there are changes, they should likely be included in your CR.
 
@@ -219,6 +222,7 @@ Where "review" and friends are the arguments you would pass to the delivery cli.
 ## Promote a build of delivery-cli to packagecloud (for now)
 
 ### Step 1. Create a feature branch
+
 ```bash
   $ git checkout -b shipit
 ```
@@ -226,11 +230,13 @@ Where "review" and friends are the arguments you would pass to the delivery cli.
 Uncomment the ship stuff, add the password, commit but don't push
 
 ### Step 2. Rsync to a build node
+
 ```bash
   $ cd .. && rsync -vaP delivery-cli --exclude delivery-cli/target 172.31.6.132:/home/adam
 ```
 
 ### Step 3. Log in to the build node and run the job
+
 ```bash
   $ ssh 172.31.6.132
   $ cd delivery-cli
@@ -250,6 +256,7 @@ Run the chef-client on your builders, or do apt-get update && apt-get upgrade
 
 
 ## License & Authors
+
 - Author:: Adam Jacob <adam@chef.io>
 - Author:: Seth Falcon <seth@chef.io>
 - Author:: Jean Rouge <jean@chef.io>
