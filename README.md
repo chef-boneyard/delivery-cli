@@ -257,9 +257,10 @@ Run the chef-client on your builders, or do apt-get update && apt-get upgrade
 
 ## License & Authors
 
-- Author:: Adam Jacob <adam@chef.io>
-- Author:: Seth Falcon <seth@chef.io>
-- Author:: Jean Rouge <jean@chef.io>
+- Author:: Adam Jacob (<adam@chef.io>)
+- Author:: Seth Falcon (<seth@chef.io>)
+- Author:: Jean Rouge (<jean@chef.io>)
+- Author:: Tom Duffield (<tom@chef.io>)
 
 ```text
 Copyright:: 2015 Chef Software, Inc
