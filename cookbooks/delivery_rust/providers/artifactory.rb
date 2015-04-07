@@ -7,7 +7,7 @@ end
 action :create do
   require 'artifactory'
 
-  omnibus_config = File.join(node['delivery']['workspace']['cache'], 'omnibus-publish.rb')
+  omnibus_config = ::File.join(node['delivery']['workspace']['cache'], 'omnibus-publish.rb')
 
   # Render an Omnibus config file for publishing
   file omnibus_config do
