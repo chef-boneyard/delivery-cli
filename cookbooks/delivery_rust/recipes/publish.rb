@@ -71,7 +71,7 @@ end
 # We will likely introduce other platforms in the future.
 [ "12.04", "14.04" ].each do |pv|
   delivery_rust_artifactory "delivery-cli" do
-    package_path File.join(omnibus_path, "pkg", "*.deb")
+    package_path ::File.join(omnibus_path, "pkg", "*.deb")
     repository 'omnibus-current-local'
     platform 'ubuntu'
     platform_version pv
