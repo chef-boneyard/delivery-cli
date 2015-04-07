@@ -180,7 +180,7 @@ The contents of your `.delivery/config.json` file are made available to you in t
 While the Rust Language is now moving towards 1.0, and things should begin to stabilize, follow-on releases sometimes introduce non-backwardly-compatable changes, which can break this build. Until Rust truly stabilizes, you'll need to install rust (the easiest way on mac):
 
 ```bash
-$ curl -s https://static.rust-lang.org/rustup.sh | sudo sh
+$ sudo ./rustup.sh --date=2015-04-01 --channel=nightly
 ```
 
 If this repo fails to build, using the instructions below, you might try:
@@ -218,42 +218,6 @@ cargo run -- review ...
 ```
 
 Where "review" and friends are the arguments you would pass to the delivery cli.
-
-## Promote a build of delivery-cli to packagecloud (for now)
-
-### Step 1. Create a feature branch
-
-```bash
-  $ git checkout -b shipit
-```
-
-Uncomment the ship stuff, add the password, commit but don't push
-
-### Step 2. Rsync to a build node
-
-```bash
-  $ cd .. && rsync -vaP delivery-cli --exclude delivery-cli/target 172.31.6.132:/home/adam
-```
-
-### Step 3. Log in to the build node and run the job
-
-```bash
-  $ ssh 172.31.6.132
-  $ cd delivery-cli
-  $ cargo build
-  $ sudo env GIT_SSH=/var/opt/delivery/workspace/bin/git_ssh ./target/debug/delivery job build publish --user builder --ent Chef --org Chef_Delivery --server delivery.shd.chef.co
-```
-
-### Step 4. Ping Seth Chisamore or Yvonne Lam
-
-They can promote your package from the 'current' channel to the 'stable' channel
-
-### Step 5. Make your builders run chef-client
-
-Run the chef-client on your builders, or do apt-get update && apt-get upgrade
-
-### Step 6. Take a nap
-
 
 ## License & Authors
 
