@@ -12,7 +12,7 @@ end
 Chef::Config.exception_handlers << OmnibusErrorHandler.new()
 
 git_ssh = File.join('/var/opt/delivery/workspace/bin', 'git_ssh')
-omnibus_path = File.join(node['delivery_builder']['repo'], 'omnibus-delivery-cli')
+omnibus_path = File.join(node['delivery']['workspace']['repo'], 'omnibus-delivery-cli')
 
 ## Make sure it builds!
 execute "bundle install --binstubs=#{omnibus_path}/bin --path=#{File.join(node['delivery_builder']['cache'], 'gems')}" do

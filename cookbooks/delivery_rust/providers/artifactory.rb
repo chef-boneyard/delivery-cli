@@ -7,6 +7,7 @@ end
 action :create do
   require 'artifactory'
 
+  omnibus_path = File.join(node['delivery']['workspace']['repo'], 'omnibus-delivery-cli')
   omnibus_config = ::File.join(node['delivery']['workspace']['cache'], 'omnibus-publish.rb')
 
   # Render an Omnibus config file for publishing
@@ -36,10 +37,11 @@ artifactory_password  '#{new_resource.password}'
 
   packages.each do |pkg|
     execute "publish artifact '#{new_resource.name}' package #{pkg}" do
-      command "omnibus publish artifactory #{new_resource.repository} #{pkg} " \
+      command "#{omnibus_path}/bin/omnibus publish artifactory #{new_resource.repository} #{pkg} " \
               "--config #{omnibus_config} " \
               "--platform #{new_resource.platform} " \
               "--platform-version #{new_resource.platform_version}"
+      cwd omnibus_path
     end
   end
 end
