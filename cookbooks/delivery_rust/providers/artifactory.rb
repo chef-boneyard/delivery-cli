@@ -16,7 +16,7 @@ action :create do
 # This file is written by Chef for #{node['fqdn']}.
 # Do NOT modify this file by hand.
 
-artifactory_endpoint  '#{new_resource.endpoint}
+artifactory_endpoint  '#{new_resource.endpoint}'
 artifactory_base_path '#{new_resource.base_path}'
 artifactory_username  '#{new_resource.username}'
 artifactory_password  '#{new_resource.password}'
@@ -32,7 +32,7 @@ artifactory_password  '#{new_resource.password}'
       packages << pkg
     end
   else
-    packages.push new_resource.name
+    packages.push new_resource.package_name
   end
 
   packages.each do |pkg|
