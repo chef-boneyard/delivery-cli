@@ -5,8 +5,6 @@ def whyrun_supported?
 end
 
 action :create do
-  require 'artifactory'
-
   omnibus_path = ::File.join(node['delivery']['workspace']['repo'], 'omnibus-delivery-cli')
   omnibus_config = ::File.join(node['delivery']['workspace']['cache'], 'omnibus-publish.rb')
 
@@ -24,6 +22,7 @@ artifactory_password  '#{new_resource.password}'
     mode '0600'
     owner 'dbuild'
     group 'dbuild'
+    sensitive true
   end
 
   packages = []
