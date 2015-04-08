@@ -8,6 +8,7 @@ GEM
   remote: https://rubygems.org/
   specs:
     addressable (2.3.7)
+    artifactory (2.2.1)
     berkshelf (3.2.3)
       addressable (~> 2.3.4)
       berkshelf-api-client (~> 1.2)
@@ -140,6 +141,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  artifactory (~> 2.2)
   berkshelf (~> 3.0)
   kitchen-vagrant (~> 0.14)
   omnibus (~> 4.0)
