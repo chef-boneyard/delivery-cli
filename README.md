@@ -225,6 +225,7 @@ Where "review" and friends are the arguments you would pass to the delivery cli.
 - Author:: Seth Falcon (<seth@chef.io>)
 - Author:: Jean Rouge (<jean@chef.io>)
 - Author:: Tom Duffield (<tom@chef.io>)
+- Author:: Jon Anderson (<janderson@chef.io>)
 
 ```text
 Copyright:: 2015 Chef Software, Inc
