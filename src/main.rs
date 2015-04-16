@@ -37,7 +37,7 @@ use delivery::utils::say::{self, say, sayln};
 use delivery::errors::{DeliveryError, Kind};
 use delivery::config::Config;
 use delivery::delivery_config::DeliveryConfig;
-use delivery::git;
+use delivery::git::{self, ReviewResult};
 use delivery::job::change::Change;
 use delivery::job::workspace::{Workspace, Privilege};
 use delivery::utils::path_join_many::PathJoinMany;
@@ -47,7 +47,7 @@ use delivery::http::{self, APIClient, APIAuth};
 use delivery::project;
 
 docopt!(Args derive Debug, "
-Usage: delivery review [--for=<pipeline>] [--no-open]
+Usage: delivery review [--for=<pipeline>] [--no-open] [--edit]
        delivery clone <project> [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--git-url=<url>]
        delivery checkout <change> [--for=<pipeline>] [--patchset=<number>]
        delivery diff <change> [--for=<pipeline>] [--patchset=<number>] [--local]
@@ -56,8 +56,8 @@ Usage: delivery review [--for=<pipeline>] [--no-open]
        delivery job <stage> <phase> [--change=<change>] [--for=<pipeline>] [--job-root=<dir>] [--project=<project>] [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--patchset=<number>] [--git-url=<url>] [--shasum=<gitsha>] [--change-id=<id>] [--no-spinner]
        delivery pipeline [--for=<pipeline>] [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--project=<project>] [--config-path=<dir>]
        delivery api <method> <path> [--user=<user>] [--server=<server>] [--ent=<ent>] [--config-path=<dir>] [--data=<data>]
-       delivery --help
        delivery token [--user=<user>] [--server=<server>] [--ent=<ent>]
+       delivery --help
 
 Options:
   -h, --help               Show this message.
@@ -97,8 +97,9 @@ fn main() {
             cmd_review: true,
             flag_for: ref for_pipeline,
             flag_no_open: ref no_open,
+            flag_edit: ref edit,
             ..
-        } => review(&for_pipeline, &no_open),
+        } => review(&for_pipeline, &no_open, &edit),
         Args {
             cmd_setup: true,
             flag_user: ref user,
@@ -256,45 +257,45 @@ fn setup(user: &str, server: &str, ent: &str, org: &str, path: &str, pipeline: &
 fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str, proj_type: &str) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
-    // Since we wind up taking the filename as a reference, we need to
-    // have its scope be the entire method. Sadly, it means we call it
-    // whether we need to or not. We could probably abstract this into
-    // a function and get the lifetimes right, but.. meh :)
-    let cwd = try!(env::current_dir());
-    let filename = String::from_str(cwd.file_name().unwrap().to_str().unwrap());
-    let final_proj = if proj.is_empty() {
-        &filename[..]
-    } else {
-        proj
-    };
-
+    let final_proj = try!(project_or_from_cwd(proj));
     config = config.set_user(user)
         .set_server(server)
         .set_enterprise(ent)
         .set_organization(org)
-        .set_project(final_proj);
+        .set_project(&final_proj);
     let u = validate!(config, user);
     let s = validate!(config, server);
     let e = validate!(config, enterprise);
     let o = validate!(config, organization);
     let p = validate!(config, project);
 
+    let cwd = try!(env::current_dir());
     try!(project::import(&u, &s, &e, &o, &p, &cwd));
 
     // now to adding the .delivery/config.json
     try!(DeliveryConfig::init(&cwd, proj_type));
     // if we got here, we've checked out a feature branch, added a
     // config file, and made a local commit. Let's create the review!
-    try!(review("master", &false));
+    try!(review("master", &false, &false));
     Ok(())
 }
 
 #[allow(dead_code)]
-fn review(for_pipeline: &str, no_open: &bool) -> Result<(), DeliveryError> {
+fn review(for_pipeline: &str,
+          no_open: &bool, edit: &bool) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
-    config = config.set_pipeline(for_pipeline);
+    let project = try!(project_from_cwd());
+    config = config.set_pipeline(for_pipeline)
+        .set_project(&project);
+
+    let s = validate!(config, server);
+    let e = validate!(config, enterprise);
+    let u = validate!(config, user);
+    let o = validate!(config, organization);
+    let p = validate!(config, project);
     let target = validate!(config, pipeline);
+
     say("white", "Review for change ");
     let head = try!(git::get_head());
     if &target == &head {
@@ -304,11 +305,36 @@ fn review(for_pipeline: &str, no_open: &bool) -> Result<(), DeliveryError> {
     say("white", " targeted for pipeline ");
     sayln("magenta", &target);
     let review = try!(git::git_push_review(&head, &target));
+    if *edit {
+        try!(edit_change(&s, &e, &u, &o, &p, &review));
+    }
+    handle_review_result(&review, no_open)
+}
+
+fn edit_change(server: &str, ent: &str, user: &str, org: &str, proj: &str,
+               review: &ReviewResult) -> Result<(), DeliveryError> {
+    match review.change_id {
+        Some(ref change_id) => {
+            let change0 = try!(http::change::get(server, ent, user,
+                                                 org, proj, &change_id));
+            let text0 = format!("{}\n\n{}\n",
+                                change0.title, change0.description);
+            let text1 = try!(utils::open::edit_str(proj, &text0));
+            let change1 = try!(http::change::Description::parse_text(&text1));
+            Ok(try!(http::change::set(server, ent, user, org,
+                                      proj, &change_id, &change1)))
+        },
+        None => Ok(())
+    }
+}
+
+fn handle_review_result(review: &ReviewResult,
+                        no_open: &bool) -> Result<(), DeliveryError> {
     for line in review.messages.iter() {
         sayln("white", line);
     }
     match review.url {
-        Some(url) => {
+        Some(ref url) => {
             sayln("magenta", &url);
             if !no_open {
                 try!(utils::open::item(&url));
@@ -532,19 +558,12 @@ fn init_pipeline(server: &str, user: &str,
                  pipeline: &str) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery: baking a new pipeline");
     let mut config = try!(Config::load_config(&cwd()));
-    let cwd = try!(env::current_dir());
-    let final_proj = if proj.is_empty() {
-        // let cwd_name = cwd.file_name().unwrap().to_str().unwrap();
-        // std::str::from_utf8(cwd_name.clone()).unwrap()
-        cwd.file_name().unwrap().to_str().unwrap()
-    } else {
-        proj
-    };
+    let final_proj = try!(project_or_from_cwd(proj));
     config = config.set_user(user)
         .set_server(server)
         .set_enterprise(ent)
         .set_organization(org)
-        .set_project(final_proj);
+        .set_project(&final_proj);
     let p = validate!(config, project);
     let _ = validate!(config, user);
     let _ = validate!(config, server);
@@ -592,4 +611,17 @@ fn api_req(method: &str, path: &str, data: &str,
                                             detail: Some(e) })
     };
     Ok(())
+}
+
+fn project_from_cwd() -> Result<String, DeliveryError> {
+    let cwd = try!(env::current_dir());
+    Ok(cwd.file_name().unwrap().to_str().unwrap().to_string())
+}
+
+fn project_or_from_cwd(proj: &str) -> Result<String, DeliveryError> {
+    if proj.is_empty() {
+        project_from_cwd()
+    } else {
+        Ok(proj.to_string())
+    }
 }

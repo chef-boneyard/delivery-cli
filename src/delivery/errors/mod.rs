@@ -60,7 +60,8 @@ pub enum Kind {
     ApiError(hyper::status::StatusCode, Result<String, io::Error>),
     JsonParseError,
     OpenFailed,
-    NoToken
+    NoToken,
+    NoEditor
 }
 
 #[derive(Debug)]
@@ -114,7 +115,8 @@ impl error::Error for DeliveryError {
             Kind::JsonParseError => "Attempted to parse invalid JSON",
             Kind::OpenFailed => "Open command failed",
             Kind::AuthenticationFailed => "Authentication failed",
-            Kind::NoToken => "Missing API token. Try `delivery token` to create one"
+            Kind::NoToken => "Missing API token. Try `delivery token` to create one",
+            Kind::NoEditor => "Environment variable EDITOR not set"
         }
     }
 

@@ -162,7 +162,8 @@ impl Copy for PushResultFlag { }
 pub struct ReviewResult {
     pub push_results: Vec<PushResult>,
     pub messages: Vec<String>,
-    pub url: Option<String>
+    pub url: Option<String>,
+    pub change_id: Option<String>
 }
 
 #[derive(Debug)]
@@ -176,6 +177,7 @@ pub fn parse_git_push_output(push_output: &str,
     let mut push_results: Vec<PushResult> = Vec::new();
     let mut r_messages: Vec<String> = Vec::new();
     let mut r_url = None;
+    let mut r_change_id = None;
     for line in push_error.lines_any() {
         debug!("error: {}", line);
         if line.starts_with("remote") {
@@ -185,7 +187,10 @@ pub fn parse_git_push_output(push_output: &str,
                 Some(caps) => {
                     let cap = caps.at(1).unwrap();
                     if cap.starts_with("http") {
-                        r_url = Some(cap.trim().to_string());
+                        let change_url = cap.trim().to_string();
+                        r_url = Some(change_url.clone());
+                        let parts: Vec<&str> = change_url.split("/").collect();
+                        r_change_id = Some(parts[parts.len() - 1].to_string());
                     } else {
                         r_messages.push(cap.to_string());
                     }
@@ -233,7 +238,8 @@ pub fn parse_git_push_output(push_output: &str,
     }
     Ok(ReviewResult { push_results: push_results,
                       messages: r_messages,
-                      url: r_url })
+                      url: r_url,
+                      change_id: r_change_id })
 }
 
 pub fn delivery_ssh_url(user: &str, server: &str, ent: &str, org: &str, proj: &str) -> String {

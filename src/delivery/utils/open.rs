@@ -39,8 +39,13 @@
 /// * OS X: open
 /// * Windows: start
 ///
+use std::env;
 use std::process::{Command, Output};
 use errors::{DeliveryError, Kind};
+use tempdir::TempDir;
+use std::io::prelude::*;
+use std::fs::{File, OpenOptions};
+use utils::path_join_many::PathJoinMany;
 
 // The MIT License (MIT)
 // =====================
@@ -119,4 +124,61 @@ fn process_response(cmd: &str, res: Output) -> Result<(), DeliveryError> {
         Err(DeliveryError { kind: Kind::OpenFailed,
                             detail: Some(msg) })
     }
+}
+
+/// Open `path` in an external editor as found in the environment
+/// variable `EDITOR` and wait for the editor process to finish.
+///
+/// An `Err` is returned if no `EDITOR` variable is set or we are
+/// unable to read it for some reason.
+///
+/// The configured editor is spawned with `path` as the last command
+/// line argument. The value of the `EDITOR` environment variable is
+/// split on spaces. The first item is taken as the editor command and
+/// all subsequent items are passed to the editor command.
+///
+pub fn edit_path(path: &str) -> Result<(), DeliveryError> {
+    debug!("{}", "in edit!");
+    let editor_env = match env::var("EDITOR") {
+        Ok(e) => e,
+        Err(_) => return Err(DeliveryError{ kind: Kind::NoEditor, detail: None })
+    };
+    // often, EDITOR has args provided
+    let split = editor_env.trim().split(" ");
+    let mut items = split.collect::<Vec<&str>>();
+    let editor = items.remove(0);
+    let mut cmd = Command::new(editor);
+    for arg in items.iter() {
+        cmd.arg(arg);
+    }
+    let mut child = try!(cmd.arg(path).spawn());
+    try!(child.wait());
+    Ok(())
+}
+
+/// Edit a provided string in an external editor and returned the
+/// edited content.
+///
+/// The provided `content` is written to a tempdir using a file name
+/// of `name` and the `edit_path` function is used to open this file
+/// in the editor defined in the `EDITOR` environment variable.  The
+/// contents of the file are returned as a string after the external
+/// editor completes.
+pub fn edit_str(name: &str,
+                content: &str) -> Result<String, DeliveryError> {
+    let tempdir = try!(TempDir::new("delivery-edit"));
+    let tfile_path = tempdir.path().join_many(&[name]);
+    let tfile_str = tfile_path.to_str().unwrap();
+    let mut in_file = try!(File::create(tfile_path.clone()));
+    try!(in_file.write_all(content.as_bytes()));
+    try!(edit_path(tfile_str));
+    let mut opener = OpenOptions::new();
+    opener.create(true);
+    opener.truncate(false);
+    opener.write(false);
+    opener.read(true);
+    let mut out_file = try!(opener.open(&tfile_path));
+    let mut content = String::new();
+    try!(out_file.read_to_string(&mut content));
+    Ok(content)
 }
