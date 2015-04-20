@@ -81,7 +81,7 @@ fn setup_change(tmpdir: &TempDir, branch: &str, filename: &str) {
         let mut f = panic_on_error!(File::create(&tmpdir.path().join(filename)));
         panic_on_error!(f.write_all(b"I like cookies"));
     }
-    panic_on_error!(git_command(&["add", "."], tmpdir.path()));
+    panic_on_error!(git_command(&["add", filename], tmpdir.path()));
     panic_on_error!(git_command(&["commit", "-a", "-m", filename], tmpdir.path()));
 }
 
