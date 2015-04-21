@@ -36,5 +36,6 @@ pub struct WorkspaceCompat {
     pub root: String,
     pub chef: String,
     pub cache: String,
-    pub repo: String
+    pub repo: String,
+    pub ssh_wrapper: String
 }

@@ -35,7 +35,8 @@ pub struct Workspace {
     pub root: PathBuf,
     pub chef: PathBuf,
     pub cache: PathBuf,
-    pub repo: PathBuf
+    pub repo: PathBuf,
+    pub ssh_wrapper: PathBuf
 }
 
 #[derive(Debug)]
@@ -53,6 +54,7 @@ impl Encodable for Workspace {
             try!(encoder.emit_struct_field( "chef", 1usize, |encoder| self.chef.to_str().unwrap().encode(encoder)));
             try!(encoder.emit_struct_field( "cache", 2usize, |encoder| self.cache.to_str().unwrap().encode(encoder)));
             try!(encoder.emit_struct_field( "repo", 3usize, |encoder| self.repo.to_str().unwrap().encode(encoder)));
+            try!(encoder.emit_struct_field( "ssh_wrapper", 4usize, |encoder| self.ssh_wrapper.to_str().unwrap().encode(encoder)));
             Ok(())
         })
     }
@@ -64,7 +66,8 @@ impl Workspace {
             root: root.clone(),
             chef: root.join("chef"),
             cache: root.join("cache"),
-            repo: root.join("repo")
+            repo: root.join("repo"),
+            ssh_wrapper: root.join("bin").join("git_ssh")
         }
     }
 
@@ -404,6 +407,7 @@ end
             chef: self.chef.to_str().unwrap().to_string(),
             cache: self.cache.to_str().unwrap().to_string(),
             repo: self.repo.to_str().unwrap().to_string(),
+            ssh_wrapper: self.ssh_wrapper.to_str().unwrap().to_string(),
         };
         let top = Top{
             workspace: workspace_data,
