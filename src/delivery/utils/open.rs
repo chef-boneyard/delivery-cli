@@ -80,7 +80,7 @@ pub fn item(path: &str) -> Result<(), DeliveryError> {
 
 #[cfg(target_os = "windows")]
 pub fn item(path: &str) -> Result<(), DeliveryError> {
-    item_for_cmd(path, &["start"])
+    item_for_cmds(path, &["start"])
 }
 
 fn item_for_cmds(path: &str, cmds: &[&str]) -> Result<(), DeliveryError> {

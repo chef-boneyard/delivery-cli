@@ -20,17 +20,38 @@
 //! This unsafe function allows you to read a value from stdin without
 //! the input being echoed on the terminal. Expect this to work on OS
 //! X and Linux only.
+
+#[cfg(not(target_os = "windows"))]
 use libc::types::os::arch::c95::c_char;
+
+#[cfg(not(target_os = "windows"))]
 use std::ffi::{CString, CStr};
+
+#[cfg(not(target_os = "windows"))]
 use std::str;
 
+#[cfg(target_os = "windows")]
+use std::io;
+
+#[cfg(not(target_os = "windows"))]
 extern {
     fn getpass(pass: *const c_char) -> *const c_char;
 }
 
+#[cfg(not(target_os = "windows"))]
 pub fn read(prompt: &str) -> String {
     let cprompt = CString::new(prompt.as_bytes()).unwrap();
     let cresult = unsafe { getpass(cprompt.as_ptr()) };
     let bytes = unsafe { CStr::from_ptr(cresult).to_bytes() };
     str::from_utf8(bytes).unwrap().to_string()
+}
+
+#[cfg(target_os = "windows")]
+pub fn read(prompt: &str) -> String {
+    println!("{0}", prompt);
+
+    let mut stdin = io::stdin();
+    let mut password = String::new();
+    let _ = stdin.read_line(&mut password);
+    password.trim_right_matches("\r\n").to_string()
 }
