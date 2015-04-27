@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+  <metadata>
+    <id>rust</id>
+    <version>1.0.0.20150401</version>
+    <title>Rust</title>
+    <authors>Mozilla</authors>
+    <owners>Mike Chaliy</owners>
+    <licenseUrl>https://github.com/mozilla/rust/blob/master/LICENSE-MIT</licenseUrl>
+    <projectUrl>http://www.rust-lang.org/</projectUrl>
+    <iconUrl>http://www.rust-lang.org/logos/rust-logo-128x128-blk.png</iconUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Rust is a curly-brace, block-structured expression language. It visually resembles the C language family, but differs significantly in syntactic and semantic details. Its design is oriented toward concerns of “programming in the large”, that is, of creating and maintaining boundaries – both abstract and operational – that preserve large-system integrity, availability and concurrency. </description>
+    <summary>Rust a safe, concurrent, practical language</summary>
+    <tags>rust</tags>
+  </metadata>
+</package>
