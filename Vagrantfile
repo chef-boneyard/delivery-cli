@@ -2,10 +2,12 @@ Vagrant.configure("2") do |config|
   config.vm.box = "chef/windows-8.1-professional"
   config.vm.communicator = "winrm"
 
-  config.vm.provider "vmware_fusion" do |v|
-    v.gui = true
-    v.vmx["memsize"]  = "2048"
-    v.vmx["numvcpus"] = "2"
+  ["virtualbox", "vmware_fusion"].each do |provider_name|
+    config.vm.provider provider_name do |v|
+      v.gui = true
+      v.memory = 2048
+      v.cpus = 2
+    end
   end
 
   # Install Chocolatey
