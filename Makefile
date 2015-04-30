@@ -1,4 +1,4 @@
-# Copyright 2015 Chef Software, Inc. All Rights Reserved.
+# Copyright 2015 Chef Software, Inc.
 #
 # Author: Jon Anderson (janderson@chef.io)
 #
@@ -8,9 +8,9 @@
 # 'make rustup' will installed the pinned version with the nightly channel
 
 CARGO = cargo
-PINNED_RUST_VERSION = d754722a0 2015-03-31
+PINNED_RUST_VERSION = c4b23aec4 2015-04-29
 RUST_VERSION := $(shell rustc --version | tr -d '()' | awk '{ print $$3 " " $$4 }')
-RUST_UP_COMMAND = sudo ./rustup.sh --date=2015-04-01 --channel=nightly
+RUST_UP_COMMAND = sudo ./rustup.sh --date=2015-04-29 --channel=nightly
 CARGO_OPTS =
 
 # If the installed version matches the pinning above, the codebase should be compatible.

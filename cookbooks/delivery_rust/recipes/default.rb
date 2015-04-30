@@ -9,8 +9,13 @@ remote_file "#{Chef::Config[:file_cache_path]}/rustup.sh" do
   source "https://static.rust-lang.org/rustup.sh"
 end
 
+rust_version = node['delivery_rust']['rust_version']
+rustup_cmd = ["bash",
+              "#{Chef::Config[:file_cache_path]}/rustup.sh",
+              "--channel=nightly",
+              "--date=#{rust_version}"].join(' ')
 execute "install rust and cargo" do
-  command "bash #{Chef::Config[:file_cache_path]}/rustup.sh --channel=nightly --date=2015-04-01"
+  command rustup_cmd
 end
 
 node.set['omnibus']['build_user'] = "dbuild"

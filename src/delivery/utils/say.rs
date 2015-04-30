@@ -16,7 +16,6 @@
 //
 
 use term;
-use std::time::duration::Duration;
 use std::sync::mpsc::{Sender, Receiver};
 use std::sync::mpsc::channel;
 use std::thread::{self, JoinGuard};
@@ -26,7 +25,7 @@ static mut show_spinner: bool = true;
 
 pub struct Spinner {
     tx: Sender<isize>,
-    guard: JoinGuard<'static ()>
+    guard: JoinGuard<'static, ()>
 }
 
 impl Spinner {
@@ -60,7 +59,7 @@ impl Spinner {
                     break;
                 },
                 Err(_) => {
-                    thread::sleep(Duration::milliseconds(100i64));
+                    thread::sleep_ms(100);
                     unsafe {
                         if show_spinner {
                             say("white", "\x08");

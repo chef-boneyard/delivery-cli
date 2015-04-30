@@ -15,7 +15,7 @@
 // limitations under the License.
 //
 
-#![feature(plugin, collections, std_misc, path_ext, convert, thread_sleep)]
+#![feature(plugin, collections, path_ext, scoped)]
 #![plugin(regex_macros, docopt_macros)]
 extern crate regex;
 #[no_link] extern crate regex_macros;
