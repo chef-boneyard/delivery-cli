@@ -139,7 +139,7 @@ pub fn say_push_results(results: Vec<PushResult>) {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum PushResultFlag {
     SuccessfulFastForward,
     SuccessfulForcedUpdate,

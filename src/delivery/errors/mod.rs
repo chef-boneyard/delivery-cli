@@ -138,8 +138,8 @@ impl fmt::Display for DeliveryError {
     }
 }
 
-impl error::FromError<json::EncoderError> for DeliveryError {
-    fn from_error(err: json::EncoderError) -> DeliveryError {
+impl From<json::EncoderError> for DeliveryError {
+    fn from(err: json::EncoderError) -> DeliveryError {
         DeliveryError{
             kind: Kind::JsonEncode,
             detail: Some(err.description().to_string())
@@ -147,8 +147,8 @@ impl error::FromError<json::EncoderError> for DeliveryError {
     }
 }
 
-impl error::FromError<json::DecoderError> for DeliveryError {
-    fn from_error(err: json::DecoderError) -> DeliveryError {
+impl From<json::DecoderError> for DeliveryError {
+    fn from(err: json::DecoderError) -> DeliveryError {
         DeliveryError{
             kind: Kind::JsonParseError,
             detail: Some(err.description().to_string())
@@ -156,8 +156,8 @@ impl error::FromError<json::DecoderError> for DeliveryError {
     }
 }
 
-impl error::FromError<io::Error> for DeliveryError {
-    fn from_error(err: io::Error) -> DeliveryError {
+impl From<io::Error> for DeliveryError {
+    fn from(err: io::Error) -> DeliveryError {
         DeliveryError{
             kind: Kind::IoError,
             detail: Some(format!("{}", err))
@@ -165,8 +165,8 @@ impl error::FromError<io::Error> for DeliveryError {
     }
 }
 
-impl error::FromError<json::ParserError> for DeliveryError {
-    fn from_error(err: json::ParserError) -> DeliveryError {
+impl From<json::ParserError> for DeliveryError {
+    fn from(err: json::ParserError) -> DeliveryError {
         DeliveryError{
             kind: Kind::JsonError,
             detail: Some(err.description().to_string())
@@ -174,11 +174,12 @@ impl error::FromError<json::ParserError> for DeliveryError {
     }
 }
 
-impl error::FromError<hyper::HttpError> for DeliveryError {
-    fn from_error(err: hyper::HttpError) -> DeliveryError {
+impl From<hyper::HttpError> for DeliveryError {
+    fn from(err: hyper::HttpError) -> DeliveryError {
+        let detail = Some(err.description().to_string());
         DeliveryError{
-            kind: Kind::HttpError(err.clone()),
-            detail: Some(err.description().to_string())
+            kind: Kind::HttpError(err),
+            detail: detail
         }
     }
 }

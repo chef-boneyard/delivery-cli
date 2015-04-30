@@ -1,4 +1,4 @@
-#![feature(path_ext, convert)]
+#![feature(path_ext)]
 extern crate delivery;
 extern crate rustc_serialize;
 extern crate tempdir;
