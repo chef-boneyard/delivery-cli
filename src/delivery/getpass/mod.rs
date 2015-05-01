@@ -21,7 +21,6 @@
 //! the input being echoed on the terminal. Expect this to work on OS
 //! X and Linux only.
 
-#[cfg(not(target_os = "windows"))]
 use libc::types::os::arch::c95::c_char;
 
 #[cfg(not(target_os = "windows"))]
@@ -31,11 +30,16 @@ use std::ffi::{CString, CStr};
 use std::str;
 
 #[cfg(target_os = "windows")]
-use std::io;
+use std::char;
 
 #[cfg(not(target_os = "windows"))]
 extern {
     fn getpass(pass: *const c_char) -> *const c_char;
+}
+
+#[cfg(target_os = "windows")]
+extern {
+    fn getch() -> c_char;
 }
 
 #[cfg(not(target_os = "windows"))]
@@ -49,9 +53,17 @@ pub fn read(prompt: &str) -> String {
 #[cfg(target_os = "windows")]
 pub fn read(prompt: &str) -> String {
     println!("{0}", prompt);
+    let mut pass = String::new();
+    let mut ch = read_char();
+    while ch != '\r' {
+        pass.push(ch);
+        ch = read_char();
+    }
+    pass
+}
 
-    let mut stdin = io::stdin();
-    let mut password = String::new();
-    let _ = stdin.read_line(&mut password);
-    password.trim_right_matches("\r\n").to_string()
+#[cfg(target_os = "windows")]
+fn read_char() -> char {
+    let cresult = unsafe { getch() };
+    char::from_u32(cresult as u32).unwrap()
 }
