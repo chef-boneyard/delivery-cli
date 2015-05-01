@@ -228,7 +228,7 @@ impl APIClient {
                payload: &str) -> Result<HyperResponse, HttpError> {
         let url = self.api_url(path);
         let mut client = hyper::Client::new();
-        let req = client.put(url.as_ref());
+        let req = client.put(&url);
         let req = req.header(self.json_content());
         let req = match self.auth {
             Some(ref auth) => {
