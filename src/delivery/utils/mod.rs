@@ -17,6 +17,7 @@
 
 use std::process::Command;
 use errors::{DeliveryError, Kind};
+#[cfg(not(target_os = "windows"))]
 use libc::funcs::posix88::unistd;
 use std::path::Path;
 use std::convert::AsRef;
@@ -67,9 +68,15 @@ pub fn chmod<P: ?Sized>(path: &P, setting: &str) -> Result<(), DeliveryError> wh
     Ok(())
 }
 
+#[cfg(not(target_os = "windows"))]
 pub fn privileged_process() -> bool {
     match unsafe { unistd::getuid() } {
         0 => true,
         _ => false
     }
+}
+
+#[cfg(target_os = "windows")]
+pub fn privileged_process() -> bool {
+    true
 }

@@ -80,9 +80,14 @@ pub fn item(path: &str) -> Result<(), DeliveryError> {
 
 #[cfg(target_os = "windows")]
 pub fn item(path: &str) -> Result<(), DeliveryError> {
-    item_for_cmd(path, &["start"])
+    process_response("start", try!(Command::new("cmd.exe")
+                                    .arg("/c")
+                                    .arg("start")
+                                    .arg(path)
+                                    .output()))
 }
 
+#[cfg(not(target_os = "windows"))]
 fn item_for_cmds(path: &str, cmds: &[&str]) -> Result<(), DeliveryError> {
     let mut res = Err(DeliveryError { kind: Kind::OpenFailed,
                                       detail: None});
@@ -96,6 +101,7 @@ fn item_for_cmds(path: &str, cmds: &[&str]) -> Result<(), DeliveryError> {
     res
 }
 
+#[cfg(not(target_os = "windows"))]
 fn item_for_cmd(path: &str, cmd: &str) -> Result<(), DeliveryError> {
     process_response(cmd, try!(Command::new(cmd).arg(path).output()))
 }
