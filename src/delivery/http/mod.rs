@@ -24,7 +24,6 @@ use hyper::HttpError;
 use mime;
 use rustc_serialize::json;
 use errors::Kind as DelivError;
-use std::error;
 use std::io::prelude::*;
 use errors::{DeliveryError, Kind};
 use token::TokenStore;
@@ -60,6 +59,14 @@ impl fmt::Display for HProto {
 //     }
 // }
 
+#[derive(Debug)]
+enum HTTPMethod {
+    GET,
+    PUT,
+    POST,
+    DELETE
+}
+   
 #[derive(Debug)]
 pub struct APIClient {
     proto: HProto,
@@ -103,12 +110,61 @@ impl APIClient {
     pub fn set_auth(&mut self, auth: APIAuth) {
         self.auth = Some(auth);
     }
-    
+
     pub fn api_url(&self, path: &str) -> String {
         format!("{}://{}/api/v0/e/{}/{}",
                 self.proto, self.host, self.enterprise, path)
     }
 
+    pub fn get(&self, path: &str) -> Result<HyperResponse, HttpError> {
+        self.req_with_body(HTTPMethod::GET, path, "")
+    }
+
+    pub fn delete(&self, path: &str) -> Result<HyperResponse, HttpError> {
+        self.req_with_body(HTTPMethod::DELETE, path, "")
+    }
+    
+    pub fn put(&self, path: &str,
+               payload: &str) -> Result<HyperResponse, HttpError> {
+        self.req_with_body(HTTPMethod::PUT, path, payload)
+    }
+
+    pub fn post(&self, path: &str,
+                payload: &str) -> Result<HyperResponse, HttpError> {
+        self.req_with_body(HTTPMethod::POST, path, payload)
+    }
+
+    // Send a request using the specified HTTP verb. If `payload` is
+    // an empty string, no request body will be sent. This could be an
+    // `Options<String>` but (I think) keeping the simple `&str`
+    // avoids an allocation.
+    fn req_with_body(&self,
+                     http_method: HTTPMethod,
+                     path: &str,
+                     payload: &str) -> Result<HyperResponse, HttpError> {
+        let url = self.api_url(path);
+        let mut client = hyper::Client::new();
+        let req = match http_method {
+            HTTPMethod::GET    => client.get(&url),
+            HTTPMethod::PUT    => client.put(&url),
+            HTTPMethod::POST   => client.post(&url),
+            HTTPMethod::DELETE => client.delete(&url)
+        };
+        let req = req.header(self.json_content());
+        let req = match self.auth {
+            Some(ref auth) => {
+                let (deliv_user, deliv_token) = auth.auth_headers();
+                req.header(deliv_user).header(deliv_token)
+            },
+            None => req
+        };
+        if !payload.is_empty() {
+            req.body(payload).send()
+        } else {
+            req.send()
+        }
+    }
+    
     pub fn project_exists(&self,
                           org: &str,
                           proj: &str) -> bool {
@@ -187,63 +243,6 @@ impl APIClient {
         }
     }
 
-    pub fn get(&self, path: &str) -> Result<HyperResponse, HttpError> {
-        let url = self.api_url(path);
-        let mut client = hyper::Client::new();
-        let req = client.get(&url);
-        let req = req.header(self.json_content());
-        let req = match self.auth {
-            Some(ref auth) => {
-                let (deliv_user, deliv_token) = auth.auth_headers();
-                req.header(deliv_user).header(deliv_token)
-            },
-            None => req
-        };
-        req.send()
-    }
-
-    pub fn post(&self,
-                path: &str,
-                payload: &str) -> Result<HyperResponse, HttpError> {
-        let url = self.api_url(path);
-        let mut client = hyper::Client::new();
-        let req = client.post(&url);
-        let req = req.header(self.json_content());
-        let req = match self.auth {
-            Some(ref auth) => {
-                let (deliv_user, deliv_token) = auth.auth_headers();
-                req.header(deliv_user).header(deliv_token)
-            },
-            None => req
-        };
-        if !payload.is_empty() {
-            req.body(payload).send()
-        } else {
-            req.send()
-        }
-    }
-
-    pub fn put(&self,
-               path: &str,
-               payload: &str) -> Result<HyperResponse, HttpError> {
-        let url = self.api_url(path);
-        let mut client = hyper::Client::new();
-        let req = client.put(&url);
-        let req = req.header(self.json_content());
-        let req = match self.auth {
-            Some(ref auth) => {
-                let (deliv_user, deliv_token) = auth.auth_headers();
-                req.header(deliv_user).header(deliv_token)
-            },
-            None => req
-        };
-        if !payload.is_empty() {
-            req.body(payload).send()
-        } else {
-            req.send()
-        }
-    }
-
     pub fn parse_json(result: Result<HyperResponse, hyper::HttpError>) -> Result<json::Json, DeliveryError> {
         let body = match result {
             Ok(mut b) => {
@@ -257,31 +256,12 @@ impl APIClient {
         Ok(try!(json::Json::from_str(&body)))
     }
 
-    pub fn extract_pretty_json<T: error::Error>(
-        result: Result<HyperResponse, T>) -> Result<String, String> {
-        let body = match result {
-            Ok(mut b) => {
-                let mut body_string = String::new();
-                match b.read_to_string(&mut body_string) {
-                    Ok(_) => body_string,
-                    Err(e) => {
-                        debug!("extract_pretty_json: {}", e);
-                        return Err(String::from_str("response read failed"))
-                    }
-                }
-            },
-            Err(e) => {
-                debug!("extract_pretty_json: HttpError: {}", e.description());
-                return Err(String::from_str("HTTP Error"))
-            }
-        };
-        let json = match json::Json::from_str(&body) {
-            Ok(j) => j,
-            Err(_) => {
-                return Err(String::from_str("invalid JSON"))
-            }
-        };
-        Ok(format!("{}", json.pretty()))
+    pub fn extract_pretty_json(resp: &mut HyperResponse) ->
+        Result<String, DeliveryError> {
+            let mut body = String::new();
+            try!(resp.read_to_string(&mut body));
+            let json = try!(json::Json::from_str(&body));
+            Ok(format!("{}", json.pretty()))
     }
 
     fn json_content(&self) -> hyper::header::ContentType {
@@ -329,7 +309,7 @@ impl APIAuth {
     pub fn token(&self) -> String {
         self.token.clone()
     }
-    
+
     pub fn auth_headers(&self) -> (headers::ChefDeliveryUser,
                                    headers::ChefDeliveryToken) {
         (headers::ChefDeliveryUser(self.user.clone()),
@@ -344,7 +324,7 @@ mod tests {
     use std::env;
     use tempdir::TempDir;
     use utils::path_join_many::PathJoinMany;
-    
+
     #[test]
     fn api_auth() {
         fake_test_env();
@@ -360,7 +340,7 @@ mod tests {
         let mut client = APIClient::new_http("localhost:4343",
                                          "Chef");
         fake_test_env();
-        let auth = APIAuth::from_env();        
+        let auth = APIAuth::from_env();
         client.set_auth(auth);
         let url = client.api_url("foo/bar");
         assert_eq!("http://localhost:4343/api/v0/e/Chef/foo/bar", url)
@@ -371,7 +351,7 @@ mod tests {
         let mut client = APIClient::new_https("localhost:4343",
                                           "Chef");
         fake_test_env();
-        let auth = APIAuth::from_env();        
+        let auth = APIAuth::from_env();
         client.set_auth(auth);
         let url = client.api_url("foo/bar");
         assert_eq!("https://localhost:4343/api/v0/e/Chef/foo/bar", url)
@@ -409,7 +389,7 @@ mod tests {
                                               "beefbeef");
         assert_eq!(true, write_result.is_ok());
         let auth = APIAuth::from_token_store(tstore, "127.0.0.1", "acme", "bob");
-        assert_eq!(true, 
+        assert_eq!(true,
                    auth.and_then(|a| {
                        assert_eq!("bob", a.user());
                        assert_eq!("beefbeef", a.token());

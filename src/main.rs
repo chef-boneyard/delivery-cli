@@ -24,6 +24,7 @@ extern crate docopt;
 #[macro_use] extern crate log;
 extern crate env_logger;
 extern crate term;
+extern crate hyper;
 extern crate delivery;
 extern crate rustc_serialize;
 
@@ -44,6 +45,7 @@ use delivery::utils::path_join_many::PathJoinMany;
 use delivery::getpass;
 use delivery::token;
 use delivery::http::{self, APIClient, APIAuth};
+use hyper::status::StatusCode;
 use delivery::project;
 
 docopt!(Args derive Debug, "
@@ -606,16 +608,20 @@ fn api_req(method: &str, path: &str, data: &str,
     
     let auth = try!(APIAuth::from_token_store(tstore, &s, &e, &u));
     client.set_auth(auth);
-    let result = match method {
-        "get" => client.get(path),
-        "post" => client.post(path, data),
+    let mut result = match method {
+        "get" => try!(client.get(path)),
+        "post" => try!(client.post(path, data)),
+        "put" => try!(client.put(path, data)),
+        "delete" => try!(client.delete(path)),
         _ => return Err(DeliveryError{ kind: Kind::UnsupportedHttpMethod,
                                        detail: None })
     };
-    match APIClient::extract_pretty_json(result) {
-        Ok(v) => println!("{}", v),
-        Err(e) => return Err(DeliveryError{ kind: Kind::JsonParseError,
-                                            detail: Some(e) })
+    match result.status {
+        StatusCode::NoContent => {},
+        _ => {
+            let pretty_json = try!(APIClient::extract_pretty_json(&mut result));
+            println!("{}", pretty_json);
+        }
     };
     Ok(())
 }
