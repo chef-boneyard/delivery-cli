@@ -85,7 +85,12 @@ pub fn get(server: &str, ent: &str, user: &str, org: &str,
         error_code @ _ => {
             let msg = format!("API request returned {}",
                               error_code);
-            Err(DeliveryError{ kind: Kind::AuthenticationFailed,
+            let mut detail = String::new();
+            let e = match result.read_to_string(&mut detail) {
+                Ok(_) => Ok(detail),
+                Err(e) => Err(e)
+            };
+            Err(DeliveryError{ kind: Kind::ApiError(error_code, e),
                                detail: Some(msg)})
         }
     }
@@ -102,7 +107,7 @@ pub fn set(server: &str, ent: &str, user: &str, org: &str, proj: &str,
     let path = format!("orgs/{}/projects/{}/changes/{}/description",
                        org, proj, change);
     let payload = try!(description.to_json());
-    let result = try!(client.put(&path, &payload));
+    let mut result = try!(client.put(&path, &payload));
     match result.status {
         StatusCode::NoContent => Ok(()),
         StatusCode::Unauthorized => {
@@ -113,7 +118,12 @@ pub fn set(server: &str, ent: &str, user: &str, org: &str, proj: &str,
         error_code @ _ => {
             let msg = format!("API request returned {}",
                               error_code);
-            Err(DeliveryError{ kind: Kind::AuthenticationFailed,
+            let mut detail = String::new();
+            let e = match result.read_to_string(&mut detail) {
+                Ok(_) => Ok(detail),
+                Err(e) => Err(e)
+            };
+            Err(DeliveryError{ kind: Kind::ApiError(error_code, e),
                                detail: Some(msg)})
         }
     }

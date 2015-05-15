@@ -58,7 +58,7 @@ macro_rules! config_accessor_for {
             pub fn $name(self) -> Result<String, DeliveryError> {
                 match self.$name {
                     Some(v) => Ok(v.clone()),
-                    None => Err(DeliveryError{ kind: Kind::MissingConfig, detail: Some(String::from_str($err_msg)) })
+                    None => Err(DeliveryError{ kind: Kind::MissingConfig, detail: Some(format!("{} or set it in your .toml config file", $err_msg))})
                 }
             }
 

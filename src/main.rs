@@ -285,15 +285,7 @@ fn review(for_pipeline: &str,
           no_open: &bool, edit: &bool) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
-    let project = try!(project_from_cwd());
-    config = config.set_pipeline(for_pipeline)
-        .set_project(&project);
-
-    let s = validate!(config, server);
-    let e = validate!(config, enterprise);
-    let u = validate!(config, user);
-    let o = validate!(config, organization);
-    let p = validate!(config, project);
+    config = config.set_pipeline(for_pipeline);
     let target = validate!(config, pipeline);
 
     say("white", "Review for change ");
@@ -306,6 +298,16 @@ fn review(for_pipeline: &str,
     sayln("magenta", &target);
     let review = try!(git::git_push_review(&head, &target));
     if *edit {
+        let project = try!(project_from_cwd());
+        config = config.set_pipeline(for_pipeline)
+            .set_project(&project);
+
+        let s = validate!(config, server);
+        let e = validate!(config, enterprise);
+        let u = validate!(config, user);
+        let o = validate!(config, organization);
+        let p = validate!(config, project);
+
         try!(edit_change(&s, &e, &u, &o, &p, &review));
     }
     handle_review_result(&review, no_open)
