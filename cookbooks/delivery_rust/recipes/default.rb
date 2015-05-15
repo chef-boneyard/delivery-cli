@@ -13,7 +13,8 @@ rust_version = node['delivery_rust']['rust_version']
 rustup_cmd = ["bash",
               "#{Chef::Config[:file_cache_path]}/rustup.sh",
               "--channel=nightly",
-              "--date=#{rust_version}"].join(' ')
+              "--date=#{rust_version}",
+              "--yes"].join(' ')
 execute "install rust and cargo" do
   command rustup_cmd
 end
