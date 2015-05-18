@@ -58,7 +58,7 @@ macro_rules! config_accessor_for {
             pub fn $name(self) -> Result<String, DeliveryError> {
                 match self.$name {
                     Some(v) => Ok(v.clone()),
-                    None => Err(DeliveryError{ kind: Kind::MissingConfig, detail: Some(format!("{} or set it in your .toml config file", $err_msg))})
+                    None => Err(DeliveryError{ kind: Kind::MissingConfig, detail: Some(String::from_str($err_msg)) })
                 }
             }
 
@@ -72,13 +72,13 @@ macro_rules! config_accessor_for {
     )
 }
 
-config_accessor_for!(server, set_server, "Server not set; try --server");
-config_accessor_for!(user, set_user, "User not set; try --user");
-config_accessor_for!(enterprise, set_enterprise, "Enterprise not set; try --ent");
-config_accessor_for!(organization, set_organization, "Organization not set; try --org");
-config_accessor_for!(project, set_project, "Project not set; try --project");
-config_accessor_for!(git_port, set_git_port, "Git Port not set");
-config_accessor_for!(pipeline, set_pipeline, "Pipeline not set; try --for");
+config_accessor_for!(server, set_server, "Server not set; try --server or set it in your .toml config file");
+config_accessor_for!(user, set_user, "User not set; try --user or set it in your .toml config file");
+config_accessor_for!(enterprise, set_enterprise, "Enterprise not set; try --ent or set it in your .toml config file");
+config_accessor_for!(organization, set_organization, "Organization not set; try --org or set it in your .toml config file");
+config_accessor_for!(project, set_project, "Project not set; try --project or set it in your .toml config file");
+config_accessor_for!(git_port, set_git_port, "Git Port not set; please set it in your .toml config file");
+config_accessor_for!(pipeline, set_pipeline, "Pipeline not set; try --for or set it in your .toml config file");
 
 impl Config {
     pub fn load_config(cwd: &PathBuf) -> Result<Config, DeliveryError> {
