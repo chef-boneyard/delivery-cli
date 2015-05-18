@@ -189,8 +189,9 @@ pub fn parse_git_push_output(push_output: &str,
                     if cap.starts_with("http") {
                         let change_url = cap.trim().to_string();
                         r_url = Some(change_url.clone());
-                        let parts: Vec<&str> = change_url.split("/").collect();
-                        r_change_id = Some(parts[parts.len() - 1].to_string());
+                        let change_id_regex = regex!(r"/([a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12})");
+                        let change_id_match = change_id_regex.captures(change_url.as_str());
+                        r_change_id = Some(String::from_str(change_id_match.unwrap().at(1).unwrap()));
                     } else {
                         r_messages.push(cap.to_string());
                     }
