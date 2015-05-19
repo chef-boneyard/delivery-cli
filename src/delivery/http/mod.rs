@@ -32,6 +32,7 @@ use utils::say::{sayln};
 
 mod headers;
 pub mod token;
+pub mod change;
 
 #[derive(Debug)]
 enum HProto {
@@ -207,6 +208,27 @@ impl APIClient {
         let url = self.api_url(path);
         let mut client = hyper::Client::new();
         let req = client.post(&url);
+        let req = req.header(self.json_content());
+        let req = match self.auth {
+            Some(ref auth) => {
+                let (deliv_user, deliv_token) = auth.auth_headers();
+                req.header(deliv_user).header(deliv_token)
+            },
+            None => req
+        };
+        if !payload.is_empty() {
+            req.body(payload).send()
+        } else {
+            req.send()
+        }
+    }
+
+    pub fn put(&self,
+               path: &str,
+               payload: &str) -> Result<HyperResponse, HttpError> {
+        let url = self.api_url(path);
+        let mut client = hyper::Client::new();
+        let req = client.put(&url);
         let req = req.header(self.json_content());
         let req = match self.auth {
             Some(ref auth) => {
