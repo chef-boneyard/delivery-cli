@@ -287,6 +287,11 @@ fn review(for_pipeline: &str,
     let mut config = try!(load_config(&cwd()));
     config = config.set_pipeline(for_pipeline);
     let target = validate!(config, pipeline);
+    // validate the delivery config file
+    // TODO: same as elsewhere in the code, we should get the project's root
+    // (instead of simply cwd), e.g. by looking for the .git dir?
+    let cwd = try!(env::current_dir());
+    try!(DeliveryConfig::validate_config_file(&cwd));
 
     say("white", "Review for change ");
     let head = try!(git::get_head());
@@ -376,7 +381,7 @@ fn diff(change: &str, patchset: &str, pipeline: &str, local: &bool) -> Result<()
     let target = validate!(config, pipeline);
     say("white", "Showing diff for ");
     say("yellow", change);
-   say("white", " targeted for pipeline ");
+    say("white", " targeted for pipeline ");
     say("magenta", &target);
 
     if patchset == "latest" {
