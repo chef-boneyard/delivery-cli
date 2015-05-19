@@ -24,6 +24,7 @@ use std::io::prelude::*;
 use std::path::PathBuf;
 
 use rustc_serialize::json;
+use rustc_serialize::json::DecoderError;
 
 use errors::DeliveryError;
 use git;
@@ -31,11 +32,21 @@ use utils::mkdir_recursive;
 use utils::path_join_many::PathJoinMany;
 use utils::say::{say, sayln};
 
-#[derive(RustcEncodable, Clone)]
+#[derive(RustcEncodable, RustcDecodable, Clone)]
 pub struct DeliveryConfig {
     pub version: String,
     pub build_cookbook: HashMap<String, String>,
-    pub skip_phases: Vec<String>,
+    pub skip_phases: Option<Vec<String>>,
+    pub build_nodes: Option<HashMap<String, Vec<String>>>
+}
+
+// v1 config, deprecated, but still supported
+#[derive(RustcDecodable)]
+pub struct DeliveryConfigV1 {
+    pub version: String,
+    pub build_cookbook: String,
+    pub skip_phases: Option<Vec<String>>,
+    pub build_nodes: Option<HashMap<String, Vec<String>>>
 }
 
 impl Default for DeliveryConfig {
@@ -48,7 +59,8 @@ impl Default for DeliveryConfig {
         DeliveryConfig {
             version: "2".to_string(),
             build_cookbook: build_cookbook,
-            skip_phases: Vec::new()
+            skip_phases: Some(Vec::new()),
+            build_nodes: Some(HashMap::new())
         }
     }
 }
@@ -82,9 +94,11 @@ impl DeliveryConfig {
             build_cookbook.insert("git".to_string(), deliv_truck_git.to_string());
             build_cookbook.insert("branch".to_string(), "master".to_string());
             config.build_cookbook = build_cookbook;
+            let mut skip_phases: Vec<String> = Vec::new();
             for phase in &["smoke", "security", "quality"] {
-                config.skip_phases.push(phase.to_string())
+                skip_phases.push(phase.to_string())
             }
+            config.skip_phases = Some(skip_phases);
         }
 
         try!(config.write_file(proj_path));
@@ -102,6 +116,30 @@ impl DeliveryConfig {
 
     fn config_file_exists(proj_path: &PathBuf) -> bool {
         DeliveryConfig::config_file_path(proj_path).is_file()
+    }
+
+    pub fn validate_config_file(proj_path: &PathBuf) -> Result<bool, DeliveryError> {
+        let config_file_path = DeliveryConfig::config_file_path(proj_path);
+        let mut config_file = try!(File::open(&config_file_path));
+        let mut config_file_content = String::new();
+        try!(config_file.read_to_string(&mut config_file_content));
+        let config_file_content_str = config_file_content.trim();
+        // try to parse it as v2
+        let parse_v2_result: Result<DeliveryConfig, DecoderError> = json::decode(config_file_content_str);
+        let result = match parse_v2_result {
+            Ok(_) => Ok(true),
+            Err(_) => {
+                // then try as v1
+                let parse_v1_result: Result<DeliveryConfigV1, DecoderError> = json::decode(config_file_content_str);
+                match parse_v1_result {
+                    Ok(_) => Ok(true),
+                    Err(e) => Err(e)
+                }
+            }
+        };
+        // convert any error in a delivery error
+        let boolean_result = try!(result);
+        Ok(boolean_result)
     }
 
     fn write_file(&self, proj_path: &PathBuf) -> Result<(), DeliveryError> {

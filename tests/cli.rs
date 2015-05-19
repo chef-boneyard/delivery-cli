@@ -97,12 +97,41 @@ fn assert_command_successful(command: &mut Command, dir: &TempDir) -> Output {
     result
 }
 
+/// Same as `assert_command_successful` above, excepts it asserts the command
+/// exits with a non-0 status code
+fn assert_command_failed(command: &mut Command, dir: &TempDir) -> Output {
+    let result = panic_on_error!(command.current_dir(&dir.path()).output());
+    if result.status.success() {
+        let output = String::from_utf8_lossy(&result.stdout);
+        let error = String::from_utf8_lossy(&result.stderr);
+        panic!("Command {:?} should have failed!\nOUT: {}\nERR: {}\nPath: {}", command, &output, &error, dir.path().to_str().unwrap());
+    };
+    result
+}
+
+/// Builds the command to run delivery review
+fn delivery_review_command(pipeline: &str) -> Command {
+    let mut command = delivery_cmd();
+    command.arg("review").arg("--no-open").arg("--for").arg(pipeline);
+    command
+}
+
+/// Builds the command to run a sample job
+fn delivery_verify_command(job_root: &TempDir) -> Command {
+    let mut command = delivery_cmd();
+    command.arg("job")
+           .arg("verify")
+           .arg("unit")
+           .arg("--no-spinner")
+           .arg("--job-root").arg(job_root.path().to_str().unwrap());
+    command
+}
+
 /// Calls delivery review, and creates the two stub branches that the
 /// api would create (`_reviews/PIPELINE/BRANCH/1` and `_reviews/PIPELINE/BRANCH/latest`)
 fn delivery_review(local: &TempDir, remote: &TempDir, branch: &str, pipeline: &str) {
     panic_on_error!(git_command(&["checkout", branch], local.path()));
-    let mut command = delivery_cmd();
-    command.arg("review").arg("--no-open").arg("--for").arg(pipeline);
+    let mut command = delivery_review_command(pipeline);
     assert_command_successful(&mut command, local);
 
     // Stub out the behavior of the delivery-api
@@ -141,18 +170,29 @@ test!(review {
     setup_checkout_branch(&delivery_project_git, "_for/master/rust/test");
 });
 
+test!(review_with_a_v1_config {
+    let delivery_project_git = setup_mock_delivery_project_git("v1_config.json");
+    let local_project = setup_local_project_clone(&delivery_project_git);
+    setup_change(&local_project, "rust/test", "freaky");
+    delivery_review(&local_project, &delivery_project_git, "rust/test", "master");
+    setup_checkout_branch(&delivery_project_git, "_for/master/rust/test");
+});
+
+test!(review_with_an_invalid_config {
+    let delivery_project_git = setup_mock_delivery_project_git("invalid_config.json");
+    let local_project = setup_local_project_clone(&delivery_project_git);
+    setup_change(&local_project, "rust/test", "freaky");
+    let mut command = delivery_review_command("rust/test");
+    assert_command_failed(&mut command, &local_project);
+});
+
 test!(job_verify_unit_with_path_config {
     let delivery_project_git = setup_mock_delivery_project_git("path_config.json");
     let local_project = setup_local_project_clone(&delivery_project_git);
     let job_root = TempDir::new("job-root").unwrap();
     setup_change(&local_project, "rust/test", "freaky");
-    let mut command = delivery_cmd();
-    command.arg("job")
-           .arg("verify")
-           .arg("unit")
-           .arg("--no-spinner")
-           .arg("--job-root").arg(job_root.path().to_str().unwrap());
-    assert_command_successful(&mut command, &local_project)
+    let mut command = delivery_verify_command(&job_root);
+    assert_command_successful(&mut command, &local_project);
 });
 
 test!(job_verify_unit_with_git_config {
@@ -161,13 +201,8 @@ test!(job_verify_unit_with_git_config {
     let job_root = TempDir::new("job-root").unwrap();
     setup_build_cookbook_project(&job_root);
     setup_change(&local_project, "rust/test", "freaky");
-    let mut command = delivery_cmd();
-    command.arg("job")
-           .arg("verify")
-           .arg("unit")
-           .arg("--no-spinner")
-           .arg("--job-root").arg(job_root.path().to_str().unwrap());
-    assert_command_successful(&mut command, &local_project)
+    let mut command = delivery_verify_command(&job_root);
+    assert_command_successful(&mut command, &local_project);
 });
 
 test!(job_verify_unit_with_supermarket_config {
@@ -175,18 +210,8 @@ test!(job_verify_unit_with_supermarket_config {
     let local_project = setup_local_project_clone(&delivery_project_git);
     let job_root = TempDir::new("job-root").unwrap();
     setup_change(&local_project, "rust/test", "freaky");
-    let result = panic_on_error!(delivery_cmd().
-                                 arg("job").
-                                 arg("verify").
-                                 arg("unit").
-                                 arg("--no-spinner").
-                                 arg("--job-root").arg(job_root.path().to_str().unwrap()).
-                                 current_dir(local_project.path()).output());
-    if result.status.success() {
-        let output = String::from_utf8_lossy(&result.stdout);
-        let error = String::from_utf8_lossy(&result.stderr);
-        panic!("The 'delivery verify unit' ought to have failed\nOUT: {}\nERR: {}\nPath: {}", &output, &error, local_project.path().to_str().unwrap());
-    }
+    let mut command = delivery_verify_command(&job_root);
+    assert_command_failed(&mut command, &local_project);
     assert!(job_root.path().join_many(&["chef", "cookbooks", "httpd"]).is_dir());
     assert!(job_root.path().join_many(&["chef", "cookbooks", "httpd", "templates", "default", "magic.erb"]).is_file());
 });
@@ -196,12 +221,7 @@ test!(job_verify_dna_json {
     let local_project = setup_local_project_clone(&delivery_project_git);
     let job_root = TempDir::new("job-root").unwrap();
     setup_change(&local_project, "rust/test", "freaky");
-    let mut command = delivery_cmd();
-    command.arg("job")
-           .arg("verify")
-           .arg("unit")
-           .arg("--no-spinner")
-           .arg("--job-root").arg(job_root.path().to_str().unwrap());
+    let mut command = delivery_verify_command(&job_root);
     assert_command_successful(&mut command, &local_project);
     let mut dna_file = panic_on_error!(File::open(&job_root.path().join_many(&["chef", "dna.json"])));
     let mut dna_json = String::new();

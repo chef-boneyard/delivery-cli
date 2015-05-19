@@ -153,7 +153,7 @@ impl From<json::DecoderError> for DeliveryError {
     fn from(err: json::DecoderError) -> DeliveryError {
         DeliveryError{
             kind: Kind::JsonParseError,
-            detail: Some(err.description().to_string())
+            detail: Some(format!("{}: {}", err.description().to_string(), err))
         }
     }
 }
