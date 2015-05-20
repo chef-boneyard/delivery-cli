@@ -181,7 +181,10 @@ pub fn parse_git_push_output(push_output: &str,
     for line in push_error.lines_any() {
         debug!("error: {}", line);
         if line.starts_with("remote") {
-            let r = regex!(r"remote: ([^ ]+)");
+            // this weird regex accounts for the fact that some versions of git
+            // (at least 1.8.5.2 (Apple Git-48), but possibly others) append the
+            // ANSI code ESC[K to every line of the remote's answer when pushing
+            let r = regex!(r"remote: ([^ \x{1b}]+)(?:\x{1b}\[K)?$");
             let caps_result = r.captures(line);
             match caps_result {
                 Some(caps) => {
