@@ -166,6 +166,15 @@ pub struct ReviewResult {
     pub change_id: Option<String>
 }
 
+impl Default for ReviewResult {
+    fn default() -> ReviewResult {
+        ReviewResult { push_results: Vec::new(),
+                       messages: Vec::new(),
+                       url: None,
+                       change_id: None }
+    }
+}
+
 #[derive(Debug)]
 pub struct PushResult {
     flag: PushResultFlag,
@@ -174,40 +183,16 @@ pub struct PushResult {
 
 pub fn parse_git_push_output(push_output: &str,
                              push_error: &str) -> Result<ReviewResult, DeliveryError> {
-    let mut push_results: Vec<PushResult> = Vec::new();
-    let mut r_messages: Vec<String> = Vec::new();
-    let mut r_url = None;
-    let mut r_change_id = None;
+    let mut review_result = ReviewResult::default();
     for line in push_error.lines_any() {
         debug!("error: {}", line);
         if line.starts_with("remote") {
-            // this weird regex accounts for the fact that some versions of git
-            // (at least 1.8.5.2 (Apple Git-48), but possibly others) append the
-            // ANSI code ESC[K to every line of the remote's answer when pushing
-            let r = regex!(r"remote: ([^ \x{1b}]+)(?:\x{1b}\[K)?$");
-            let caps_result = r.captures(line);
-            match caps_result {
-                Some(caps) => {
-                    let cap = caps.at(1).unwrap();
-                    if cap.starts_with("http") {
-                        let change_url = cap.trim().to_string();
-                        r_url = Some(change_url.clone());
-                        let change_id_regex = regex!(r"/([a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12})");
-                        let change_id_match = change_id_regex.captures(change_url.as_str());
-                        r_change_id = Some(String::from_str(change_id_match.unwrap().at(1).unwrap()));
-                    } else {
-                        r_messages.push(cap.to_string());
-                    }
-                 },
-                None => {}
-            }
+            parse_line_from_remote(&line, &mut review_result);
         }
     }
     for line in push_output.lines_any() {
         debug!("output: {}", line);
-        if line.starts_with("To") {
-            continue;
-        } else if line.starts_with("Done") {
+        if line.starts_with("To") ||  line.starts_with("Done") {
             continue;
         }
         let r = regex!(r"(.)\t(.+):(.+)\t\[(.+)\]");
@@ -233,17 +218,37 @@ pub fn parse_git_push_output(push_output: &str,
                     detail: Some(format!("Unknown result flag"))})
             }
         };
-        push_results.push(
+        review_result.push_results.push(
             PushResult{
                 flag: result_flag,
                 reason: String::from_str(caps.at(4).unwrap())
-            }
-            )
+            })
     }
-    Ok(ReviewResult { push_results: push_results,
-                      messages: r_messages,
-                      url: r_url,
-                      change_id: r_change_id })
+    Ok(review_result)
+}
+
+/// Parses a line returned by the remote
+fn parse_line_from_remote(line: &str, review_result: &mut ReviewResult) -> () {
+    // this weird regex accounts for the fact that some versions of git
+    // (at least 1.8.5.2 (Apple Git-48), but possibly others) append the
+    // ANSI code ESC[K to every line of the remote's answer when pushing
+    let r = regex!(r"remote: ([^\x{1b}]+)(?:\x{1b}\[K)?$");
+    let caps_result = r.captures(line);
+    match caps_result {
+        Some(caps) => {
+            let cap = caps.at(1).unwrap();
+            if cap.starts_with("http") {
+                let change_url = cap.trim().to_string();
+                review_result.url = Some(change_url.clone());
+                let change_id_regex = regex!(r"/([a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12})");
+                let change_id_match = change_id_regex.captures(change_url.as_str());
+                review_result.change_id = Some(String::from_str(change_id_match.unwrap().at(1).unwrap()));
+            } else {
+                review_result.messages.push(cap.to_string());
+            }
+         },
+        None => {}
+    }
 }
 
 pub fn delivery_ssh_url(user: &str, server: &str, ent: &str, org: &str, proj: &str) -> String {
@@ -399,5 +404,35 @@ pub fn git_push_master() -> Result<(), DeliveryError> {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ReviewResult, parse_line_from_remote};
+
+    #[test]
+    fn test_parse_line_from_remote() {
+        test_parse_line_from_remote_with_eol("");
+        // older git versions add this ANSI escape code at the end of the lines
+        test_parse_line_from_remote_with_eol("\u{1b}[K");
+    }
+
+    fn test_parse_line_from_remote_with_eol(remote_msg_eol: &str) {
+        let mut review_result = ReviewResult::default();
+
+        // a random message line
+        let random_msg = "A random message";
+        let line1 = format!("remote: {}{}", random_msg, remote_msg_eol);
+        parse_line_from_remote(&line1, &mut review_result);
+        assert_eq!(random_msg, review_result.messages[0]);
+
+        // a change URL line
+        let change_id = "4bc3f44f-d81f-48a5-bd38-2c7963cb6d94";
+        let change_url = format!("https://delivery.shd.chef.co/e/Chef/#/organizations/sandbox/projects/radar/changes/{}", change_id);
+        let line2 = format!("remote: {}{}", change_url, remote_msg_eol);
+        parse_line_from_remote(&line2, &mut review_result);
+        assert_eq!(change_url, review_result.url.unwrap());
+        assert_eq!(change_id, review_result.change_id.unwrap());
     }
 }
