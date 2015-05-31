@@ -20,7 +20,7 @@ use std::env;
 use hyper;
 use hyper::status::StatusCode;
 use hyper::client::response::Response as HyperResponse;
-use hyper::HttpError;
+use hyper::error::Error as HttpError;
 use mime;
 use rustc_serialize::json;
 use errors::Kind as DelivError;
@@ -243,7 +243,7 @@ impl APIClient {
         }
     }
 
-    pub fn parse_json(result: Result<HyperResponse, hyper::HttpError>) -> Result<json::Json, DeliveryError> {
+    pub fn parse_json(result: Result<HyperResponse, HttpError>) -> Result<json::Json, DeliveryError> {
         let body = match result {
             Ok(mut b) => {
                 let mut body_string = String::new();
