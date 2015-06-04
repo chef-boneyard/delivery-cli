@@ -8,9 +8,9 @@
 # 'make rustup' will installed the pinned version with the nightly channel
 
 CARGO = cargo
-PINNED_RUST_VERSION = c4b23aec4 2015-04-29
+PINNED_RUST_VERSION = 99c2f779d 2015-05-29
 RUST_VERSION := $(shell rustc --version | tr -d '()' | awk '{ print $$3 " " $$4 }')
-RUST_UP_COMMAND = sudo ./rustup.sh --date=2015-04-29 --channel=nightly
+RUST_UP_COMMAND = sudo ./rustup.sh --date=2015-05-29 --channel=nightly
 CARGO_OPTS =
 
 # If the installed version matches the pinning above, the codebase should be compatible.

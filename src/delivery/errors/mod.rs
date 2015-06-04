@@ -20,7 +20,7 @@ use std::error::{self, Error};
 use std::io;
 use std::fmt;
 use hyper;
-use hyper::HttpError;
+use hyper::error::Error as HttpError;
 
 #[derive(Debug)]
 pub enum Kind {
@@ -56,7 +56,7 @@ pub enum Kind {
     ChefFailed,
     ChmodFailed,
     UnsupportedHttpMethod,
-    HttpError(hyper::HttpError),
+    HttpError(HttpError),
     ApiError(hyper::status::StatusCode, Result<String, io::Error>),
     JsonParseError,
     OpenFailed,
@@ -176,8 +176,8 @@ impl From<json::ParserError> for DeliveryError {
     }
 }
 
-impl From<hyper::HttpError> for DeliveryError {
-    fn from(err: hyper::HttpError) -> DeliveryError {
+impl From<HttpError> for DeliveryError {
+    fn from(err: HttpError) -> DeliveryError {
         let detail = Some(err.description().to_string());
         DeliveryError{
             kind: Kind::HttpError(err),
