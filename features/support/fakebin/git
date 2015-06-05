@@ -1,0 +1,30 @@
+#!/bin/bash
+# A wrapper for system git that prevents commands such as `clone` or `fetch` to be
+# executed in testing. It logs commands to "~/.history" so afterwards it can be
+# asserted that they ran.
+#
+# Shamelessly stolen from https://github.com/github/hub
+command="$1"
+[ "$command" = "config" ] || echo git "$@" >> "$HOME"/.history
+
+case "$command" in
+  "clone" )
+      # The Delivery CLI issues commands like
+      #
+      #   git clone $SSH_URL $DIRECTORY
+      #
+      # Since it will clone and then add a `delivery` remote, we need
+      # our fake `git` command to at least make the directory that
+      # it would have cloned so the CLI can then set up the remote.
+      ssh_url=$2 # not used now, just documenting
+      directory=$3
+      mkdir $directory && cd $directory && $DELIVERY_SYSTEM_GIT init && cd ..
+      ;;
+  "fetch" | "pull" | "push" )
+      # don't actually execute these commands
+      exit
+      ;;
+  * )
+      exec "$DELIVERY_SYSTEM_GIT" "$@"
+      ;;
+esac

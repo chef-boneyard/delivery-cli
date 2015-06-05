@@ -205,6 +205,9 @@ test!(job_verify_unit_with_git_config {
     assert_command_successful(&mut command, &local_project);
 });
 
+// TODO: This test requires internet access... we should move it out
+// into an Acceptance-stage test instead of here in unit tests. It's
+// impossible to run on a plane, for instance :(
 test!(job_verify_unit_with_supermarket_config {
     let delivery_project_git = setup_mock_delivery_project_git("supermarket_config.json");
     let local_project = setup_local_project_clone(&delivery_project_git);

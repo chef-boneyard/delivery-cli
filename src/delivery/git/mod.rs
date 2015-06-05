@@ -252,7 +252,7 @@ fn parse_line_from_remote(line: &str, review_result: &mut ReviewResult) -> () {
 }
 
 pub fn delivery_ssh_url(user: &str, server: &str, ent: &str, org: &str, proj: &str) -> String {
-    format!("ssh://{}@{}@{}:8989/{}/{}/{}", user, ent, server, ent, org, proj)
+    format!("ssh://{}@{}@{}/{}/{}/{}", user, ent, server, ent, org, proj)
 }
 
 pub fn init_repo(path: &PathBuf) -> Result<(), DeliveryError> {

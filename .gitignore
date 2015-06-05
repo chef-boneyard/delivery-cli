@@ -2,9 +2,13 @@
 .delivery/cli.toml
 .kitchen/
 .kitchen.local.yml
+.bundle
+bin/
+vendor/
 /omnibus-delivery-cli/local/
 
 # Cucumber Stuff
 vendor/
 .bundle/
 bin/
+tmp/

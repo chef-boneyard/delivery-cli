@@ -57,8 +57,8 @@ Usage: delivery review [--for=<pipeline>] [--no-open] [--edit]
        delivery setup [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--config-path=<dir>] [--for=<pipeline>]
        delivery job <stage> <phase> [--change=<change>] [--for=<pipeline>] [--job-root=<dir>] [--project=<project>] [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--patchset=<number>] [--git-url=<url>] [--shasum=<gitsha>] [--change-id=<id>] [--no-spinner]
        delivery pipeline [--for=<pipeline>] [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--project=<project>] [--config-path=<dir>]
-       delivery api <method> <path> [--user=<user>] [--server=<server>] [--ent=<ent>] [--config-path=<dir>] [--data=<data>]
-       delivery token [--user=<user>] [--server=<server>] [--ent=<ent>]
+       delivery api <method> <path> [--user=<user>] [--server=<server>] [--api-port=<api_port>] [--ent=<ent>] [--config-path=<dir>] [--data=<data>]
+       delivery token [--user=<user>] [--server=<server>] [--api-port=<api_port>] [--ent=<ent>]
        delivery --help
 
 Options:
@@ -153,12 +153,13 @@ fn main() {
             arg_method: ref method,
             arg_path: ref path,
             flag_user: ref user,
+            flag_api_port: ref port,
             flag_server: ref server,
             flag_ent: ref ent,
             flag_data: ref data,
             ..
         } => api_req(&method, &path, &data,
-                     &server, &ent,
+                     &server, &port, &ent,
                      &user),
         Args {
             cmd_clone: true,
@@ -195,10 +196,11 @@ fn main() {
         Args {
             cmd_token: true,
             flag_server: ref server,
+            flag_api_port: ref port,
             flag_ent: ref ent,
             flag_user: ref user,
             ..
-        } => api_token(&server, &ent, &user),
+        } => api_token(&server, &port, &ent, &user),
         _ => no_matching_command(),
     };
     match cmd_result {
@@ -405,13 +407,13 @@ fn clone(project: &str, user: &str, server: &str, ent: &str, org: &str, git_url:
         .set_enterprise(ent)
         .set_organization(org);
     let u = validate!(config, user);
-    let s = validate!(config, server);
     let e = validate!(config, enterprise);
     let o = validate!(config, organization);
+    let git_server = config.git_host_and_port().ok().unwrap();
     say("white", "Cloning ");
     let clone_url = if git_url.is_empty() {
         say("yellow", &format!("{}/{}/{}", e, o, project));
-        git::delivery_ssh_url(&u, &s, &e, &o, project)
+        git::delivery_ssh_url(&u, &git_server, &e, &o, project)
     } else {
         say("yellow", git_url);
         String::from_str(git_url)
@@ -421,7 +423,7 @@ fn clone(project: &str, user: &str, server: &str, ent: &str, org: &str, git_url:
     try!(git::clone(project, &clone_url));
     let project_root = cwd().join(project);
     try!(git::config_repo(&u,
-                          &s,
+                          &git_server,
                           &e,
                           &o,
                           project,
@@ -541,22 +543,23 @@ Result<(), DeliveryError> { sayln("green", "Chef Delivery");
 }
 
 #[allow(dead_code)]
-fn api_token(server: &str, ent: &str,
+fn api_token(server: &str, port: &str, ent: &str,
              user: &str) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
     config = config.set_server(server)
+        .set_api_port(port)
         .set_enterprise(ent)
         .set_user(user);
-    let s = validate!(config, server);
     let e = validate!(config, enterprise);
     let u = validate!(config, user);
+    let api_server = config.api_host_and_port().ok().unwrap();
 
     let mut tstore = try!(token::TokenStore::from_home());
     let pass = getpass::read("Delivery password: ");
-    let token = try!(http::token::request(&s, &e, &u, &pass));
+    let token = try!(http::token::request(&api_server, &e, &u, &pass));
     sayln("magenta", &format!("token: {}", &token));
-    try!(tstore.write_token(&s, &e, &u, &token));
+    try!(tstore.write_token(&api_server, &e, &u, &token));
     sayln("green", &format!("saved API token to: {}", tstore.path().display()));
     Ok(())
 }
@@ -593,20 +596,21 @@ fn init_pipeline(server: &str, user: &str,
 
 #[allow(dead_code)]
 fn api_req(method: &str, path: &str, data: &str,
-           server: &str, ent: &str, user: &str) -> Result<(), DeliveryError> {
+           server: &str, api_port: &str, ent: &str, user: &str) -> Result<(), DeliveryError> {
     let mut config = try!(Config::load_config(&cwd()));
     config = config.set_user(user)
         .set_server(server)
+        .set_api_port(api_port)
         .set_enterprise(ent);
     let u = validate!(config, user);
-    let s = validate!(config, server);
     let e = validate!(config, enterprise);
+    let api_server = config.api_host_and_port().ok().unwrap();
 
-    let mut client = APIClient::new_https(&s, &e);
+    let mut client = APIClient::new_https(&api_server, &e);
 
     let tstore = try!(token::TokenStore::from_home());
-    
-    let auth = try!(APIAuth::from_token_store(tstore, &s, &e, &u));
+
+    let auth = try!(APIAuth::from_token_store(tstore, &api_server, &e, &u));
     client.set_auth(auth);
     let mut result = match method {
         "get" => try!(client.get(path)),
