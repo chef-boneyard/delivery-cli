@@ -13,6 +13,9 @@ RUST_VERSION := $(shell rustc --version | tr -d '()' | awk '{ print $$3 " " $$4 
 RUST_UP_COMMAND = sudo ./rustup.sh --date=2015-05-29 --channel=nightly
 CARGO_OPTS =
 
+DELIV_CLI_GIT_SHA = $(shell git rev-parse --short HEAD)
+RUSTC_VERSION = $(shell rustc --version)
+
 # If the installed version matches the pinning above, the codebase should be compatible.
 ifeq "$(RUST_VERSION)" "$(PINNED_RUST_VERSION)"
 	RUST_COMPAT=true
@@ -25,7 +28,9 @@ all:
 
 build:
 ifeq ($(RUST_COMPAT),true)
-	$(CARGO) $(CARGO_OPTS) build --release
+	DELIV_CLI_GIT_SHA="$(DELIV_CLI_GIT_SHA)" \
+          RUSTC_VERSION="$(RUSTC_VERSION)" \
+          $(CARGO) $(CARGO_OPTS) build --release
 else
 	@echo "Rust version ($(RUST_VERSION)) not at pinned version ($(PINNED_RUST_VERSION))"
 	@echo "'make rustup' will install the pinned version, or run 'cargo build' with another rustc."

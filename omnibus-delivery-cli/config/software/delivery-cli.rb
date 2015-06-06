@@ -16,15 +16,17 @@
 
 # These options are required for all software definitions
 name "delivery-cli"
-default_version "master"
+
 dependency "openssl"
 
-source git: File.expand_path(File.join(File.dirname(__FILE__), "..", "..", ".."))
+source path: File.expand_path('..', Omnibus::Config.project_root)
 
 build do
   # Setup a default environment from Omnibus - you should use this Omnibus
   # helper everywhere. It will become the default in the future.
   env = with_standard_compiler_flags(with_embedded_path)
+  env['DELIV_CLI_GIT_SHA'] = %x(git rev-parse --short HEAD).strip
+  env['RUSTC_VERSION'] = %x(rustc --version).strip
 
   command "cargo build -j #{workers} --release", env: env
 
