@@ -27,6 +27,7 @@ extern crate term;
 extern crate hyper;
 extern crate delivery;
 extern crate rustc_serialize;
+extern crate time;
 
 use std::env;
 use std::error::Error;
@@ -60,6 +61,7 @@ Usage: delivery review [--for=<pipeline>] [--no-open] [--edit]
        delivery api <method> <path> [--user=<user>] [--server=<server>] [--api-port=<api_port>] [--ent=<ent>] [--config-path=<dir>] [--data=<data>]
        delivery token [--user=<user>] [--server=<server>] [--api-port=<api_port>] [--ent=<ent>]
        delivery --help
+       delivery --version
 
 Options:
   -h, --help               Show this message.
@@ -78,6 +80,7 @@ Options:
   -C, --change=<change>    A delivery change branch name
   -i, --change-id=<id>     A delivery change ID
   -n, --no-spinner         Turn off the delightful spinner :(
+  -v, --version            Display version
   <change>                 A delivery change branch name
   <type>                   The type of project (currently supported: cookbook)
 ");
@@ -201,6 +204,10 @@ fn main() {
             flag_user: ref user,
             ..
         } => api_token(&server, &port, &ent, &user),
+        Args {
+            flag_version: true,
+            ..
+        } => say_version(),
         _ => no_matching_command(),
     };
     match cmd_result {
@@ -579,6 +586,28 @@ fn init_pipeline(server: &str, user: &str,
     // push the review
     // maybe back to master?
     Ok(())
+}
+
+fn say_version() -> Result<(), DeliveryError> {
+    sayln("white", &format!("delivery {} {}\n{}",
+                            version(),
+                            build_git_sha(),
+                            rustc_version()));
+    Ok(())
+}
+
+fn version() -> String {
+    let msg = "Invalid time fmt in version";
+    time::strftime("%Y-%m-%dT%H:%M:%SZ", &time::now_utc()).ok().expect(msg)
+}
+
+fn build_git_sha() -> String {
+    let sha = option_env!("DELIV_CLI_GIT_SHA").unwrap_or("0000");
+    format!("({})", sha)
+}
+
+fn rustc_version() -> String {
+    option_env!("RUSTC_VERSION").unwrap_or("rustc UNKNOWN").to_string()
 }
 
 #[allow(dead_code)]
