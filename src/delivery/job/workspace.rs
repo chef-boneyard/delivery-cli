@@ -29,6 +29,7 @@ use std::io::prelude::*;
 use utils;
 use utils::path_join_many::PathJoinMany;
 use std::error;
+use config::Config;
 
 #[derive(RustcDecodable, Debug)]
 pub struct Workspace {
@@ -181,7 +182,7 @@ impl Workspace {
         Ok(())
     }
 
-    fn setup_build_cookbook_from_delivery(&self, build_cookbook: &Json, user: &str, server: &str) -> Result<(), DeliveryError> {
+    fn setup_build_cookbook_from_delivery(&self, build_cookbook: &Json, toml_config: &Config) -> Result<(), DeliveryError> {
         let is_name = try!(build_cookbook.find("name").ok_or(DeliveryError{ kind: Kind::MissingBuildCookbookField, detail: Some("Missing name".to_string())}));
         let name = try!(is_name.as_string().ok_or(DeliveryError{
             kind: Kind::ExpectedJsonString,
@@ -197,12 +198,17 @@ impl Workspace {
             kind: Kind::ExpectedJsonString,
             detail: Some("Build cookbook 'organization' value must be a string".to_string())
         }));
-        let url = git::delivery_ssh_url(user, server, &ent, &org, &name);
+
+        let build_cookbook_config = toml_config.clone().set_enterprise(ent)
+                                                       .set_organization(org)
+                                                       .set_project(name);
+
+        let url = try!(build_cookbook_config.delivery_git_ssh_url());
         try!(git::git_command(&["clone", &url, self.chef.join("build_cookbook").to_str().unwrap()], &self.chef));
         Ok(())
     }
 
-    fn setup_build_cookbook(&self, config: &Json, user: &str, server: &str) -> Result<(), DeliveryError> {
+    fn setup_build_cookbook(&self, toml_config: &Config, config: &Json) -> Result<(), DeliveryError> {
         let build_cookbook = try!(config.find("build_cookbook").ok_or(DeliveryError{
             kind: Kind::NoBuildCookbook,
             detail: None
@@ -225,7 +231,7 @@ impl Workspace {
                             "path" => return self.setup_build_cookbook_from_path(&self.repo.join(p)),
                             "git"  => return self.setup_build_cookbook_from_git(&build_cookbook, &p),
                             "supermarket" => return self.setup_build_cookbook_from_supermarket(&build_cookbook),
-                            "enterprise" => return self.setup_build_cookbook_from_delivery(&build_cookbook, user, server),
+                            "enterprise" => return self.setup_build_cookbook_from_delivery(&build_cookbook, toml_config),
                             "server" => {
                                 let is_name = try!(build_cookbook.find("name")
                                                    .ok_or(DeliveryError{
@@ -380,7 +386,7 @@ impl Workspace {
         Ok(())
     }
 
-    pub fn setup_chef_for_job(&self, user: &str, server: &str, change: Change) -> Result<(), DeliveryError> {
+    pub fn setup_chef_for_job(&self, toml_config: &Config, change: Change) -> Result<(), DeliveryError> {
         let mut config_rb = try!(File::create(&self.chef.join("config.rb")));
         try!(config_rb.write_all(b"file_cache_path File.expand_path(File.join(File.dirname(__FILE__), '..', 'cache'))
 cache_type 'BasicFile'
@@ -400,7 +406,7 @@ end
 "));
         try!(utils::chmod(&self.chef.join("config.rb"), "0644"));
         let config = try!(job::config::load_config(&self.repo.join_many(&[".delivery", "config.json"])));
-        try!(self.setup_build_cookbook(&config, user, server));
+        try!(self.setup_build_cookbook(toml_config, &config));
         try!(self.berks_vendor(&config));
         let workspace_data = WorkspaceCompat{
             root: self.root.to_str().unwrap().to_string(),
@@ -436,7 +442,7 @@ end
         if ! self.repo.join(".git").is_dir() {
             try!(git::git_command(&["clone", git_url, "."], &self.repo));
         }
-        try!(git::git_command(&["remote", "update", "origin"], &self.repo));
+        try!(git::git_command(&["fetch", "origin"], &self.repo));
         try!(self.reset_repo("HEAD"));
         try!(git::git_command(&["checkout", pipeline], &self.repo));
         try!(self.reset_repo(&format!("remotes/origin/{}", pipeline)));

@@ -1,11 +1,13 @@
 #!/bin/bash
-# A wrapper for system git that prevents commands such as `clone` or `fetch` to be
+# A wrapper for system git that prevents commands such as `push` to be
 # executed in testing. It logs commands to "~/.history" so afterwards it can be
 # asserted that they ran.
 #
 # Shamelessly stolen from https://github.com/github/hub
 command="$1"
-[ "$command" = "config" ] || echo git "$@" >> "$HOME"/.history
+[ "$command" = "config" ] || echo git "$@" >> "$FAKE_BINS_HISTORY_FILE"
+
+set -e
 
 case "$command" in
   "clone" )
@@ -16,15 +18,51 @@ case "$command" in
       # Since it will clone and then add a `delivery` remote, we need
       # our fake `git` command to at least make the directory that
       # it would have cloned so the CLI can then set up the remote.
+      # For other subcommands, such as job, we actually need to have cloned it
+      # from a remote. So we do just that
+
       ssh_url=$2 # not used now, just documenting
-      directory=$3
-      mkdir $directory && cd $directory && $DELIVERY_SYSTEM_GIT init && cd ..
+      repo_directory=$3
+
+      remote_directory=$(mktemp -d)
+      cd "$remote_directory" && git init --bare && cd -
+
+      $DELIVERY_SYSTEM_GIT clone "$remote_directory" "$repo_directory"
+
+      cd "$repo_directory"
+
+      # we're going to need a delivery config file in that repository
+      mkdir .delivery
+      echo '{
+    "version": "2",
+    "build_cookbook": {
+        "name": "build_cookbook",
+        "path": ".delivery/build_cookbook"
+    },
+    "build_nodes": {
+        "default"    : ["name:delivery-builder*"]
+    }
+}' > .delivery/config.json
+
+      # we also make sure the remote has a master branch
+      $DELIVERY_SYSTEM_GIT add .delivery/config.json
+      $DELIVERY_SYSTEM_GIT commit -am "Root commit"
+      $DELIVERY_SYSTEM_GIT push origin master
+
+      # and finally, we're gonna need a review branch
+      echo 'A README!' > README.md
+      $DELIVERY_SYSTEM_GIT add README.md
+      $DELIVERY_SYSTEM_GIT commit -am 'Adding a README!'
+      $DELIVERY_SYSTEM_GIT push origin HEAD:_reviews/master/username/feature/branch/1
+
+      # cleanup
+      $DELIVERY_SYSTEM_GIT reset --hard origin/master
+      cd ..
       ;;
-  "fetch" | "pull" | "push" )
-      # don't actually execute these commands
-      exit
+  # there are some commands we don't want to run
+  "push" )
       ;;
   * )
-      exec "$DELIVERY_SYSTEM_GIT" "$@"
+      $DELIVERY_SYSTEM_GIT "$@"
       ;;
 esac

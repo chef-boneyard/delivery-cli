@@ -251,10 +251,6 @@ fn parse_line_from_remote(line: &str, review_result: &mut ReviewResult) -> () {
     }
 }
 
-pub fn delivery_ssh_url(user: &str, server: &str, ent: &str, org: &str, proj: &str) -> String {
-    format!("ssh://{}@{}@{}/{}/{}/{}", user, ent, server, ent, org, proj)
-}
-
 pub fn init_repo(path: &PathBuf) -> Result<(), DeliveryError> {
     say("white", "Is ");
     say("magenta", &format!("{} ", path.display()));
@@ -286,9 +282,8 @@ pub fn create_repo(path: &PathBuf) -> Result<(), DeliveryError> {
     }
 }
 
-pub fn config_repo(user: &str, server: &str, ent: &str, org: &str, proj: &str, path: &PathBuf) -> Result<bool, DeliveryError> {
-    sayln("white", &format!("adding remote: {}", &delivery_ssh_url(user, server, ent, org, proj)));
-    let url = delivery_ssh_url(user, server, ent, org, proj);
+pub fn config_repo(url: &str, path: &PathBuf) -> Result<bool, DeliveryError> {
+    sayln("white", &format!("adding remote delivery: {}", &url));
     let result = git_command(&["remote", "add", "delivery", &url], path);
     match result {
         Ok(_) => return Ok(true),

@@ -36,7 +36,10 @@ Before do
 
   set_env('DELIVERY_SYSTEM_GIT', system_git)
   set_env('PATH', "#{cli_dir}#{File::PATH_SEPARATOR}#{fake_bin}#{File::PATH_SEPARATOR}#{ENV['PATH']}")
-
+  # We don't use the `HOME` env var for this as it is frequently
+  # overriden to other values when running executables
+  # (notably when running chef-client in the CLI)
+  set_env('FAKE_BINS_HISTORY_FILE', File.join(current_directory, '.history'))
 end
 
 Before('@broken') do
@@ -49,9 +52,9 @@ end
 
 World Module.new {
 
-  # Stolen from hub
+  # Inspired from hub
   def history
-    histfile = File.join(ENV['HOME'], '.history')
+    histfile = ENV['FAKE_BINS_HISTORY_FILE']
     if File.exist? histfile
       File.readlines histfile
     else

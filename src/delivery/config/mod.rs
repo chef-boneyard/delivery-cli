@@ -98,14 +98,18 @@ impl Config {
         });
     }
 
-    /// Return the host and port at which we can access the Delivery
-    /// Git server.
-    pub fn git_host_and_port(&self) -> Result<String, DeliveryError> {
+    /// Returns the SSH URL to talk to Delivery's Git
+    pub fn delivery_git_ssh_url(&self) -> Result<String, DeliveryError> {
         let s = try!(self.server());
-        Ok(match self.git_port {
+        let host_and_port = match self.git_port {
             Some(ref p) => format!("{}:{}", s, p),
-            None        => s // TODO: Currently we *always* have a git port
-        })
+            None    => s // TODO: Currently we *always* have a git port
+        };
+        let u = try!(self.user());
+        let e = try!(self.enterprise());
+        let o = try!(self.organization());
+        let p = try!(self.project());
+        Ok(format!("ssh://{}@{}@{}/{}/{}/{}", u, e, host_and_port, e, o, p))
     }
 
     pub fn load_config(cwd: &PathBuf) -> Result<Config, DeliveryError> {
@@ -227,8 +231,8 @@ mod tests {
         let config_result = Config::parse_config(toml);
         match config_result {
             Ok(config) => {
-                assert_eq!(config.server, Some(String::from_str("127.0.0.1")));
-                assert_eq!(config.git_port, None);
+                assert_eq!(Some(String::from_str("127.0.0.1")), config.server);
+                assert_eq!(None, config.git_port);
             },
             Err(e) => {
                 panic!("Failed to parse: {:?}", e.detail)
@@ -241,8 +245,8 @@ mod tests {
         let mut conf  = Config::default();
         conf.server   = Some("127.0.0.1".to_string());
         conf.api_port = Some("2112".to_string());
-        assert_eq!(conf.api_host_and_port().ok().unwrap(),
-                   "127.0.0.1:2112".to_string());
+        assert_eq!("127.0.0.1:2112".to_string(),
+                   conf.api_host_and_port().unwrap());
     }
 
     #[test]
@@ -250,8 +254,8 @@ mod tests {
         let mut conf = Config::default();
         conf.server  = Some("127.0.0.1".to_string());
         assert!(conf.api_port.is_none());
-        assert_eq!(conf.api_host_and_port().ok().unwrap(),
-                   "127.0.0.1".to_string());
+        assert_eq!("127.0.0.1".to_string(),
+                   conf.api_host_and_port().unwrap());
     }
 
     #[test]
@@ -263,25 +267,33 @@ mod tests {
 
     #[test]
     fn test_git_url_with_default_port() {
-        let mut conf  = Config::default();
-        conf.server   = Some("127.0.0.1".to_string());
-        assert_eq!(conf.git_host_and_port().ok().unwrap(),
-                   "127.0.0.1:8989".to_string());
+        let mut conf      = Config::default();
+        conf.server       = Some("127.0.0.1".to_string());
+        conf.user         = Some("user".to_string());
+        conf.enterprise   = Some("ent".to_string());
+        conf.organization = Some("org".to_string());
+        conf.project      = Some("proj".to_string());
+        assert_eq!("ssh://user@ent@127.0.0.1:8989/ent/org/proj".to_string(),
+                   conf.delivery_git_ssh_url().unwrap());
     }
 
     #[test]
     fn test_git_url_with_port() {
-        let mut conf  = Config::default();
-        conf.server   = Some("127.0.0.1".to_string());
-        conf.git_port = Some("2112".to_string());
-        assert_eq!(conf.git_host_and_port().ok().unwrap(),
-                   "127.0.0.1:2112".to_string());
+        let mut conf      = Config::default();
+        conf.server       = Some("127.0.0.1".to_string());
+        conf.user         = Some("user".to_string());
+        conf.enterprise   = Some("ent".to_string());
+        conf.organization = Some("org".to_string());
+        conf.project      = Some("proj".to_string());
+        conf.git_port     = Some("2112".to_string());
+        assert_eq!("ssh://user@ent@127.0.0.1:2112/ent/org/proj".to_string(),
+                   conf.delivery_git_ssh_url().unwrap());
     }
 
     #[test]
     fn test_git_url_without_server() {
         let conf = Config::default();
         assert!(conf.server.is_none());
-        assert!(conf.git_host_and_port().is_err());
+        assert!(conf.delivery_git_ssh_url().is_err());
     }
 }

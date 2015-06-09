@@ -21,24 +21,31 @@ use errors::{DeliveryError, Kind};
 use std::path::{PathBuf};
 use http::APIClient;
 use git;
+use config::Config;
 
-pub fn import(user: &str, server: &str, ent: &str, org: &str, proj: &str, path: &PathBuf)
+pub fn import(config: &Config, path: &PathBuf)
     -> Result<(), DeliveryError> {
+    let user = try!(config.user());
+    let ent = try!(config.enterprise());
+    let org = try!(config.organization());
+    let server = try!(config.server());
+    let proj = try!(config.project());
 
     // Init && config local repo if necessary
     try!(git::init_repo(path));
-    if try!(git::config_repo(user, server, ent, org, proj, path)) {
+    let url = try!(config.delivery_git_ssh_url());
+    if try!(git::config_repo(&url, path)) {
         sayln("white", "Remote 'delivery' added to git config!");
     }
 
-    let mut client = APIClient::new_https(server, ent);
-    let auth = try!(client.get_auth_from_home(server, ent, user));
+    let mut client = APIClient::new_https(&server, &ent);
+    let auth = try!(client.get_auth_from_home(&server, &ent, &user));
     client.set_auth(auth);
 
-    if ! client.project_exists(org, proj) {
+    if ! client.project_exists(&org, &proj) {
         say("white", "Creating project: ");
         sayln("magenta", &format!("{} ", proj));
-        let _ = client.create_project(org, proj);
+        let _ = client.create_project(&org, &proj);
     } else {
         say("white", "Project ");
         say("magenta", &format!("{} ", proj));
@@ -57,7 +64,7 @@ pub fn import(user: &str, server: &str, ent: &str, org: &str, proj: &str, path: 
     say("white", "Creating master pipeline for project: ");
     say("magenta", &format!("{} ", proj));
     say("white", "... ");
-    match client.create_pipeline(org, proj, &"master") {
+    match client.create_pipeline(&org, &proj, "master") {
          Ok(_) => {
             sayln("white", "done");
         },
