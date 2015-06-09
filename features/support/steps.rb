@@ -31,11 +31,12 @@ When(/^I checkout the "(.*?)" branch$/) do |branch|
   end
 end
 
-Then(/^"([^"]*)" should be run$/) do |cmd|
+Then(/^(["'])([^\1]*)\1 should be run$/) do |_quote, cmd_template|
+  cmd = ERB.new(cmd_template).result
   assert_command_run(cmd)
 end
 
-Then(/^"([^"]+)" should not be run$/) do |pattern|
+Then(/^(["'])([^\1]*)\1 should not be run$/) do |_quote, pattern|
   history.each { |h| expect(h).to_not include(pattern) }
 end
 

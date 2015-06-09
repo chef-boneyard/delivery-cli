@@ -267,14 +267,9 @@ fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str, proj_type: &
         .set_enterprise(ent)
         .set_organization(org)
         .set_project(&final_proj);
-    let u = validate!(config, user);
-    let s = validate!(config, server);
-    let e = validate!(config, enterprise);
-    let o = validate!(config, organization);
-    let p = validate!(config, project);
 
     let cwd = try!(env::current_dir());
-    try!(project::import(&u, &s, &e, &o, &p, &cwd));
+    try!(project::import(&config, &cwd));
 
     // now to adding the .delivery/config.json
     try!(DeliveryConfig::init(&cwd, proj_type));
@@ -405,28 +400,21 @@ fn clone(project: &str, user: &str, server: &str, ent: &str, org: &str, git_url:
     config = config.set_user(user)
         .set_server(server)
         .set_enterprise(ent)
-        .set_organization(org);
-    let u = validate!(config, user);
-    let e = validate!(config, enterprise);
-    let o = validate!(config, organization);
-    let git_server = config.git_host_and_port().ok().unwrap();
+        .set_organization(org)
+        .set_project(project);
     say("white", "Cloning ");
+    let delivery_url = try!(config.delivery_git_ssh_url());
     let clone_url = if git_url.is_empty() {
-        say("yellow", &format!("{}/{}/{}", e, o, project));
-        git::delivery_ssh_url(&u, &git_server, &e, &o, project)
+        delivery_url.clone()
     } else {
-        say("yellow", git_url);
         String::from_str(git_url)
     };
+    say("yellow", &clone_url);
     say("white", " to ");
     sayln("magenta", &format!("{}", project));
     try!(git::clone(project, &clone_url));
     let project_root = cwd().join(project);
-    try!(git::config_repo(&u,
-                          &git_server,
-                          &e,
-                          &o,
-                          project,
+    try!(git::config_repo(&delivery_url,
                           &project_root));
     Ok(())
 }
@@ -460,7 +448,6 @@ Result<(), DeliveryError> { sayln("green", "Chef Delivery");
         .set_enterprise(ent)
         .set_organization(org);
     let p = validate!(config, project);
-    let u = validate!(config, user);
     let s = validate!(config, server);
     let e = validate!(config, enterprise);
     let o = validate!(config, organization);
@@ -482,7 +469,7 @@ Result<(), DeliveryError> { sayln("green", "Chef Delivery");
         PathBuf::from(job_root)
     };
     let ws = Workspace::new(&job_root_path);
-    sayln("white", "Creating workspace");
+    sayln("white", &format!("Creating workspace in {}", job_root_path.to_string_lossy()));
     try!(ws.build());
     say("white", "Cloning repository, and merging");
     let mut local = false;
@@ -507,7 +494,7 @@ Result<(), DeliveryError> { sayln("green", "Chef Delivery");
         if local {
             cwd().into_os_string().to_string_lossy().into_owned()
         } else {
-            git::delivery_ssh_url(&u, &s, &e, &o, &p)
+            try!(config.delivery_git_ssh_url())
         }
     } else {
         String::from_str(git_url)
@@ -529,7 +516,7 @@ Result<(), DeliveryError> { sayln("green", "Chef Delivery");
         change_id: change_id.to_string(),
         patchset_number: patch.to_string()
     };
-    try!(ws.setup_chef_for_job(&u, &s, change));
+    try!(ws.setup_chef_for_job(&config, change));
     sayln("white", "Running the job");
     if privileged_process() {
         sayln("yellow", "Setting up the builder");

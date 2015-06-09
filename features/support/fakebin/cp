@@ -1,0 +1,3 @@
+#!/bin/bash
+
+echo cp "$@" >> "$FAKE_BINS_HISTORY_FILE"
