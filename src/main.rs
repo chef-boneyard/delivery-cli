@@ -84,7 +84,7 @@ Options:
 
 macro_rules! validate {
     ($config:ident, $value:ident) => (
-        try!($config.clone().$value());
+        try!($config.$value());
     )
 }
 

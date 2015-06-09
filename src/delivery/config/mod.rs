@@ -57,9 +57,9 @@ impl Default for Config {
 macro_rules! config_accessor_for {
     ($name:ident, $set_name:ident, $err_msg:expr) => (
         impl Config {
-            pub fn $name(self) -> Result<String, DeliveryError> {
+            pub fn $name(&self) -> Result<String, DeliveryError> {
                 match self.$name {
-                    Some(v) => Ok(v.clone()),
+                    Some(ref v) => Ok(v.clone()),
                     None => Err(DeliveryError{ kind: Kind::MissingConfig, detail: Some(String::from_str($err_msg)) })
                 }
             }
@@ -90,22 +90,22 @@ impl Config {
     /// port `443`. Unless a port is specified in the configuration,
     /// we'll just return the server name; otherwise we append the
     /// port.
-    pub fn api_host_and_port(self) -> Result<String,DeliveryError> {
-        let s = try!(self.clone().server());
+    pub fn api_host_and_port(&self) -> Result<String, DeliveryError> {
+        let s = try!(self.server());
         return Ok(match self.api_port {
-            Some(p) => format!("{}:{}", s, p),
+            Some(ref p) => format!("{}:{}", s, p),
             None    => s
         });
     }
 
     /// Return the host and port at which we can access the Delivery
     /// Git server.
-    pub fn git_host_and_port(self) -> Result<String,DeliveryError> {
-        let s = try!(self.clone().server());
-        return Ok(match self.git_port {
-            Some(p) => format!("{}:{}", s, p),
-            None    => s // TODO: Currently we *always* have a git port
-        });
+    pub fn git_host_and_port(&self) -> Result<String, DeliveryError> {
+        let s = try!(self.server());
+        Ok(match self.git_port {
+            Some(ref p) => format!("{}:{}", s, p),
+            None        => s // TODO: Currently we *always* have a git port
+        })
     }
 
     pub fn load_config(cwd: &PathBuf) -> Result<Config, DeliveryError> {
