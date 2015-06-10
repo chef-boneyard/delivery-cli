@@ -46,6 +46,25 @@ pub enum Privilege {
     NoDrop
 }
 
+// Here's the config.rb we render for the chef-zero runs.
+static CONFIG_RB: &'static str = r#"
+file_cache_path File.expand_path(File.join(File.dirname(__FILE__), '..', 'cache'))
+cache_type 'BasicFile'
+cache_options(:path => File.join(file_cache_path, 'checksums'))
+cookbook_path File.expand_path(File.join(File.dirname(__FILE__), 'cookbooks'))
+file_backup_path File.expand_path(File.join(File.dirname(__FILE__), '..', 'cache', 'job-backup'))
+Ohai::Config[:disabled_plugins] = [ :Passwd ]
+if ENV['DELIVERY_BUILD_SETUP'] == 'FALSE'
+  lockfile File.join(file_cache_path, 'chef-client-running.pid')
+else
+  if File.exists?('/var/chef/cache/chef-client-running.pid')
+    lockfile '/var/chef/cache/chef-client-running.pid'
+  else
+    lockfile File.join(file_cache_path, 'chef-client-running.pid')
+  end
+end
+"#;
+
 // We want this to encode as strings, not as vectors of bytes.
 // It's cool - I accept we'll be lossy if its not a utf8 string.
 impl Encodable for Workspace {
@@ -388,22 +407,7 @@ impl Workspace {
 
     pub fn setup_chef_for_job(&self, toml_config: &Config, change: Change) -> Result<(), DeliveryError> {
         let mut config_rb = try!(File::create(&self.chef.join("config.rb")));
-        try!(config_rb.write_all(b"file_cache_path File.expand_path(File.join(File.dirname(__FILE__), '..', 'cache'))
-cache_type 'BasicFile'
-cache_options(:path => File.join(file_cache_path, 'checksums'))
-cookbook_path File.expand_path(File.join(File.dirname(__FILE__), 'cookbooks'))
-file_backup_path File.expand_path(File.join(File.dirname(__FILE__), '..', 'cache', 'job-backup'))
-Ohai::Config[:disabled_plugins] = [ :Passwd ]
-if ENV['DELIVERY_BUILD_SETUP'] == 'FALSE'
-  lockfile File.join(file_cache_path, 'chef-client-running.pid')
-else
-  if File.exists?('/var/chef/cache/chef-client-running.pid')
-    lockfile '/var/chef/cache/chef-client-running.pid'
-  else
-    lockfile File.join(file_cache_path, 'chef-client-running.pid')
-  end
-end
-"));
+        try!(config_rb.write_all(CONFIG_RB.as_bytes()));
         try!(utils::chmod(&self.chef.join("config.rb"), "0644"));
         let config = try!(job::config::load_config(&self.repo.join_many(&[".delivery", "config.json"])));
         try!(self.setup_build_cookbook(toml_config, &config));
