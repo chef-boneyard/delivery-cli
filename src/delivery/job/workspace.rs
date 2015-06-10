@@ -23,7 +23,7 @@ use job::dna::{Top, DNA, WorkspaceCompat};
 use job::change::{Change, BuilderCompat};
 use job;
 use std::process::{Command, Stdio};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::fs::File;
 use std::io::prelude::*;
 use utils;
@@ -46,19 +46,48 @@ pub enum Privilege {
     NoDrop
 }
 
-// We want this to encode as strings, not as vectors of bytes.
-// It's cool - I accept we'll be lossy if its not a utf8 string.
+// Here's the config.rb we render for the chef-zero runs.
+static CONFIG_RB: &'static str = r#"
+file_cache_path File.expand_path(File.join(File.dirname(__FILE__), '..', 'cache'))
+cache_type 'BasicFile'
+cache_options(:path => File.join(file_cache_path, 'checksums'))
+cookbook_path File.expand_path(File.join(File.dirname(__FILE__), 'cookbooks'))
+file_backup_path File.expand_path(File.join(File.dirname(__FILE__), '..', 'cache', 'job-backup'))
+Ohai::Config[:disabled_plugins] = [ :Passwd ]
+if ENV['DELIVERY_BUILD_SETUP'] == 'FALSE'
+  lockfile File.join(file_cache_path, 'chef-client-running.pid')
+else
+  if File.exists?('/var/chef/cache/chef-client-running.pid')
+    lockfile '/var/chef/cache/chef-client-running.pid'
+  else
+    lockfile File.join(file_cache_path, 'chef-client-running.pid')
+  end
+end
+"#;
+
+// We want this to encode as strings, not as vectors of bytes. It's
+// cool - I accept we'll panic if its not a utf8 string.
 impl Encodable for Workspace {
     fn encode<S: Encoder>(&self, encoder: &mut S) -> Result<(), S::Error> {
         encoder.emit_struct("Workspace", 0, |encoder| {
-            try!(encoder.emit_struct_field( "root", 0usize, |encoder| self.root.to_str().unwrap().encode(encoder)));
-            try!(encoder.emit_struct_field( "chef", 1usize, |encoder| self.chef.to_str().unwrap().encode(encoder)));
-            try!(encoder.emit_struct_field( "cache", 2usize, |encoder| self.cache.to_str().unwrap().encode(encoder)));
-            try!(encoder.emit_struct_field( "repo", 3usize, |encoder| self.repo.to_str().unwrap().encode(encoder)));
-            try!(encoder.emit_struct_field( "ssh_wrapper", 4usize, |encoder| self.ssh_wrapper.to_str().unwrap().encode(encoder)));
+            try!(encode_path_field(encoder, 0usize, "root",  &self.root));
+            try!(encode_path_field(encoder, 1usize, "chef",  &self.chef));
+            try!(encode_path_field(encoder, 2usize, "cache", &self.cache));
+            try!(encode_path_field(encoder, 3usize, "repo",  &self.repo));
+            try!(encode_path_field(encoder, 4usize, "ssh_wrapper",
+                                   &self.ssh_wrapper));
             Ok(())
         })
     }
+}
+
+fn encode_path_field<S: Encoder>(encoder: &mut S, size: usize,
+                                 name: &str, p: &Path) -> Result<(), S::Error> {
+    encoder.emit_struct_field(name, size, |e| encode_path(p, e))
+}
+
+fn encode_path<S: Encoder>(p: &Path, encoder: &mut S) -> Result<(), S::Error> {
+    path_to_string(p).encode(encoder)
 }
 
 impl Workspace {
@@ -98,8 +127,11 @@ impl Workspace {
             })),
             None => "master"
         };
-        try!(git::git_command(&["clone", git_url, self.chef.join("build_cookbook").to_str().unwrap()], &self.chef));
-        try!(git::git_command(&["checkout", &branch], &self.chef.join("build_cookbook")));
+        let build_cookbook_path = &self.chef.join("build_cookbook");
+        try!(git::git_command(&["clone", git_url,
+                                &path_to_string(build_cookbook_path)],
+                              &self.chef));
+        try!(git::git_command(&["checkout", &branch], build_cookbook_path));
         Ok(())
     }
 
@@ -121,7 +153,7 @@ impl Workspace {
                  .arg("download")
                  .arg(&name)
                  .arg("-f")
-                 .arg(self.chef.join("build_cookbook.tgz").to_str().unwrap())
+                 .arg(&path_to_string(&self.chef.join("build_cookbook.tgz")))
                  .current_dir(&self.root)
                  .output());
             if ! result.status.success() {
@@ -131,7 +163,7 @@ impl Workspace {
             }
             let tar_result = try!(Command::new("tar")
                  .arg("zxf")
-                 .arg(self.chef.join("build_cookbook.tgz").to_str().unwrap())
+                 .arg(&path_to_string(&self.chef.join("build_cookbook.tgz")))
                  .current_dir(&self.chef)
                  .output());
             if ! tar_result.status.success() {
@@ -140,8 +172,8 @@ impl Workspace {
                 return Err(DeliveryError{kind: Kind::TarFailed, detail: Some(format!("Failed 'tar zxf'\nOUT: {}\nERR: {}", &output, &error).to_string())});
             }
             let mv_result = try!(Command::new("mv")
-                 .arg(self.chef.join(name).to_str().unwrap())
-                 .arg(self.chef.join("build_cookbook").to_str().unwrap())
+                 .arg(&path_to_string(&self.chef.join(name)))
+                 .arg(&path_to_string(&self.chef.join("build_cookbook")))
                  .current_dir(&self.chef)
                  .output());
             if ! mv_result.status.success() {
@@ -161,7 +193,7 @@ impl Workspace {
                           .arg("download")
                           .arg(&format!("/cookbooks/{}", &name))
                           .arg("--chef-repo-path")
-                          .arg(self.chef.join("tmp_cookbook").to_str().unwrap())
+                          .arg(&path_to_string(&self.chef.join("tmp_cookbook")))
                           .current_dir(&self.root)
                           .output());
         if ! result.status.success() {
@@ -170,8 +202,9 @@ impl Workspace {
             return Err(DeliveryError{kind: Kind::ChefServerFailed, detail: Some(format!("Failed 'knife cookbook download'\nOUT: {}\nERR: {}", &output, &error).to_string())});
         }
         let mv_result = try!(Command::new("mv")
-                             .arg(self.chef.join_many(&["tmp_cookbook", "cookbooks", &name]).to_str().unwrap())
-                             .arg(self.chef.join("build_cookbook").to_str().unwrap())
+                             .arg(&path_to_string(&self.chef.join_many(&["tmp_cookbook",
+                                                                         "cookbooks", &name])))
+                             .arg(&path_to_string(&self.chef.join("build_cookbook")))
                              .current_dir(&self.chef)
                              .output());
         if ! mv_result.status.success() {
@@ -281,8 +314,8 @@ impl Workspace {
             try!(utils::mkdir_recursive(&self.chef.join("cookbooks")));
             let bc_name = try!(self.build_cookbook_name(&config));
             let mv_result = try!(Command::new("mv")
-                                 .arg(self.chef.join("build_cookbook").to_str().unwrap())
-                                 .arg(self.chef.join_many(&["cookbooks", &bc_name]).to_str().unwrap())
+                                 .arg(&path_to_string(&self.chef.join("build_cookbook")))
+                                 .arg(&path_to_string(&self.chef.join_many(&["cookbooks", &bc_name])))
                                  .current_dir(&self.chef)
                                  .output());
             if ! mv_result.status.success() {
@@ -300,10 +333,10 @@ impl Workspace {
         let result = Command::new("chown")
             .arg("-R")
             .arg("dbuild:dbuild")
-            .arg(self.repo.to_str().unwrap())
-            .arg(self.chef.join("cookbooks").to_str().unwrap())
-            .arg(self.chef.join("nodes").to_str().unwrap())
-            .arg(self.cache.to_str().unwrap())
+            .arg(&path_to_string(&self.repo))
+            .arg(&path_to_string(&self.chef.join("cookbooks")))
+            .arg(&path_to_string(&self.chef.join("nodes")))
+            .arg(&path_to_string(&self.cache))
             .output();
        let output = match result {
             Ok(o) => o,
@@ -350,32 +383,32 @@ impl Workspace {
         let config = try!(job::config::load_config(&self.repo.join_many(&[".delivery", "config.json"])));
         let bc_name = try!(self.build_cookbook_name(&config));
         let mut command = Command::new("chef-client");
-        command.arg("-z");
-        command.arg("--force-formatter");
+        command.arg("-z")
+            .arg("--force-formatter");
         match drop_privilege {
             Privilege::Drop => {
                 try!(self.set_drop_permissions());
-                command.arg("--user");
-                command.arg("dbuild");
-                command.arg("--group");
-                command.arg("dbuild");
+                command.arg("--user")
+                    .arg("dbuild")
+                    .arg("--group")
+                    .arg("dbuild");
             },
             _ => {}
         }
-        command.arg("-j");
-        command.arg(&self.chef.join("dna.json").to_str().unwrap());
-        command.arg("-c");
-        command.arg(&self.chef.join("config.rb").to_str().unwrap());
-        command.arg("-r");
-        command.arg(&format!("{}::{}", bc_name, phase));
-        command.stdout(Stdio::inherit());
-        command.stderr(Stdio::inherit());
-        command.env("HOME", &self.cache.to_str().unwrap());
+        command.arg("-j")
+            .arg(&path_to_string(&self.chef.join("dna.json")))
+            .arg("-c")
+            .arg(&path_to_string(&self.chef.join("config.rb")))
+            .arg("-r")
+            .arg(&format!("{}::{}", bc_name, phase))
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .env("HOME", &path_to_string(&self.cache))
+            .current_dir(&self.repo);
         match phase {
             "default" => command.env("DELIVERY_BUILD_SETUP", "TRUE"),
             _ => command.env("DELIVERY_BUILD_SETUP", "FALSE")
         };
-        command.current_dir(&self.repo);
         let output = match command.output() {
             Ok(o) => o,
             Err(e) => { return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute chef-client: {}", error::Error::description(&e)))}) },
@@ -386,34 +419,24 @@ impl Workspace {
         Ok(())
     }
 
-    pub fn setup_chef_for_job(&self, toml_config: &Config, change: Change) -> Result<(), DeliveryError> {
-        let mut config_rb = try!(File::create(&self.chef.join("config.rb")));
-        try!(config_rb.write_all(b"file_cache_path File.expand_path(File.join(File.dirname(__FILE__), '..', 'cache'))
-cache_type 'BasicFile'
-cache_options(:path => File.join(file_cache_path, 'checksums'))
-cookbook_path File.expand_path(File.join(File.dirname(__FILE__), 'cookbooks'))
-file_backup_path File.expand_path(File.join(File.dirname(__FILE__), '..', 'cache', 'job-backup'))
-Ohai::Config[:disabled_plugins] = [ :Passwd ]
-if ENV['DELIVERY_BUILD_SETUP'] == 'FALSE'
-  lockfile File.join(file_cache_path, 'chef-client-running.pid')
-else
-  if File.exists?('/var/chef/cache/chef-client-running.pid')
-    lockfile '/var/chef/cache/chef-client-running.pid'
-  else
-    lockfile File.join(file_cache_path, 'chef-client-running.pid')
-  end
-end
-"));
-        try!(utils::chmod(&self.chef.join("config.rb"), "0644"));
-        let config = try!(job::config::load_config(&self.repo.join_many(&[".delivery", "config.json"])));
+    pub fn setup_chef_for_job(&self,
+                              toml_config: &Config,
+                              change: Change) -> Result<(), DeliveryError> {
+        let config_rb_path = &self.chef.join("config.rb");
+        let mut config_rb = try!(File::create(config_rb_path));
+        try!(utils::chmod(config_rb_path, "0644"));
+        try!(config_rb.write_all(CONFIG_RB.as_bytes()));
+        let proj_config_path = &self.repo.join_many(&[".delivery",
+                                                      "config.json"]);
+        let config = try!(job::config::load_config(proj_config_path));
         try!(self.setup_build_cookbook(toml_config, &config));
         try!(self.berks_vendor(&config));
         let workspace_data = WorkspaceCompat{
-            root: self.root.to_str().unwrap().to_string(),
-            chef: self.chef.to_str().unwrap().to_string(),
-            cache: self.cache.to_str().unwrap().to_string(),
-            repo: self.repo.to_str().unwrap().to_string(),
-            ssh_wrapper: self.ssh_wrapper.to_str().unwrap().to_string(),
+            root: path_to_string(&self.root),
+            chef: path_to_string(&self.chef),
+            cache: path_to_string(&self.cache),
+            repo: path_to_string(&self.repo),
+            ssh_wrapper: path_to_string(&self.ssh_wrapper),
         };
         let top = Top{
             workspace: workspace_data,
@@ -421,20 +444,21 @@ end
             config: config
         };
         let compat = BuilderCompat{
-            workspace: self.root.to_str().unwrap().to_string(),
-            repo: self.repo.to_str().unwrap().to_string(),
-            cache: self.cache.to_str().unwrap().to_string(),
+            workspace: path_to_string(&self.root),
+            repo: path_to_string(&self.repo),
+            cache: path_to_string(&self.cache),
             build_id: "deprecated".to_string(),
-            build_user: String::from_str("dbuild")
+            build_user: "dbuild".to_string()
         };
         let dna = DNA{
             delivery: top,
             delivery_builder: compat
         };
-        let mut dna_json = try!(File::create(&self.chef.join("dna.json")));
+        let dna_json_path = &self.chef.join("dna.json");
+        let mut dna_json = try!(File::create(dna_json_path));
+        try!(utils::chmod(dna_json_path, "0644"));
         let data = try!(json::encode(&dna));
         try!(dna_json.write_all(data.as_bytes()));
-        try!(utils::chmod(&self.chef.join("dna.json"), "0644"));
         Ok(())
     }
 
@@ -453,6 +477,20 @@ end
             try!(self.reset_repo(sha))
         }
         Ok(())
+    }
+
+}
+
+// Convert a path into a String. Panic if the path contains
+// non-unicode sequences.
+fn path_to_string(p: &Path) -> String {
+    match p.to_str() {
+        Some(s) => s.to_string(),
+        None => {
+            let s = format!("invalid path (non-unicode): {}",
+                            p.to_string_lossy());
+            panic!(s)
+        }
     }
 }
 
