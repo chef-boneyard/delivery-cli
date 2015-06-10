@@ -65,19 +65,23 @@ else
 end
 "#;
 
-// We want this to encode as strings, not as vectors of bytes.
-// It's cool - I accept we'll be lossy if its not a utf8 string.
+// We want this to encode as strings, not as vectors of bytes. It's
+// cool - I accept we'll panic if its not a utf8 string.
 impl Encodable for Workspace {
     fn encode<S: Encoder>(&self, encoder: &mut S) -> Result<(), S::Error> {
         encoder.emit_struct("Workspace", 0, |encoder| {
-            try!(encoder.emit_struct_field( "root", 0usize, |encoder| path_to_string(&self.root).encode(encoder)));
-            try!(encoder.emit_struct_field( "chef", 1usize, |encoder| path_to_string(&self.chef).encode(encoder)));
-            try!(encoder.emit_struct_field( "cache", 2usize, |encoder| path_to_string(&self.cache).encode(encoder)));
-            try!(encoder.emit_struct_field( "repo", 3usize, |encoder| path_to_string(&self.repo).encode(encoder)));
-            try!(encoder.emit_struct_field( "ssh_wrapper", 4usize, |encoder| path_to_string(&self.ssh_wrapper).encode(encoder)));
+            try!(encoder.emit_struct_field( "root", 0usize, |encoder| encode_path(&self.root, encoder)));
+            try!(encoder.emit_struct_field( "chef", 1usize, |encoder| encode_path(&self.chef, encoder)));
+            try!(encoder.emit_struct_field( "cache", 2usize, |encoder| encode_path(&self.cache, encoder)));
+            try!(encoder.emit_struct_field( "repo", 3usize, |encoder| encode_path(&self.repo, encoder)));
+            try!(encoder.emit_struct_field( "ssh_wrapper", 4usize, |encoder| encode_path(&self.ssh_wrapper, encoder)));
             Ok(())
         })
     }
+}
+
+fn encode_path<S: Encoder>(p: &Path, encoder: &mut S) -> Result<(), S::Error> {
+    path_to_string(p).encode(encoder)
 }
 
 impl Workspace {
