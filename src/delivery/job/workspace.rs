@@ -406,9 +406,10 @@ impl Workspace {
     }
 
     pub fn setup_chef_for_job(&self, toml_config: &Config, change: Change) -> Result<(), DeliveryError> {
-        let mut config_rb = try!(File::create(&self.chef.join("config.rb")));
+        let config_rb_path = &self.chef.join("config.rb");
+        let mut config_rb = try!(File::create(config_rb_path));
+        try!(utils::chmod(config_rb_path, "0644"));
         try!(config_rb.write_all(CONFIG_RB.as_bytes()));
-        try!(utils::chmod(&self.chef.join("config.rb"), "0644"));
         let config = try!(job::config::load_config(&self.repo.join_many(&[".delivery", "config.json"])));
         try!(self.setup_build_cookbook(toml_config, &config));
         try!(self.berks_vendor(&config));
@@ -435,10 +436,11 @@ impl Workspace {
             delivery: top,
             delivery_builder: compat
         };
-        let mut dna_json = try!(File::create(&self.chef.join("dna.json")));
+        let dna_json_path = &self.chef.join("dna.json");
+        let mut dna_json = try!(File::create(dna_json_path));
+        try!(utils::chmod(dna_json_path, "0644"));
         let data = try!(json::encode(&dna));
         try!(dna_json.write_all(data.as_bytes()));
-        try!(utils::chmod(&self.chef.join("dna.json"), "0644"));
         Ok(())
     }
 
