@@ -70,14 +70,20 @@ end
 impl Encodable for Workspace {
     fn encode<S: Encoder>(&self, encoder: &mut S) -> Result<(), S::Error> {
         encoder.emit_struct("Workspace", 0, |encoder| {
-            try!(encoder.emit_struct_field( "root", 0usize, |encoder| encode_path(&self.root, encoder)));
-            try!(encoder.emit_struct_field( "chef", 1usize, |encoder| encode_path(&self.chef, encoder)));
-            try!(encoder.emit_struct_field( "cache", 2usize, |encoder| encode_path(&self.cache, encoder)));
-            try!(encoder.emit_struct_field( "repo", 3usize, |encoder| encode_path(&self.repo, encoder)));
-            try!(encoder.emit_struct_field( "ssh_wrapper", 4usize, |encoder| encode_path(&self.ssh_wrapper, encoder)));
+            try!(encode_path_field(encoder, 0usize, "root",  &self.root));
+            try!(encode_path_field(encoder, 1usize, "chef",  &self.chef));
+            try!(encode_path_field(encoder, 2usize, "cache", &self.cache));
+            try!(encode_path_field(encoder, 3usize, "repo",  &self.repo));
+            try!(encode_path_field(encoder, 4usize, "ssh_wrapper",
+                                   &self.ssh_wrapper));
             Ok(())
         })
     }
+}
+
+fn encode_path_field<S: Encoder>(encoder: &mut S, size: usize,
+                                 name: &str, p: &Path) -> Result<(), S::Error> {
+    encoder.emit_struct_field(name, size, |e| encode_path(p, e))
 }
 
 fn encode_path<S: Encoder>(p: &Path, encoder: &mut S) -> Result<(), S::Error> {
