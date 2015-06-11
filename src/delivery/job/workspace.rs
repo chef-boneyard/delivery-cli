@@ -147,7 +147,7 @@ impl Workspace {
                     detail: Some("Build cookbook 'path' value must be a string".to_string())
                 })
             };
-            let result = try!(Command::new("knife")
+            let result = try!(utils::make_command("knife")
                  .arg("cookbook")
                  .arg("site")
                  .arg("download")
@@ -161,7 +161,7 @@ impl Workspace {
                 let error = String::from_utf8_lossy(&result.stderr);
                 return Err(DeliveryError{kind: Kind::SupermarketFailed, detail: Some(format!("Failed 'knife cookbook site download'\nOUT: {}\nERR: {}", &output, &error).to_string())});
             }
-            let tar_result = try!(Command::new("tar")
+            let tar_result = try!(utils::make_command("tar")
                  .arg("zxf")
                  .arg(&path_to_string(&self.chef.join("build_cookbook.tgz")))
                  .current_dir(&self.chef)
@@ -171,7 +171,7 @@ impl Workspace {
                 let error = String::from_utf8_lossy(&tar_result.stderr);
                 return Err(DeliveryError{kind: Kind::TarFailed, detail: Some(format!("Failed 'tar zxf'\nOUT: {}\nERR: {}", &output, &error).to_string())});
             }
-            let mv_result = try!(Command::new("mv")
+            let mv_result = try!(utils::make_command("mv")
                  .arg(&path_to_string(&self.chef.join(name)))
                  .arg(&path_to_string(&self.chef.join("build_cookbook")))
                  .current_dir(&self.chef)
@@ -189,7 +189,7 @@ impl Workspace {
 
     fn setup_build_cookbook_from_chef_server(&self, name: &str) -> Result<(), DeliveryError> {
         try!(utils::mkdir_recursive(&self.chef.join("tmp_cookbook")));
-        let result = try!(Command::new("knife")
+        let result = try!(utils::make_command("knife")
                           .arg("download")
                           .arg(&format!("/cookbooks/{}", &name))
                           .arg("--chef-repo-path")
@@ -201,7 +201,7 @@ impl Workspace {
             let error = String::from_utf8_lossy(&result.stderr);
             return Err(DeliveryError{kind: Kind::ChefServerFailed, detail: Some(format!("Failed 'knife cookbook download'\nOUT: {}\nERR: {}", &output, &error).to_string())});
         }
-        let mv_result = try!(Command::new("mv")
+        let mv_result = try!(utils::make_command("mv")
                              .arg(&path_to_string(&self.chef.join_many(&["tmp_cookbook",
                                                                          "cookbooks", &name])))
                              .arg(&path_to_string(&self.chef.join("build_cookbook")))
@@ -294,13 +294,19 @@ impl Workspace {
     fn berks_vendor(&self, config: &Json) -> Result<(), DeliveryError> {
         try!(utils::remove_recursive(&self.chef.join("cookbooks")));
         if self.chef.join_many(&["build_cookbook", "Berksfile"]).is_file() {
-            let mut command = Command::new("berks");
+            let mut command = utils::make_command("berks");
             command.arg("vendor");
             command.arg(&self.chef.join("cookbooks"));
             command.current_dir(&self.chef.join("build_cookbook"));
             let output = match command.output() {
                 Ok(o) => o,
-                Err(e) => { return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute berks vendor: {}", error::Error::description(&e)))}) },
+                Err(e) => {
+                    let d = format!("failed to execute 'berks vendor {}' from '{}': {}",
+                                    &path_to_string(&self.chef.join("cookbooks")),
+                                    &path_to_string(&self.chef.join("build_cookbook")),
+                                    error::Error::description(&e));
+                    return Err(DeliveryError{ kind: Kind::FailedToExecute,
+                                                      detail: Some(d)}) },
             };
             if !output.status.success() {
                 return Err(DeliveryError{ kind: Kind::BerksFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(&output.stdout), String::from_utf8_lossy(&output.stderr)))});
@@ -327,29 +333,13 @@ impl Workspace {
         Ok(())
     }
 
-    /// This sets permissions in the workspace repo and cache directories. Going to
-    /// want a windows implementation here.
+    /// This sets permissions in the workspace repo and cache directories.
     pub fn set_drop_permissions(&self) -> Result<(), DeliveryError> {
-        let result = Command::new("chown")
-            .arg("-R")
-            .arg("dbuild:dbuild")
-            .arg(&path_to_string(&self.repo))
-            .arg(&path_to_string(&self.chef.join("cookbooks")))
-            .arg(&path_to_string(&self.chef.join("nodes")))
-            .arg(&path_to_string(&self.cache))
-            .output();
-       let output = match result {
-            Ok(o) => o,
-            Err(e) => { return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute chown: {}", error::Error::description(&e)))}) },
-        };
-        if !output.status.success() {
-            return Err(DeliveryError{ kind: Kind::ChownFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(&output.stdout), String::from_utf8_lossy(&output.stderr)))});
-        }
-        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-        debug!("chmod stdout: {}", stdout);
-        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-        debug!("chmod stderr: {}", stderr);
-        Ok(())
+        let paths_to_chown = &[&self.repo,
+                               &self.chef.join("cookbooks"),
+                               &self.chef.join("nodes"),
+                               &self.cache];
+        utils::chown_all("dbuild:dbuild", paths_to_chown)
     }
 
     pub fn build_cookbook_name(&self, config: &Json) -> Result<String, DeliveryError> {
@@ -382,19 +372,9 @@ impl Workspace {
     pub fn run_job(&self, phase: &str, drop_privilege: Privilege) -> Result<(), DeliveryError> {
         let config = try!(job::config::load_config(&self.repo.join_many(&[".delivery", "config.json"])));
         let bc_name = try!(self.build_cookbook_name(&config));
-        let mut command = Command::new("chef-client");
-        command.arg("-z")
-            .arg("--force-formatter");
-        match drop_privilege {
-            Privilege::Drop => {
-                try!(self.set_drop_permissions());
-                command.arg("--user")
-                    .arg("dbuild")
-                    .arg("--group")
-                    .arg("dbuild");
-            },
-            _ => {}
-        }
+        let mut command = utils::make_command("chef-client");
+        command.arg("-z").arg("--force-formatter");
+        try!(self.handle_privilege_drop(drop_privilege, &mut command));
         command.arg("-j")
             .arg(&path_to_string(&self.chef.join("dna.json")))
             .arg("-c")
@@ -416,6 +396,28 @@ impl Workspace {
         if !output.status.success() {
             return Err(DeliveryError{ kind: Kind::ChefFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(&output.stdout), String::from_utf8_lossy(&output.stderr)))});
         }
+        Ok(())
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    fn handle_privilege_drop(&self, privilege: Privilege,
+                             cmd: &mut Command) -> Result<(), DeliveryError> {
+        match privilege {
+            Privilege::Drop => {
+                try!(self.set_drop_permissions());
+                cmd.arg("--user")
+                    .arg("dbuild")
+                    .arg("--group")
+                    .arg("dbuild");
+            },
+            _ => {}
+        }
+        Ok(())
+    }
+
+    #[cfg(target_os = "windows")]
+    fn handle_privilege_drop(&self, privilege: Privilege,
+                             cmd: &mut Command) -> Result<(), DeliveryError> {
         Ok(())
     }
 
