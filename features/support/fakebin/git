@@ -8,6 +8,9 @@ command="$1"
 [ "$command" = "config" ] || echo git "$@" >> "$FAKE_BINS_HISTORY_FILE"
 
 set -e
+features_dir=$( cd "$( dirname "${BASH_SOURCE[0]}" )/../.." && pwd )
+tmp_dir=$features_dir/tmp
+mkdir -p $tmp_dir
 
 case "$command" in
   "clone" )
@@ -24,7 +27,7 @@ case "$command" in
       ssh_url=$2 # not used now, just documenting
       repo_directory=$3
 
-      remote_directory=$(mktemp -d)
+      remote_directory=$(mktemp -d $tmp_dir/delivery-cli-feature.XXXXX)
       cd "$remote_directory" && git init --bare && cd -
 
       $DELIVERY_SYSTEM_GIT clone "$remote_directory" "$repo_directory"
