@@ -1,11 +1,17 @@
 require 'chef/handler'
+require 'mixlib/shellout'
 
 class OmnibusErrorHandler < Chef::Handler
-  extend Chef::Mixin::ShellOut
 
   def report
     Chef::Log.error("Rolling back to previous delivery-cli")
-    shell_out!("rsync -aP /opt/delivery-cli-safe/ /opt/delivery-cli")
+    cmd = "rsync -aP /opt/delivery-cli-safe/ /opt/delivery-cli"
+    so = Mixlib::ShellOut.new(cmd)
+    so.run_command
+    if so.error?
+      Chef::Log.error("ROLLBACK FAILED")
+      Chef::Log.error(so.stdout)
+    end
   end
 end
 
