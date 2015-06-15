@@ -60,4 +60,4 @@ bin/cucumber: Gemfile
 #
 # Depends on the target/release/delivery executable having been built
 cucumber: build bin/cucumber
-	bin/cucumber 2>/dev/null
+	bin/cucumber 2>/dev/null && rm -rf features/tmp
