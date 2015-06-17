@@ -25,6 +25,18 @@ execute "bundle install --binstubs=#{omnibus_path}/bin --path=#{File.join(node['
   cwd omnibus_path
 end
 
+# Workaround for omnibus PathFetcher behavior which uses a Ruby's
+# filelib::cp and doesn't clear out destination. The result is that if
+# you have files with mode 444 (read-only) then the copy fails with an
+# EACCESS type error.
+# ```
+# /opt/chefdk/embedded/lib/ruby/2.1.0/fileutils.rb:1402:in `initialize': Permission denied @ rb_sysopen - /mnt/.../objects/03/7e9f023a3c (Errno::EACCES)
+# ```
+#
+execute "rm -rf local/src/delivery-cli" do
+  cwd omnibus_path
+end
+
 execute "#{omnibus_path}/bin/omnibus build delivery-cli" do
   cwd omnibus_path
 end
