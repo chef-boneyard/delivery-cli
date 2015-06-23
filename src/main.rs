@@ -192,10 +192,11 @@ fn main() {
             flag_git_url: ref git_url,
             flag_shasum: ref shasum,
             flag_no_spinner: no_spinner,
+            flag_branch: ref branch,
             ..
         } => {
             if no_spinner { say::turn_off_spinner() };
-            job(&stage, &phase, &change, &pipeline, &job_root, &project, &user, &server, &ent, &org, &patchset, &change_id, &git_url, &shasum)
+            job(&stage, &phase, &change, &pipeline, &job_root, &project, &user, &server, &ent, &org, &patchset, &change_id, &git_url, &shasum, &branch)
         },
         Args {
             cmd_token: true,
@@ -441,7 +442,8 @@ fn job(stage: &str,
        patchset: &str,
        change_id: &str,
        git_url: &str,
-       shasum: &str) ->
+       shasum: &str,
+       branch: &str) ->
 Result<(), DeliveryError> { sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
     config = if project.is_empty() {
@@ -482,7 +484,10 @@ Result<(), DeliveryError> { sayln("green", "Chef Delivery");
     say("white", "Cloning repository, and merging");
     let mut local = false;
     let patch = if patchset.is_empty() { "latest" } else { patchset };
-    let c = if ! change.is_empty() {
+    let c = if ! branch.is_empty() {
+        say("yellow", &format!(" {}", &branch));
+        String::from_str(branch)
+    } else if ! change.is_empty() {
         say("yellow", &format!(" {}", &change));
         format!("_reviews/{}/{}/{}", pi, change, patch)
     } else if ! shasum.is_empty() {
