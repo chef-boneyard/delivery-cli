@@ -482,19 +482,17 @@ Result<(), DeliveryError> { sayln("green", "Chef Delivery");
     say("white", "Cloning repository, and merging");
     let mut local = false;
     let patch = if patchset.is_empty() { "latest" } else { patchset };
-    let c = if change.is_empty() {
-        if shasum.is_empty() {
-            local = true;
-            let v = try!(git::get_head());
-            say("yellow", &format!(" {}", &v));
-            v
-        } else {
-            say("yellow", &format!(" {}", shasum));
-            String::new()
-        }
-    } else {
+    let c = if ! change.is_empty() {
         say("yellow", &format!(" {}", &change));
         format!("_reviews/{}/{}/{}", pi, change, patch)
+    } else if ! shasum.is_empty() {
+        say("yellow", &format!(" {}", shasum));
+        String::new()
+    } else {
+        local = true;
+        let v = try!(git::get_head());
+        say("yellow", &format!(" {}", &v));
+        v
     };
     say("white", " to ");
     sayln("magenta", &pi);
