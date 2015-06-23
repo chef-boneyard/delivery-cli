@@ -64,25 +64,26 @@ Usage: delivery review [--for=<pipeline>] [--no-open] [--edit]
        delivery --version
 
 Options:
-  -h, --help               Show this message.
-  -f, --for=<pipeline>     A pipeline to target
-  -P, --patchset=<number>  A patchset number [default: latest]
-  -u, --user=<user>        A delivery username
-  -s, --server=<server>    A delivery server
-  -e, --ent=<ent>          A delivery enterprise
-  -o, --org=<org>          A delivery organization
-  -p, --project=<project>  The project name
-  -c, --config-path=<dir>  The directory to write a config to
-  -l, --local              Diff against the local branch HEAD
-  -g, --git-url=<url>      A raw git URL
-  -j, --job-root=<path>    The path to the job root
-  -S, --shasum=<gitsha>    A Git SHA
-  -C, --change=<change>    A delivery change branch name
-  -i, --change-id=<id>     A delivery change ID
-  -n, --no-spinner         Turn off the delightful spinner :(
-  -v, --version            Display version
-  <change>                 A delivery change branch name
-  <type>                   The type of project (currently supported: cookbook)
+  -h, --help                   Show this message.
+  -b, --branch=<branch_name>   Branch to merge
+  -f, --for=<pipeline>         A pipeline to target
+  -P, --patchset=<number>      A patchset number [default: latest]
+  -u, --user=<user>            A delivery username
+  -s, --server=<server>        A delivery server
+  -e, --ent=<ent>              A delivery enterprise
+  -o, --org=<org>              A delivery organization
+  -p, --project=<project>      The project name
+  -c, --config-path=<dir>      The directory to write a config to
+  -l, --local                  Diff against the local branch HEAD
+  -g, --git-url=<url>          A raw git URL
+  -j, --job-root=<path>        The path to the job root
+  -S, --shasum=<gitsha>        A Git SHA
+  -C, --change=<change>        A delivery change branch name
+  -i, --change-id=<id>         A delivery change ID
+  -n, --no-spinner             Turn off the delightful spinner :(
+  -v, --version                Display version
+  <change>                     A delivery change branch name
+  <type>                       The type of project (currently supported: cookbook)
 ");
 
 macro_rules! validate {
