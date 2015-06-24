@@ -33,6 +33,7 @@ Before do
   current_directory = Dir.mktmpdir
   @dirs = [current_directory]
   set_env('HOME', current_directory)
+  set_env('EMAIL', 'cukes@mycompany.com')
 
   set_env('DELIVERY_SYSTEM_GIT', system_git)
   set_env('PATH', "#{cli_dir}#{File::PATH_SEPARATOR}#{fake_bin}#{File::PATH_SEPARATOR}#{ENV['PATH']}")
