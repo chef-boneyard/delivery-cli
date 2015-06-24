@@ -56,7 +56,7 @@ Usage: delivery review [--for=<pipeline>] [--no-open] [--edit]
        delivery diff <change> [--for=<pipeline>] [--patchset=<number>] [--local]
        delivery init [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--project=<project>] [--type=<type>]
        delivery setup [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--config-path=<dir>] [--for=<pipeline>]
-       delivery job <stage> <phase> [--change=<change>] [--for=<pipeline>] [--job-root=<dir>] [--project=<project>] [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--patchset=<number>] [--git-url=<url>] [--shasum=<gitsha>] [--change-id=<id>] [--no-spinner]
+       delivery job <stage> <phase> [--change=<change>] [--for=<pipeline>] [--job-root=<dir>] [--branch=<branch_name>] [--project=<project>] [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--patchset=<number>] [--git-url=<url>] [--shasum=<gitsha>] [--change-id=<id>] [--no-spinner]
        delivery pipeline [--for=<pipeline>] [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--project=<project>] [--config-path=<dir>]
        delivery api <method> <path> [--user=<user>] [--server=<server>] [--api-port=<api_port>] [--ent=<ent>] [--config-path=<dir>] [--data=<data>]
        delivery token [--user=<user>] [--server=<server>] [--api-port=<api_port>] [--ent=<ent>]
@@ -64,25 +64,26 @@ Usage: delivery review [--for=<pipeline>] [--no-open] [--edit]
        delivery --version
 
 Options:
-  -h, --help               Show this message.
-  -f, --for=<pipeline>     A pipeline to target
-  -P, --patchset=<number>  A patchset number [default: latest]
-  -u, --user=<user>        A delivery username
-  -s, --server=<server>    A delivery server
-  -e, --ent=<ent>          A delivery enterprise
-  -o, --org=<org>          A delivery organization
-  -p, --project=<project>  The project name
-  -c, --config-path=<dir>  The directory to write a config to
-  -l, --local              Diff against the local branch HEAD
-  -g, --git-url=<url>      A raw git URL
-  -j, --job-root=<path>    The path to the job root
-  -S, --shasum=<gitsha>    A Git SHA
-  -C, --change=<change>    A delivery change branch name
-  -i, --change-id=<id>     A delivery change ID
-  -n, --no-spinner         Turn off the delightful spinner :(
-  -v, --version            Display version
-  <change>                 A delivery change branch name
-  <type>                   The type of project (currently supported: cookbook)
+  -h, --help                   Show this message.
+  -b, --branch=<branch_name>   Branch to merge
+  -f, --for=<pipeline>         A pipeline to target
+  -P, --patchset=<number>      A patchset number [default: latest]
+  -u, --user=<user>            A delivery username
+  -s, --server=<server>        A delivery server
+  -e, --ent=<ent>              A delivery enterprise
+  -o, --org=<org>              A delivery organization
+  -p, --project=<project>      The project name
+  -c, --config-path=<dir>      The directory to write a config to
+  -l, --local                  Diff against the local branch HEAD
+  -g, --git-url=<url>          A raw git URL
+  -j, --job-root=<path>        The path to the job root
+  -S, --shasum=<gitsha>        A Git SHA
+  -C, --change=<change>        A delivery change branch name
+  -i, --change-id=<id>         A delivery change ID
+  -n, --no-spinner             Turn off the delightful spinner :(
+  -v, --version                Display version
+  <change>                     A delivery change branch name
+  <type>                       The type of project (currently supported: cookbook)
 ");
 
 macro_rules! validate {
@@ -191,10 +192,11 @@ fn main() {
             flag_git_url: ref git_url,
             flag_shasum: ref shasum,
             flag_no_spinner: no_spinner,
+            flag_branch: ref branch,
             ..
         } => {
             if no_spinner { say::turn_off_spinner() };
-            job(&stage, &phase, &change, &pipeline, &job_root, &project, &user, &server, &ent, &org, &patchset, &change_id, &git_url, &shasum)
+            job(&stage, &phase, &change, &pipeline, &job_root, &project, &user, &server, &ent, &org, &patchset, &change_id, &git_url, &shasum, &branch)
         },
         Args {
             cmd_token: true,
@@ -440,7 +442,8 @@ fn job(stage: &str,
        patchset: &str,
        change_id: &str,
        git_url: &str,
-       shasum: &str) ->
+       shasum: &str,
+       branch: &str) ->
 Result<(), DeliveryError> { sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
     config = if project.is_empty() {
@@ -481,19 +484,20 @@ Result<(), DeliveryError> { sayln("green", "Chef Delivery");
     say("white", "Cloning repository, and merging");
     let mut local = false;
     let patch = if patchset.is_empty() { "latest" } else { patchset };
-    let c = if change.is_empty() {
-        if shasum.is_empty() {
-            local = true;
-            let v = try!(git::get_head());
-            say("yellow", &format!(" {}", &v));
-            v
-        } else {
-            say("yellow", &format!(" {}", shasum));
-            String::new()
-        }
-    } else {
+    let c = if ! branch.is_empty() {
+        say("yellow", &format!(" {}", &branch));
+        String::from_str(branch)
+    } else if ! change.is_empty() {
         say("yellow", &format!(" {}", &change));
         format!("_reviews/{}/{}/{}", pi, change, patch)
+    } else if ! shasum.is_empty() {
+        say("yellow", &format!(" {}", shasum));
+        String::new()
+    } else {
+        local = true;
+        let v = try!(git::get_head());
+        say("yellow", &format!(" {}", &v));
+        v
     };
     say("white", " to ");
     sayln("magenta", &pi);

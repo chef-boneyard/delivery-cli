@@ -57,6 +57,7 @@ case "$command" in
       $DELIVERY_SYSTEM_GIT add README.md
       $DELIVERY_SYSTEM_GIT commit -am 'Adding a README!'
       $DELIVERY_SYSTEM_GIT push origin HEAD:_reviews/master/username/feature/branch/1
+      $DELIVERY_SYSTEM_GIT push origin HEAD:username/feature/branch
 
       # cleanup
       $DELIVERY_SYSTEM_GIT reset --hard origin/master
