@@ -10,7 +10,7 @@
 CARGO = cargo
 PINNED_RUST_VERSION = 99c2f779d 2015-05-29
 RUST_VERSION := $(shell rustc --version | tr -d '()' | awk '{ print $$3 " " $$4 }')
-RUST_UP_COMMAND = sudo ./rustup.sh --date=2015-05-29 --channel=nightly
+RUST_UP_COMMAND = ./rustup.sh --date=2015-05-29 --channel=nightly
 CARGO_OPTS =
 
 DELIV_CLI_GIT_SHA = $(shell git rev-parse --short HEAD)
@@ -47,7 +47,10 @@ test:
 	$(CARGO) $(CARGO_OPTS) test
 
 rustup:
-	$(RUST_UP_COMMAND)
+	sudo $(RUST_UP_COMMAND)
+
+rustup_builder:
+	$(RUST_UP_COMMAND) --yes
 
 .PHONY: all build clean check test rustcheck
 
