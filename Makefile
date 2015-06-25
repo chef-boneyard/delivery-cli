@@ -49,6 +49,8 @@ test:
 rustup:
 	sudo $(RUST_UP_COMMAND)
 
+# Builders already run this as root, so no sudo is needed.
+# However --yes is required or else rustup tries to read input from a tty.
 rustup_builder:
 	$(RUST_UP_COMMAND) --yes
 
