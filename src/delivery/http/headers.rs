@@ -15,7 +15,5 @@
 // limitations under the License.
 //
 
-use hyper::header::Headers;
-
 header!{ (ChefDeliveryToken, "chef-delivery-token") => [String] }
 header!{ (ChefDeliveryUser,  "chef-delivery-user") => [String] }

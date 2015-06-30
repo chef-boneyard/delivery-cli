@@ -31,8 +31,8 @@ pub struct Description {
 
 impl Description {
     pub fn payload(title: &str, desc: &str) -> Result<String, DeliveryError> {
-        let desc = Description{ title: String::from_str(title),
-                                description: String::from_str(desc) };
+        let desc = Description{ title: String::from(title),
+                                description: String::from(desc) };
         desc.to_json()
     }
 

@@ -47,7 +47,7 @@ fn parse_get_head(stdout: &str) -> Result<String, DeliveryError> {
         let token = caps.at(1).unwrap();
         if token == "*" {
             let branch = caps.at(2).unwrap();
-            return Ok(String::from_str(branch));
+            return Ok(String::from(branch));
         }
     }
     return Err(DeliveryError{ kind: Kind::NotOnABranch, detail: None });
@@ -221,7 +221,7 @@ pub fn parse_git_push_output(push_output: &str,
         review_result.push_results.push(
             PushResult{
                 flag: result_flag,
-                reason: String::from_str(caps.at(4).unwrap())
+                reason: String::from(caps.at(4).unwrap())
             })
     }
     Ok(review_result)
@@ -242,7 +242,7 @@ fn parse_line_from_remote(line: &str, review_result: &mut ReviewResult) -> () {
                 review_result.url = Some(change_url.clone());
                 let change_id_regex = regex!(r"/([a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12})");
                 let change_id_match = change_id_regex.captures(change_url.as_str());
-                review_result.change_id = Some(String::from_str(change_id_match.unwrap().at(1).unwrap()));
+                review_result.change_id = Some(String::from(change_id_match.unwrap().at(1).unwrap()));
             } else {
                 review_result.messages.push(cap.to_string());
             }
@@ -306,7 +306,7 @@ pub fn config_repo(url: &str, path: &PathBuf) -> Result<bool, DeliveryError> {
 
 pub fn checkout_branch_name(change: &str, patchset: &str) -> String {
     if patchset == "latest" {
-        return String::from_str(change);
+        return String::from(change);
     } else {
         return format!("{}/{}", change, patchset);
     }
@@ -316,7 +316,7 @@ pub fn diff(change: &str, patchset: &str, pipeline: &str, local: &bool) -> Resul
     try!(git_command(&["fetch", "delivery"], &cwd()));
     let mut first_branch = format!("delivery/{}", pipeline);
     if *local {
-        first_branch = String::from_str("HEAD");
+        first_branch = String::from("HEAD");
     }
     let diff = try!(git_command(&["diff", "--color=always", &first_branch, &format!("delivery/_reviews/{}/{}/{}", pipeline, change, patchset)], &cwd()));
     say("white", "\n");

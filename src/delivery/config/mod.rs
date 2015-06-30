@@ -48,8 +48,8 @@ impl Default for Config {
             organization: None,
             project: None,
             user: None,
-            git_port: Some(String::from_str("8989")),
-            pipeline: Some(String::from_str("master"))
+            git_port: Some(String::from("8989")),
+            pipeline: Some(String::from("master"))
         }
     }
 }
@@ -60,13 +60,13 @@ macro_rules! config_accessor_for {
             pub fn $name(&self) -> Result<String, DeliveryError> {
                 match self.$name {
                     Some(ref v) => Ok(v.clone()),
-                    None => Err(DeliveryError{ kind: Kind::MissingConfig, detail: Some(String::from_str($err_msg)) })
+                    None => Err(DeliveryError{ kind: Kind::MissingConfig, detail: Some(String::from($err_msg)) })
                 }
             }
 
             pub fn $set_name(mut self, $name: &str) -> Config {
                 if !$name.is_empty() {
-                    self.$name = Some(String::from_str($name));
+                    self.$name = Some(String::from($name));
                 }
                 self
             }
@@ -180,7 +180,7 @@ impl Config {
             Some(value) => {
                 let is_string = value.as_str();
                 match is_string {
-                    Some(vstr) => return Some(String::from_str(vstr)),
+                    Some(vstr) => return Some(String::from(vstr)),
                     None => return None
                 }
             },
@@ -231,7 +231,7 @@ mod tests {
         let config_result = Config::parse_config(toml);
         match config_result {
             Ok(config) => {
-                assert_eq!(Some(String::from_str("127.0.0.1")), config.server);
+                assert_eq!(Some(String::from("127.0.0.1")), config.server);
                 assert_eq!(None, config.git_port);
             },
             Err(e) => {

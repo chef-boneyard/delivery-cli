@@ -15,7 +15,7 @@
 // limitations under the License.
 //
 
-#![feature(plugin, collections, exit_status)]
+#![feature(plugin)]
 #![plugin(regex_macros, docopt_macros)]
 extern crate regex;
 #[no_link] extern crate regex_macros;
@@ -30,6 +30,7 @@ extern crate rustc_serialize;
 extern crate time;
 
 use std::env;
+use std::process;
 use std::error::Error;
 use std::path::PathBuf;
 use delivery::utils::{self, privileged_process};
@@ -236,7 +237,7 @@ fn exit_with(e: DeliveryError, i: isize) {
         None => {}
     }
     let x = i as i32;
-    env::set_exit_status(x)
+    process::exit(x)
 }
 
 #[allow(dead_code)]
@@ -416,7 +417,7 @@ fn clone(project: &str, user: &str, server: &str, ent: &str, org: &str, git_url:
     let clone_url = if git_url.is_empty() {
         delivery_url.clone()
     } else {
-        String::from_str(git_url)
+        String::from(git_url)
     };
     say("yellow", &clone_url);
     say("white", " to ");
@@ -447,7 +448,7 @@ fn job(stage: &str,
 Result<(), DeliveryError> { sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
     config = if project.is_empty() {
-        let filename = String::from_str(cwd().file_name().unwrap().to_str().unwrap());
+        let filename = String::from(cwd().file_name().unwrap().to_str().unwrap());
         config.set_project(&filename)
     } else {
         config.set_project(project)
@@ -508,7 +509,7 @@ Result<(), DeliveryError> { sayln("green", "Chef Delivery");
             try!(config.delivery_git_ssh_url())
         }
     } else {
-        String::from_str(git_url)
+        String::from(git_url)
     };
     try!(ws.setup_repo_for_change(&clone_url, &c, &pi, shasum));
     sayln("white", "Configuring the job");
