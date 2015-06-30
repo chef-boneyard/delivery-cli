@@ -10,7 +10,7 @@
 CARGO = cargo
 PINNED_RUST_VERSION = faa04a8b9 2015-06-30
 RUST_VERSION := $(shell rustc --version | tr -d '()' | awk '{ print $$3 " " $$4 }')
-RUST_UP_COMMAND = sudo ./rustup.sh --date=2015-06-30 --channel=nightly
+RUST_UP_COMMAND = ./rustup.sh --date=2015-06-30 --channel=nightly --yes
 CARGO_OPTS =
 
 DELIV_CLI_GIT_SHA = $(shell git rev-parse --short HEAD)
@@ -47,14 +47,17 @@ test:
 	$(CARGO) $(CARGO_OPTS) test
 
 rustup:
-	sudo $(RUST_UP_COMMAND)
+ifeq ($(RUST_COMPAT),true)
+	@echo "rustc at $(PINNED_RUST_VERSION): skipping rustup"
+else
+	@echo "Rust version ($(RUST_VERSION)) not at pinned version ($(PINNED_RUST_VERSION))"
+	@echo "Running rustup now, you may be prompted for a sudo password."
+	$(RUST_UP_COMMAND)
+endif
 
-# Builders already run this as root, so no sudo is needed.
-# However --yes is required or else rustup tries to read input from a tty.
-rustup_builder:
-	$(RUST_UP_COMMAND) --yes
+rustup_builder: rustup
 
-.PHONY: all build clean check test rustcheck
+.PHONY: all build clean check test rustcheck rustup rustup_builder
 
 bin/cucumber: Gemfile
 	bundle install --binstubs=bin --path=vendor/bundle
