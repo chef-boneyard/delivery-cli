@@ -92,8 +92,8 @@ impl APIClient {
     fn new(proto: HProto, host: &str, ent: &str) -> APIClient {
         APIClient {
             proto: proto,
-            host: String::from_str(host),
-            enterprise: String::from_str(ent),
+            host: String::from(host),
+            enterprise: String::from(ent),
             auth: None
         }
     }
@@ -143,7 +143,7 @@ impl APIClient {
                      path: &str,
                      payload: &str) -> Result<HyperResponse, HttpError> {
         let url = self.api_url(path);
-        let mut client = hyper::Client::new();
+        let client = hyper::Client::new();
         let req = match http_method {
             HTTPMethod::GET    => client.get(&url),
             HTTPMethod::PUT    => client.put(&url),
@@ -290,8 +290,8 @@ impl APIAuth {
                             user: &str) -> Result<APIAuth, DeliveryError> {
         match tstore.lookup(server, ent, user) {
             Some(token) => {
-                Ok(APIAuth{ user: String::from_str(user),
-                             token: String::from_str(token)})
+                Ok(APIAuth{ user: String::from(user),
+                            token: token.clone()})
             },
             None => {
                 let msg = format!("server: {}, ent: {}, user: {}",

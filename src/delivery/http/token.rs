@@ -30,8 +30,8 @@ pub struct TokenRequest {
 
 impl TokenRequest {
     pub fn payload(user: &str, pass: &str) -> Result<String, DeliveryError> {
-        let treq = TokenRequest{  username: String::from_str(user),
-                                  password: String::from_str(pass) };
+        let treq = TokenRequest{  username: String::from(user),
+                                  password: String::from(pass) };
         let payload = try!(json::encode(&treq));
         Ok(payload)
     }

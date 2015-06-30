@@ -15,7 +15,7 @@
 // limitations under the License.
 //
 
-#![feature(plugin, collections, path_ext, scoped, convert)]
+#![feature(plugin, path_ext, scoped, convert)]
 #![plugin(regex_macros, docopt_macros)]
 extern crate regex;
 #[no_link] extern crate regex_macros;
@@ -29,7 +29,7 @@ extern crate rustc_serialize;
 extern crate libc;
 extern crate tempdir;
 extern crate uuid;
-extern crate hyper;
+#[macro_use] extern crate hyper;
 extern crate mime;
 
 pub mod errors;
