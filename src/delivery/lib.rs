@@ -29,7 +29,7 @@ extern crate rustc_serialize;
 extern crate libc;
 extern crate tempdir;
 extern crate uuid;
-extern crate hyper;
+#[macro_use] extern crate hyper;
 extern crate mime;
 
 pub mod errors;

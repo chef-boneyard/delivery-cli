@@ -1,1 +1,1 @@
-default['delivery_rust']['rust_version'] = '2015-05-29'
+default['delivery_rust']['rust_version'] = '2015-06-30'
