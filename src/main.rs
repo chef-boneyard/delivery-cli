@@ -487,7 +487,7 @@ Result<(), DeliveryError> { sayln("green", "Chef Delivery");
     let patch = if patchset.is_empty() { "latest" } else { patchset };
     let c = if ! branch.is_empty() {
         say("yellow", &format!(" {}", &branch));
-        String::from_str(branch)
+        String::from(branch)
     } else if ! change.is_empty() {
         say("yellow", &format!(" {}", &change));
         format!("_reviews/{}/{}/{}", pi, change, patch)
