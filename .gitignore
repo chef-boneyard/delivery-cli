@@ -12,3 +12,4 @@ vendor/
 .bundle/
 bin/
 tmp/
+chocolatey-repo/*.nupkg
