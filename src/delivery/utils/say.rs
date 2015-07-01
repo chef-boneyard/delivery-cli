@@ -18,20 +18,20 @@
 use term;
 use std::sync::mpsc::{Sender, Receiver};
 use std::sync::mpsc::channel;
-use std::thread::{self, JoinGuard};
+use std::thread::{self, JoinHandle};
 
 /// Because sometimes, you just want a global variable.
 static mut show_spinner: bool = true;
 
 pub struct Spinner {
     tx: Sender<isize>,
-    guard: JoinGuard<'static, ()>
+    guard: JoinHandle<()>
 }
 
 impl Spinner {
     pub fn start() -> Spinner {
         let (tx, rx) = channel::<isize>();
-        let spinner = thread::scoped(move|| { Spinner::spin(rx) });
+        let spinner = thread::spawn(move|| { Spinner::spin(rx) });
         Spinner{ tx: tx, guard: spinner }
     }
 
