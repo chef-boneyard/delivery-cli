@@ -13,3 +13,5 @@ vendor/
 bin/
 tmp/
 chocolatey-repo/*.nupkg
+/cookbooks/delivery_rust/cookbooks/
+/cookbooks/delivery_rust/nodes/
