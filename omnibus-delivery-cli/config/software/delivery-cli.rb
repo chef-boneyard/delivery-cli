@@ -19,7 +19,8 @@ name "delivery-cli"
 
 dependency "openssl"
 
-source path: File.expand_path('..', Omnibus::Config.project_root)
+source path: File.expand_path('..', Omnibus::Config.project_root),
+       options: {exclude: ".git"}
 
 build do
   # Setup a default environment from Omnibus - you should use this Omnibus
