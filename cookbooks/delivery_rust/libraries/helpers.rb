@@ -25,11 +25,25 @@ module DeliveryRust
       ::Chef_Delivery::ClientHelper.leave_client_mode_as_delivery
       secrets
     end
+
+    # Return the date of the installed nightly build of rustc or
+    # "NONE" if rustc is not installed.
+    def current_rust_version
+      # output of `rustc --version` looks like this:
+      # rustc 1.3.0-nightly (faa04a8b9 2015-06-30)
+      %x(rustc --version).split.last[0..-2]
+    rescue Errno::ENOENT
+      "NONE"
+    end
   end
 
   module DSL
     def get_project_secrets
       DeliveryRust::Helpers.get_project_secrets(node)
+    end
+
+    def current_rust_version
+      DeliveryRust::Helpers.current_rust_version
     end
   end
 end

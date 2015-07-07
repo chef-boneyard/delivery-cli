@@ -1,43 +1,41 @@
 # Copyright 2015 Chef Software, Inc.
 #
 # Author: Jon Anderson (janderson@chef.io)
-#
-# Bare-bones Makefile for deliver-cli on OSX. Checks install rustc and
-# if it is not the correct version (as of 2015-03-31), complains.
-#
-# 'make rustup' will installed the pinned version with the nightly channel
 
-CARGO = cargo
-PINNED_RUST_VERSION = faa04a8b9 2015-06-30
-RUST_VERSION := $(shell rustc --version | tr -d '()' | awk '{ print $$3 " " $$4 }')
-RUST_UP_COMMAND = ./rustup.sh --date=2015-06-30 --channel=nightly --yes
-CARGO_OPTS =
-
+CARGO_OPTS ?=
 DELIV_CLI_GIT_SHA = $(shell git rev-parse --short HEAD)
 RUSTC_VERSION = $(shell rustc --version)
+CARGO_ENV = DELIV_CLI_GIT_SHA="$(DELIV_CLI_GIT_SHA)"
+CARGO_ENV += RUSTC_VERSION="$(RUSTC_VERSION)"
 
-# If the installed version matches the pinning above, the codebase should be compatible.
-ifeq "$(RUST_VERSION)" "$(PINNED_RUST_VERSION)"
-	RUST_COMPAT=true
-else
-	RUST_COMPAT=false
+UNAME = $(shell uname)
+
+ifeq ($(UNAME),Darwin)
+    OPENSSL_PREFIX = /usr/local/opt/openssl
+    CARGO_ENV += OPENSSL_INCLUDE_DIR=$(OPENSSL_PREFIX)/include
+    CARGO_ENV += OPENSSL_LIB_DIR=$(OPENSSL_PREFIX)/lib
+    CARGO_ENV += OPENSSL_STATIC=1
+else ifeq ($(UNAME),Linux)
+    OPENSSL_PREFIX = /opt/delivery-cli-build-deps/openssl
+    CARGO_ENV += OPENSSL_INCLUDE_DIR=$(OPENSSL_PREFIX)/include
+    CARGO_ENV += OPENSSL_LIB_DIR=$(OPENSSL_PREFIX)
+    CARGO_ENV += OPENSSL_STATIC=1
 endif
+
+CARGO = $(CARGO_ENV) cargo
 
 all:
 	$(MAKE) build
 
-build:
-ifeq ($(RUST_COMPAT),true)
-	DELIV_CLI_GIT_SHA="$(DELIV_CLI_GIT_SHA)" \
-          RUSTC_VERSION="$(RUSTC_VERSION)" \
-          $(CARGO) $(CARGO_OPTS) build --release
-else
-	@echo "Rust version ($(RUST_VERSION)) not at pinned version ($(PINNED_RUST_VERSION))"
-	@echo "'make rustup' will install the pinned version, or run 'cargo build' with another rustc."
-endif
+build: openssl
+	$(CARGO) $(CARGO_OPTS) build --release
+
+openssl:
+	@test -d $(OPENSSL_PREFIX) || \
+         (echo "MISSING DEP: $(OPENSSL_PREFIX)" && exit 101)
 
 clean:
-	$(CARGO) $(CARGO_OPTS) clean
+	@$(CARGO) $(CARGO_OPTS) clean
 
 check:
 	$(MAKE) build
@@ -46,18 +44,8 @@ check:
 test:
 	$(CARGO) $(CARGO_OPTS) test
 
-rustup:
-ifeq ($(RUST_COMPAT),true)
-	@echo "rustc at $(PINNED_RUST_VERSION): skipping rustup"
-else
-	@echo "Rust version ($(RUST_VERSION)) not at pinned version ($(PINNED_RUST_VERSION))"
-	@echo "Running rustup now, you may be prompted for a sudo password."
-	$(RUST_UP_COMMAND)
-endif
 
-rustup_builder: rustup
-
-.PHONY: all build clean check test rustcheck rustup rustup_builder
+.PHONY: all build clean check test
 
 bin/cucumber: Gemfile
 	bundle install --binstubs=bin --path=vendor/bundle
