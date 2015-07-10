@@ -53,9 +53,9 @@ impl Default for DeliveryConfig {
     fn default() -> DeliveryConfig {
         let mut build_cookbook = HashMap::new();
         build_cookbook.insert("name".to_string(),
-                              "<your build cookbook name>".to_string());
+                              "build-cookbook".to_string());
         build_cookbook.insert("path".to_string(),
-                              "<relative path from project root>".to_string());
+                              ".delivery/build-cookbook".to_string());
         DeliveryConfig {
             version: "2".to_string(),
             build_cookbook: build_cookbook,
@@ -66,41 +66,16 @@ impl Default for DeliveryConfig {
 }
 
 impl DeliveryConfig {
-    pub fn init(proj_path: &PathBuf,
-                proj_type_in: &str) -> Result<(), DeliveryError> {
+    pub fn init(proj_path: &PathBuf) -> Result<(), DeliveryError> {
         if DeliveryConfig::config_file_exists(proj_path) {
             debug!("Delivery config file already exists, skipping");
             return Ok(())
         }
-        debug!("proj_path: {:?}\nproj_type_in: {:?}",
-               proj_path, proj_type_in);
-        let proj_type = if proj_type_in.is_empty() {
-            if proj_path.join_many(&["metadata.rb"]).is_file() {
-                "cookbook"
-            } else {
-                "other"
-            }
-        } else {
-            proj_type_in
-        };
-        debug!("Creating a new config file for type: {}", proj_type);
 
-        let mut config = DeliveryConfig::default();
-        if proj_type == "cookbook" {
-            let deliv_truck_git =
-                "https://github.com/opscode-cookbooks/delivery-truck.git";
-            let mut build_cookbook = HashMap::new();
-            build_cookbook.insert("name".to_string(), "delivery-truck".to_string());
-            build_cookbook.insert("git".to_string(), deliv_truck_git.to_string());
-            build_cookbook.insert("branch".to_string(), "master".to_string());
-            config.build_cookbook = build_cookbook;
-            let mut skip_phases: Vec<String> = Vec::new();
-            for phase in &["smoke", "security", "quality"] {
-                skip_phases.push(phase.to_string())
-            }
-            config.skip_phases = Some(skip_phases);
-        }
+        debug!("proj_path: {:?}\n", proj_path);
+        debug!("Creating a new config file");
 
+        let config = DeliveryConfig::default();
         try!(config.write_file(proj_path));
         let config_path = DeliveryConfig::config_file_path(proj_path);
         let config_path_str = &config_path.to_str().unwrap();
