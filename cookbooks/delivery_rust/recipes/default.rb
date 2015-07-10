@@ -21,6 +21,8 @@ rustup_cmd = ["bash",
               "--date=#{rust_version}",
               "--yes"].join(' ')
 
+rustup_cmd << " --disable-sudo" if platform_family?('mac_os_x')
+
 execute "install rust and cargo" do
   command rustup_cmd
   not_if { rust_version == current_rust_version }
