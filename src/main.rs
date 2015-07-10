@@ -55,7 +55,7 @@ Usage: delivery review [--for=<pipeline>] [--no-open] [--edit]
        delivery clone <project> [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--git-url=<url>]
        delivery checkout <change> [--for=<pipeline>] [--patchset=<number>]
        delivery diff <change> [--for=<pipeline>] [--patchset=<number>] [--local]
-       delivery init [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--project=<project>] [--type=<type>]
+       delivery init [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--project=<project>] [--type=<type>] [--no-open]
        delivery setup [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--config-path=<dir>] [--for=<pipeline>]
        delivery job <stage> <phase> [--change=<change>] [--for=<pipeline>] [--job-root=<dir>] [--branch=<branch_name>] [--project=<project>] [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--patchset=<number>] [--git-url=<url>] [--shasum=<gitsha>] [--change-id=<id>] [--no-spinner]
        delivery pipeline [--for=<pipeline>] [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--project=<project>] [--config-path=<dir>]
@@ -125,8 +125,9 @@ fn main() {
             flag_org: ref org,
             flag_project: ref proj,
             flag_type: ref proj_type,
+            flag_no_open: ref no_open,
             ..
-        } => init(&user, &server, &ent, &org, &proj, &proj_type),
+        } => init(&user, &server, &ent, &org, &proj, &proj_type, &no_open),
         Args {
             cmd_checkout: true,
             arg_change: ref change,
@@ -268,7 +269,8 @@ fn setup(user: &str, server: &str, ent: &str, org: &str, path: &str, pipeline: &
 }
 
 #[allow(dead_code)]
-fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str, proj_type: &str) -> Result<(), DeliveryError> {
+fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str,
+        proj_type: &str, no_open: &bool) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
     let final_proj = try!(project_or_from_cwd(proj));
@@ -285,7 +287,7 @@ fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str, proj_type: &
     try!(DeliveryConfig::init(&cwd, proj_type));
     // if we got here, we've checked out a feature branch, added a
     // config file, and made a local commit. Let's create the review!
-    try!(review("master", &false, &false));
+    try!(review("master", no_open, &false));
     Ok(())
 }
 
