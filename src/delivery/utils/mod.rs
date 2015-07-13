@@ -44,14 +44,14 @@ pub fn mkdir_recursive<P: ?Sized>(path: &P) -> Result<(), DeliveryError> where P
     Ok(())
 }
 
-pub fn home_dir(to_append: &str) -> Result<PathBuf, DeliveryError>
+pub fn home_dir(to_append: &[&str]) -> Result<PathBuf, DeliveryError>
 {
    match env::home_dir() {
-       Some(home) => Ok(home.join_many(&[to_append])),
+       Some(home) => Ok(home.join_many(to_append)),
        None => {
            let msg = "unable to find home dir".to_string();
-           return Err(DeliveryError{ kind: Kind::NoHomedir,
-                                     detail: Some(msg) })
+           Err(DeliveryError{ kind: Kind::NoHomedir,
+                              detail: Some(msg) })
        }
    }
 }

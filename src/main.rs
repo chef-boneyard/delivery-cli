@@ -34,8 +34,8 @@ use std::env;
 use std::process;
 use std::error::Error;
 use std::path::PathBuf;
-use std::process::Command;
 use std::fs::PathExt;
+use std::error;
 
 use delivery::utils::{self, privileged_process};
 
@@ -296,34 +296,42 @@ fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str,
 
         sayln("white", "Generating build cookbook skeleton");
 
-        let pcb_dir =
-            utils::home_dir(".delivery/cache/generator-cookbooks/pcb")
-            .unwrap();
-
-        sayln("white", &format!("Found directory: {:?}", &pcb_dir));
+        let pcb_dir = match utils::home_dir(&[".delivery/cache/generator-cookbooks/pcb"]) {
+            Ok(p) => p,
+            Err(e) => return Err(e)
+        };
 
         if pcb_dir.exists() {
             sayln("yellow", "Cached copy of build cookbook generator exists; skipping git clone.");
         } else {
-            sayln("white", "Cloning build cookbook generator into dir");
+            sayln("white", &format!("Cloning build cookbook generator dir {:#?}", pcb_dir));
 
-            let clone_dir_str = pcb_dir.to_str();
+            let pcb_dir_str = match pcb_dir.to_str() {
+                None => return Err(DeliveryError {
+                    kind: Kind::NoHomedir, detail: None}),
+                Some(s) => s
+            };
 
-            try!(git::clone(clone_dir_str.unwrap(),
+            try!(git::clone(pcb_dir_str,
                             "https://github.com/chef-cookbooks/pcb"));
         }
 
         // Generate the cookbook
-        let mut gen = Command::new("chef");
+        let mut gen = utils::make_command("chef");
         gen.arg("generate")
             .arg("cookbook")
             .arg(".delivery/build-cookbook")
             .arg("-g")
-            .arg(pcb_dir)
-            .output()
-            .unwrap_or_else(|e| { panic!("failed to execute process: {}", e) });
+            .arg(pcb_dir);
 
-        let msg = format!("PCB generate: {:?}", &gen);
+        match gen.output() {
+            Ok(o) => o,
+            Err(e) => return Err(DeliveryError {
+                                     kind: Kind::FailedToExecute,
+                detail: Some(format!("failed to execute chef generate: {}", error::Error::description(&e)))})
+        };
+
+        let msg = format!("PCB generate: {:#?}", gen);
         sayln("green", &msg);
 
         sayln("white", "Git add and commit of build-cookbook");
