@@ -306,13 +306,7 @@ fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str,
         } else {
             sayln("white", &format!("Cloning build cookbook generator dir {:#?}", pcb_dir));
 
-            let pcb_dir_str = match pcb_dir.to_str() {
-                None => return Err(DeliveryError {
-                    kind: Kind::NoHomedir, detail: None}),
-                Some(s) => s
-            };
-
-            try!(git::clone(pcb_dir_str,
+            try!(git::clone(&pcb_dir.to_string_lossy(),
                             "https://github.com/chef-cookbooks/pcb"));
         }
 
