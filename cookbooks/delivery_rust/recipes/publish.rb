@@ -75,16 +75,33 @@ end
 ## Upload package to internal artifactory
 # Right now we are only building ubuntu since that is what our builders are.
 # We will likely introduce other platforms in the future.
-[ "12.04", "14.04" ].each do |pv|
-  delivery_rust_artifactory "delivery-cli" do
-    package_path ::File.join(omnibus_path, "pkg", "*.deb")
-    repository 'omnibus-current-local'
-    platform 'ubuntu'
-    platform_version pv
-    endpoint 'http://artifactory.chef.co/'
-    base_path 'com/getchef'
-    username 'delivery'
-    password secrets['artifactory_password']
-    sensitive true
+case node['platform_family']
+when "debian"
+  [ "12.04", "14.04" ].each do |pv|
+    delivery_rust_artifactory "delivery-cli" do
+      package_path ::File.join(omnibus_path, "pkg", "*.deb")
+      repository 'omnibus-current-local'
+      platform 'ubuntu'
+      platform_version pv
+      endpoint 'http://artifactory.chef.co/'
+      base_path 'com/getchef'
+      username 'delivery'
+      password secrets['artifactory_password']
+      sensitive true
+    end
+  end
+when "rhel"
+  [ "6", "7" ].each do |pv|
+    delivery_rust_artifactory "delivery-cli" do
+      package_path ::File.join(omnibus_path, "pkg", "*.rpm")
+      repository 'omnibus-current-local'
+      platform 'el'
+      platform_version pv
+      endpoint 'http://artifactory.chef.co/'
+      base_path 'com/getchef'
+      username 'delivery'
+      password secrets['artifactory_password']
+      sensitive true
+    end
   end
 end
