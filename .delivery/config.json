@@ -15,6 +15,6 @@
     ],
     "build_nodes": {
         "default"    : ["name:builder*.shd.chef.co"],
-        "publish"    : ["name:builder*.shd.chef.co AND platform_family:debian", "name:builder*.shd.chef.co AND platform_family:platform:rhel"]
+        "publish"    : ["name:builder*.shd.chef.co AND platform_family:debian", "name:builder*.shd.chef.co AND platform_family:rhel"]
     }
 }
