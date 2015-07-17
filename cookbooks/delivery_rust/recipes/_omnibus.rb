@@ -2,6 +2,9 @@
 # just on official Delivery build nodes
 dbuild_user_exists = system("grep -q dbuild /etc/passwd")
 
+include_recipe "omnibus::_packaging"
+include_recipe "omnibus::_selinux"
+
 directory "/opt/delivery-cli" do
   owner 'dbuild'
   only_if { dbuild_user_exists }
@@ -18,6 +21,3 @@ end
 execute "rsync -aP --delete /opt/delivery-cli/ /opt/delivery-cli-safe" do
   only_if "test -f /opt/delivery-cli/bin/delivery"
 end
-
-include_recipe "omnibus::_packaging"
-include_recipe "omnibus::_selinux"
