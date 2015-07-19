@@ -10,6 +10,14 @@ else
   log "Linux detected"
   include_recipe "build-essential"
 
+  # Need developement headers for openssl.
+  case node['platform_family']
+  when "debian"
+    package "libssl-dev"
+  when "rhel"
+    package "openssl-devel"
+  end
+
   openssl_version = "1.0.1m"
 
   build_deps = "/opt/delivery-cli-build-deps"
