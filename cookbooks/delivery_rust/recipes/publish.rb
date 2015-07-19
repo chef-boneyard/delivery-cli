@@ -1,10 +1,10 @@
 require 'chef/handler'
 require 'mixlib/shellout'
 
-class OmnibusErrorHandler < Chef::Handler
+class OmnibusHandler < Chef::Handler
 
   def report
-    Chef::Log.error("Rolling back to previous delivery-cli")
+    Chef::Log.info("Rolling back to previous delivery-cli")
     cmd = "rsync -aP /opt/delivery-cli-safe/ /opt/delivery-cli"
     so = Mixlib::ShellOut.new(cmd)
     so.run_command
@@ -15,7 +15,8 @@ class OmnibusErrorHandler < Chef::Handler
   end
 end
 
-Chef::Config.exception_handlers << OmnibusErrorHandler.new()
+Chef::Config.exception_handlers << OmnibusHandler.new()
+Chef::Config.report_handlers << OmnibusHandler.new()
 
 git_ssh = File.join('/var/opt/delivery/workspace/bin', 'git_ssh')
 omnibus_path = File.join(node['delivery']['workspace']['repo'], 'omnibus-delivery-cli')
