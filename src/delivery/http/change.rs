@@ -51,7 +51,7 @@ impl Description {
         let title = items[0].to_string();
         let desc = if items.len() > 1 {
             items.remove(0);
-            items.connect("\n").trim().to_string()
+            items.join("\n").trim().to_string()
         } else {
             "".to_string()
         };

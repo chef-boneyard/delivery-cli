@@ -517,7 +517,7 @@ EOF
 	fi
     fi
 
-    
+
     if [ "$_uninstall" = false ]; then
 	cat <<EOF
 
@@ -1014,10 +1014,10 @@ get_architecture() {
 	# if configure is running in an interactive bash shell. /usr/bin/env
 	# exists *everywhere*.
 	local _bin_to_probe="$SHELL"
-	if [ -z "$_bin_to_probe" -a -e "/usr/bin/env" ]; then
+	if [ ! -e "$_bin_to_probe" -a -e "/usr/bin/env" ]; then
 	    _bin_to_probe="/usr/bin/env"
 	fi
-	if [ -n "$_bin_to_probe" ]; then
+	if [ -e "$_bin_to_probe" ]; then
 	    file -L "$_bin_to_probe" | grep -q "x86[_-]64"
 	    if [ $? != 0 ]; then
 		local _cputype=i686
@@ -1318,7 +1318,7 @@ Usage: rustup.sh [--verbose]
 
 Options:
 
-     --channel=(stable|beta|nightly)   Install from channel (default beta)
+     --channel=(stable|beta|nightly)   Install from channel (default stable)
      --date=<YYYY-MM-DD>               Install from archives
      --revision=<version-number>       Install a specific release
      --spec=<toolchain-spec>           Install from toolchain spec
@@ -1327,6 +1327,7 @@ Options:
      --disable-ldconfig                Do not run ldconfig on Linux
      --disable-sudo                    Do not run installer under sudo
      --save                            Save downloads for future reuse
+     --yes, -y                         Disable the interactive mode
 '
 }
 
