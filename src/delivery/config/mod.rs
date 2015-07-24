@@ -158,13 +158,16 @@ impl Config {
 
     fn set_values_from_toml_table(table: toml::Table) -> Result<Config, DeliveryError> {
         let mut config: Config = Default::default();
-        config.server = Config::stringify_values(table.get("server"));
-        config.api_port = Config::stringify_values(table.get("api_port"));
-        config.project = Config::stringify_values(table.get("project"));
-        config.enterprise = Config::stringify_values(table.get("enterprise"));
-        config.organization = Config::stringify_values(table.get("organization"));
-        config.user = Config::stringify_values(table.get("user"));
-        config.git_port = Config::stringify_values(table.get("git_port"));
+        config.server = stringify_or("server", &table, config.server);
+        config.api_port = stringify_or("api_port", &table, config.api_port);
+        config.pipeline = stringify_or("pipeline", &table, config.pipeline);
+        config.project = stringify_or("project", &table, config.project);
+        config.enterprise = stringify_or("enterprise", &table,
+                                         config.enterprise);
+        config.organization = stringify_or("organization", &table,
+                                           config.organization);
+        config.user = stringify_or("user", &table, config.user);
+        config.git_port = stringify_or("git_port", &table, config.git_port);
         return Ok(config);
     }
 
@@ -215,24 +218,53 @@ impl Config {
     }
 }
 
+fn stringify_or(key: &str, table: &toml::Table, default: Option<String>) -> Option<String> {
+    Config::stringify_values(table.get(key)).or(default)
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::Config;
     use std::default::Default;
 
     #[test]
-    fn parse_config() {
+    fn parse_config_with_defaults() {
         let toml = r#"
             server = "127.0.0.1"
             enterprise = "chef"
-            organization = "chef"
             user = "adam"
 "#;
         let config_result = Config::parse_config(toml);
         match config_result {
             Ok(config) => {
                 assert_eq!(Some(String::from("127.0.0.1")), config.server);
-                assert_eq!(None, config.git_port);
+                assert_eq!(Some("8989".to_string()), config.git_port);
+                assert_eq!(Some("master".to_string()), config.pipeline);
+                assert_eq!(None, config.organization);
+            },
+            Err(e) => {
+                panic!("Failed to parse: {:?}", e.detail)
+            }
+        }
+    }
+
+    #[test]
+    fn parse_config_override_defaults() {
+        let toml = r#"
+            server = "127.0.0.1"
+            enterprise = "chef"
+            user = "adam"
+            git_port = "4151"
+            pipeline = "dev"
+"#;
+        let config_result = Config::parse_config(toml);
+        match config_result {
+            Ok(config) => {
+                assert_eq!(Some("4151".to_string()), config.git_port);
+                assert_eq!(Some("dev".to_string()), config.pipeline);
+                assert_eq!(Some(String::from("127.0.0.1")), config.server);
+                assert_eq!(None, config.organization);
             },
             Err(e) => {
                 panic!("Failed to parse: {:?}", e.detail)
