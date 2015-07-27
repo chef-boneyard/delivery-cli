@@ -36,12 +36,14 @@ use std::error::Error;
 use std::path::PathBuf;
 use std::fs::PathExt;
 use std::error;
+use std::path::Path;
 
 use delivery::utils::{self, privileged_process};
 
 // Allowing this, mostly just for testing.
 #[allow(unused_imports)]
 use delivery::utils::say::{self, say, sayln};
+use delivery::utils::mkdir_recursive;
 use delivery::errors::{DeliveryError, Kind};
 use delivery::config::Config;
 use delivery::delivery_config::DeliveryConfig;
@@ -311,6 +313,8 @@ fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str,
         }
 
         // Generate the cookbook
+        let dot_delivery = Path::new(".delivery");
+        try!(mkdir_recursive(dot_delivery));
         let mut gen = utils::make_command("chef");
         gen.arg("generate")
             .arg("cookbook")
