@@ -11,7 +11,7 @@
 # If we aren't on Redhat OR if this is a straight uninstall, remove
 # the symlink from /usr/bin.
 if [ ! -e /etc/redhat-release -o "x$1" == "x0" ]; then
-  rm -f /usr/bin/delivery-ctl
+  rm -f /usr/bin/delivery
 fi
 
 
