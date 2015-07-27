@@ -64,7 +64,7 @@ Usage: delivery review [--for=<pipeline>] [--no-open] [--edit]
        delivery diff <change> [--for=<pipeline>] [--patchset=<number>] [--local]
        delivery init [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--project=<project>] [--no-open] [--skip-build-cookbook] [--local]
        delivery setup [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--config-path=<dir>] [--for=<pipeline>]
-       delivery job <stage> <phase> [--change=<change>] [--for=<pipeline>] [--job-root=<dir>] [--branch=<branch_name>] [--project=<project>] [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--patchset=<number>] [--git-url=<url>] [--shasum=<gitsha>] [--change-id=<id>] [--no-spinner]
+       delivery job <stage> <phase> [--change=<change>] [--for=<pipeline>] [--job-root=<dir>] [--branch=<branch_name>] [--project=<project>] [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--patchset=<number>] [--git-url=<url>] [--shasum=<gitsha>] [--change-id=<id>] [--no-spinner] [--skip-default]
        delivery pipeline [--for=<pipeline>] [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--project=<project>] [--config-path=<dir>]
        delivery api <method> <path> [--user=<user>] [--server=<server>] [--api-port=<api_port>] [--ent=<ent>] [--config-path=<dir>] [--data=<data>]
        delivery token [--user=<user>] [--server=<server>] [--api-port=<api_port>] [--ent=<ent>]
@@ -204,10 +204,13 @@ fn main() {
             flag_shasum: ref shasum,
             flag_no_spinner: no_spinner,
             flag_branch: ref branch,
+            flag_skip_default: ref skip_default,
             ..
         } => {
             if no_spinner { say::turn_off_spinner() };
-            job(&stage, &phase, &change, &pipeline, &job_root, &project, &user, &server, &ent, &org, &patchset, &change_id, &git_url, &shasum, &branch)
+            job(&stage, &phase, &change, &pipeline, &job_root, &project, &user,
+                &server, &ent, &org, &patchset, &change_id, &git_url, &shasum,
+                &branch, &skip_default)
         },
         Args {
             cmd_token: true,
@@ -512,8 +515,10 @@ fn job(stage: &str,
        change_id: &str,
        git_url: &str,
        shasum: &str,
-       branch: &str) ->
-Result<(), DeliveryError> { sayln("green", "Chef Delivery");
+       branch: &str,
+       skip_default: &bool) -> Result<(), DeliveryError>
+{
+    sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
     config = if project.is_empty() {
         let filename = String::from(cwd().file_name().unwrap().to_str().unwrap());
@@ -598,14 +603,20 @@ Result<(), DeliveryError> { sayln("green", "Chef Delivery");
     };
     try!(ws.setup_chef_for_job(&config, change));
     sayln("white", "Running the job");
-    if privileged_process() {
+
+    let privilege_drop = if privileged_process() {
+        Privilege::Drop
+    } else {
+        Privilege::NoDrop
+    };
+
+    if privileged_process() && !skip_default {
         sayln("yellow", "Setting up the builder");
         try!(ws.run_job("default", Privilege::NoDrop));
-        sayln("magenta", &format!("Running phase {}", phase));
-        try!(ws.run_job(phase, Privilege::Drop));
-    } else {
-        try!(ws.run_job(phase, Privilege::NoDrop));
     }
+
+    sayln("magenta", &format!("Running phase {}", phase));
+    try!(ws.run_job(phase, privilege_drop));
     Ok(())
 }
 
