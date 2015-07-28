@@ -28,7 +28,7 @@ Jobs are run by specifying the stage and the phase. For example, the
 following command will run the unit phase of the verify stage:
 
 ```bash
-delivery job verify unit
+delivery job verify unit --local
 ```
 
 The `delivery job` subcommand will execute the phase recipe by
@@ -63,7 +63,11 @@ carrying out the following steps:
 
 6. Run `chef-client` in local mode with a run list consisting of only
    the specified phase recipe (e.g. `unit`).
-   
+
+Without the `--local` option, the command will look for configuration
+required when interacting with a Delivery server from either
+`.delivery/cli.toml` or additional command line options.
+
 ## The project config file
 
 The `delivery` tool expects to find a JSON configuration file in the
