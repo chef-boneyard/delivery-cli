@@ -32,11 +32,13 @@ extern crate time;
 
 use std::env;
 use std::process;
+use std::process::Command;
+use std::process::Stdio;
 use std::error::Error;
 use std::path::PathBuf;
-use std::fs::PathExt;
 use std::error;
 use std::path::Path;
+use std::io::prelude::*;
 
 use delivery::utils::{self, privileged_process};
 
@@ -64,7 +66,7 @@ Usage: delivery review [--for=<pipeline>] [--no-open] [--edit]
        delivery diff <change> [--for=<pipeline>] [--patchset=<number>] [--local]
        delivery init [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--project=<project>] [--no-open] [--skip-build-cookbook] [--local]
        delivery setup [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--config-path=<dir>] [--for=<pipeline>]
-       delivery job <stage> <phase> [--change=<change>] [--for=<pipeline>] [--job-root=<dir>] [--branch=<branch_name>] [--project=<project>] [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--patchset=<number>] [--git-url=<url>] [--shasum=<gitsha>] [--change-id=<id>] [--no-spinner] [--skip-default] [--local]
+       delivery job <stage> <phase> [--change=<change>] [--for=<pipeline>] [--job-root=<dir>] [--branch=<branch_name>] [--project=<project>] [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--patchset=<number>] [--git-url=<url>] [--shasum=<gitsha>] [--change-id=<id>] [--no-spinner] [--skip-default] [--local] [--docker=<image>]
        delivery pipeline [--for=<pipeline>] [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--project=<project>] [--config-path=<dir>]
        delivery api <method> <path> [--user=<user>] [--server=<server>] [--api-port=<api_port>] [--ent=<ent>] [--config-path=<dir>] [--data=<data>]
        delivery token [--user=<user>] [--server=<server>] [--api-port=<api_port>] [--ent=<ent>]
@@ -206,12 +208,13 @@ fn main() {
             flag_branch: ref branch,
             flag_skip_default: ref skip_default,
             flag_local: ref local,
+            flag_docker: ref docker_image,
             ..
         } => {
             if no_spinner { say::turn_off_spinner() };
             job(&stage, &phase, &change, &pipeline, &job_root, &project, &user,
                 &server, &ent, &org, &patchset, &change_id, &git_url, &shasum,
-                &branch, &skip_default, &local)
+                &branch, &skip_default, &local, &docker_image)
         },
         Args {
             cmd_token: true,
@@ -518,9 +521,92 @@ fn job(stage: &str,
        shasum: &str,
        branch: &str,
        skip_default: &bool,
-       local: &bool) -> Result<(), DeliveryError>
+       local: &bool,
+       docker_image: &str) -> Result<(), DeliveryError>
 {
     sayln("green", "Chef Delivery");
+    if !docker_image.is_empty() {
+        // The --docker flag was specified, let's do this!
+        let cwd_path = cwd();
+        let cwd_str = cwd_path.to_str().unwrap();
+        let volume = &[cwd_str, cwd_str].join(":");
+        // We might want to wrap this in `bash -c $BLAH 2>&1` so that
+        // we get stderr with our streaming output. OTOH, what's here
+        // seems to work in terms of expected output and has a better
+        // chance of working on Windows.
+        let mut docker = utils::make_command("docker");
+
+        docker.arg("run")
+            .arg("-t")
+            .arg("-i")
+            .arg("-v").arg(volume)
+            .arg("-w").arg(cwd_str)
+            // TODO: get this via config
+            .arg("--dns").arg("8.8.8.8")
+            .arg(docker_image)
+            .arg("delivery").arg("job").arg(stage).arg(phase);
+
+        let flags_with_values = vec![("--change", change),
+                                     ("--for", pipeline),
+                                     ("--job-root", job_root),
+                                     ("--project", project),
+                                     ("--user", user),
+                                     ("--server", server),
+                                     ("--ent", ent),
+                                     ("--org", org),
+                                     ("--patchset", patchset),
+                                     ("--change_id", change_id),
+                                     ("--git-url", git_url),
+                                     ("--shasum", shasum),
+                                     ("--branch", branch)];
+
+        for (flag, value) in flags_with_values {
+            maybe_add_flag_value(&mut docker, flag, value);
+        }
+
+        let flags = vec![("--skip-default", skip_default),
+                         ("--local", local)];
+
+        for (flag, value) in flags {
+            maybe_add_flag(&mut docker, flag, value);
+        }
+
+        docker.stdout(Stdio::piped());
+        docker.stderr(Stdio::piped());
+
+        debug!("command: {:?}", docker);
+        let mut child = try!(docker.spawn());
+        let mut c_stdout = match child.stdout {
+            Some(ref mut s) => s,
+            None => {
+                let msg = "failed to execute docker".to_string();
+                let docker_err = DeliveryError { kind: Kind::FailedToExecute,
+                                                 detail: Some(msg) };
+                return Err(docker_err);
+            }
+        };
+        let mut line = String::with_capacity(256);
+        loop {
+            let mut buf = [0u8; 1]; // Our byte buffer
+            let len = try!(c_stdout.read(&mut buf));
+            match len {
+                0 => { // 0 == EOF, so stop writing and finish progress
+                    break;
+                },
+                _ => { // Write the buffer to the BufWriter on the Heap
+                    let buf_vec = buf[0 .. len].to_vec();
+                    let buf_string = String::from_utf8(buf_vec).unwrap();
+                    line.push_str(&buf_string);
+                    if line.contains("\n") {
+                        print!("{}", line);
+                        line = String::with_capacity(256);
+                    }
+                }
+            }
+        }
+        return Ok(());
+    }
+
     let mut config = try!(load_config(&cwd()));
     config = if project.is_empty() {
         let filename = String::from(cwd().file_name().unwrap().to_str().unwrap());
@@ -630,6 +716,18 @@ fn job(stage: &str,
     sayln("magenta", &format!("Running {} {}", phase_msg, phases.join(", ")));
     try!(ws.run_job(phase, &privilege_drop));
     Ok(())
+}
+
+fn maybe_add_flag_value(cmd: &mut Command, flag: &str, value: &str) {
+    if !value.is_empty() {
+        cmd.arg(flag).arg(value);
+    }
+}
+
+fn maybe_add_flag(cmd: &mut Command, flag: &str, value: &bool) {
+    if *value {
+        cmd.arg(flag);
+    }
 }
 
 fn with_default<'a>(val: &'a str, default: &'a str, local: &bool) -> &'a str {
