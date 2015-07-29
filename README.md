@@ -68,6 +68,13 @@ Without the `--local` option, the command will look for configuration
 required when interacting with a Delivery server from either
 `.delivery/cli.toml` or additional command line options.
 
+For local use, you can run multiple phases within a single run like
+so:
+
+```
+delivery job verify "lint syntax unit"
+```
+
 ## The project config file
 
 The `delivery` tool expects to find a JSON configuration file in the

@@ -103,7 +103,10 @@ impl Workspace {
 
     pub fn build(&self) -> Result<(), DeliveryError> {
         try!(utils::mkdir_recursive(&self.root));
-        try!(utils::mkdir_recursive(&self.chef));
+        // These two directories will get chown'd to the build user,
+        // so we want to make sure they exist.
+        try!(utils::mkdir_recursive(&self.chef.join("nodes")));
+        try!(utils::mkdir_recursive(&self.chef.join("cookbooks")));
         try!(utils::mkdir_recursive(&self.cache));
         try!(utils::mkdir_recursive(&self.repo));
         Ok(())
@@ -369,9 +372,14 @@ impl Workspace {
         Ok(bc_name.to_string())
     }
 
-    pub fn run_job(&self, phase: &str, drop_privilege: Privilege) -> Result<(), DeliveryError> {
+    pub fn run_job(&self, phase_arg: &str, drop_privilege: &Privilege) -> Result<(), DeliveryError> {
         let config = try!(job::config::load_config(&self.repo.join_many(&[".delivery", "config.json"])));
         let bc_name = try!(self.build_cookbook_name(&config));
+        let run_list = {
+            let phases: Vec<String> = phase_arg.split(" ")
+                .map(|p| format!("{}::{}", bc_name, p)).collect();
+            phases.join(",")
+        };
         let mut command = utils::make_command("chef-client");
         command.arg("-z").arg("--force-formatter");
         try!(self.handle_privilege_drop(drop_privilege, &mut command));
@@ -380,12 +388,12 @@ impl Workspace {
             .arg("-c")
             .arg(&path_to_string(&self.chef.join("config.rb")))
             .arg("-r")
-            .arg(&format!("{}::{}", bc_name, phase))
+            .arg(run_list)
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .env("HOME", &path_to_string(&self.cache))
             .current_dir(&self.repo);
-        match phase {
+        match phase_arg {
             "default" => command.env("DELIVERY_BUILD_SETUP", "TRUE"),
             _ => command.env("DELIVERY_BUILD_SETUP", "FALSE")
         };
@@ -400,10 +408,10 @@ impl Workspace {
     }
 
     #[cfg(not(target_os = "windows"))]
-    fn handle_privilege_drop(&self, privilege: Privilege,
+    fn handle_privilege_drop(&self, privilege: &Privilege,
                              cmd: &mut Command) -> Result<(), DeliveryError> {
         match privilege {
-            Privilege::Drop => {
+            &Privilege::Drop => {
                 try!(self.set_drop_permissions());
                 cmd.arg("--user")
                     .arg("dbuild")
@@ -416,7 +424,7 @@ impl Workspace {
     }
 
     #[cfg(target_os = "windows")]
-    fn handle_privilege_drop(&self, privilege: Privilege,
+    fn handle_privilege_drop(&self, privilege: &Privilege,
                              cmd: &mut Command) -> Result<(), DeliveryError> {
         Ok(())
     }
