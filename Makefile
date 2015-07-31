@@ -57,3 +57,16 @@ bin/cucumber: Gemfile
 # Depends on the target/release/delivery executable having been built
 cucumber: build bin/cucumber
 	bin/cucumber 2>/dev/null && rm -rf features/tmp
+
+# Run the build cookbook's default recipe on the current machine. Use
+# this to set up your workstation to build the CLI (e.g., to install
+# the proper version of Rust)
+#
+# (If you had the CLI already, you could run `delivery job verify
+# default`, but you're trying to build the CLI; we can't have
+# Chefception *all* the time.)
+vendor_cookbook_deps:
+	berks vendor --berksfile=cookbooks/delivery_rust/Berksfile vendor/cookbooks
+
+setup: vendor_cookbook_deps
+	chef-client --local-mode --override-runlist delivery_rust --config cli_setup_client.rb
