@@ -15,8 +15,17 @@
     ],
     "build_nodes": {
         "default"    : ["name:builder*.shd.chef.co"],
-        "unit"       : ["name:builder*.shd.chef.co AND platform_family:debian", "name:builder*.shd.chef.co AND platform_family:rhel"],
-        "syntax"     : ["name:builder*.shd.chef.co AND platform_family:debian", "name:builder*.shd.chef.co AND platform_family:rhel"],
-        "publish"    : ["name:builder*.shd.chef.co AND platform_family:debian", "name:builder*.shd.chef.co AND platform_family:rhel"]
+        "unit"       : [{"query": "name:builder*.shd.chef.co AND platform_family:debian",
+                         "description": "Debian Build"},
+                        {"query": "name:builder*.shd.chef.co AND platform_family:rhel",
+                         "description": "Rhel Build"}],
+        "syntax"     : [{"query": "name:builder*.shd.chef.co AND platform_family:debian",
+                         "description": "Debian Build"},
+                        {"query": "name:builder*.shd.chef.co AND platform_family:rhel",
+                         "description": "Rhel Build"}],
+        "publish"    : [{"query": "name:builder*.shd.chef.co AND platform_family:debian",
+                         "description": "Debian Build"},
+                        {"query": "name:builder*.shd.chef.co AND platform_family:rhel",
+                         "description": "Rhel Build"}]
     }
 }
