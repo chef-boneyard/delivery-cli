@@ -36,12 +36,14 @@ use std::error::Error;
 use std::path::PathBuf;
 use std::fs::PathExt;
 use std::error;
+use std::path::Path;
 
 use delivery::utils::{self, privileged_process};
 
 // Allowing this, mostly just for testing.
 #[allow(unused_imports)]
 use delivery::utils::say::{self, say, sayln};
+use delivery::utils::mkdir_recursive;
 use delivery::errors::{DeliveryError, Kind};
 use delivery::config::Config;
 use delivery::delivery_config::DeliveryConfig;
@@ -60,7 +62,7 @@ Usage: delivery review [--for=<pipeline>] [--no-open] [--edit]
        delivery clone <project> [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--git-url=<url>]
        delivery checkout <change> [--for=<pipeline>] [--patchset=<number>]
        delivery diff <change> [--for=<pipeline>] [--patchset=<number>] [--local]
-       delivery init [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--project=<project>] [--no-open] [--skip-build-cookbook]
+       delivery init [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--project=<project>] [--no-open] [--skip-build-cookbook] [--local]
        delivery setup [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--config-path=<dir>] [--for=<pipeline>]
        delivery job <stage> <phase> [--change=<change>] [--for=<pipeline>] [--job-root=<dir>] [--branch=<branch_name>] [--project=<project>] [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--patchset=<number>] [--git-url=<url>] [--shasum=<gitsha>] [--change-id=<id>] [--no-spinner]
        delivery pipeline [--for=<pipeline>] [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--project=<project>] [--config-path=<dir>]
@@ -130,9 +132,11 @@ fn main() {
             flag_org: ref org,
             flag_project: ref proj,
             flag_no_open: ref no_open,
+            flag_local: ref local,
             flag_skip_build_cookbook: ref skip_build_cookbook,
             ..
-        } => init(&user, &server, &ent, &org, &proj, &no_open, &skip_build_cookbook),
+        } => init(&user, &server, &ent, &org, &proj, &no_open,
+                  &skip_build_cookbook, &local),
         Args {
             cmd_checkout: true,
             arg_change: ref change,
@@ -276,7 +280,8 @@ fn setup(user: &str, server: &str, ent: &str, org: &str, path: &str, pipeline: &
 #[allow(dead_code)]
 
 fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str,
-        no_open: &bool, skip_build_cookbook: &bool) -> Result<(), DeliveryError> {
+        no_open: &bool,skip_build_cookbook: &bool,
+        local: &bool) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
 
     let mut config = try!(load_config(&cwd()));
@@ -288,7 +293,9 @@ fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str,
         .set_project(&final_proj);
 
     let cwd = try!(env::current_dir());
-    try!(project::import(&config, &cwd));
+    if !local {
+        try!(project::import(&config, &cwd));
+    }
 
     // we want to generate the build cookbook by default. let the user
     // decide to skip if they don't want one.
@@ -311,6 +318,8 @@ fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str,
         }
 
         // Generate the cookbook
+        let dot_delivery = Path::new(".delivery");
+        try!(mkdir_recursive(dot_delivery));
         let mut gen = utils::make_command("chef");
         gen.arg("generate")
             .arg("cookbook")
@@ -331,7 +340,6 @@ fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str,
         sayln("white", "Git add and commit of build-cookbook");
         try!(git::git_command(&["add", ".delivery/build-cookbook"], &cwd));
         try!(git::git_command(&["commit", "-m", "Add Delivery build cookbook"], &cwd));
-
     }
 
     // now to adding the .delivery/config.json, this uses our
@@ -339,11 +347,13 @@ fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str,
     // type.
     try!(DeliveryConfig::init(&cwd));
 
-    // if we got here, we've checked out a feature branch, added a
-    // config file, added a build cookbook, and made appropriate local
-    // commit(s).
-    // Let's create the review!
-    try!(review("master", no_open, &false));
+    if !local {
+        // if we got here, we've checked out a feature branch, added a
+        // config file, added a build cookbook, and made appropriate local
+        // commit(s).
+        // Let's create the review!
+        try!(review("master", no_open, &false));
+    }
     Ok(())
 }
 
