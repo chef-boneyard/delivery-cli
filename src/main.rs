@@ -542,13 +542,17 @@ fn job(stage: &str,
     say("green", &format!("{}", &p));
     say("yellow", &format!(" {}", stage));
     sayln("magenta", &format!(" {}", phase));
+    let phases: Vec<&str> = phase.split(" ").collect();
+    let phase_dir = phases.join("-");
     let job_root_path = if job_root.is_empty() {
         if privileged_process() {
-            let phase_path: &[&str] = &[&s[..], &e, &o, &p, &pi, stage, phase];
+            let phase_path: &[&str] = &[&s[..], &e, &o, &p, &pi, stage,
+                                        &phase_dir];
             PathBuf::from("/var/opt/delivery/workspace").join_many(phase_path)
         } else {
             match env::home_dir() {
-                Some(path) => path.join_many(&[".delivery", &s, &e, &o, &p, &pi, stage, phase]),
+                Some(path) => path.join_many(&[".delivery", &s, &e, &o, &p,
+                                               &pi, stage, &phase_dir]),
                 None => return Err(DeliveryError{ kind: Kind::NoHomedir, detail: None })
             }
         }
@@ -615,11 +619,16 @@ fn job(stage: &str,
 
     if privileged_process() && !skip_default {
         sayln("yellow", "Setting up the builder");
-        try!(ws.run_job("default", Privilege::NoDrop));
+        try!(ws.run_job("default", &Privilege::NoDrop));
     }
 
-    sayln("magenta", &format!("Running phase {}", phase));
-    try!(ws.run_job(phase, privilege_drop));
+    let phase_msg = if phases.len() > 1 {
+        "phases"
+    } else {
+        "phase"
+    };
+    sayln("magenta", &format!("Running {} {}", phase_msg, phases.join(", ")));
+    try!(ws.run_job(phase, &privilege_drop));
     Ok(())
 }
 
