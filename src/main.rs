@@ -64,7 +64,7 @@ Usage: delivery review [--for=<pipeline>] [--no-open] [--edit]
        delivery diff <change> [--for=<pipeline>] [--patchset=<number>] [--local]
        delivery init [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--project=<project>] [--no-open] [--skip-build-cookbook] [--local]
        delivery setup [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--config-path=<dir>] [--for=<pipeline>]
-       delivery job <stage> <phase> [--change=<change>] [--for=<pipeline>] [--job-root=<dir>] [--branch=<branch_name>] [--project=<project>] [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--patchset=<number>] [--git-url=<url>] [--shasum=<gitsha>] [--change-id=<id>] [--no-spinner] [--skip-default]
+       delivery job <stage> <phase> [--change=<change>] [--for=<pipeline>] [--job-root=<dir>] [--branch=<branch_name>] [--project=<project>] [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--patchset=<number>] [--git-url=<url>] [--shasum=<gitsha>] [--change-id=<id>] [--no-spinner] [--skip-default] [--local]
        delivery pipeline [--for=<pipeline>] [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--project=<project>] [--config-path=<dir>]
        delivery api <method> <path> [--user=<user>] [--server=<server>] [--api-port=<api_port>] [--ent=<ent>] [--config-path=<dir>] [--data=<data>]
        delivery token [--user=<user>] [--server=<server>] [--api-port=<api_port>] [--ent=<ent>]
@@ -205,12 +205,13 @@ fn main() {
             flag_no_spinner: no_spinner,
             flag_branch: ref branch,
             flag_skip_default: ref skip_default,
+            flag_local: ref local,
             ..
         } => {
             if no_spinner { say::turn_off_spinner() };
             job(&stage, &phase, &change, &pipeline, &job_root, &project, &user,
                 &server, &ent, &org, &patchset, &change_id, &git_url, &shasum,
-                &branch, &skip_default)
+                &branch, &skip_default, &local)
         },
         Args {
             cmd_token: true,
@@ -516,7 +517,8 @@ fn job(stage: &str,
        git_url: &str,
        shasum: &str,
        branch: &str,
-       skip_default: &bool) -> Result<(), DeliveryError>
+       skip_default: &bool,
+       local: &bool) -> Result<(), DeliveryError>
 {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
@@ -527,22 +529,23 @@ fn job(stage: &str,
         config.set_project(project)
     };
     config = config.set_pipeline(pipeline)
-        .set_user(user)
-        .set_server(server)
-        .set_enterprise(ent)
-        .set_organization(org);
-    let p = validate!(config, project);
-    let s = validate!(config, server);
-    let e = validate!(config, enterprise);
-    let o = validate!(config, organization);
-    let pi = validate!(config, pipeline);
+        .set_user(with_default(user, "you", local))
+        .set_server(with_default(server, "localhost", local))
+        .set_enterprise(with_default(ent, "local", local))
+        .set_organization(with_default(org, "workstation", local));
+    let p = try!(config.project());
+    let s = try!(config.server());
+    let e = try!(config.enterprise());
+    let o = try!(config.organization());
+    let pi = try!(config.pipeline());
     say("white", "Starting job for ");
     say("green", &format!("{}", &p));
     say("yellow", &format!(" {}", stage));
     sayln("magenta", &format!(" {}", phase));
     let job_root_path = if job_root.is_empty() {
         if privileged_process() {
-            PathBuf::from("/var/opt/delivery/workspace").join_many(&[&s[..], &e, &o, &p, &pi, stage, phase])
+            let phase_path: &[&str] = &[&s[..], &e, &o, &p, &pi, stage, phase];
+            PathBuf::from("/var/opt/delivery/workspace").join_many(phase_path)
         } else {
             match env::home_dir() {
                 Some(path) => path.join_many(&[".delivery", &s, &e, &o, &p, &pi, stage, phase]),
@@ -556,7 +559,7 @@ fn job(stage: &str,
     sayln("white", &format!("Creating workspace in {}", job_root_path.to_string_lossy()));
     try!(ws.build());
     say("white", "Cloning repository, and merging");
-    let mut local = false;
+    let mut local_change = false;
     let patch = if patchset.is_empty() { "latest" } else { patchset };
     let c = if ! branch.is_empty() {
         say("yellow", &format!(" {}", &branch));
@@ -568,7 +571,7 @@ fn job(stage: &str,
         say("yellow", &format!(" {}", shasum));
         String::new()
     } else {
-        local = true;
+        local_change = true;
         let v = try!(git::get_head());
         say("yellow", &format!(" {}", &v));
         v
@@ -576,7 +579,7 @@ fn job(stage: &str,
     say("white", " to ");
     sayln("magenta", &pi);
     let clone_url = if git_url.is_empty() {
-        if local {
+        if local_change {
             cwd().into_os_string().to_string_lossy().into_owned()
         } else {
             try!(config.delivery_git_ssh_url())
@@ -618,6 +621,14 @@ fn job(stage: &str,
     sayln("magenta", &format!("Running phase {}", phase));
     try!(ws.run_job(phase, privilege_drop));
     Ok(())
+}
+
+fn with_default<'a>(val: &'a str, default: &'a str, local: &bool) -> &'a str {
+    if !local || !val.is_empty() {
+        val
+    } else {
+        default
+    }
 }
 
 #[allow(dead_code)]
