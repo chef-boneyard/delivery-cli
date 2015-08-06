@@ -177,47 +177,33 @@ The contents of your `.delivery/config.json` file are made available to you in t
 
 ## Development
 
-While the Rust Language is now moving towards 1.0, and things should begin to stabilize, follow-on releases sometimes introduce non-backwardly-compatable changes, which can break this build. Until Rust truly stabilizes, you'll need to install rust (the easiest way on mac):
+If this is your first time, run:
 
 ```bash
-$ sudo ./rustup.sh --date=2015-04-01 --channel=nightly
+make setup all
 ```
 
-If this repo fails to build, using the instructions below, you might try:
+This will install the proper version of Rust on your system (`make
+setup`) using the setup recipe of the CLI's delivery build cookbook
+(see `cookbooks/delivery_rust/recipes/default.rb`), and then compile
+and build the `delivery` executable (`make all`). You'll find the
+executable at `./target/release/delivery`
 
-```bash
-$ cargo clean
-$ cargo update
-```
+If you've installed Rust before and any directories are owned by root, you'll run into issues with `make setup`, since it installs without `sudo`. To fix it, you'll want to uninstall your previously-installed Rust. Per the instructions [here](http://doc.rust-lang.org/book/installing-rust.html) run:
 
-This may update the Cargo.lock file, which is currently checked in. If there are changes, they should likely be included in your CR.
+    sudo /usr/local/lib/rustlib/uninstall.sh
 
-If there are syntax or other errors, well, good luck!
+I also had to manually delete some empty documentation directories before `make setup` worked for me, as these were also owned by root:
 
-Note that you can set the logging level by exporting the `RUST_LOG` env var
-(e.g to `debug`).
+    sudo rmdir /usr/local/share/doc/cargo
+    sudo rmdir /usr/local/share/doc/rust
 
-## Build me
 
-```bash
-cargo build
-```
+Once you've gotten Rust installed and are doing everyday hacking, you
+can just run a simple `make`.
 
-## Test me
-
-```bash
-cargo test
-```
-
-## Develop me
-
-Hack about, then:
-
-```bash
-cargo run -- review ...
-```
-
-Where "review" and friends are the arguments you would pass to the delivery cli.
+Note that you can set the logging level by exporting the `RUST_LOG`
+env var (e.g to `debug`).
 
 ## License & Authors
 
