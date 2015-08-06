@@ -1,8 +1,8 @@
 # Delivery CLI
 
-The CLI for Chef Delivery. Written in Rust, super experimental, will probably hurt your kittens.
-
-_This is alpha stage software, and is in a state of perpetual change. Use at your own risk!_
+A command line tool for continuous delivery workflow. The `delivery`
+command is a component of Chef Delivery. It can be used to setup and
+execute phase jobs as well as interact with a Chef Delivery server.
 
 ## Usage
 
@@ -12,139 +12,136 @@ Start using `delivery` by issuing the setup command:
 $ delivery setup --user USER --server SERVER --ent ENTERPRISE --org ORGANIZATION --config-path /Users/adam
 ```
 
-This will configure delivery to, by default, contact the delivery server at SERVER, with a default
-ENTERPRISE and ORGANIZATION.
+This will configure delivery to, by default, contact the delivery
+server at SERVER, with a default ENTERPRISE and ORGANIZATION.
 
-### Job
+### `delivery job`
 
-The Delivery CLI is going to also encompass the act of seting up a workspace,
-configuring it to run, and then actually running a delivery job. The goal is:
+The `delivery job` subcommand is used to execute phase recipes for a
+project in a workspace. The Delivery server uses `delivery job` to
+execute the phases of each stage in the pipeline. The same command can
+be used locally to execute a phase job in the same way. You can also
+wire `delivery job` into your own pipeline orchestration if you are
+not using the Delivery server.
 
-#### To be able to run any delivery phase from the command line, as if your laptop was a build node.
-
-As a developer, it's good best practice to verify that your code will work
-locally before submitting it. What if we could validate that with the identical
-behavior we would have on a build node in our pipeline?
-
-You can run:
+Jobs are run by specifying the stage and the phase. For example, the
+following command will run the unit phase of the verify stage:
 
 ```bash
-$ delivery job verify unit
-Chef Delivery
-Loading configuration from /Users/adam/src/opscode/delivery/opscode/delivery-cli
-Starting job for verify unit
-Creating workspace
-Cloning repository, and merging adam/job to master
-Configuring the job
-Running the job
-Starting Chef Client, version 11.18.0.rc.1
-resolving cookbooks for run list: ["delivery_rust::unit"]
-Synchronizing Cookbooks:
-  - delivery_rust
-  - build-essential
-Compiling Cookbooks...
-Converging 2 resources
-Recipe: delivery_rust::unit
-  * execute[cargo clean] action run
-    - execute cargo clean
-  * execute[cargo test] action run
-    - execute cargo test
-
-Running handlers:
-Running handlers complete
-Chef Client finished, 2/2 resources updated in 32.770955 seconds
+delivery job verify unit
 ```
 
-Which will keep a persistent, local cache, and behave as a build node would.
+The `delivery job` subcommand will execute the phase recipe by
+carrying out the following steps:
 
-This also has a delightful side effect, which is that anyone can use the delivery
-cli to get the *job* behaviors of delivery, including integrating them in to existing
-legacy solutions.
+0. Currently, the `job` command assumes the current branch is a
+   feature branch with commits that are not on the target branch.
 
-2) Make the setup and execution of the build job straightforward and easy
-   to debug.
+1. Clone the project repository to a workspace. The location can be
+   customized using `--job-root`.
 
-First we create the workspace directories, then we clone the project we are to
-build, configure the Chef environent, and execute the job.
+2. Merge the feature branch into the target branch. This merge will
+   not be pushed anywhere and is often referred to as "the
+   hypothetical merge"; it is the merge that would result if this
+   change were to be approved at this time.
 
-To setup a job, the delivery cli reads the `.delivery/config.json` file, and
-looks for its `build_cookbook` parameter. It takes 3 forms:
+3. Fetch the build cookbook for the project. The build cookbook
+   location is specified in the project's `.delivery/config.json`
+   file.
+
+4. Use `berks` to fetch dependencies of the build cookbook (as
+   specified in the build cookbook's `Berksfile`).
+
+5. Run `chef-client` in local mode with a run list consisting of only
+   the `default` recipe of the build cookbook. The `default` recipe is
+   intended for preparing a given node to be a "build node" for the
+   project. Typical setup handled in the `default` recipe might
+   include installing compilers, test frameworks, and other build and
+   test dependencies. The `default` recipe is skipped when
+   `delivery job` is invoked by a non-root and when the
+   `--skip-default` option is specified.
+
+6. Run `chef-client` in local mode with a run list consisting of only
+   the specified phase recipe (e.g. `unit`).
+   
+## The project config file
+
+The `delivery` tool expects to find a JSON configuration file in the
+top-level directory of a project located at
+`.delivery/config.json`. This file specifies the build cookbook for
+the project. It can also be used to pass data that can be read by the
+build cookbook recipes. There are additional fields that are used by
+the Delivery server to control job dispatch.
+
+You can create a starting config file (as well as a build cookbook)
+using the `init` subcommand:
+
+```bash
+delivery init --local
+```
+
+Example `.delivery/config.json` specifying an embedded build cookbook:
+
+```json
+{
+  "version": "2",
+  "build_cookbook": {
+    "path": ".delivery/build-cookbook",
+    "name": "build-cookbook"
+  },
+  "skip_phases": [],
+  "build_nodes": {}
+}
+```
+
+### Specifying a project's build cookbook
+
+The `build_cookbook` field of the config file is used to specify the
+build cookbook for the project. Build cookbooks can be fetched from
+four sources: local directory within the project, a git repository, a
+supermarket instance, or from a Delivery server.
 
 #### From a local directory
 
 ```json
-{
-    "version": "1",
-    "build_cookbook": {
+"build_cookbook": {
       "name": "delivery_rust",
       "path": "cookbooks/delivery_rust"
-    },
-    "build_nodes": {
-        "default"    : ["name:delivery-builder*"]
-    }
 }
 ```
 
 #### From a Git source
 
 ```json
-{
-    "version": "1",
-    "build_cookbook": {
-      "name": "delivery_rust",
-      "git": "ssh://..."
-    },
-    "build_nodes": {
-        "default"    : ["name:delivery-builder*"]
-    }
+"build_cookbook": {
+      "name"  : "delivery-truck",
+      "git"   : "https://github.com/opscode-cookbooks/delivery-truck.git",
+      "branch": "master"
 }
 ```
 
 #### From a Supermarket
 
 ```json
-{
-    "version": "1",
-    "build_cookbook": {
-      "name": "delivery_rust",
-      "supermarket": "https://supermarket.chef.io"
-    },
-    "build_nodes": {
-        "default"    : ["name:delivery-builder*"]
-    }
+"build_cookbook": {
+      "name": "delivery-truck",
+      "supermarket": "true"
 }
 ```
 
-It will then retrieve the source, and execute a `berks vendor` on it. This fetches
-any dependencies it may have. We then execute:
+#### From a Chef Server
 
-```bash
-$ chef-client -z -j ../chef/dna.json -c ../chef/config.rb -r 'delivery_rust::unit'
+```json
+"build_cookbook": {
+      "name": "delivery-truck",
+      "server": "true"
+}
 ```
-
-3) Optimize things like the idempotence check for build node setup.
-
-When dispatching the job, we check to see if we have executed the build node setup
-recipe. We do the following:
-
-* Check to see if we have run it before - if we haven't, execute it.
-* If we have run it in the last 24 hours, check the guard
-* If we have a guard, use it to determine if we should run again
-
-We determine if we have run it before though, at the end of the build step, writing
-out a cache with the checksum of the build cookbooks lib, recipes/default.rb, resource,
-provider, file and template directories. If any of them has changed, we assume we need
-to try again.
-
-The cache has a deadline of 24 hours - when it passes, we run it again no matter what.
-
-The guard statement is optional.
 
 ## Node Attributes
 
-When you run `delivery job` a `dna.json` file specific to your change is created
-in your workspace that contains node attributes that you can reference in your
-build cookbooks.
+Attributes specific to the project and change are made available for
+use in build cookbook recipes.
 
 ### Workspace Details
 Attributes in the `node['delivery']['workspace']` namespace provide paths to the
@@ -177,7 +174,14 @@ The contents of your `.delivery/config.json` file are made available to you in t
 
 ## Development
 
-If this is your first time, run:
+To setup your machine for hacking on `delivery-cli`, follow these
+steps. Note that we are currently using Rust nightlies and the the
+setup instructions will install the correct build for you.
+
+If you are developing on OS X, make sure you have [homebrew][] and
+[ChefDK][] installed.
+
+To get going, run:
 
 ```bash
 make setup all
@@ -189,21 +193,44 @@ setup`) using the setup recipe of the CLI's delivery build cookbook
 and build the `delivery` executable (`make all`). You'll find the
 executable at `./target/release/delivery`
 
-If you've installed Rust before and any directories are owned by root, you'll run into issues with `make setup`, since it installs without `sudo`. To fix it, you'll want to uninstall your previously-installed Rust. Per the instructions [here](http://doc.rust-lang.org/book/installing-rust.html) run:
+On OS X, if you've installed Rust before and any directories are owned
+by root, you'll run into issues with `make setup`, since it installs
+without `sudo`. To fix it, you'll want to uninstall your
+previously-installed Rust. Per [the instructions][] run:
 
     sudo /usr/local/lib/rustlib/uninstall.sh
 
-I also had to manually delete some empty documentation directories before `make setup` worked for me, as these were also owned by root:
+I also had to manually delete some empty documentation directories
+before `make setup` worked for me, as these were also owned by root:
 
     sudo rmdir /usr/local/share/doc/cargo
     sudo rmdir /usr/local/share/doc/rust
 
-
 Once you've gotten Rust installed and are doing everyday hacking, you
 can just run a simple `make`.
 
-Note that you can set the logging level by exporting the `RUST_LOG`
-env var (e.g to `debug`).
+You can run the tests like this:
+
+```bash
+make test
+make cucumber
+```
+
+[homebrew]: http://brew.sh/
+[ChefDK]: https://downloads.chef.io/chef-dk/
+[the instructions]: http://doc.rust-lang.org/book/installing-rust.html
+
+Tips:
+
+* You can set the logging level by exporting the `RUST_LOG`
+  environment variable (e.g `RUST_LOG=debug cargo run`).
+
+* Export `RUST_BACKTRACE=1` for better stack traces on panics.
+
+* Run only the embedded unit tests (not functional tests in the
+  `tests/` directory nor code embedded in doc comments) via `cargo
+  test --lib`. You can also pass a module name to only run matching
+  tests (e.g. `cargo test --lib job`).
 
 ## License & Authors
 
