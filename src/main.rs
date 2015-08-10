@@ -799,8 +799,9 @@ fn say_version() -> Result<(), DeliveryError> {
 }
 
 fn version() -> String {
-    let msg = "Invalid time fmt in version";
-    time::strftime("%Y-%m-%dT%H:%M:%SZ", &time::now_utc()).ok().expect(msg)
+    let epoch = "1970-01-01T00:00:00Z";
+    let build_time = option_env!("DELIV_CLI_TIME").unwrap_or(epoch);
+    format!("{}", build_time)
 }
 
 fn build_git_sha() -> String {
