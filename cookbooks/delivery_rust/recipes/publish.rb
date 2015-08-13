@@ -125,6 +125,6 @@ execute "upload to artifactory" do
   command "#{omnibus_path}/bin/omnibus publish artifactory #{repository} #{pattern} " \
           "--config #{omnibus_config} " \
           "--platform-mappings #{platform_mappings_path} " \
-          "--version-manifest #{Dir.glob('./**/version-manifest.json').first}"
+          "--version-manifest #{omnibus_path}/pkg/version-manifest.json"
   cwd omnibus_path
 end
