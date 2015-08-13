@@ -73,61 +73,36 @@ execute "push_to_github" do
   environment({"GIT_SSH" => git_ssh})
 end
 
-##############################################################
-
-pkg_dir = ::File.join(omnibus_path, 'pkg')
-
-endpoint       = 'http://artifactory.chef.co/'
-repository     = 'omnibus-current-local'
-base_path      = 'com/getchef'
-pattern        = "#{pkg_dir}/*.{deb,rpm}"
-username       = 'delivery'
-password       = secrets['artifactory_password']
-
-omnibus_config         = ::File.join(node['delivery']['workspace']['cache'], 'omnibus-publish.rb')
-platform_mappings_path = ::File.join(node['delivery']['workspace']['cache'], 'omnibus-platform-mappings.json')
-
-
-# Build on one platform, but can install on several
-file platform_mappings_path do
-  content <<-EOH
-{
-  "ubuntu-14.04": [
-    "ubuntu-12.04",
-    "ubuntu-14.04"
-  ],
-  "el-6": [
-    "el-6",
-    "el-7"
-  ]
-}
-EOH
-  mode '0600'
-  owner 'dbuild'
-  group 'dbuild'
-end
-
-# Render an Omnibus config file for publishing
-file omnibus_config do
-  content <<-EOH
-# This file is written by Chef for #{node['fqdn']}.
-# Do NOT modify this file by hand.
-artifactory_endpoint  '#{endpoint}'
-artifactory_base_path '#{base_path}'
-artifactory_username  '#{username}'
-artifactory_password  '#{password}'
-  EOH
-  mode '0600'
-  owner 'dbuild'
-  group 'dbuild'
-  sensitive true
-end
-
-# Use the CLI because RUBY INCEPTION
-execute "upload to artifactory" do
-  command "#{omnibus_path}/bin/omnibus publish artifactory #{repository} #{pattern} " \
-          "--config #{omnibus_config} " \
-          "--platform-mappings #{platform_mappings_path} " \
-          "--version-manifest #{pkg_dir}/version-manifest.json"
-  cwd omnibus_path
+## Upload package to internal artifactory
+# Right now we are only building ubuntu since that is what our builders are.
+# We will likely introduce other platforms in the future.
+case node['platform_family']
+when "debian"
+  [ "12.04", "14.04" ].each do |pv|
+    delivery_rust_artifactory "delivery-cli" do
+      package_path ::File.join(omnibus_path, "pkg", "*.deb")
+      repository 'omnibus-current-local'
+      platform 'ubuntu'
+      platform_version pv
+      endpoint 'http://artifactory.chef.co/'
+      base_path 'com/getchef'
+      username 'delivery'
+      password secrets['artifactory_password']
+      sensitive true
+    end
+  end
+when "rhel"
+  [ "6", "7" ].each do |pv|
+    delivery_rust_artifactory "delivery-cli" do
+      package_path ::File.join(omnibus_path, "pkg", "*.rpm")
+      repository 'omnibus-current-local'
+      platform 'el'
+      platform_version pv
+      endpoint 'http://artifactory.chef.co/'
+      base_path 'com/getchef'
+      username 'delivery'
+      password secrets['artifactory_password']
+      sensitive true
+    end
+  end
 end
