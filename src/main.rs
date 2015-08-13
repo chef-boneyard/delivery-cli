@@ -825,7 +825,7 @@ fn api_req(method: &str, path: &str, data: &str,
     let e = validate!(config, enterprise);
     let api_server = config.api_host_and_port().ok().unwrap();
 
-    let mut client = APIClient::new_https(&api_server, &e);
+    let mut client = try!(APIClient::from_config(&config));
 
     let tstore = try!(token::TokenStore::from_home());
 

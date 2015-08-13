@@ -28,6 +28,7 @@ use std::io::prelude::*;
 use errors::{DeliveryError, Kind};
 use token::TokenStore;
 use utils::say::{sayln};
+use config::Config;
 
 mod headers;
 pub mod token;
@@ -76,6 +77,16 @@ pub struct APIClient {
 }
 
 impl APIClient {
+
+    /// Create a new `APIClient` from the specified `Config`
+    /// instance. Returns an error result required configuration
+    /// values are missing. Expects to find `server`, `api_port`, and
+    /// `enterprise`.
+    pub fn from_config(config: &Config) -> Result<APIClient, DeliveryError> {
+        let host = try!(config.api_host_and_port());
+        let ent = try!(config.enterprise());
+        Ok(APIClient::new_https(&host, &ent))
+    }
 
     /// Create a new `APIClient` using HTTP attached to the enterprise
     /// given by `ent`.
@@ -324,6 +335,7 @@ mod tests {
     use std::env;
     use tempdir::TempDir;
     use utils::path_join_many::PathJoinMany;
+    use config::Config;
 
     #[test]
     fn api_auth() {
@@ -333,6 +345,16 @@ mod tests {
                  auth.user, auth.token);
         assert_eq!("pete", auth.user);
         assert!(auth.token.len() > 4);
+    }
+
+    #[test]
+    fn from_config_test() {
+        let config = Config::default()
+            .set_enterprise("ncc-1701")
+            .set_server("earth");
+        let client = APIClient::from_config(&config).unwrap();
+        let url = client.api_url("foo");
+        assert_eq!("https://earth/api/v0/e/ncc-1701/foo", url)
     }
 
     #[test]
