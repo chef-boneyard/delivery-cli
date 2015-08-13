@@ -92,7 +92,7 @@ platform_mappings_path = ::File.join(node['delivery']['workspace']['cache'], 'om
 file platform_mappings_path do
   content <<-EOH
 {
-  "ubuntu-12.04": [
+  "ubuntu-14.04": [
     "ubuntu-12.04",
     "ubuntu-14.04"
   ],
