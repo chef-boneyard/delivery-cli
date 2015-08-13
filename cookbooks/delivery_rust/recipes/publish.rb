@@ -75,15 +75,18 @@ end
 
 ##############################################################
 
+pkg_dir = ::File.join(omnibus_path, 'pkg')
+
 endpoint       = 'http://artifactory.chef.co/'
 repository     = 'omnibus-current-local'
 base_path      = 'com/getchef'
-pattern        = './**/*.{deb,rpm}'
+pattern        = "#{pkg_dir}/*.{deb,rpm}"
 username       = 'delivery'
 password       = secrets['artifactory_password']
 
 omnibus_config         = ::File.join(node['delivery']['workspace']['cache'], 'omnibus-publish.rb')
 platform_mappings_path = ::File.join(node['delivery']['workspace']['cache'], 'omnibus-platform-mappings.json')
+
 
 # Build on one platform, but can install on several
 file platform_mappings_path do
@@ -125,6 +128,6 @@ execute "upload to artifactory" do
   command "#{omnibus_path}/bin/omnibus publish artifactory #{repository} #{pattern} " \
           "--config #{omnibus_config} " \
           "--platform-mappings #{platform_mappings_path} " \
-          "--version-manifest #{omnibus_path}/pkg/version-manifest.json"
+          "--version-manifest #{pkg_dir}/version-manifest.json"
   cwd omnibus_path
 end
