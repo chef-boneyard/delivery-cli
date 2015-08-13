@@ -78,21 +78,31 @@ end
 endpoint       = 'http://artifactory.chef.co/'
 repository     = 'omnibus-current-local'
 base_path      = 'com/getchef'
+pattern        = './**/*.{deb,rpm}'
 username       = 'delivery'
 password       = secrets['artifactory_password']
-omnibus_config = ::File.join(node['delivery']['workspace']['cache'], 'omnibus-publish.rb')
+
+omnibus_config         = ::File.join(node['delivery']['workspace']['cache'], 'omnibus-publish.rb')
+platform_mappings_path = ::File.join(node['delivery']['workspace']['cache'], 'omnibus-platform-mappings.json')
 
 # Build on one platform, but can install on several
-platform_mappings = {
-  "ubuntu-12.04" => [
+file platform_mappings_path do
+  content <<-EOH
+{
+  "ubuntu-12.04": [
     "ubuntu-12.04",
     "ubuntu-14.04"
   ],
-  "el-6" => [
+  "el-6": [
     "el-6",
     "el-7"
   ]
 }
+EOH
+  mode '0600'
+  owner 'dbuild'
+  group 'dbuild'
+end
 
 # Render an Omnibus config file for publishing
 file omnibus_config do
@@ -110,22 +120,11 @@ artifactory_password  '#{password}'
   sensitive true
 end
 
-# Shamelessly stolen from
-# https://github.com/opscode-cookbooks/opscode-ci/blob/master/files/default/opscode-ci/scripts/publishers/artifactory.rb#L108-L118
-ruby_block "upload to artifactory" do
-  block do
-    Dir.chdir(omnibus_path) do
-      Omnibus.load_configuration(omnibus_config)
-      publisher = Omnibus::ArtifactoryPublisher.new(
-        './**/*.{deb,rpm}',
-        repository: repository,
-        platform_mappings: platform_mappings,
-        version_manifest: Dir.glob('./**/version-manifest.json').first,
-      )
-      publisher.publish do |package|
-        puts "Published '#{package.name}' for #{package.metadata[:platform]}-#{package.metadata[:platform_version]}"
-      end
-    end
-  end
-  action :run
+# Use the CLI because RUBY INCEPTION
+execute "upload to artifactory" do
+  command "#{omnibus_path}/bin/omnibus publish artifactory #{repository} #{pattern} " \
+          "--config #{omnibus_config} " \
+          "--platform-mappings #{platform_mappings_path} " \
+          "--version-manifest #{Dir.glob('./**/version-manifest.json').first}"
+  cwd omnibus_path
 end
