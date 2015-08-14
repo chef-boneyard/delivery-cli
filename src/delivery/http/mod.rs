@@ -67,7 +67,7 @@ enum HTTPMethod {
     POST,
     DELETE
 }
-   
+
 #[derive(Debug)]
 pub struct APIClient {
     proto: HProto,
@@ -134,7 +134,7 @@ impl APIClient {
     pub fn delete(&self, path: &str) -> Result<HyperResponse, HttpError> {
         self.req_with_body(HTTPMethod::DELETE, path, "")
     }
-    
+
     pub fn put(&self, path: &str,
                payload: &str) -> Result<HyperResponse, HttpError> {
         self.req_with_body(HTTPMethod::PUT, path, payload)
@@ -175,7 +175,7 @@ impl APIClient {
             req.send()
         }
     }
-    
+
     pub fn project_exists(&self,
                           org: &str,
                           proj: &str) -> bool {
@@ -294,6 +294,18 @@ impl APIAuth {
         let token = env::var("TOKEN").ok().expect("env missing TOKEN");
         let user = env::var("DEL_USER").ok().expect("env missing DEL_USER");
         APIAuth { user: user, token: token }
+    }
+
+    /// Create an `APIAuth` struct from the specified `Config`
+    /// instance. Expects to find valid values for `server`,
+    /// `enterprise`, and `user`.
+    /// Reads API tokens from `$HOME/.delivery/api-tokens`.
+    pub fn from_config(config: &Config) -> Result<APIAuth, DeliveryError> {
+        let tstore = try!(TokenStore::from_home());
+        let api_server = try!(config.api_host_and_port());
+        let ent = try!(config.enterprise());
+        let user = try!(config.user());
+        APIAuth::from_token_store(tstore, &api_server, &ent, &user)
     }
 
     pub fn from_token_store(tstore: TokenStore,
@@ -417,5 +429,55 @@ mod tests {
                        assert_eq!("beefbeef", a.token());
                        Ok(a)
                    }).is_ok());
+    }
+
+    #[test]
+    fn api_auth_from_config_test() {
+        let config = Config::default()
+            .set_enterprise("ncc-1701")
+            .set_server("earth")
+            .set_user("kirk");
+
+        let tempdir = TempDir::new("t1").ok().expect("TempDir failed");
+        let path = tempdir.path();
+
+        env::set_var("HOME", path);
+        let mut tstore = TokenStore::from_home().ok().expect("tstore sad");
+        let write_result = tstore.write_token("earth", "ncc-1701", "kirk",
+                                              "cafecafe");
+        assert_eq!(true, write_result.is_ok());
+
+        let auth = APIAuth::from_config(&config);
+
+        assert_eq!(true,
+                   auth.and_then(|a| {
+                       assert_eq!("kirk", a.user());
+                       assert_eq!("cafecafe", a.token());
+                       Ok(a)
+                   }).is_ok());
+    }
+
+    #[test]
+    fn api_auth_from_config_when_missing_test() {
+        let config = Config::default()
+            .set_enterprise("ncc-1701")
+            .set_server("earth");
+
+        // NOTE: for now, the use of the HOME environment variable
+        // makes this test unsafe for parallel execution.
+        // let tempdir = TempDir::new("t1").ok().expect("TempDir failed");
+        // let path = tempdir.path();
+        // env::set_var("HOME", path);
+
+        let auth = APIAuth::from_config(&config);
+        assert_eq!(true,
+                   auth.or_else(|e| {
+                       println!("e: {:?}", e);
+                       let detail = &e.detail.unwrap();
+                       let expect = "User not set; try --user or set it in \
+                                     your .toml config file";
+                       assert_eq!(expect, detail);
+                       Err(1)
+                   }).is_err());
     }
 }

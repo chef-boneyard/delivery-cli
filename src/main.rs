@@ -813,7 +813,6 @@ fn rustc_version() -> String {
     option_env!("RUSTC_VERSION").unwrap_or("rustc UNKNOWN").to_string()
 }
 
-#[allow(dead_code)]
 fn api_req(method: &str, path: &str, data: &str,
            server: &str, api_port: &str, ent: &str, user: &str) -> Result<(), DeliveryError> {
     let mut config = try!(Config::load_config(&cwd()));
@@ -821,15 +820,8 @@ fn api_req(method: &str, path: &str, data: &str,
         .set_server(server)
         .set_api_port(api_port)
         .set_enterprise(ent);
-    let u = validate!(config, user);
-    let e = validate!(config, enterprise);
-    let api_server = config.api_host_and_port().ok().unwrap();
-
     let mut client = try!(APIClient::from_config(&config));
-
-    let tstore = try!(token::TokenStore::from_home());
-
-    let auth = try!(APIAuth::from_token_store(tstore, &api_server, &e, &u));
+    let auth = try!(APIAuth::from_config(&config));
     client.set_auth(auth);
     let mut result = match method {
         "get" => try!(client.get(path)),
