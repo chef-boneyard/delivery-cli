@@ -21,7 +21,7 @@ use hyper::status::StatusCode;
 use rustc_serialize::json;
 use std::io::prelude::*;
 
-use token::TokenStore;
+use config::Config;
 
 #[derive(RustcEncodable, RustcDecodable, Debug, Clone, PartialEq, PartialOrd)]
 pub struct Description {
@@ -60,11 +60,12 @@ impl Description {
 }
 
 /// Fetch the description for a change
-pub fn get(server: &str, ent: &str, user: &str, org: &str,
-           proj: &str, change: &str) -> Result<Description, DeliveryError> {
-    let mut client = APIClient::new_https(&server, &ent);
-    let tstore = try!(TokenStore::from_home());
-    let auth = try!(APIAuth::from_token_store(tstore, &server, &ent, &user));
+pub fn get(config: &Config,
+           change: &str) -> Result<Description, DeliveryError> {
+    let org = try!(config.organization());
+    let proj = try!(config.project());
+    let mut client = try!(APIClient::from_config(&config));
+    let auth = try!(APIAuth::from_config(&config));
     client.set_auth(auth);
     let path = format!("orgs/{}/projects/{}/changes/{}/description",
                        org, proj, change);
@@ -97,12 +98,13 @@ pub fn get(server: &str, ent: &str, user: &str, org: &str,
 }
 
 /// Set the description for a change
-pub fn set(server: &str, ent: &str, user: &str, org: &str, proj: &str,
+pub fn set(config: &Config,
            change: &str,
            description: &Description) -> Result<(), DeliveryError> {
-    let mut client = APIClient::new_https(&server, &ent);
-    let tstore = try!(TokenStore::from_home());
-    let auth = try!(APIAuth::from_token_store(tstore, &server, &ent, &user));
+    let org = try!(config.organization());
+    let proj = try!(config.project());
+    let mut client = try!(APIClient::from_config(&config));
+    let auth = try!(APIAuth::from_config(&config));
     client.set_auth(auth);
     let path = format!("orgs/{}/projects/{}/changes/{}/description",
                        org, proj, change);

@@ -371,29 +371,22 @@ fn review(for_pipeline: &str,
         config = config.set_pipeline(for_pipeline)
             .set_project(&project);
 
-        let s = validate!(config, server);
-        let e = validate!(config, enterprise);
-        let u = validate!(config, user);
-        let o = validate!(config, organization);
-        let p = validate!(config, project);
-
-        try!(edit_change(&s, &e, &u, &o, &p, &review));
+        try!(edit_change(&config, &review));
     }
     handle_review_result(&review, no_open)
 }
 
-fn edit_change(server: &str, ent: &str, user: &str, org: &str, proj: &str,
+fn edit_change(config: &Config,
                review: &ReviewResult) -> Result<(), DeliveryError> {
+    let proj = try!(config.project());
     match review.change_id {
         Some(ref change_id) => {
-            let change0 = try!(http::change::get(server, ent, user,
-                                                 org, proj, &change_id));
+            let change0 = try!(http::change::get(&config, &change_id));
             let text0 = format!("{}\n\n{}\n",
                                 change0.title, change0.description);
-            let text1 = try!(utils::open::edit_str(proj, &text0));
+            let text1 = try!(utils::open::edit_str(&proj, &text0));
             let change1 = try!(http::change::Description::parse_text(&text1));
-            Ok(try!(http::change::set(server, ent, user, org,
-                                      proj, &change_id, &change1)))
+            Ok(try!(http::change::set(&config, &change_id, &change1)))
         },
         None => Ok(())
     }
