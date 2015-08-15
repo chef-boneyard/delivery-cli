@@ -224,17 +224,14 @@ fn main() {
     }
 }
 
-#[allow(dead_code)]
 fn cwd() -> PathBuf {
     env::current_dir().unwrap()
 }
 
-#[allow(dead_code)]
 fn no_matching_command() -> Result<(), DeliveryError> {
     Err(DeliveryError { kind: Kind::NoMatchingCommand, detail: None })
 }
 
-#[allow(dead_code)]
 fn exit_with(e: DeliveryError, i: isize) {
     sayln("red", e.description());
     match e.detail() {
@@ -245,7 +242,6 @@ fn exit_with(e: DeliveryError, i: isize) {
     process::exit(x)
 }
 
-#[allow(dead_code)]
 fn load_config(path: &PathBuf) -> Result<Config, DeliveryError> {
     say("white", "Loading configuration from ");
     let msg = format!("{}", path.display());
@@ -254,7 +250,6 @@ fn load_config(path: &PathBuf) -> Result<Config, DeliveryError> {
     Ok(config)
 }
 
-#[allow(dead_code)]
 fn setup(user: &str, server: &str, ent: &str, org: &str, path: &str, pipeline: &str) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
     let config_path = if path.is_empty() {
@@ -271,8 +266,6 @@ fn setup(user: &str, server: &str, ent: &str, org: &str, path: &str, pipeline: &
     try!(config.write_file(&config_path));
     Ok(())
 }
-
-#[allow(dead_code)]
 
 fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str,
         no_open: &bool,skip_build_cookbook: &bool,
@@ -352,7 +345,6 @@ fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str,
     Ok(())
 }
 
-#[allow(dead_code)]
 fn review(for_pipeline: &str,
           no_open: &bool, edit: &bool) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
@@ -424,7 +416,6 @@ fn handle_review_result(review: &ReviewResult,
     Ok(())
 }
 
-#[allow(dead_code)]
 fn checkout(change: &str, patchset: &str, pipeline: &str) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
@@ -445,7 +436,6 @@ fn checkout(change: &str, patchset: &str, pipeline: &str) -> Result<(), Delivery
     Ok(())
 }
 
-#[allow(dead_code)]
 fn diff(change: &str, patchset: &str, pipeline: &str, local: &bool) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
@@ -466,7 +456,6 @@ fn diff(change: &str, patchset: &str, pipeline: &str, local: &bool) -> Result<()
     Ok(())
 }
 
-#[allow(dead_code)]
 fn clone(project: &str, user: &str, server: &str, ent: &str, org: &str, git_url: &str) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
@@ -492,7 +481,6 @@ fn clone(project: &str, user: &str, server: &str, ent: &str, org: &str, git_url:
     Ok(())
 }
 
-#[allow(dead_code)]
 fn job(stage: &str,
        phase: &str,
        change: &str,
@@ -726,7 +714,6 @@ fn with_default<'a>(val: &'a str, default: &'a str, local: &bool) -> &'a str {
     }
 }
 
-#[allow(dead_code)]
 fn api_token(server: &str, port: &str, ent: &str,
              user: &str) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
