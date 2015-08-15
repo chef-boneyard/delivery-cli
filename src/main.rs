@@ -67,7 +67,6 @@ Usage: delivery review [--for=<pipeline>] [--no-open] [--edit]
        delivery init [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--project=<project>] [--no-open] [--skip-build-cookbook] [--local]
        delivery setup [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--config-path=<dir>] [--for=<pipeline>]
        delivery job <stage> <phase> [--change=<change>] [--for=<pipeline>] [--job-root=<dir>] [--branch=<branch_name>] [--project=<project>] [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--patchset=<number>] [--git-url=<url>] [--shasum=<gitsha>] [--change-id=<id>] [--no-spinner] [--skip-default] [--local] [--docker=<image>]
-       delivery pipeline [--for=<pipeline>] [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--project=<project>] [--config-path=<dir>]
        delivery api <method> <path> [--user=<user>] [--server=<server>] [--api-port=<api_port>] [--ent=<ent>] [--config-path=<dir>] [--data=<data>]
        delivery token [--user=<user>] [--server=<server>] [--api-port=<api_port>] [--ent=<ent>]
        delivery --help
@@ -154,17 +153,6 @@ fn main() {
             flag_local: ref local,
             ..
         } => diff(&change, &patchset, &pipeline, local),
-        Args {
-            cmd_pipeline: true,
-            flag_user: ref user,
-            flag_server: ref server,
-            flag_ent: ref ent,
-            flag_org: ref org,
-            flag_project: ref proj,
-            flag_for: ref pipeline,
-            ..
-        } => init_pipeline(&server, &user, &ent,
-                           &org, &proj, &pipeline),
         Args {
             cmd_api: true,
             arg_method: ref method,
@@ -757,36 +745,6 @@ fn api_token(server: &str, port: &str, ent: &str,
     sayln("magenta", &format!("token: {}", &token));
     try!(tstore.write_token(&api_server, &e, &u, &token));
     sayln("green", &format!("saved API token to: {}", tstore.path().display()));
-    Ok(())
-}
-
-#[allow(dead_code)]
-fn init_pipeline(server: &str, user: &str,
-                 ent: &str, org: &str, proj: &str,
-                 pipeline: &str) -> Result<(), DeliveryError> {
-    sayln("green", "Chef Delivery: baking a new pipeline");
-    let mut config = try!(Config::load_config(&cwd()));
-    let final_proj = try!(project_or_from_cwd(proj));
-    config = config.set_user(user)
-        .set_server(server)
-        .set_enterprise(ent)
-        .set_organization(org)
-        .set_project(&final_proj);
-    let p = validate!(config, project);
-    let _ = validate!(config, user);
-    let _ = validate!(config, server);
-    let e = validate!(config, enterprise);
-    let o = validate!(config, organization);
-    say("white", &format!("hello, pipeline {}\n", pipeline));
-    sayln("white", &format!("e: {} o: {} p: {}", e, o, p));
-    // create the project
-    // setup the remote
-    // push master
-    // create the pipeline
-    // checkout a feature branch
-    // add a config file and commit it
-    // push the review
-    // maybe back to master?
     Ok(())
 }
 
