@@ -64,9 +64,7 @@ pub fn get(config: &Config,
            change: &str) -> Result<Description, DeliveryError> {
     let org = try!(config.organization());
     let proj = try!(config.project());
-    let mut client = try!(APIClient::from_config(&config));
-    let auth = try!(APIAuth::from_config(&config));
-    client.set_auth(auth);
+    let client = try!(APIClient::from_config(&config));
     let path = format!("orgs/{}/projects/{}/changes/{}/description",
                        org, proj, change);
     debug!("description path: {}", path);
@@ -103,9 +101,7 @@ pub fn set(config: &Config,
            description: &Description) -> Result<(), DeliveryError> {
     let org = try!(config.organization());
     let proj = try!(config.project());
-    let mut client = try!(APIClient::from_config(&config));
-    let auth = try!(APIAuth::from_config(&config));
-    client.set_auth(auth);
+    let client = try!(APIClient::from_config(&config));
     let path = format!("orgs/{}/projects/{}/changes/{}/description",
                        org, proj, change);
     let payload = try!(description.to_json());

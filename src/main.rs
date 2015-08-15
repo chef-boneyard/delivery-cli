@@ -55,7 +55,7 @@ use delivery::job::workspace::{Workspace, Privilege};
 use delivery::utils::path_join_many::PathJoinMany;
 use delivery::getpass;
 use delivery::token;
-use delivery::http::{self, APIClient, APIAuth};
+use delivery::http::{self, APIClient};
 use hyper::status::StatusCode;
 use delivery::project;
 
@@ -758,9 +758,7 @@ fn api_req(method: &str, path: &str, data: &str,
         .set_server(server)
         .set_api_port(api_port)
         .set_enterprise(ent);
-    let mut client = try!(APIClient::from_config(&config));
-    let auth = try!(APIAuth::from_config(&config));
-    client.set_auth(auth);
+    let client = try!(APIClient::from_config(&config));
     let mut result = match method {
         "get" => try!(client.get(path)),
         "post" => try!(client.post(path, data)),

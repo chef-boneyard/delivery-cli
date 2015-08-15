@@ -85,7 +85,10 @@ impl APIClient {
     pub fn from_config(config: &Config) -> Result<APIClient, DeliveryError> {
         let host = try!(config.api_host_and_port());
         let ent = try!(config.enterprise());
-        Ok(APIClient::new_https(&host, &ent))
+        let mut client = APIClient::new_https(&host, &ent);
+        let auth = try!(APIAuth::from_config(&config));
+        client.set_auth(auth);
+        Ok(client)
     }
 
     /// Create a new `APIClient` using HTTP attached to the enterprise
@@ -363,7 +366,18 @@ mod tests {
     fn from_config_test() {
         let config = Config::default()
             .set_enterprise("ncc-1701")
-            .set_server("earth");
+            .set_server("earth")
+            .set_user("kirk");
+
+        let tempdir = TempDir::new("t1").ok().expect("TempDir failed");
+        let path = tempdir.path();
+
+        env::set_var("HOME", path);
+        let mut tstore = TokenStore::from_home().ok().expect("tstore sad");
+        let write_result = tstore.write_token("earth", "ncc-1701", "kirk",
+                                              "cafecafe");
+        assert_eq!(true, write_result.is_ok());
+
         let client = APIClient::from_config(&config).unwrap();
         let url = client.api_url("foo");
         assert_eq!("https://earth/api/v0/e/ncc-1701/foo", url)
