@@ -23,12 +23,8 @@ use http::APIClient;
 use git;
 use config::Config;
 
-pub fn import(config: &Config, path: &PathBuf)
-    -> Result<(), DeliveryError> {
-    let user = try!(config.user());
-    let ent = try!(config.enterprise());
+pub fn import(config: &Config, path: &PathBuf) -> Result<(), DeliveryError> {
     let org = try!(config.organization());
-    let server = try!(config.server());
     let proj = try!(config.project());
 
     // Init && config local repo if necessary
@@ -38,9 +34,7 @@ pub fn import(config: &Config, path: &PathBuf)
         sayln("white", "Remote 'delivery' added to git config!");
     }
 
-    let mut client = APIClient::new_https(&server, &ent);
-    let auth = try!(client.get_auth_from_home(&server, &ent, &user));
-    client.set_auth(auth);
+    let client = try!(APIClient::from_config(config));
 
     if ! client.project_exists(&org, &proj) {
         say("white", "Creating project: ");
