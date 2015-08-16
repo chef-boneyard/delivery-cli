@@ -715,13 +715,12 @@ fn api_token(server: &str, port: &str, ent: &str,
         .set_api_port(port)
         .set_enterprise(ent)
         .set_user(user);
-    let e = validate!(config, enterprise);
-    let u = validate!(config, user);
-    let api_server = config.api_host_and_port().ok().unwrap();
-
+    let u = try!(config.user());
+    let e = try!(config.enterprise());
+    let api_server = try!(config.api_host_and_port());
     let mut tstore = try!(token::TokenStore::from_home());
     let pass = getpass::read("Delivery password: ");
-    let token = try!(http::token::request(&api_server, &e, &u, &pass));
+    let token = try!(http::token::request(&config, &pass));
     sayln("magenta", &format!("token: {}", &token));
     try!(tstore.write_token(&api_server, &e, &u, &token));
     sayln("green", &format!("saved API token to: {}", tstore.path().display()));

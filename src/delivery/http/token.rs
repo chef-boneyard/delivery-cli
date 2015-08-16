@@ -20,7 +20,7 @@ use http::*;
 use hyper::status::StatusCode;
 use rustc_serialize::json;
 use std::io::prelude::*;
-
+use config::Config;
 
 #[derive(RustcEncodable, RustcDecodable, Debug, Clone)]
 pub struct TokenRequest {
@@ -49,12 +49,11 @@ impl TokenResponse {
     }
 }
 
-/// Request an API token for a user from a Delivery server. HTTPS is
-/// used since the specified password will be sent plain.
-pub fn request(server: &str, ent: &str,
-               user: &str, pass: &str) -> Result<String, DeliveryError> {
-    let client = APIClient::new_https(&server, &ent);
-    let payload = try!(TokenRequest::payload(&user, &pass));
+/// Request an API token for a user from a Delivery server.
+pub fn request(config: &Config, pass: &str) -> Result<String, DeliveryError> {
+    let client = try!(APIClient::from_config_no_auth(config));
+    let user = try!(config.user());
+    let payload = try!(TokenRequest::payload(&user, pass));
     let path = format!("users/{}/get-token", &user);
     let mut result = try!(client.post(&path, &payload));
     match result.status {
@@ -65,7 +64,10 @@ pub fn request(server: &str, ent: &str,
             Ok(token)
         },
         StatusCode::Unauthorized => {
-            let msg = "token request returned 401".to_string();
+            let ent = try!(config.enterprise());
+            let server = try!(config.server());
+            let msg = format!("Details: server={}, enterprise={}, user={}",
+                              &server, &ent, &user);
             Err(DeliveryError{ kind: Kind::AuthenticationFailed,
                                detail: Some(msg)})
         },
