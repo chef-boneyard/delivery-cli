@@ -21,6 +21,7 @@ Scenario: setup with no additional data supplied
   And a file named ".delivery/cli.toml" should exist
   And the file ".delivery/cli.toml" should contain exactly:
     """
+    api_protocol = "https"
     git_port = "8989"
     pipeline = "master"
 
@@ -32,6 +33,7 @@ Scenario: setup with enterprise
   And a file named ".delivery/cli.toml" should exist
   And the file ".delivery/cli.toml" should contain exactly:
     """
+    api_protocol = "https"
     enterprise = "Foobar"
     git_port = "8989"
     pipeline = "master"
@@ -44,6 +46,7 @@ Scenario: setup with organization
   And a file named ".delivery/cli.toml" should exist
   And the file ".delivery/cli.toml" should contain exactly:
     """
+    api_protocol = "https"
     git_port = "8989"
     organization = "Engineering"
     pipeline = "master"
@@ -56,6 +59,7 @@ Scenario: setup with user
   And a file named ".delivery/cli.toml" should exist
   And the file ".delivery/cli.toml" should contain exactly:
     """
+    api_protocol = "https"
     git_port = "8989"
     pipeline = "master"
     user = "alice"
@@ -68,6 +72,7 @@ Scenario: setup with pipeline
   And a file named ".delivery/cli.toml" should exist
   And the file ".delivery/cli.toml" should contain exactly:
     """
+    api_protocol = "https"
     git_port = "8989"
     pipeline = "legacy"
 
@@ -79,6 +84,7 @@ Scenario: setup with server
   And a file named ".delivery/cli.toml" should exist
   And the file ".delivery/cli.toml" should contain exactly:
     """
+    api_protocol = "https"
     git_port = "8989"
     pipeline = "master"
     server = "delivery.mycompany.com"
@@ -91,6 +97,7 @@ Scenario: setup with all the args
   And a file named ".delivery/cli.toml" should exist
   And the file ".delivery/cli.toml" should contain exactly:
     """
+    api_protocol = "https"
     enterprise = "Foobar"
     git_port = "8989"
     organization = "Engineering"
@@ -120,6 +127,7 @@ Scenario: setup when a config file already exists
   When I successfully run `delivery setup --ent=Bar`
   Then the file ".delivery/cli.toml" should contain exactly:
     """
+    api_protocol = "https"
     enterprise = "Bar"
     git_port = "8989"
     organization = "Engineering"

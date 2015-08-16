@@ -40,6 +40,21 @@ enum HProto {
     HTTPS
 }
 
+impl HProto {
+    pub fn from_str(p: &str) -> Result<HProto, DeliveryError> {
+        let lp = p.to_lowercase();
+        match lp.as_ref() {
+            "http" => Ok(HProto::HTTP),
+            "https" => Ok(HProto::HTTPS),
+            _ => {
+                let msg = format!("unknown protocal: {}", p);
+                Err(DeliveryError{ kind: Kind::UnsupportedProtocol,
+                               detail: Some(msg) })
+            }
+        }
+    }
+}
+
 impl fmt::Display for HProto {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         let s = match self {
@@ -49,16 +64,6 @@ impl fmt::Display for HProto {
         write!(f, "{}", s)
     }
 }
-
-// impl string::ToString for HProto {
-//     fn fmt(&self) -> String {
-//         let s = match self {
-//             &HProto::HTTP => "http",
-//             &HProto::HTTPS => "https"
-//         };
-//         String::new(s)
-//     }
-// }
 
 #[derive(Debug)]
 enum HTTPMethod {
@@ -101,7 +106,9 @@ impl APIClient {
                                -> Result<APIClient, DeliveryError> {
         let host = try!(config.api_host_and_port());
         let ent = try!(config.enterprise());
-        Ok(APIClient::new_https(&host, &ent))
+        let proto_str = try!(config.api_protocol());
+        let proto = try!(HProto::from_str(&proto_str));
+        Ok(APIClient::new(proto, &host, &ent))
     }
 
     /// Create a new `APIClient` using HTTP attached to the enterprise
