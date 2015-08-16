@@ -78,17 +78,30 @@ pub struct APIClient {
 
 impl APIClient {
 
-    /// Create a new `APIClient` from the specified `Config`
-    /// instance. Returns an error result required configuration
-    /// values are missing. Expects to find `server`, `api_port`, and
-    /// `enterprise`.
+    /// Create a new `APIClient` from the specified `Config` instance
+    /// for making authenticated requests. Returns an error result if
+    /// required configuration values are missing. Expects to find
+    /// `server`, `api_port`, `enterprise`, and `user` in the config
+    /// along with a token mapped for those values.
     pub fn from_config(config: &Config) -> Result<APIClient, DeliveryError> {
+        APIClient::from_config_no_auth(config).and_then(|mut c| {
+            let auth = try!(APIAuth::from_config(&config));
+            c.set_auth(auth);
+            Ok(c)
+        })
+        // Ok(client)
+    }
+
+    /// Create a new `APIClient` from the specified `Config`
+    /// instance. The returned client will not have authentication
+    /// data associated with it. The call will read `server`,
+    /// `api_port`, and `enterprise` from the specified config and
+    /// raise an error if any of these values are unset.
+    pub fn from_config_no_auth(config: &Config)
+                               -> Result<APIClient, DeliveryError> {
         let host = try!(config.api_host_and_port());
         let ent = try!(config.enterprise());
-        let mut client = APIClient::new_https(&host, &ent);
-        let auth = try!(APIAuth::from_config(&config));
-        client.set_auth(auth);
-        Ok(client)
+        Ok(APIClient::new_https(&host, &ent))
     }
 
     /// Create a new `APIClient` using HTTP attached to the enterprise
@@ -360,6 +373,34 @@ mod tests {
                  auth.user, auth.token);
         assert_eq!("pete", auth.user);
         assert!(auth.token.len() > 4);
+    }
+
+    #[test]
+    fn from_config_no_auth_test() {
+        let config = Config::default()
+            .set_enterprise("ncc-1701")
+            .set_server("earth");
+
+        let client = APIClient::from_config_no_auth(&config).unwrap();
+        let url = client.api_url("foo");
+        assert_eq!("https://earth/api/v0/e/ncc-1701/foo", url)
+    }
+
+    #[test]
+    fn from_config_needs_user() {
+        let config = Config::default()
+            .set_enterprise("ncc-1701")
+            .set_server("earth");
+
+        match APIClient::from_config(&config) {
+            Ok(_) => assert!(false),
+            Err(e) => {
+                let m = e.detail().unwrap();
+                assert_eq!("User not set; try --user or set it in your \
+                           .toml config file", &m);
+            }
+        };
+
     }
 
     #[test]
