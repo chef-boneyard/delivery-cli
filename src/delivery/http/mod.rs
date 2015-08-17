@@ -17,6 +17,7 @@
 
 use std::fmt;
 use std::env;
+use std::path::PathBuf;
 use hyper;
 use hyper::status::StatusCode;
 use hyper::client::response::Response as HyperResponse;
@@ -324,7 +325,13 @@ impl APIAuth {
     /// `enterprise`, and `user`.
     /// Reads API tokens from `$HOME/.delivery/api-tokens`.
     pub fn from_config(config: &Config) -> Result<APIAuth, DeliveryError> {
-        let tstore = try!(TokenStore::from_home());
+        let tstore = match config.token_file {
+            Some(ref f) => {
+                let file = PathBuf::from(f);
+                try!(TokenStore::from_file(&file))
+            },
+            None => try!(TokenStore::from_home())
+        };
         let api_server = try!(config.api_host_and_port());
         let ent = try!(config.enterprise());
         let user = try!(config.user());
@@ -412,16 +419,16 @@ mod tests {
 
     #[test]
     fn from_config_test() {
+        let tempdir = TempDir::new("t1").ok().expect("TempDir failed");
+        let path = tempdir.path();
+        let token_file = path.join_many(&["api-tokens"]);
         let config = Config::default()
             .set_enterprise("ncc-1701")
             .set_server("earth")
-            .set_user("kirk");
+            .set_user("kirk")
+            .set_token_file(token_file.to_str().unwrap());
 
-        let tempdir = TempDir::new("t1").ok().expect("TempDir failed");
-        let path = tempdir.path();
-
-        env::set_var("HOME", path);
-        let mut tstore = TokenStore::from_home().ok().expect("tstore sad");
+        let mut tstore = TokenStore::from_file(&token_file).ok().expect("tstore sad");
         let write_result = tstore.write_token("earth", "ncc-1701", "kirk",
                                               "cafecafe");
         assert_eq!(true, write_result.is_ok());
@@ -495,16 +502,16 @@ mod tests {
 
     #[test]
     fn api_auth_from_config_test() {
+        let tempdir = TempDir::new("t1").ok().expect("TempDir failed");
+        let path = tempdir.path();
+        let token_file = path.join_many(&["api-tokens"]);
         let config = Config::default()
             .set_enterprise("ncc-1701")
             .set_server("earth")
-            .set_user("kirk");
+            .set_user("kirk")
+            .set_token_file(token_file.to_str().unwrap());
 
-        let tempdir = TempDir::new("t1").ok().expect("TempDir failed");
-        let path = tempdir.path();
-
-        env::set_var("HOME", path);
-        let mut tstore = TokenStore::from_home().ok().expect("tstore sad");
+        let mut tstore = TokenStore::from_file(&token_file).ok().expect("tstore sad");
         let write_result = tstore.write_token("earth", "ncc-1701", "kirk",
                                               "cafecafe");
         assert_eq!(true, write_result.is_ok());

@@ -37,7 +37,8 @@ pub struct Config {
     pub organization: Option<String>,
     pub project: Option<String>,
     pub git_port: Option<String>,
-    pub pipeline: Option<String>
+    pub pipeline: Option<String>,
+    pub token_file: Option<String>
 }
 
 impl Default for Config {
@@ -51,7 +52,8 @@ impl Default for Config {
             project: None,
             user: None,
             git_port: Some(String::from("8989")),
-            pipeline: Some(String::from("master"))
+            pipeline: Some(String::from("master")),
+            token_file: None
         }
     }
 }
@@ -85,6 +87,7 @@ config_accessor_for!(organization, set_organization, "Organization not set; try 
 config_accessor_for!(project, set_project, "Project not set; try --project or set it in your .toml config file");
 config_accessor_for!(git_port, set_git_port, "Git Port not set; please set it in your .toml config file");
 config_accessor_for!(pipeline, set_pipeline, "Pipeline not set; try --for or set it in your .toml config file");
+config_accessor_for!(token_file, set_token_file, "token_file not set; set it in your cli.toml");
 
 impl Config {
 
@@ -172,6 +175,7 @@ impl Config {
                                            config.organization);
         config.user = stringify_or("user", &table, config.user);
         config.git_port = stringify_or("git_port", &table, config.git_port);
+        config.token_file = stringify_or("token_file", &table, config.token_file);
         return Ok(config);
     }
 
@@ -247,6 +251,7 @@ mod tests {
                 assert_eq!(Some("8989".to_string()), config.git_port);
                 assert_eq!(Some("master".to_string()), config.pipeline);
                 assert_eq!(None, config.organization);
+                assert_eq!(None, config.token_file);
             },
             Err(e) => {
                 panic!("Failed to parse: {:?}", e.detail)
