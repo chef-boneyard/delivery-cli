@@ -28,7 +28,7 @@ use errors::Kind as DelivError;
 use std::io::prelude::*;
 use errors::{DeliveryError, Kind};
 use token::TokenStore;
-use utils::say::{sayln};
+use utils::say::sayln;
 use config::Config;
 
 mod headers;
@@ -338,6 +338,7 @@ impl APIAuth {
         APIAuth::from_token_store(tstore, &api_server, &ent, &user)
     }
 
+    // Lookup for the stored token, if it does not exist request it
     pub fn from_token_store(tstore: TokenStore,
                             server: &str, ent: &str,
                             user: &str) -> Result<APIAuth, DeliveryError> {
@@ -347,10 +348,15 @@ impl APIAuth {
                             token: token.clone()})
             },
             None => {
-                let msg = format!("server: {}, ent: {}, user: {}",
-                                  server, ent, user);
-                Err(DeliveryError{ kind: Kind::NoToken,
-                                   detail: Some(msg)})
+                sayln("yellow", "Requesting Token");
+                let cwd = env::current_dir().unwrap();
+                let mut config = try!(Config::load_config(&cwd));
+                config = config.set_server(server)
+                  .set_enterprise(ent)
+                  .set_user(user);
+                let token = try!(TokenStore::request_token(&config));
+                Ok(APIAuth{ user: String::from(user),
+                            token: token.clone()})
             }
         }
     }
@@ -472,13 +478,15 @@ mod tests {
         let tfile = path.join_many(&["api-tokens"]);
         let tstore = TokenStore::from_file(&tfile).ok().expect("tstore sad");
 
-        // token store is empty so we expect an Err()
+        // token store is empty so we expect to request one
         let from_empty = APIAuth::from_token_store(tstore,
                                                    "127.0.0.1", "acme", "bob");
+
+        // This Error is a HTTPError trying to hit the token endpoint
+        // which means we "are" trying to request a new token
         assert_eq!(true, from_empty.or_else(|e| {
-            let msg = "server: 127.0.0.1, ent: acme, user: bob";
-            assert_eq!(msg, e.detail().unwrap());
-            Err(e)
+          assert_eq!("An HTTP Error occured", e.to_string());
+          Err(e)
         }).is_err());
     }
 
