@@ -17,6 +17,7 @@
 
 use std::fmt;
 use std::env;
+use std::path::PathBuf;
 use hyper;
 use hyper::status::StatusCode;
 use hyper::client::response::Response as HyperResponse;
@@ -40,6 +41,21 @@ enum HProto {
     HTTPS
 }
 
+impl HProto {
+    pub fn from_str(p: &str) -> Result<HProto, DeliveryError> {
+        let lp = p.to_lowercase();
+        match lp.as_ref() {
+            "http" => Ok(HProto::HTTP),
+            "https" => Ok(HProto::HTTPS),
+            _ => {
+                let msg = format!("unknown protocal: {}", p);
+                Err(DeliveryError{ kind: Kind::UnsupportedProtocol,
+                               detail: Some(msg) })
+            }
+        }
+    }
+}
+
 impl fmt::Display for HProto {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         let s = match self {
@@ -49,16 +65,6 @@ impl fmt::Display for HProto {
         write!(f, "{}", s)
     }
 }
-
-// impl string::ToString for HProto {
-//     fn fmt(&self) -> String {
-//         let s = match self {
-//             &HProto::HTTP => "http",
-//             &HProto::HTTPS => "https"
-//         };
-//         String::new(s)
-//     }
-// }
 
 #[derive(Debug)]
 enum HTTPMethod {
@@ -78,14 +84,32 @@ pub struct APIClient {
 
 impl APIClient {
 
-    /// Create a new `APIClient` from the specified `Config`
-    /// instance. Returns an error result required configuration
-    /// values are missing. Expects to find `server`, `api_port`, and
-    /// `enterprise`.
+    /// Create a new `APIClient` from the specified `Config` instance
+    /// for making authenticated requests. Returns an error result if
+    /// required configuration values are missing. Expects to find
+    /// `server`, `api_port`, `enterprise`, and `user` in the config
+    /// along with a token mapped for those values.
     pub fn from_config(config: &Config) -> Result<APIClient, DeliveryError> {
+        APIClient::from_config_no_auth(config).and_then(|mut c| {
+            let auth = try!(APIAuth::from_config(&config));
+            c.set_auth(auth);
+            Ok(c)
+        })
+        // Ok(client)
+    }
+
+    /// Create a new `APIClient` from the specified `Config`
+    /// instance. The returned client will not have authentication
+    /// data associated with it. The call will read `server`,
+    /// `api_port`, and `enterprise` from the specified config and
+    /// raise an error if any of these values are unset.
+    pub fn from_config_no_auth(config: &Config)
+                               -> Result<APIClient, DeliveryError> {
         let host = try!(config.api_host_and_port());
         let ent = try!(config.enterprise());
-        Ok(APIClient::new_https(&host, &ent))
+        let proto_str = try!(config.api_protocol());
+        let proto = try!(HProto::from_str(&proto_str));
+        Ok(APIClient::new(proto, &host, &ent))
     }
 
     /// Create a new `APIClient` using HTTP attached to the enterprise
@@ -301,7 +325,13 @@ impl APIAuth {
     /// `enterprise`, and `user`.
     /// Reads API tokens from `$HOME/.delivery/api-tokens`.
     pub fn from_config(config: &Config) -> Result<APIAuth, DeliveryError> {
-        let tstore = try!(TokenStore::from_home());
+        let tstore = match config.token_file {
+            Some(ref f) => {
+                let file = PathBuf::from(f);
+                try!(TokenStore::from_file(&file))
+            },
+            None => try!(TokenStore::from_home())
+        };
         let api_server = try!(config.api_host_and_port());
         let ent = try!(config.enterprise());
         let user = try!(config.user());
@@ -360,10 +390,49 @@ mod tests {
     }
 
     #[test]
-    fn from_config_test() {
+    fn from_config_no_auth_test() {
         let config = Config::default()
             .set_enterprise("ncc-1701")
             .set_server("earth");
+
+        let client = APIClient::from_config_no_auth(&config).unwrap();
+        let url = client.api_url("foo");
+        assert_eq!("https://earth/api/v0/e/ncc-1701/foo", url)
+    }
+
+    #[test]
+    fn from_config_needs_user() {
+        let config = Config::default()
+            .set_enterprise("ncc-1701")
+            .set_server("earth");
+
+        match APIClient::from_config(&config) {
+            Ok(_) => assert!(false),
+            Err(e) => {
+                let m = e.detail().unwrap();
+                assert_eq!("User not set; try --user or set it in your \
+                           .toml config file", &m);
+            }
+        };
+
+    }
+
+    #[test]
+    fn from_config_test() {
+        let tempdir = TempDir::new("t1").ok().expect("TempDir failed");
+        let path = tempdir.path();
+        let token_file = path.join_many(&["api-tokens"]);
+        let config = Config::default()
+            .set_enterprise("ncc-1701")
+            .set_server("earth")
+            .set_user("kirk")
+            .set_token_file(token_file.to_str().unwrap());
+
+        let mut tstore = TokenStore::from_file(&token_file).ok().expect("tstore sad");
+        let write_result = tstore.write_token("earth", "ncc-1701", "kirk",
+                                              "cafecafe");
+        assert_eq!(true, write_result.is_ok());
+
         let client = APIClient::from_config(&config).unwrap();
         let url = client.api_url("foo");
         assert_eq!("https://earth/api/v0/e/ncc-1701/foo", url)
@@ -433,16 +502,16 @@ mod tests {
 
     #[test]
     fn api_auth_from_config_test() {
+        let tempdir = TempDir::new("t1").ok().expect("TempDir failed");
+        let path = tempdir.path();
+        let token_file = path.join_many(&["api-tokens"]);
         let config = Config::default()
             .set_enterprise("ncc-1701")
             .set_server("earth")
-            .set_user("kirk");
+            .set_user("kirk")
+            .set_token_file(token_file.to_str().unwrap());
 
-        let tempdir = TempDir::new("t1").ok().expect("TempDir failed");
-        let path = tempdir.path();
-
-        env::set_var("HOME", path);
-        let mut tstore = TokenStore::from_home().ok().expect("tstore sad");
+        let mut tstore = TokenStore::from_file(&token_file).ok().expect("tstore sad");
         let write_result = tstore.write_token("earth", "ncc-1701", "kirk",
                                               "cafecafe");
         assert_eq!(true, write_result.is_ok());

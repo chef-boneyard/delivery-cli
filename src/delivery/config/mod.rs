@@ -31,12 +31,14 @@ use utils::path_join_many::PathJoinMany;
 pub struct Config {
     pub server: Option<String>,
     pub api_port: Option<String>,
+    pub api_protocol: Option<String>,
     pub user: Option<String>,
     pub enterprise: Option<String>,
     pub organization: Option<String>,
     pub project: Option<String>,
     pub git_port: Option<String>,
-    pub pipeline: Option<String>
+    pub pipeline: Option<String>,
+    pub token_file: Option<String>
 }
 
 impl Default for Config {
@@ -44,12 +46,14 @@ impl Default for Config {
         Config{
             server: None,
             api_port: None,
+            api_protocol: Some(String::from("https")),
             enterprise: None,
             organization: None,
             project: None,
             user: None,
             git_port: Some(String::from("8989")),
-            pipeline: Some(String::from("master"))
+            pipeline: Some(String::from("master")),
+            token_file: None
         }
     }
 }
@@ -76,12 +80,14 @@ macro_rules! config_accessor_for {
 
 config_accessor_for!(server, set_server, "Server not set; try --server or set it in your .toml config file");
 config_accessor_for!(api_port, set_api_port, "API port not set; try --api-port or set it in your .toml config file");
+config_accessor_for!(api_protocol, set_api_protocol, "api_protocol not set; set it in your cli.toml");
 config_accessor_for!(user, set_user, "User not set; try --user or set it in your .toml config file");
 config_accessor_for!(enterprise, set_enterprise, "Enterprise not set; try --ent or set it in your .toml config file");
 config_accessor_for!(organization, set_organization, "Organization not set; try --org or set it in your .toml config file");
 config_accessor_for!(project, set_project, "Project not set; try --project or set it in your .toml config file");
 config_accessor_for!(git_port, set_git_port, "Git Port not set; please set it in your .toml config file");
 config_accessor_for!(pipeline, set_pipeline, "Pipeline not set; try --for or set it in your .toml config file");
+config_accessor_for!(token_file, set_token_file, "token_file not set; set it in your cli.toml");
 
 impl Config {
 
@@ -160,6 +166,7 @@ impl Config {
         let mut config: Config = Default::default();
         config.server = stringify_or("server", &table, config.server);
         config.api_port = stringify_or("api_port", &table, config.api_port);
+        config.api_protocol = stringify_or("api_protocol", &table, config.api_protocol);
         config.pipeline = stringify_or("pipeline", &table, config.pipeline);
         config.project = stringify_or("project", &table, config.project);
         config.enterprise = stringify_or("enterprise", &table,
@@ -168,6 +175,7 @@ impl Config {
                                            config.organization);
         config.user = stringify_or("user", &table, config.user);
         config.git_port = stringify_or("git_port", &table, config.git_port);
+        config.token_file = stringify_or("token_file", &table, config.token_file);
         return Ok(config);
     }
 
@@ -239,9 +247,11 @@ mod tests {
         match config_result {
             Ok(config) => {
                 assert_eq!(Some(String::from("127.0.0.1")), config.server);
+                assert_eq!(Some("https".to_string()), config.api_protocol);
                 assert_eq!(Some("8989".to_string()), config.git_port);
                 assert_eq!(Some("master".to_string()), config.pipeline);
                 assert_eq!(None, config.organization);
+                assert_eq!(None, config.token_file);
             },
             Err(e) => {
                 panic!("Failed to parse: {:?}", e.detail)
@@ -256,12 +266,16 @@ mod tests {
             enterprise = "chef"
             user = "adam"
             git_port = "4151"
+            api_protocol = "http"
+            api_port = "7643"
             pipeline = "dev"
 "#;
         let config_result = Config::parse_config(toml);
         match config_result {
             Ok(config) => {
                 assert_eq!(Some("4151".to_string()), config.git_port);
+                assert_eq!(Some("7643".to_string()), config.api_port);
+                assert_eq!(Some("http".to_string()), config.api_protocol);
                 assert_eq!(Some("dev".to_string()), config.pipeline);
                 assert_eq!(Some(String::from("127.0.0.1")), config.server);
                 assert_eq!(None, config.organization);

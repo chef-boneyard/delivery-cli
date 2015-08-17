@@ -55,7 +55,7 @@ use delivery::job::workspace::{Workspace, Privilege};
 use delivery::utils::path_join_many::PathJoinMany;
 use delivery::getpass;
 use delivery::token;
-use delivery::http::{self, APIClient, APIAuth};
+use delivery::http::{self, APIClient};
 use hyper::status::StatusCode;
 use delivery::project;
 
@@ -67,7 +67,6 @@ Usage: delivery review [--for=<pipeline>] [--no-open] [--edit]
        delivery init [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--project=<project>] [--no-open] [--skip-build-cookbook] [--local]
        delivery setup [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--config-path=<dir>] [--for=<pipeline>]
        delivery job <stage> <phase> [--change=<change>] [--for=<pipeline>] [--job-root=<dir>] [--branch=<branch_name>] [--project=<project>] [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--patchset=<number>] [--git-url=<url>] [--shasum=<gitsha>] [--change-id=<id>] [--no-spinner] [--skip-default] [--local] [--docker=<image>]
-       delivery pipeline [--for=<pipeline>] [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--project=<project>] [--config-path=<dir>]
        delivery api <method> <path> [--user=<user>] [--server=<server>] [--api-port=<api_port>] [--ent=<ent>] [--config-path=<dir>] [--data=<data>]
        delivery token [--user=<user>] [--server=<server>] [--api-port=<api_port>] [--ent=<ent>]
        delivery --help
@@ -155,17 +154,6 @@ fn main() {
             ..
         } => diff(&change, &patchset, &pipeline, local),
         Args {
-            cmd_pipeline: true,
-            flag_user: ref user,
-            flag_server: ref server,
-            flag_ent: ref ent,
-            flag_org: ref org,
-            flag_project: ref proj,
-            flag_for: ref pipeline,
-            ..
-        } => init_pipeline(&server, &user, &ent,
-                           &org, &proj, &pipeline),
-        Args {
             cmd_api: true,
             arg_method: ref method,
             arg_path: ref path,
@@ -236,17 +224,14 @@ fn main() {
     }
 }
 
-#[allow(dead_code)]
 fn cwd() -> PathBuf {
     env::current_dir().unwrap()
 }
 
-#[allow(dead_code)]
 fn no_matching_command() -> Result<(), DeliveryError> {
     Err(DeliveryError { kind: Kind::NoMatchingCommand, detail: None })
 }
 
-#[allow(dead_code)]
 fn exit_with(e: DeliveryError, i: isize) {
     sayln("red", e.description());
     match e.detail() {
@@ -257,7 +242,6 @@ fn exit_with(e: DeliveryError, i: isize) {
     process::exit(x)
 }
 
-#[allow(dead_code)]
 fn load_config(path: &PathBuf) -> Result<Config, DeliveryError> {
     say("white", "Loading configuration from ");
     let msg = format!("{}", path.display());
@@ -266,7 +250,6 @@ fn load_config(path: &PathBuf) -> Result<Config, DeliveryError> {
     Ok(config)
 }
 
-#[allow(dead_code)]
 fn setup(user: &str, server: &str, ent: &str, org: &str, path: &str, pipeline: &str) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
     let config_path = if path.is_empty() {
@@ -283,8 +266,6 @@ fn setup(user: &str, server: &str, ent: &str, org: &str, path: &str, pipeline: &
     try!(config.write_file(&config_path));
     Ok(())
 }
-
-#[allow(dead_code)]
 
 fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str,
         no_open: &bool,skip_build_cookbook: &bool,
@@ -364,7 +345,6 @@ fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str,
     Ok(())
 }
 
-#[allow(dead_code)]
 fn review(for_pipeline: &str,
           no_open: &bool, edit: &bool) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
@@ -391,29 +371,22 @@ fn review(for_pipeline: &str,
         config = config.set_pipeline(for_pipeline)
             .set_project(&project);
 
-        let s = validate!(config, server);
-        let e = validate!(config, enterprise);
-        let u = validate!(config, user);
-        let o = validate!(config, organization);
-        let p = validate!(config, project);
-
-        try!(edit_change(&s, &e, &u, &o, &p, &review));
+        try!(edit_change(&config, &review));
     }
     handle_review_result(&review, no_open)
 }
 
-fn edit_change(server: &str, ent: &str, user: &str, org: &str, proj: &str,
+fn edit_change(config: &Config,
                review: &ReviewResult) -> Result<(), DeliveryError> {
+    let proj = try!(config.project());
     match review.change_id {
         Some(ref change_id) => {
-            let change0 = try!(http::change::get(server, ent, user,
-                                                 org, proj, &change_id));
+            let change0 = try!(http::change::get(&config, &change_id));
             let text0 = format!("{}\n\n{}\n",
                                 change0.title, change0.description);
-            let text1 = try!(utils::open::edit_str(proj, &text0));
+            let text1 = try!(utils::open::edit_str(&proj, &text0));
             let change1 = try!(http::change::Description::parse_text(&text1));
-            Ok(try!(http::change::set(server, ent, user, org,
-                                      proj, &change_id, &change1)))
+            Ok(try!(http::change::set(&config, &change_id, &change1)))
         },
         None => Ok(())
     }
@@ -436,7 +409,6 @@ fn handle_review_result(review: &ReviewResult,
     Ok(())
 }
 
-#[allow(dead_code)]
 fn checkout(change: &str, patchset: &str, pipeline: &str) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
@@ -457,7 +429,6 @@ fn checkout(change: &str, patchset: &str, pipeline: &str) -> Result<(), Delivery
     Ok(())
 }
 
-#[allow(dead_code)]
 fn diff(change: &str, patchset: &str, pipeline: &str, local: &bool) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
@@ -478,7 +449,6 @@ fn diff(change: &str, patchset: &str, pipeline: &str, local: &bool) -> Result<()
     Ok(())
 }
 
-#[allow(dead_code)]
 fn clone(project: &str, user: &str, server: &str, ent: &str, org: &str, git_url: &str) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
@@ -504,7 +474,6 @@ fn clone(project: &str, user: &str, server: &str, ent: &str, org: &str, git_url:
     Ok(())
 }
 
-#[allow(dead_code)]
 fn job(stage: &str,
        phase: &str,
        change: &str,
@@ -738,7 +707,6 @@ fn with_default<'a>(val: &'a str, default: &'a str, local: &bool) -> &'a str {
     }
 }
 
-#[allow(dead_code)]
 fn api_token(server: &str, port: &str, ent: &str,
              user: &str) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
@@ -747,46 +715,15 @@ fn api_token(server: &str, port: &str, ent: &str,
         .set_api_port(port)
         .set_enterprise(ent)
         .set_user(user);
-    let e = validate!(config, enterprise);
-    let u = validate!(config, user);
-    let api_server = config.api_host_and_port().ok().unwrap();
-
+    let u = try!(config.user());
+    let e = try!(config.enterprise());
+    let api_server = try!(config.api_host_and_port());
     let mut tstore = try!(token::TokenStore::from_home());
     let pass = getpass::read("Delivery password: ");
-    let token = try!(http::token::request(&api_server, &e, &u, &pass));
+    let token = try!(http::token::request(&config, &pass));
     sayln("magenta", &format!("token: {}", &token));
     try!(tstore.write_token(&api_server, &e, &u, &token));
     sayln("green", &format!("saved API token to: {}", tstore.path().display()));
-    Ok(())
-}
-
-#[allow(dead_code)]
-fn init_pipeline(server: &str, user: &str,
-                 ent: &str, org: &str, proj: &str,
-                 pipeline: &str) -> Result<(), DeliveryError> {
-    sayln("green", "Chef Delivery: baking a new pipeline");
-    let mut config = try!(Config::load_config(&cwd()));
-    let final_proj = try!(project_or_from_cwd(proj));
-    config = config.set_user(user)
-        .set_server(server)
-        .set_enterprise(ent)
-        .set_organization(org)
-        .set_project(&final_proj);
-    let p = validate!(config, project);
-    let _ = validate!(config, user);
-    let _ = validate!(config, server);
-    let e = validate!(config, enterprise);
-    let o = validate!(config, organization);
-    say("white", &format!("hello, pipeline {}\n", pipeline));
-    sayln("white", &format!("e: {} o: {} p: {}", e, o, p));
-    // create the project
-    // setup the remote
-    // push master
-    // create the pipeline
-    // checkout a feature branch
-    // add a config file and commit it
-    // push the review
-    // maybe back to master?
     Ok(())
 }
 
@@ -820,9 +757,7 @@ fn api_req(method: &str, path: &str, data: &str,
         .set_server(server)
         .set_api_port(api_port)
         .set_enterprise(ent);
-    let mut client = try!(APIClient::from_config(&config));
-    let auth = try!(APIAuth::from_config(&config));
-    client.set_auth(auth);
+    let client = try!(APIClient::from_config(&config));
     let mut result = match method {
         "get" => try!(client.get(path)),
         "post" => try!(client.post(path, data)),
