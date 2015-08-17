@@ -3,11 +3,11 @@
   <metadata>
     <id>OpenSSL</id>
     <title>OpenSSL - The Open Source SSL and TLS toolkit</title>
-    <version>1.0.1.13</version>
+    <version>1.0.1.14</version>
     <authors>Shining Light Productions</authors>
     <owners>Ethan Brown</owners>
     <summary>Open Source SSL v2/v3 and TLS v1 toolkit</summary>
-    <description>This is really 1.0.1m, but the Nuget spec doesn't allow such version identifiers, so the file versions are used.
+    <description>This is really 1.0.1p, but the Nuget spec doesn't allow such version identifiers, so the file versions are used.
 
     The OpenSSL Project is a collaborative effort to develop a robust, commercial-grade, full-featured, and Open Source toolkit implementing the Secure Sockets Layer (SSL v2/v3) and Transport Layer Security (TLS v1) protocols as well as a full-strength general purpose cryptography library. The project is managed by a worldwide community of volunteers that use the Internet to communicate, plan, and develop the OpenSSL toolkit and its related documentation.
 

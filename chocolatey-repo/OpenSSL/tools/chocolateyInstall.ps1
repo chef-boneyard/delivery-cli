@@ -6,8 +6,8 @@ try {
     fileType = 'exe';
     #InnoSetup - http://unattended.sourceforge.net/InnoSetup_Switches_ExitCodes.html
     silentArgs = '/silent', '/verysilent', '/sp-', '/suppressmsgboxes' ;
-    url = 'http://slproweb.com/download/Win32OpenSSL-1_0_1m.exe'
-    url64bit = 'http://slproweb.com/download/Win64OpenSSL-1_0_1m.exe'
+    url = 'http://slproweb.com/download/Win32OpenSSL-1_0_1p.exe'
+    url64bit = 'http://slproweb.com/download/Win64OpenSSL-1_0_1p.exe'
   }
 
   Install-ChocolateyPackage @params

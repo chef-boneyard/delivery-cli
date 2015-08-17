@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
   <metadata>
     <id>rust</id>
-    <version>1.0.0.20150717</version>
+    <version>1.0.0.20150817</version>
     <title>Rust</title>
     <authors>Mozilla</authors>
     <owners>Mike Chaliy</owners>
