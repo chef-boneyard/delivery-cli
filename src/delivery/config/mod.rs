@@ -38,7 +38,8 @@ pub struct Config {
     pub project: Option<String>,
     pub git_port: Option<String>,
     pub pipeline: Option<String>,
-    pub token_file: Option<String>
+    pub token_file: Option<String>,
+    pub non_interactive: Option<bool>
 }
 
 impl Default for Config {
@@ -53,7 +54,8 @@ impl Default for Config {
             user: None,
             git_port: Some(String::from("8989")),
             pipeline: Some(String::from("master")),
-            token_file: None
+            token_file: None,
+            non_interactive: None
         }
     }
 }
@@ -176,6 +178,7 @@ impl Config {
         config.user = stringify_or("user", &table, config.user);
         config.git_port = stringify_or("git_port", &table, config.git_port);
         config.token_file = stringify_or("token_file", &table, config.token_file);
+        config.non_interactive = boolify_or("non_interactive", &table, config.non_interactive);
         return Ok(config);
     }
 
@@ -199,6 +202,12 @@ impl Config {
                 return None;
             }
         }
+    }
+
+    fn boolify_values(toml_value: Option<&toml::Value>) -> Option<bool> {
+        toml_value.and_then(|v| {
+            v.as_bool()
+        })
     }
 
     fn check_dot_delivery_cli(path: PathBuf) -> Option<PathBuf> {
@@ -230,6 +239,10 @@ fn stringify_or(key: &str, table: &toml::Table, default: Option<String>) -> Opti
     Config::stringify_values(table.get(key)).or(default)
 }
 
+fn boolify_or(key: &str, table: &toml::Table, default: Option<bool>) -> Option<bool> {
+    Config::boolify_values(table.get(key)).or(default)
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -252,6 +265,7 @@ mod tests {
                 assert_eq!(Some("master".to_string()), config.pipeline);
                 assert_eq!(None, config.organization);
                 assert_eq!(None, config.token_file);
+                assert_eq!(None, config.non_interactive);
             },
             Err(e) => {
                 panic!("Failed to parse: {:?}", e.detail)
@@ -269,6 +283,7 @@ mod tests {
             api_protocol = "http"
             api_port = "7643"
             pipeline = "dev"
+            non_interactive = true
 "#;
         let config_result = Config::parse_config(toml);
         match config_result {
@@ -279,6 +294,7 @@ mod tests {
                 assert_eq!(Some("dev".to_string()), config.pipeline);
                 assert_eq!(Some(String::from("127.0.0.1")), config.server);
                 assert_eq!(None, config.organization);
+                assert_eq!(Some(true), config.non_interactive);
             },
             Err(e) => {
                 panic!("Failed to parse: {:?}", e.detail)

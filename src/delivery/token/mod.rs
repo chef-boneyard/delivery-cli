@@ -33,6 +33,10 @@ use std::env;
 use errors::{DeliveryError, Kind};
 use utils;
 use utils::path_join_many::PathJoinMany;
+use config::Config;
+use http;
+use utils::say::sayln;
+use getpass;
 
 #[derive(Debug)]
 pub struct TokenStore {
@@ -82,6 +86,20 @@ impl TokenStore {
             Ok(_) => Ok(result),
             Err(e) => Err(e)
         }
+    }
+
+    pub fn request_token(config: &Config) -> Result<String, DeliveryError>  {
+      sayln("yellow", "Requesting Token");
+      let ent = try!(config.enterprise());
+      let user = try!(config.user());
+      let api_server = try!(config.api_host_and_port());
+      let mut tstore = try!(TokenStore::from_home());
+      let pass = getpass::read("Delivery password: ");
+      let token = try!(http::token::request(&config, &pass));
+      sayln("magenta", &format!("token: {}", &token));
+      try!(tstore.write_token(&api_server, &ent, &user, &token));
+      sayln("green", &format!("saved API token to: {}", tstore.path().display()));
+      Ok(token)
     }
 
     fn key(server: &str, ent: &str, user: &str) -> String {

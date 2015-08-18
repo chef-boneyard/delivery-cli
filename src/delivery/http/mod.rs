@@ -28,7 +28,7 @@ use errors::Kind as DelivError;
 use std::io::prelude::*;
 use errors::{DeliveryError, Kind};
 use token::TokenStore;
-use utils::say::{sayln};
+use utils::say::sayln;
 use config::Config;
 
 mod headers;
@@ -324,6 +324,7 @@ impl APIAuth {
     /// instance. Expects to find valid values for `server`,
     /// `enterprise`, and `user`.
     /// Reads API tokens from `$HOME/.delivery/api-tokens`.
+    /// Lookup for the stored token, if it does not exist request it.
     pub fn from_config(config: &Config) -> Result<APIAuth, DeliveryError> {
         let tstore = match config.token_file {
             Some(ref f) => {
@@ -335,7 +336,18 @@ impl APIAuth {
         let api_server = try!(config.api_host_and_port());
         let ent = try!(config.enterprise());
         let user = try!(config.user());
-        APIAuth::from_token_store(tstore, &api_server, &ent, &user)
+        let api_auth = APIAuth::from_token_store(tstore, &api_server,
+                                                 &ent, &user);
+        api_auth.or_else(|e| {
+            let interactive = !config.non_interactive.unwrap_or(false);
+            if interactive {
+                let token = try!(TokenStore::request_token(&config));
+                Ok(APIAuth{ user: user.clone(),
+                            token: token.clone()})
+            } else {
+                Err(e)
+            }
+        })
     }
 
     pub fn from_token_store(tstore: TokenStore,
@@ -475,6 +487,7 @@ mod tests {
         // token store is empty so we expect an Err()
         let from_empty = APIAuth::from_token_store(tstore,
                                                    "127.0.0.1", "acme", "bob");
+
         assert_eq!(true, from_empty.or_else(|e| {
             let msg = "server: 127.0.0.1, ent: acme, user: bob";
             assert_eq!(msg, e.detail().unwrap());
