@@ -250,6 +250,7 @@ Tips:
 - Author:: Jean Rouge (<jean@chef.io>)
 - Author:: Tom Duffield (<tom@chef.io>)
 - Author:: Jon Anderson (<janderson@chef.io>)
+- Author:: Salim Afiune (<afiune@chef.io>)
 
 ```text
 Copyright:: 2015 Chef Software, Inc

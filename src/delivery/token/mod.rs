@@ -89,6 +89,7 @@ impl TokenStore {
     }
 
     pub fn request_token(config: &Config) -> Result<String, DeliveryError>  {
+      sayln("yellow", "Requesting Token");
       let ent = try!(config.enterprise());
       let user = try!(config.user());
       let api_server = try!(config.api_host_and_port());

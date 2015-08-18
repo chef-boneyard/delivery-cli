@@ -28,6 +28,36 @@ Scenario: make a basic call
       "orgs": []
     """
 
+Scenario: Without a token and non_interactive enabled
+  Given the Delivery API server:
+    """
+    get('/api/v0/e/bar/orgs') do
+      {
+        "_links" => {
+          "create_org" => {
+            "href" => "/api/v0/e/bar/orgs"
+          },
+          "show_org" => {
+            "href" => "/api/v0/e/bar/orgs/{org_name}",
+            "templated" => true
+          }
+        },
+        "orgs" => []
+      }
+    end
+    """
+  And a file named ".delivery/cli.toml" with:
+    """
+      non_interactive = true
+    """
+  When I run `delivery api get 'orgs' --server=127.0.0.1 --ent=bar --user=cukes`
+  Then the exit status should be 1
+  And the output should contain "Missing API token"
+    # """
+    # Missing API token. Try `delivery token` to create one
+    # server: 127.0.0.1, ent: bar, user: cukes
+    # """
+
 @broken
 Scenario: Without a token will first request one
 
