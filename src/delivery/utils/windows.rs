@@ -50,7 +50,6 @@ pub fn remove_recursive<P: ?Sized>(path: &P) -> Result<(), DeliveryError>
         Ok(_) => {
             // only remove if there is something there
             let result = try!(make_command("Remove-Item")
-                              .arg("Remove-Item")
                               .arg("-recurse")
                               .arg("-force")
                               .arg(path.as_ref().to_str().unwrap())
@@ -96,15 +95,16 @@ pub fn make_command(cmd: &str) -> Command {
 // system. For now, we aren't attempting to handle user/privilege
 // dropping on Windows.
 //
+#[allow(unused_variables)]
 pub fn chmod<P: ?Sized>(path: &P, setting: &str) -> Result<(), DeliveryError>
     where P: AsRef<Path>
 {
     Ok(())
 }
 
-pub fn chown_all<P: ?Sized>(who: &str,
+#[allow(unused_variables)]
+pub fn chown_all<P: AsRef<Path>>(who: &str,
                             paths: &[P]) ->  Result<(), DeliveryError>
-    where P: AsRef<Path>
 {
     Ok(())
 }

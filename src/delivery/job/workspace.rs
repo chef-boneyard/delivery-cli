@@ -424,6 +424,7 @@ impl Workspace {
     }
 
     #[cfg(target_os = "windows")]
+    #[allow(unused_variables)]
     fn handle_privilege_drop(&self, privilege: &Privilege,
                              cmd: &mut Command) -> Result<(), DeliveryError> {
         Ok(())
