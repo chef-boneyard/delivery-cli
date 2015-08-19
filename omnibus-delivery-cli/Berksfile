@@ -1,6 +1,6 @@
 source 'https://api.berkshelf.com'
 
-cookbook 'omnibus'
+cookbook 'omnibus', github: 'opscode-cookbooks/omnibus', branch: 'tm/all_the_ca_certs'
 
 # Uncomment to use the latest version of the Omnibus cookbook from GitHub
 # cookbook 'omnibus', github: 'opscode-cookbooks/omnibus'
