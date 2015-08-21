@@ -67,12 +67,16 @@ platforms:
         ruby_version: 2.1.6-x64
   - name: windows-8.1-professional
     driver:
+      customize:
+        memory: 4096
       box: chef/windows-8.1-professional # private
     attributes:
       omnibus:
         ruby_version: 2.1.6-x64
   - name: windows-2008r2-standard
     driver:
+      customize:
+        memory: 4096
       box: chef/windows-server-2008r2-standard # private
     attributes:
       omnibus:
@@ -80,7 +84,9 @@ platforms:
 
 suites:
   - name: default
-    run_list: omnibus::default
+    run_list:
+      - omnibus::default
+      - delivery_rust::default
     attributes:
       omnibus:
         build_user:          vagrant

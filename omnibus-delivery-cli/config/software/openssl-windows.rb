@@ -60,6 +60,7 @@ build do
 
   # Copy over the required dlls into embedded/bin
   copy "#{tmpdir}/bin/libeay32.dll", "#{install_dir}/bin/"
+  copy "#{tmpdir}/bin/libssl32.dll", "#{install_dir}/bin/"
   copy "#{tmpdir}/bin/ssleay32.dll", "#{install_dir}/bin/"
 
   # Also copy over the openssl executable for debugging
