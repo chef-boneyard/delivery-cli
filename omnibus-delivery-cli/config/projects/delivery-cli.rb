@@ -23,9 +23,6 @@ end
 
 build_iteration 1
 
-override :'ruby-windows', version: "2.1.6"
-override :'openssl-windows', version: "1.0.1m"
-
 # Creates required build directories
 dependency "preparation"
 
@@ -40,4 +37,7 @@ exclude "**/bundler/git"
 
 package :msi do
   upgrade_code "178C5A9A-3923-4A65-AECB-3851224D0FDD"
+  bundle_msi true
+  wix_light_extension 'WixBalExtension'
+  wix_candle_extension 'WixBalExtension'
 end

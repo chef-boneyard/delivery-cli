@@ -29,20 +29,7 @@
 name "openssl-windows"
 default_version "1.0.1p"
 
-source url: "http://dl.bintray.com/oneclick/OpenKnapsack/x86/openssl-#{version}-x86-windows.tar.lzma"
-
-version('1.0.0n') { source md5: "9506530353f3b984680ec27b7270874a" }
-version('1.0.0q') { source md5: "577dbe528415c6f178a9431fd0554df4" }
-version('1.0.0r') { source md5: "25402ddce541aa54eb5e114721926e72" }
-version('1.0.1m') do
-  source url: "https://github.com/jdmundrawala/knapsack-recipes/releases/download/openssl-1.0.1m/openssl-1.0.1m-x86-windows.tar.lzma",
-         md5: "789c307a560386a55e14f3e04cd69865"
-end
-
-version('1.0.1p') do
-  source url: "https://github.com/jaym/windows-openssl-build/releases/download/openssl-1.0.1p/openssl-1.0.1p-x86-windows.tar.lzma",
-         md5: "013c0f27c4839c89e33037acc72f17c5"
-end
+source url: "http://slproweb.com/download/Win64OpenSSL-1_0_1p.exe", sha256: "e8d3b76bcc43781b38328431901c8f64b7e86b37002ae4841a663c44889c8d2f"
 
 build do
   env = with_standard_compiler_flags(with_embedded_path)
@@ -52,16 +39,17 @@ build do
   # Ensure the directory exists
   mkdir tmpdir
 
+  command "#{project_file} /DIR=#{tmpdir} /SP- /silent /verysilent /suppressmsgboxes", env: env
   # First extract the tar file out of lzma archive.
-  command "7z.exe x #{project_file} -o#{tmpdir} -r -y", env: env
+  # command "7z.exe x #{project_file} -o#{tmpdir} -r -y", env: env
 
   # Now extract the files out of tar archive.
-  command "7z.exe x #{File.join(tmpdir, "openssl-#{version}-x86-windows.tar")} -o#{tmpdir} -r -y", env: env
+  # command "7z.exe x #{File.join(tmpdir, "openssl-#{version}-x86-windows.tar")} -o#{tmpdir} -r -y", env: env
 
   # Copy over the required dlls into embedded/bin
-  copy "#{tmpdir}/bin/libeay32.dll", "#{install_dir}/bin/"
-  copy "#{tmpdir}/bin/libssl32.dll", "#{install_dir}/bin/"
-  copy "#{tmpdir}/bin/ssleay32.dll", "#{install_dir}/bin/"
+  copy "#{tmpdir}/libeay32.dll", "#{install_dir}/bin/"
+  copy "#{tmpdir}/libssl32.dll", "#{install_dir}/bin/"
+  copy "#{tmpdir}/ssleay32.dll", "#{install_dir}/bin/"
 
   # Also copy over the openssl executable for debugging
   copy "#{tmpdir}/bin/openssl.exe", "#{install_dir}/embedded/bin/"

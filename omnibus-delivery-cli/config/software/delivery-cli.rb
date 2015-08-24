@@ -21,11 +21,19 @@ source path: File.expand_path('..', Omnibus::Config.project_root),
        options: {exclude: [".git", "omnibus-delivery-cli", "target", "vendor"]}
 
 dependency "openssl-windows" if windows?
+dependency "vcredist" if windows?
 
 build do
   # Setup a default environment from Omnibus - you should use this Omnibus
   # helper everywhere. It will become the default in the future.
-  env = with_standard_compiler_flags(with_embedded_path)
+  env = if windows?
+          ssldir = File.join(Omnibus::Config.cache_dir, "openssl-cache")
+          tmp = with_embedded_path.merge("OPENSSL_LIB_DIR" => "#{ssldir}", "OPENSSL_INCLUDE_DIR" => "#{ssldir}/include")
+          with_standard_compiler_flags(tmp)
+        else
+          with_standard_compiler_flags(with_embedded_path)
+        end
+
   command "make build", env: env
 
   mkdir "#{install_dir}/bin"

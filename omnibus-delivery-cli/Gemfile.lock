@@ -7,8 +7,8 @@ GIT
 
 GIT
   remote: git://github.com/opscode/omnibus.git
-  revision: 3aeac14a9cf08c885b381b962f702ec78ee8e602
-  branch: master
+  revision: 88828ac538f4d43074ec1b2aacc179803b69335a
+  branch: tm/bundle_msi
   specs:
     omnibus (4.0.0)
       chef-sugar (~> 3.0)
@@ -74,6 +74,7 @@ GEM
       libyajl2 (~> 1.2)
     hashie (2.1.2)
     hitimes (1.2.2)
+    hitimes (1.2.2-x86-mingw32)
     httpclient (2.6.0.1)
     ipaddress (0.8.0)
     json (1.8.3)
@@ -176,6 +177,3 @@ DEPENDENCIES
   omnibus!
   omnibus-software!
   test-kitchen (~> 1.2)
-
-BUNDLED WITH
-   1.10.6
