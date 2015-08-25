@@ -26,10 +26,10 @@
 # openssl 1.0.0n fixes more security vulnerabilities...
 #   https://www.openssl.org/news/secadv_20140806.txt
 
-name "openssl-windows"
+name "delivery-windows-openssl"
 default_version "1.0.1p"
 
-source url: "http://slproweb.com/download/Win64OpenSSL-1_0_1p.exe", sha256: "e8d3b76bcc43781b38328431901c8f64b7e86b37002ae4841a663c44889c8d2f"
+source url: "http://slproweb.com/download/Win64OpenSSL-1_0_1p.exe", md5: "a6cfb5f164746312cca06607195df49c"
 
 build do
   env = with_standard_compiler_flags(with_embedded_path)

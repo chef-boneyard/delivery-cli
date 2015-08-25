@@ -20,7 +20,7 @@ name "delivery-cli"
 source path: File.expand_path('..', Omnibus::Config.project_root),
        options: {exclude: [".git", "omnibus-delivery-cli", "target", "vendor"]}
 
-dependency "openssl-windows" if windows?
+dependency "delivery-windows-openssl" if windows?
 dependency "vcredist" if windows?
 
 build do
