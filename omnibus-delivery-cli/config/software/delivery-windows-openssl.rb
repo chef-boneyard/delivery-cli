@@ -34,7 +34,7 @@ source url: "http://slproweb.com/download/Win64OpenSSL-1_0_1p.exe", md5: "a6cfb5
 build do
   env = with_standard_compiler_flags(with_embedded_path)
 
-  tmpdir = File.join(Omnibus::Config.cache_dir, "openssl-cache")
+  tmpdir = File.expand_path(File.join(Omnibus::Config.cache_dir, "openssl-cache"))
 
   # Ensure the directory exists
   mkdir tmpdir

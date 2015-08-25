@@ -27,7 +27,7 @@ build do
   # Setup a default environment from Omnibus - you should use this Omnibus
   # helper everywhere. It will become the default in the future.
   env = if windows?
-          ssldir = File.join(Omnibus::Config.cache_dir, "openssl-cache")
+          ssldir = File.expand_path(File.join(Omnibus::Config.cache_dir, "openssl-cache"))
           tmp = with_embedded_path.merge("OPENSSL_LIB_DIR" => "#{ssldir}", "OPENSSL_INCLUDE_DIR" => "#{ssldir}/include")
           with_standard_compiler_flags(tmp)
         else
