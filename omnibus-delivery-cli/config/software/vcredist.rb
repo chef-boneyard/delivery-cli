@@ -24,8 +24,3 @@ end
 version "2013" do
   source url: "http://download.microsoft.com/download/2/E/6/2E61CFA4-993B-4DD4-91DA-3737CD5CD6E3/vcredist_x64.exe", md5: "96b61b8e069832e6b809f24ea74567ba"
 end
-
-# we just need to stuff this in the cache
-# build do
-#   with_standard_compiler_flags(with_embedded_path)
-# end
