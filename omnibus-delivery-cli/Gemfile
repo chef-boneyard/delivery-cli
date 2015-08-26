@@ -1,7 +1,7 @@
 source 'https://rubygems.org'
 
 # Install omnibus
-gem 'omnibus', github: 'opscode/omnibus', branch: 'tm/bundle_msi'
+gem 'omnibus', github: 'opscode/omnibus', branch: 'master'
 gem 'omnibus-software', github: 'opscode/omnibus-software', branch: 'master'
 
 gem 'artifactory', '~> 2.2'
