@@ -1,6 +1,6 @@
 source 'https://api.berkshelf.com'
 
-cookbook 'omnibus', github: 'opscode-cookbooks/omnibus', branch: 'tm/all_the_ca_certs'
+cookbook 'omnibus',    '>= 2.6.12'
 
 cookbook 'delivery_rust', path: '../cookbooks/delivery_rust'
 
