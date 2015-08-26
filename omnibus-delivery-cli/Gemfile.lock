@@ -7,7 +7,7 @@ GIT
 
 GIT
   remote: git://github.com/opscode/omnibus.git
-  revision: 3ae7ba41dd08a00abdef1b479c668001a04fa238
+  revision: de89dd295bf11c9ffe0a7684c24c947091b0675a
   branch: tm/bundle_msi
   specs:
     omnibus (4.0.0)
