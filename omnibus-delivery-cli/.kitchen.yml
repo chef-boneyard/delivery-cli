@@ -50,6 +50,8 @@ platforms:
   # as the default provider by copying `.kitchen.local.yml.vmware.example`
   # over to `.kitchen.local.yml`.
   #
+  # If you're not able to access those boxes, we'd recommend creating a
+  # `.kitchen.local.yml` and overriding the windows or OS X boxes.
   - name: macosx-10.8
     driver:
       box: chef/macosx-10.8 # private
