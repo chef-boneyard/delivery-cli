@@ -1,6 +1,8 @@
 source 'https://api.berkshelf.com'
 
-cookbook 'omnibus'
+cookbook 'omnibus',    '>= 2.6.12'
+
+cookbook 'delivery_rust', path: '../cookbooks/delivery_rust'
 
 # Uncomment to use the latest version of the Omnibus cookbook from GitHub
 # cookbook 'omnibus', github: 'opscode-cookbooks/omnibus'

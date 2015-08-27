@@ -1,4 +1,4 @@
-<?xml version='1.0'?>
+<?xml version='1.0' encoding="utf-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
 
   <!-- This is how we include wxi files -->
@@ -15,7 +15,8 @@
       Define the minimum supported installer version (2.0).
       The install should be done for the whole machine not just the current user
     -->
-    <Package InstallerVersion="200" InstallPrivileges="elevated" Compressed="yes" InstallScope="perMachine" />
+    <Package InstallerVersion="200" InstallPrivileges="elevated"
+             Compressed="yes" InstallScope="perMachine" />
 
     <Media Id="1" Cabinet="Project.cab" EmbedCab="yes" CompressionLevel="high" />
 
@@ -30,20 +31,22 @@
     </InstallExecuteSequence>
 
     <Directory Id="TARGETDIR" Name="SourceDir">
-      <Directory Id="WINDOWSVOLUME">
-<% hierarchy.each.with_index do |(name, id), index| -%>
-        <%= '  '*index %><Directory Id="<%= id %>" Name="<%= name %>">
-<% end -%>
-<% hierarchy.keys.each.with_index do |_, index| -%>
-        <%= '  '*(hierarchy.size - index-1) %></Directory>
-<% end -%>
+      <Directory Id="WindowsVolume">
+        <Directory Id="CHEFLOCATION" Name="chef">
+          <Directory Id="PROJECTLOCATION" Name="delivery-cli">
+            <Directory Id="PROJECTLOCATIONBIN" Name="bin" >
+              <Component Id="DeliveryCLIPath" Guid="{1A560FD4-62D5-4568-BD4A-B6295977284A}" >
+                <Environment Id="PATH"
+                             Name="PATH" Action="set" Part="last" System="yes" Value="[PROJECTLOCATIONBIN]" />
+              </Component>
+            </Directory>  
+          </Directory>
+        </Directory>
       </Directory>
     </Directory>
 
-    <SetDirectory Id="WINDOWSVOLUME" Value="[WindowsVolume]" />
-
     <!-- Set the components defined in our fragment files that will be used for our feature  -->
-    <Feature Id="ProjectFeature" Title="!(loc.FeatureMainName)" Absent="disallow" AllowAdvertise="no" Level="1" ConfigurableDirectory="<%= wix_install_dir %>">
+    <Feature Id="ProjectFeature" Title="!(loc.FeatureMainName)" Absent="disallow" AllowAdvertise="no" Level="1" ConfigurableDirectory="CHEFLOCATION">
       <ComponentGroupRef Id="ProjectDir" />
     </Feature>
 
@@ -51,7 +54,7 @@
     <Icon Id="project.ico" SourceFile="Resources\assets\project_16x16.ico"/>
     <Property Id="ARPPRODUCTICON" Value="project.ico" />
     <Property Id="ARPHELPLINK" Value="http://www.getchef.com/" />
-    <Property Id="WIXUI_INSTALLDIR" Value="<%= wix_install_dir %>" />
+    <Property Id="WIXUI_INSTALLDIR" Value="CHEFLOCATION" />
 
     <UIRef Id="ProjectUI_InstallDir"/>
     <UI Id="ProjectUI_InstallDir">

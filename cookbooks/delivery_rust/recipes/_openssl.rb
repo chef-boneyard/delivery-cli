@@ -5,7 +5,10 @@ when 'mac_os_x'
     not_if "brew list|grep -q openssl"
   end
 when 'windows'
-  log "windows: implement openssl install, please!"
+  windows_package 'OpenSSL' do
+    options "/silent /verysilent /sp- /suppressmsgboxes"
+    source "http://slproweb.com/download/Win64OpenSSL-1_0_1p.exe"
+  end
 else
   log "Linux detected"
   include_recipe "build-essential"
