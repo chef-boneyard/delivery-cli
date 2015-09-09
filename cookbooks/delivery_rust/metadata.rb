@@ -8,3 +8,4 @@ version          '0.3.3'
 
 depends 'build-essential'
 depends 'omnibus'
+depends 'chef-sugar'
