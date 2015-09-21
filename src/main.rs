@@ -673,7 +673,7 @@ fn job(stage: &str,
 
     if privileged_process() && !skip_default {
         sayln("yellow", "Setting up the builder");
-        try!(ws.run_job("default", &Privilege::NoDrop));
+        try!(ws.run_job("default", &Privilege::NoDrop, &local_change));
     }
 
     let phase_msg = if phases.len() > 1 {
@@ -682,7 +682,7 @@ fn job(stage: &str,
         "phase"
     };
     sayln("magenta", &format!("Running {} {}", phase_msg, phases.join(", ")));
-    try!(ws.run_job(phase, &privilege_drop));
+    try!(ws.run_job(phase, &privilege_drop, &local_change));
     Ok(())
 }
 

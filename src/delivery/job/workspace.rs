@@ -372,7 +372,7 @@ impl Workspace {
         Ok(bc_name.to_string())
     }
 
-    pub fn run_job(&self, phase_arg: &str, drop_privilege: &Privilege) -> Result<(), DeliveryError> {
+    pub fn run_job(&self, phase_arg: &str, drop_privilege: &Privilege, local_change: &bool) -> Result<(), DeliveryError> {
         let config = try!(job::config::load_config(&self.repo.join_many(&[".delivery", "config.json"])));
         let bc_name = try!(self.build_cookbook_name(&config));
         let run_list = {
@@ -383,6 +383,9 @@ impl Workspace {
         let mut command = utils::make_command("chef-client");
         command.arg("-z").arg("--force-formatter");
         try!(self.handle_privilege_drop(drop_privilege, &mut command));
+        if ! local_change {
+          command.env("HOME", &path_to_string(&self.cache));
+        }
         command.arg("-j")
             .arg(&path_to_string(&self.chef.join("dna.json")))
             .arg("-c")
@@ -391,7 +394,6 @@ impl Workspace {
             .arg(run_list)
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
-            .env("HOME", &path_to_string(&self.cache))
             .current_dir(&self.repo);
         match phase_arg {
             "default" => command.env("DELIVERY_BUILD_SETUP", "TRUE"),
