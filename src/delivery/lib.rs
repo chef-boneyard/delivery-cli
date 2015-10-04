@@ -16,11 +16,9 @@
 //
 
 #![feature(plugin, path_ext, convert)]
-#![plugin(regex_macros, docopt_macros)]
+#![plugin(regex_macros)]
 extern crate regex;
 #[no_link] extern crate regex_macros;
-extern crate docopt;
-#[no_link] extern crate docopt_macros;
 #[macro_use] extern crate log;
 extern crate term;
 extern crate toml;

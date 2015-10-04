@@ -17,11 +17,10 @@
 
 #![feature(plugin)]
 #![feature(path_ext)]
-#![plugin(regex_macros, docopt_macros)]
+#![plugin(regex_macros)]
 extern crate regex;
 #[no_link] extern crate regex_macros;
-extern crate docopt;
-#[no_link] extern crate docopt_macros;
+extern crate clap;
 #[macro_use] extern crate log;
 extern crate env_logger;
 extern crate term;
@@ -57,42 +56,55 @@ use delivery::token;
 use delivery::http::{self, APIClient};
 use hyper::status::StatusCode;
 use delivery::project;
+use clap::{Arg, App, SubCommand, ArgMatches};
 
-docopt!(Args derive Debug, "
-Usage: delivery review [--for=<pipeline>] [--no-open] [--edit]
-       delivery clone <project> [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--git-url=<url>]
-       delivery checkout <change> [--for=<pipeline>] [--patchset=<number>]
-       delivery diff <change> [--for=<pipeline>] [--patchset=<number>] [--local]
-       delivery init [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--project=<project>] [--no-open] [--skip-build-cookbook] [--local]
-       delivery setup [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--config-path=<dir>] [--for=<pipeline>]
-       delivery job <stage> <phase> [--change=<change>] [--for=<pipeline>] [--job-root=<dir>] [--branch=<branch_name>] [--project=<project>] [--user=<user>] [--server=<server>] [--ent=<ent>] [--org=<org>] [--patchset=<number>] [--git-url=<url>] [--shasum=<gitsha>] [--change-id=<id>] [--no-spinner] [--skip-default] [--local] [--docker=<image>]
-       delivery api <method> <path> [--user=<user>] [--server=<server>] [--api-port=<api_port>] [--ent=<ent>] [--config-path=<dir>] [--data=<data>]
-       delivery token [--user=<user>] [--server=<server>] [--api-port=<api_port>] [--ent=<ent>]
-       delivery --help
-       delivery --version
+macro_rules! make_arg_vec {
+    ( $( $x:expr ),* ) => {
+        {
+            let mut temp_vec = Vec::new();
+            $(
+                temp_vec.push(Arg::from_usage($x));
+            )*
+            temp_vec
+        }
+    };
+}
 
-Options:
-  -h, --help                   Show this message.
-  -b, --branch=<branch_name>   Branch to merge
-  -f, --for=<pipeline>         A pipeline to target
-  -P, --patchset=<number>      A patchset number [default: latest]
-  -u, --user=<user>            A delivery username
-  -s, --server=<server>        A delivery server
-  -e, --ent=<ent>              A delivery enterprise
-  -o, --org=<org>              A delivery organization
-  -p, --project=<project>      The project name
-  -c, --config-path=<dir>      The directory to write a config to
-  -l, --local                  Diff against the local branch HEAD
-  -g, --git-url=<url>          A raw git URL
-  -j, --job-root=<path>        The path to the job root
-  -S, --shasum=<gitsha>        A Git SHA
-  -C, --change=<change>        A delivery change branch name
-  -i, --change-id=<id>         A delivery change ID
-  -n, --no-spinner             Turn off the delightful spinner :(
-  -v, --version                Display version
-  <change>                     A delivery change branch name
-  <type>                       The type of project (currently supported: cookbook)
-");
+macro_rules! fn_arg {
+    ( $fn_name:ident, $usage:expr ) => (
+        fn $fn_name<'a>() -> Arg<'a, 'a, 'a, 'a, 'a, 'a> {
+            Arg::from_usage($usage)
+        }
+    )
+}
+
+fn u_e_s_o_args<'a>() -> Vec<Arg<'a, 'a, 'a, 'a, 'a, 'a>> {
+    make_arg_vec![
+        "-u --user=[user] 'User name for Delivery authentication'",
+        "-e --ent=[enterprise] 'The enterprise in which the project lives'",
+        "-o --org=[org] 'The organization in which the project lives'",
+        "-s --server=[server] 'The Delivery server address'"]
+}
+
+fn_arg!(for_arg,
+       "-f --for=[pipeline] 'Target pipeline for change (default: master)'");
+
+fn_arg!(patchset_arg,
+       "-P --patchset=[patchset] 'A patchset number (default: latest)'");
+
+fn_arg!(project_arg,
+       "-p --project=[project] 'The project name'");
+
+fn_arg!(config_path_arg,
+        "--config-path=[dir] 'Directory to read/write your config file \
+         (cli.toml)'");
+
+fn_arg!(local_arg, "-l --local 'Operate without a Delivery server'");
+
+fn_arg!(no_open_arg, "-n --no-open 'Do not open the change in a browser'");
+
+
+fn_arg!(no_spinner_arg, "--no-spinner 'Disable the spinner'");
 
 macro_rules! validate {
     ($config:ident, $value:ident) => (
@@ -100,122 +112,138 @@ macro_rules! validate {
     )
 }
 
+fn make_app<'a>(version: &'a str) -> App<'a, 'a, 'a, 'a, 'a, 'a> {
+    App::new("delivery")
+        .version(version)
+        .subcommand(SubCommand::with_name("review")
+                    .about("Submit current branch for review")
+                    // NOTE: in the future, we can add extensive
+                    // sub-command specific help via an include file
+                    // like this:
+                    // .after_help(include!("../help/create-change.txt"))
+                    .args(vec![for_arg(), no_open_arg()])
+                    .args_from_usage(
+                        "-e --edit 'Edit change title and description'"))
+        .subcommand(SubCommand::with_name("clone")
+                    .about("Clone a project repository")
+                    .args_from_usage(
+                        "<project> 'Name of project to clone'
+                        -g --git-url=[url] \
+                        'Git URL (-u -s -e -o ignored if used)'")
+                    .args(u_e_s_o_args()))
+        .subcommand(SubCommand::with_name("checkout")
+                    .about("Create a local branch tracking an in-progress change")
+                    .args(vec![for_arg(), patchset_arg()])
+                    .args_from_usage(
+                        "<change> 'Name of the feature branch to checkout'"))
+        .subcommand(SubCommand::with_name("diff")
+                    .about("Display diff for a change")
+                    .args(vec![for_arg(), patchset_arg()])
+                    .args_from_usage(
+                        "<change> 'Name of the feature branch to compare'
+                        -l --local \
+                        'Diff against the local branch HEAD'"))
+        .subcommand(SubCommand::with_name("init")
+                    .about("Add delivery remote to this git repo \
+                            (and lot's more!)")
+                    .args(vec![for_arg(), config_path_arg(), no_open_arg(),
+                               project_arg(), local_arg()])
+                    .args_from_usage(
+                        "--skip-build-cookbook 'Do not create a build cookbook'")
+                    .args(u_e_s_o_args()))
+        .subcommand(SubCommand::with_name("setup")
+                    .about("Write a config file capturing specified options")
+                    .args(vec![for_arg(), config_path_arg()])
+                    .args(u_e_s_o_args()))
+        .subcommand(SubCommand::with_name("job")
+                    .about("Run one or more phase jobs")
+                    .args(vec![patchset_arg(), project_arg(), for_arg(),
+                               local_arg(), no_spinner_arg()])
+                    .args(make_arg_vec![
+                        "-j --job-root=[root] 'Path to the job root'",
+                        "-g --git-url=[url] 'Git URL (-u -s -e -o ignored if used)'",
+                        "-C --change=[change] 'Feature branch name'",
+                        "-b --branch=[branch] 'Branch to merge'",
+                        "-S --shasum=[gitsha] 'Git SHA of change'",
+                        "--change-id=[id] 'The change ID'",
+                        "--skip-default 'skip default'",
+                        "--docker=[image] 'Docker image'"])
+                    .args_from_usage("<stage> 'Stage for the run'
+                                      <phases> 'One or more phases'")
+                    .args(u_e_s_o_args()))
+        .subcommand(SubCommand::with_name("api")
+                    .about("Helper to call Delivery's HTTP API")
+                    .args(vec![config_path_arg()])
+                    .args_from_usage(
+                        "<method> 'HTTP method for the request'
+                         <path> 'Path for rqeuest URL'
+                         --api-port=[port] 'Port for Delivery server'
+                         -d --data=[data] 'Data to send for PUT/POST request'")
+                    .args(u_e_s_o_args()))
+        .subcommand(SubCommand::with_name("token")
+                    .about("Create a local API token")
+                    .args(make_arg_vec![
+                        "-u --user=[user] 'User name for Delivery authentication'",
+                        "-e --ent=[enterprise] 'The enterprise in which the project lives'",
+                        "-s --server=[server] 'The Delivery server address'"])
+                    .args_from_usage(
+                        "--api-port=[port] 'Port for Delivery server'"))
+}
+
 #[cfg(not(test))]
 fn main() {
     env_logger::init().unwrap();
 
-    let args: Args = Args::docopt().decode().unwrap_or_else(|e| e.exit());
-    debug!("{:?}", args);
-    let cmd_result = match args {
-        Args {
-            cmd_review: true,
-            flag_for: ref for_pipeline,
-            flag_no_open: ref no_open,
-            flag_edit: ref edit,
-            ..
-        } => review(&for_pipeline, &no_open, &edit),
-        Args {
-            cmd_setup: true,
-            flag_user: ref user,
-            flag_server: ref server,
-            flag_ent: ref ent,
-            flag_org: ref org,
-            flag_config_path: ref path,
-            flag_for: ref pipeline,
-            ..
-        } => setup(&user, &server, &ent, &org, &path, &pipeline),
-        Args {
-            cmd_init: true,
-            flag_user: ref user,
-            flag_server: ref server,
-            flag_ent: ref ent,
-            flag_org: ref org,
-            flag_project: ref proj,
-            flag_no_open: ref no_open,
-            flag_local: ref local,
-            flag_skip_build_cookbook: ref skip_build_cookbook,
-            ..
-        } => init(&user, &server, &ent, &org, &proj, &no_open,
-                  &skip_build_cookbook, &local),
-        Args {
-            cmd_checkout: true,
-            arg_change: ref change,
-            flag_patchset: ref patchset,
-            flag_for: ref pipeline,
-            ..
-        } => checkout(&change, &patchset, &pipeline),
-        Args {
-            cmd_diff: true,
-            arg_change: ref change,
-            flag_patchset: ref patchset,
-            flag_for: ref pipeline,
-            flag_local: ref local,
-            ..
-        } => diff(&change, &patchset, &pipeline, local),
-        Args {
-            cmd_api: true,
-            arg_method: ref method,
-            arg_path: ref path,
-            flag_user: ref user,
-            flag_api_port: ref port,
-            flag_server: ref server,
-            flag_ent: ref ent,
-            flag_data: ref data,
-            ..
-        } => api_req(&method, &path, &data,
-                     &server, &port, &ent,
-                     &user),
-        Args {
-            cmd_clone: true,
-            arg_project: ref project,
-            flag_user: ref user,
-            flag_server: ref server,
-            flag_ent: ref ent,
-            flag_org: ref org,
-            flag_git_url: ref git_url,
-            ..
-        } => clone(&project, &user, &server, &ent, &org, &git_url),
-        Args {
-            cmd_job: true,
-            arg_stage: ref stage,
-            arg_phase: ref phase,
-            flag_change: ref change,
-            flag_for: ref pipeline,
-            flag_job_root: ref job_root,
-            flag_project: ref project,
-            flag_user: ref user,
-            flag_server: ref server,
-            flag_ent: ref ent,
-            flag_org: ref org,
-            flag_patchset: ref patchset,
-            flag_change_id: ref change_id,
-            flag_git_url: ref git_url,
-            flag_shasum: ref shasum,
-            flag_no_spinner: no_spinner,
-            flag_branch: ref branch,
-            flag_skip_default: ref skip_default,
-            flag_local: ref local,
-            flag_docker: ref docker_image,
-            ..
-        } => {
-            if no_spinner { say::turn_off_spinner() };
-            job(&stage, &phase, &change, &pipeline, &job_root, &project, &user,
-                &server, &ent, &org, &patchset, &change_id, &git_url, &shasum,
-                &branch, &skip_default, &local, &docker_image)
+    let build_version = format!("{} {}", version(), build_git_sha());
+
+    let app = make_app(&build_version);
+    let matches = app.get_matches();
+
+    let cmd_result = match matches.subcommand_name() {
+        Some("api") => {
+            let matches = matches.subcommand_matches("api").unwrap();
+            clap_api_req(matches)
         },
-        Args {
-            cmd_token: true,
-            flag_server: ref server,
-            flag_api_port: ref port,
-            flag_ent: ref ent,
-            flag_user: ref user,
-            ..
-        } => api_token(&server, &port, &ent, &user),
-        Args {
-            flag_version: true,
-            ..
-        } => say_version(),
-        _ => no_matching_command(),
+        Some("checkout") => {
+            let matches = matches.subcommand_matches("checkout").unwrap();
+            clap_checkout(matches)
+        },
+        Some("clone") => {
+            let matches = matches.subcommand_matches("clone").unwrap();
+            clap_clone(matches)
+        },
+        Some("diff") => {
+            let matches = matches.subcommand_matches("diff").unwrap();
+            clap_diff(matches)
+        },
+        Some("init") => {
+            let matches = matches.subcommand_matches("init").unwrap();
+            clap_init(matches)
+        },
+        Some("job") => {
+            let matches = matches.subcommand_matches("job").unwrap();
+            clap_job(matches)
+        },
+        Some("review") => {
+            let matches = matches.subcommand_matches("review").unwrap();
+            clap_review(matches)
+        },
+        Some("setup") => {
+            let matches = matches.subcommand_matches("setup").unwrap();
+            clap_setup(matches)
+        },
+        Some("token") => {
+            let matches = matches.subcommand_matches("token").unwrap();
+            clap_token(matches)
+        },
+        _ => {
+            // ownership issue with use of above defined app
+            // so for now...
+            let a = make_app(&build_version);
+            a.print_help().ok().expect("failed to write help to stdout");
+            sayln("red", "missing subcommand");
+            process::exit(1);
+        }
     };
     match cmd_result {
         Ok(_) => {},
@@ -225,10 +253,6 @@ fn main() {
 
 fn cwd() -> PathBuf {
     env::current_dir().unwrap()
-}
-
-fn no_matching_command() -> Result<(), DeliveryError> {
-    Err(DeliveryError { kind: Kind::NoMatchingCommand, detail: None })
 }
 
 fn exit_with(e: DeliveryError, i: isize) {
@@ -249,7 +273,18 @@ fn load_config(path: &PathBuf) -> Result<Config, DeliveryError> {
     Ok(config)
 }
 
-fn setup(user: &str, server: &str, ent: &str, org: &str, path: &str, pipeline: &str) -> Result<(), DeliveryError> {
+fn clap_setup(matches: &ArgMatches) -> Result<(), DeliveryError> {
+    let user = value_of(&matches, "user");
+    let server = value_of(&matches, "server");
+    let ent = value_of(&matches, "enterprise");
+    let org = value_of(&matches, "org");
+    let path = value_of(&matches, "dir");
+    let pipeline = value_of(&matches, "pipeline");
+    setup(user, server, ent, org, path, pipeline)
+}
+
+fn setup(user: &str, server: &str, ent: &str,
+         org: &str, path: &str, pipeline: &str) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
     let config_path = if path.is_empty() {
         cwd()
@@ -264,6 +299,18 @@ fn setup(user: &str, server: &str, ent: &str, org: &str, path: &str, pipeline: &
         .set_pipeline(pipeline) ;
     try!(config.write_file(&config_path));
     Ok(())
+}
+
+fn clap_init(matches: &ArgMatches) -> Result<(), DeliveryError> {
+    let user = value_of(&matches, "user");
+    let server = value_of(&matches, "server");
+    let ent = value_of(&matches, "enterprise");
+    let org = value_of(&matches, "org");
+    let proj = value_of(&matches, "project");
+    let no_open = matches.is_present("no-open");
+    let skip_build_cookbook = matches.is_present("skip-build-cookbook");
+    let local = matches.is_present("local");
+    init(user, server, ent, org, proj, &no_open, &skip_build_cookbook, &local)
 }
 
 fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str,
@@ -344,6 +391,13 @@ fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str,
     Ok(())
 }
 
+fn clap_review(matches: &ArgMatches) -> Result<(), DeliveryError> {
+    let pipeline = value_of(&matches, "pipeline");
+    let no_open = matches.is_present("no-open");
+    let edit = matches.is_present("edit");
+    review(pipeline, &no_open, &edit)
+}
+
 fn review(for_pipeline: &str,
           no_open: &bool, edit: &bool) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
@@ -408,6 +462,13 @@ fn handle_review_result(review: &ReviewResult,
     Ok(())
 }
 
+fn clap_checkout(matches: &ArgMatches) -> Result<(), DeliveryError> {
+    let change = matches.value_of("change").unwrap();
+    let patchset = matches.value_of("patchset").unwrap();
+    let pipeline = value_of(&matches, "pipeline");
+    checkout(change, patchset, pipeline)
+}
+
 fn checkout(change: &str, patchset: &str, pipeline: &str) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
@@ -428,6 +489,14 @@ fn checkout(change: &str, patchset: &str, pipeline: &str) -> Result<(), Delivery
     Ok(())
 }
 
+fn clap_diff(matches: &ArgMatches) ->  Result<(), DeliveryError> {
+    let change = matches.value_of("change").unwrap();
+    let patchset = value_of(&matches, "patchset");
+    let pipeline = value_of(&matches, "pipeline");
+    let local = matches.is_present("local");
+    diff(change, patchset, pipeline, &local)
+}
+
 fn diff(change: &str, patchset: &str, pipeline: &str, local: &bool) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
@@ -446,6 +515,16 @@ fn diff(change: &str, patchset: &str, pipeline: &str, local: &bool) -> Result<()
     }
     try!(git::diff(change, patchset, &target, local));
     Ok(())
+}
+
+fn clap_clone(matches: &ArgMatches) -> Result<(), DeliveryError> {
+    let project = matches.value_of("project").unwrap();
+    let user = value_of(&matches, "user");
+    let server = value_of(&matches, "server");
+    let ent = value_of(&matches, "enterprise");
+    let org = value_of(&matches, "org");
+    let git_url = value_of(&matches, "url");
+    clone(project, user, server, ent, org, git_url)
 }
 
 fn clone(project: &str, user: &str, server: &str, ent: &str, org: &str, git_url: &str) -> Result<(), DeliveryError> {
@@ -471,6 +550,36 @@ fn clone(project: &str, user: &str, server: &str, ent: &str, org: &str, git_url:
     try!(git::config_repo(&delivery_url,
                           &project_root));
     Ok(())
+}
+
+fn clap_job(matches: &ArgMatches) -> Result<(), DeliveryError> {
+    let stage = matches.value_of("stage").unwrap();
+    let phases = matches.value_of("phases").unwrap();
+
+    let change = value_of(&matches, "change");
+    let pipeline = value_of(&matches, "pipeline");
+    let job_root = value_of(&matches, "root");
+    let proj = value_of(&matches, "project");
+
+    let user = value_of(&matches, "user");
+    let server = value_of(&matches, "server");
+    let ent = value_of(&matches, "enterprise");
+    let org = value_of(&matches, "org");
+
+    let patchset = value_of(&matches, "patchset");
+    let change_id = value_of(&matches, "id");
+    let git_url = value_of(&matches, "url");
+    let shasum = value_of(&matches, "gitsha");
+    let branch = value_of(&matches, "branch");
+
+    let skip_default = matches.is_present("skip-default");
+    let local = matches.is_present("local");
+    let docker_image = value_of(&matches, "image");
+
+    job(stage, phases, change, pipeline, job_root,
+        proj, user, server, ent, org, patchset,
+        change_id, git_url, shasum, branch,
+        &skip_default, &local, docker_image)
 }
 
 fn job(stage: &str,
@@ -582,6 +691,7 @@ fn job(stage: &str,
     } else {
         config.set_project(project)
     };
+
     config = config.set_pipeline(pipeline)
         .set_user(with_default(user, "you", local))
         .set_server(with_default(server, "localhost", local))
@@ -706,6 +816,14 @@ fn with_default<'a>(val: &'a str, default: &'a str, local: &bool) -> &'a str {
     }
 }
 
+fn clap_token(matches: &ArgMatches) -> Result<(), DeliveryError> {
+    let server = value_of(&matches, "server");
+    let port = value_of(&matches, "port");
+    let ent = value_of(&matches, "enterprise");
+    let user = value_of(&matches, "user");
+    api_token(server, port, ent, user)
+}
+
 fn api_token(server: &str, port: &str, ent: &str,
              user: &str) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
@@ -715,14 +833,6 @@ fn api_token(server: &str, port: &str, ent: &str,
         .set_enterprise(ent)
         .set_user(user);
     try!(token::TokenStore::request_token(&config));
-    Ok(())
-}
-
-fn say_version() -> Result<(), DeliveryError> {
-    sayln("white", &format!("delivery {} {}\n{}",
-                            version(),
-                            build_git_sha(),
-                            rustc_version()));
     Ok(())
 }
 
@@ -737,8 +847,16 @@ fn build_git_sha() -> String {
     format!("({})", sha)
 }
 
-fn rustc_version() -> String {
-    option_env!("RUSTC_VERSION").unwrap_or("rustc UNKNOWN").to_string()
+fn clap_api_req(matches: &ArgMatches) -> Result<(), DeliveryError> {
+    let method = matches.value_of("method").unwrap();
+    let path = matches.value_of("path").unwrap();
+    let data = value_of(&matches, "data");
+
+    let server = value_of(&matches, "server");
+    let api_port = value_of(&matches, "port");
+    let ent = value_of(&matches, "enterprise");
+    let user = value_of(&matches, "user");
+    api_req(method, path, data, server, api_port, ent, user)
 }
 
 fn api_req(method: &str, path: &str, data: &str,
@@ -778,4 +896,8 @@ fn project_or_from_cwd(proj: &str) -> Result<String, DeliveryError> {
     } else {
         Ok(proj.to_string())
     }
+}
+
+fn value_of<'a>(matches: &'a ArgMatches, key: &str) -> &'a str {
+    matches.value_of(key).unwrap_or("")
 }

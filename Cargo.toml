@@ -14,8 +14,7 @@ name = "delivery"
 name = "lib"
 
 [dependencies]
-docopt = "0.6.38"
-docopt_macros = "*"
+clap = "*"
 regex = "*"
 regex_macros = "*"
 log = "*"
