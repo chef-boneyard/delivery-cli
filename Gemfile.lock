@@ -86,3 +86,6 @@ DEPENDENCIES
   grape (~> 0.10.1)
   rack (~> 1.6.0)
   rake
+
+BUNDLED WITH
+   1.10.0
