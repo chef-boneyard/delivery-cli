@@ -37,7 +37,7 @@ pub fn get_head() -> Result<String, DeliveryError> {
 }
 
 fn parse_get_head(stdout: &str) -> Result<String, DeliveryError> {
-    for line in stdout.lines_any() {
+    for line in stdout.lines() {
         let r = regex!(r"(.) (.+)");
         let caps_result = r.captures(line);
         let caps = match caps_result {
@@ -184,13 +184,13 @@ pub struct PushResult {
 pub fn parse_git_push_output(push_output: &str,
                              push_error: &str) -> Result<ReviewResult, DeliveryError> {
     let mut review_result = ReviewResult::default();
-    for line in push_error.lines_any() {
+    for line in push_error.lines() {
         debug!("error: {}", line);
         if line.starts_with("remote") {
             parse_line_from_remote(&line, &mut review_result);
         }
     }
-    for line in push_output.lines_any() {
+    for line in push_output.lines() {
         debug!("output: {}", line);
         if line.starts_with("To") ||  line.starts_with("Done") {
             continue;

@@ -47,7 +47,7 @@ impl Description {
     }
 
     pub fn parse_text(text: &str) -> Result<Description, DeliveryError> {
-        let mut items: Vec<&str> = text.lines_any().collect();
+        let mut items: Vec<&str> = text.lines().collect();
         let title = items[0].to_string();
         let desc = if items.len() > 1 {
             items.remove(0);
