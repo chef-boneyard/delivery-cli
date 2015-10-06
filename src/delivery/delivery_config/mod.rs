@@ -37,7 +37,8 @@ pub struct DeliveryConfig {
     pub version: String,
     pub build_cookbook: HashMap<String, String>,
     pub skip_phases: Option<Vec<String>>,
-    pub build_nodes: Option<HashMap<String, Vec<String>>>
+    pub build_nodes: Option<HashMap<String, Vec<String>>>,
+    pub dependencies: Option<Vec<String>>
 }
 
 // v1 config, deprecated, but still supported
@@ -60,7 +61,8 @@ impl Default for DeliveryConfig {
             version: "2".to_string(),
             build_cookbook: build_cookbook,
             skip_phases: Some(Vec::new()),
-            build_nodes: Some(HashMap::new())
+            build_nodes: Some(HashMap::new()),
+            dependencies: Some(Vec::new())
         }
     }
 }
