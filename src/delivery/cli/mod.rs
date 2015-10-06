@@ -443,13 +443,18 @@ fn checkout(change: &str, patchset: &str, pipeline: &str) -> Result<(), Delivery
     say("white", " targeted for pipeline ");
     say("magenta", &target);
 
-    if patchset == "latest" {
-        sayln("white", " tracking latest changes");
-    } else {
-        say("white", " at patchset ");
-        sayln("yellow", patchset);
-    }
-    try!(git::checkout_review(change, patchset, &target));
+    let pset = match patchset {
+        "" | "latest" => {
+            sayln("white", " tracking latest changes");
+            "latest"
+        },
+        p @ _ => {
+            say("white", " at patchset ");
+            sayln("yellow", p);
+            p
+        }
+    };
+    try!(git::checkout_review(change, pset, &target));
     Ok(())
 }
 
