@@ -29,6 +29,7 @@ extern crate tempdir;
 extern crate uuid;
 #[macro_use] extern crate hyper;
 extern crate mime;
+extern crate clap;
 
 pub mod errors;
 pub mod git;
@@ -40,3 +41,4 @@ pub mod getpass;
 pub mod token;
 pub mod http;
 pub mod project;
+pub mod cli;
