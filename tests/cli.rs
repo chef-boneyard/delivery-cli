@@ -178,6 +178,16 @@ test!(review_with_a_v1_config {
     setup_checkout_branch(&delivery_project_git, "_for/master/rust/test");
 });
 
+test!(review_without_dependencies {
+    let delivery_project_git = setup_mock_delivery_project_git("no_deps_config.json");
+    let local_project = setup_local_project_clone(&delivery_project_git);
+    setup_change(&local_project, "rust/test", "freaky");
+    delivery_review(&local_project, &delivery_project_git, "rust/test", "master");
+    setup_checkout_branch(&delivery_project_git, "_for/master/rust/test");
+});
+
+
+
 test!(review_with_an_invalid_config {
     let delivery_project_git = setup_mock_delivery_project_git("invalid_config.json");
     let local_project = setup_local_project_clone(&delivery_project_git);

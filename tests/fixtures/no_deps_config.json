@@ -1,0 +1,10 @@
+{
+    "version": "2",
+    "build_cookbook": {
+      "name": "delivery_test",
+      "path": "cookbooks/delivery_test"
+    },
+    "build_nodes": {
+        "default"    : ["name:delivery-builder*"]
+    }
+}
