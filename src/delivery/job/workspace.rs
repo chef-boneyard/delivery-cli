@@ -399,6 +399,7 @@ impl Workspace {
             "default" => command.env("DELIVERY_BUILD_SETUP", "TRUE"),
             _ => command.env("DELIVERY_BUILD_SETUP", "FALSE")
         };
+        debug!("Job Command: {:?}\n", command);
         let output = match command.output() {
             Ok(o) => o,
             Err(e) => { return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute chef-client: {}", error::Error::description(&e)))}) },
