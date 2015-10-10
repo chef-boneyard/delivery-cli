@@ -399,7 +399,7 @@ impl Workspace {
             "default" => command.env("DELIVERY_BUILD_SETUP", "TRUE"),
             _ => command.env("DELIVERY_BUILD_SETUP", "FALSE")
         };
-        debug!("Job Command: {:?}\n", command);
+        debug!("Job Command: {:?}", command);
         let output = match command.output() {
             Ok(o) => o,
             Err(e) => { return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute chef-client: {}", error::Error::description(&e)))}) },
@@ -434,8 +434,8 @@ impl Workspace {
     }
 
     pub fn setup_chef_for_job(&self,
-                              toml_config: &Config,
-                              change: Change) -> Result<(), DeliveryError> {
+                              toml_config: &Config, change: Change,
+                              ws_path: &PathBuf) -> Result<(), DeliveryError> {
         let config_rb_path = &self.chef.join("config.rb");
         let mut config_rb = try!(File::create(config_rb_path));
         try!(utils::chmod(config_rb_path, "0644"));
@@ -453,6 +453,7 @@ impl Workspace {
             ssh_wrapper: path_to_string(&self.ssh_wrapper),
         };
         let top = Top{
+            workspace_path: path_to_string(ws_path),
             workspace: workspace_data,
             change: change,
             config: config

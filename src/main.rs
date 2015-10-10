@@ -598,17 +598,20 @@ fn job(stage: &str,
     sayln("magenta", &format!(" {}", phase));
     let phases: Vec<&str> = phase.split(" ").collect();
     let phase_dir = phases.join("-");
+    let ws_path = match env::home_dir() {
+        Some(path) => PathBuf::from(path),
+        None => return Err(DeliveryError{ kind: Kind::NoHomedir, detail: None })
+    };
+    debug!("Workspace Path: {}", ws_path.display());
     let job_root_path = if job_root.is_empty() {
         if privileged_process() {
             let phase_path: &[&str] = &[&s[..], &e, &o, &p, &pi, stage,
-                                        &phase_dir];
-            PathBuf::from("/var/opt/delivery/workspace").join_many(phase_path)
+                                      &phase_dir];
+            ws_path.join_many(phase_path)
         } else {
-            match env::home_dir() {
-                Some(path) => path.join_many(&[".delivery", &s, &e, &o, &p,
-                                               &pi, stage, &phase_dir]),
-                None => return Err(DeliveryError{ kind: Kind::NoHomedir, detail: None })
-            }
+            let phase_path: &[&str] = &[".delivery", &s, &e, &o, &p,
+                                      &pi, stage, &phase_dir];
+            ws_path.join_many(phase_path)
         }
     } else {
         PathBuf::from(job_root)
@@ -662,7 +665,7 @@ fn job(stage: &str,
         change_id: change_id.to_string(),
         patchset_number: patch.to_string()
     };
-    try!(ws.setup_chef_for_job(&config, change));
+    try!(ws.setup_chef_for_job(&config, change, &ws_path));
     sayln("white", "Running the job");
 
     let privilege_drop = if privileged_process() {
