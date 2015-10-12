@@ -599,20 +599,17 @@ fn job(stage: &str,
     let phases: Vec<&str> = phase.split(" ").collect();
     let phase_dir = phases.join("-");
     let ws_path = match env::home_dir() {
-        Some(path) => PathBuf::from(path),
+        Some(path) => if privileged_process() {
+                          PathBuf::from(path)
+                      } else {
+                          PathBuf::from(path).join_many(&[".delivery"])
+                      },
         None => return Err(DeliveryError{ kind: Kind::NoHomedir, detail: None })
     };
     debug!("Workspace Path: {}", ws_path.display());
     let job_root_path = if job_root.is_empty() {
-        if privileged_process() {
-            let phase_path: &[&str] = &[&s[..], &e, &o, &p, &pi, stage,
-                                      &phase_dir];
-            ws_path.join_many(phase_path)
-        } else {
-            let phase_path: &[&str] = &[".delivery", &s, &e, &o, &p,
-                                      &pi, stage, &phase_dir];
-            ws_path.join_many(phase_path)
-        }
+        let phase_path: &[&str] = &[&s[..], &e, &o, &p, &pi, stage, &phase_dir];
+        ws_path.join_many(phase_path)
     } else {
         PathBuf::from(job_root)
     };
