@@ -20,6 +20,7 @@ use job::change::{Change, BuilderCompat};
 
 #[derive(RustcEncodable)]
 pub struct Top {
+    pub workspace_path: String,
     pub workspace: WorkspaceCompat,
     pub change: Change,
     pub config: json::Json

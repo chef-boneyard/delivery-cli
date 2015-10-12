@@ -154,6 +154,8 @@ supermarket instance, or from a Delivery server.
 Attributes specific to the project and change are made available for
 use in build cookbook recipes.
 
+The global workspace path is accesssible at `node['delivery']['workspace_path']`
+
 ### Workspace Details
 Attributes in the `node['delivery']['workspace']` namespace provide paths to the
 various directories in your change's workspace on your build node.
