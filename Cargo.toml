@@ -16,7 +16,6 @@ name = "lib"
 [dependencies]
 clap = "*"
 regex = "*"
-regex_macros = "*"
 log = "*"
 env_logger = "*"
 rustc-serialize = "*"

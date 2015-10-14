@@ -19,12 +19,13 @@ pub use errors;
 
 use std::process::Command;
 use utils::say::{say, sayln, Spinner};
+use utils::path_ext::{is_dir};
 use errors::{DeliveryError, Kind};
 use std::env;
 use std::path::{Path, PathBuf};
 use std::convert::AsRef;
 use std::error;
-use std::fs::PathExt;
+use regex::Regex;
 
 fn cwd() -> PathBuf {
     env::current_dir().unwrap()
@@ -38,7 +39,7 @@ pub fn get_head() -> Result<String, DeliveryError> {
 
 fn parse_get_head(stdout: &str) -> Result<String, DeliveryError> {
     for line in stdout.lines() {
-        let r = regex!(r"(.) (.+)");
+        let r = Regex::new(r"(.) (.+)").unwrap();
         let caps_result = r.captures(line);
         let caps = match caps_result {
             Some(caps) => caps,
@@ -195,7 +196,7 @@ pub fn parse_git_push_output(push_output: &str,
         if line.starts_with("To") ||  line.starts_with("Done") {
             continue;
         }
-        let r = regex!(r"(.)\t(.+):(.+)\t\[(.+)\]");
+        let r = Regex::new(r"(.)\t(.+):(.+)\t\[(.+)\]").unwrap();
         let caps_result = r.captures(line);
         let caps = match caps_result {
             Some(caps) => caps,
@@ -232,7 +233,7 @@ fn parse_line_from_remote(line: &str, review_result: &mut ReviewResult) -> () {
     // this weird regex accounts for the fact that some versions of git
     // (at least 1.8.5.2 (Apple Git-48), but possibly others) append the
     // ANSI code ESC[K to every line of the remote's answer when pushing
-    let r = regex!(r"remote: ([^\x{1b}]+)(?:\x{1b}\[K)?$");
+    let r = Regex::new(r"remote: ([^\x{1b}]+)(?:\x{1b}\[K)?$").unwrap();
     let caps_result = r.captures(line);
     match caps_result {
         Some(caps) => {
@@ -240,8 +241,8 @@ fn parse_line_from_remote(line: &str, review_result: &mut ReviewResult) -> () {
             if cap.starts_with("http") {
                 let change_url = cap.trim().to_string();
                 review_result.url = Some(change_url.clone());
-                let change_id_regex = regex!(r"/([a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12})");
-                let change_id_match = change_id_regex.captures(change_url.as_str());
+                let change_id_regex = Regex::new(r"/([a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12})").unwrap();
+                let change_id_match = change_id_regex.captures(&change_url);
                 review_result.change_id = Some(String::from(change_id_match.unwrap().at(1).unwrap()));
             } else {
                 review_result.messages.push(cap.to_string());
@@ -258,7 +259,7 @@ pub fn init_repo(path: &PathBuf) -> Result<(), DeliveryError> {
 
     let git_dir = Path::new("./.git");
 
-    if git_dir.exists() {
+    if is_dir(git_dir) {
         sayln("white", "yes");
         return Ok(())
     } else {

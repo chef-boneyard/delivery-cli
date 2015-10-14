@@ -40,7 +40,6 @@ case "$command" in
       # Let's pretend we're on the foo branch.
       echo "* $FAKE_BRANCH"
       ;;
-  
   * )
       ;;
 esac

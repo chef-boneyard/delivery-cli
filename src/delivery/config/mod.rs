@@ -26,6 +26,7 @@ use toml;
 use utils::mkdir_recursive;
 use std::io::prelude::*;
 use utils::path_join_many::PathJoinMany;
+use utils::path_ext::{is_dir, is_file};
 
 #[derive(RustcEncodable, Clone)]
 pub struct Config {
@@ -136,7 +137,7 @@ impl Config {
 
     pub fn write_file(&self, path: &PathBuf) -> Result<(), DeliveryError> {
         let write_dir = path.join_many(&[".delivery"]);
-        if !write_dir.is_dir() {
+        if !is_dir(&write_dir) {
             try!(mkdir_recursive(&write_dir));
         }
         let write_path = path.join_many(&[".delivery", "cli.toml"]);
@@ -213,7 +214,7 @@ impl Config {
     fn check_dot_delivery_cli(path: PathBuf) -> Option<PathBuf> {
         let dot_git = path.join_many(&[".delivery", "cli.toml"]);
         debug!("Checking {}", dot_git.display());
-        let is_file: Option<PathBuf> = if dot_git.is_file() {
+        let is_file: Option<PathBuf> = if is_file(&dot_git) {
             Some(dot_git)
         } else {
             None

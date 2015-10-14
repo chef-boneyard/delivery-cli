@@ -15,10 +15,8 @@
 // limitations under the License.
 //
 
-#![feature(plugin, path_ext, convert)]
-#![plugin(regex_macros)]
+// #![feature(plugin, path_ext, convert)]
 extern crate regex;
-#[no_link] extern crate regex_macros;
 #[macro_use] extern crate log;
 extern crate term;
 extern crate toml;

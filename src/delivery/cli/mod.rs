@@ -25,6 +25,7 @@ use http::{self, APIClient};
 use hyper::status::StatusCode;
 use project;
 use clap::{Arg, App, SubCommand, ArgMatches};
+use utils::path_ext::is_dir;
 
 macro_rules! make_arg_vec {
     ( $( $x:expr ),* ) => {
@@ -335,7 +336,7 @@ fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str,
             Err(e) => return Err(e)
         };
 
-        if pcb_dir.exists() {
+        if is_dir(&pcb_dir) {
             sayln("yellow", "Cached copy of build cookbook generator exists; skipping git clone.");
         } else {
             sayln("white", &format!("Cloning build cookbook generator dir {:#?}", pcb_dir));
