@@ -17,8 +17,12 @@ Given(/^I am in the "([^"]*)" git repo$/) do |repo|
   step %(I cd to "#{repo}")
 end
 
-Given(/^I have a feature branch "([^"]*)" off of "([^"]*)"$/) do |branch, base|
+Given(/^I have a feature branch "(.*)" off of "(.*)"$/) do |branch, base|
   step %(I successfully run `git checkout -b #{branch} #{base}`)
+  step "I set the environment variables to:", table(%{
+        | variable    |   value   |
+        | FAKE_BRANCH | #{branch} |
+  })
   step %(I make a commit with message "Add tests first")
   step %(I make a commit with message "Add implementation")
 end
@@ -27,6 +31,10 @@ end
 # must already exist
 When(/^I checkout the "(.*?)" branch$/) do |branch|
   in_current_dir do
+    step "I set the environment variables to:", table(%{
+          | variable    |   value   |
+          | FAKE_BRANCH | #{branch} |
+    })
     step %(I successfully run `git checkout #{branch}`)
   end
 end

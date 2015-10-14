@@ -38,7 +38,7 @@ case "$command" in
       ;;
   "branch" )
       # Let's pretend we're on the foo branch.
-      echo '* foo'
+      echo "* $FAKE_BRANCH"
       ;;
   
   * )

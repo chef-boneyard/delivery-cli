@@ -41,11 +41,6 @@ Scenario: The Happy Path
 #   Then the output should contain "NOPENOPENOPE"
 #   And "git push" should not be run
 
-
-# this one is broken because it requires us to be able to switch the
-# behavior of the fakebin git script such that git branch returns
-# output indicating we are on master.
-@broken
 Scenario: I'm on the target branch I'm trying to push for review on
 
   If I am on the same branch that my review pipeline is
