@@ -19,6 +19,8 @@ use term;
 use std::sync::mpsc::{Sender, Receiver};
 use std::sync::mpsc::channel;
 use std::thread::{self, JoinHandle};
+use std::io::prelude::*;
+use std::io;
 
 /// Because sometimes, you just want a global variable.
 static mut show_spinner: bool = true;
@@ -90,12 +92,16 @@ fn say_term(mut t: Box<term::StdoutTerminal>, color: &str, to_say: &str) {
     t.fg(color_const).unwrap();
     t.write_all(to_say.as_bytes()).unwrap();
     t.reset().unwrap();
+    io::stdout().flush().ok().expect("Could not flush stdout");
 }
 
 pub fn say(color: &str, to_say: &str) {
     match term::stdout() {
         Some(t) => say_term(t, color, to_say),
-        None => print!("{}", to_say)
+        None => {
+            print!("{}", to_say);
+            io::stdout().flush().ok().expect("Could not flush stdout");
+        }
     }
 }
 
