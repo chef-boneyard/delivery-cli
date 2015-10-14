@@ -13,30 +13,12 @@ tmp_dir=$features_dir/tmp
 mkdir -p $tmp_dir
 
 case "$command" in
-  "clone" )
-      # The Delivery CLI issues commands like
-      #
-      #   git clone $SSH_URL $DIRECTORY
-      #
-      # Since it will clone and then add a `delivery` remote, we need
-      # our fake `git` command to at least make the directory that
-      # it would have cloned so the CLI can then set up the remote.
-      # For other subcommands, such as job, we actually need to have cloned it
-      # from a remote. So we do just that
-
-      ssh_url=$2 # not used now, just documenting
-      repo_directory=$3
-
-      remote_directory=$(mktemp -d $tmp_dir/delivery-cli-feature.XXXXX)
-      cd "$remote_directory" && git init --bare && cd -
-
-      $DELIVERY_SYSTEM_GIT clone "$remote_directory" "$repo_directory"
-
-      cd "$repo_directory"
-
-      # we're going to need a delivery config file in that repository
-      mkdir .delivery
-      echo '{
+    "clone" )
+        repo_dir=$3
+        mkdir -p $repo_dir
+        cd $repo_dir
+        mkdir .delivery
+        echo '{
     "version": "2",
     "build_cookbook": {
         "name": "build_cookbook",
@@ -46,27 +28,19 @@ case "$command" in
         "default"    : ["name:delivery-builder*"]
     }
 }' > .delivery/config.json
-
-      # we also make sure the remote has a master branch
-      $DELIVERY_SYSTEM_GIT add .delivery/config.json
-      $DELIVERY_SYSTEM_GIT commit -am "Root commit"
-      $DELIVERY_SYSTEM_GIT push origin master
-
-      # and finally, we're gonna need a review branch
-      echo 'A README!' > README.md
-      $DELIVERY_SYSTEM_GIT add README.md
-      $DELIVERY_SYSTEM_GIT commit -am 'Adding a README!'
-      $DELIVERY_SYSTEM_GIT push origin HEAD:_reviews/master/username/feature/branch/1
-      $DELIVERY_SYSTEM_GIT push origin HEAD:username/feature/branch
-
-      # cleanup
-      $DELIVERY_SYSTEM_GIT reset --hard origin/master
-      cd ..
       ;;
   # there are some commands we don't want to run
   "push" )
       ;;
+  "fetch" )
+      ;;
+  "checkout" )
+      ;;
+  "branch" )
+      # Let's pretend we're on the foo branch.
+      echo "* $FAKE_BRANCH"
+      ;;
+  
   * )
-      $DELIVERY_SYSTEM_GIT "$@"
       ;;
 esac
