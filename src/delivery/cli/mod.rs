@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use std::error;
 use std::path::Path;
 use std::io::prelude::*;
+use std;
 
 use utils::{self, privileged_process};
 
@@ -129,6 +130,16 @@ pub fn run() {
             handle_spinner(&matches);
             clap_token(matches)
         },
+        Some("spin") => {
+            let matches = matches.subcommand_matches("spin").unwrap();
+            handle_spinner(&matches);
+            let tsecs = value_of(&matches, "TIME").parse::<u32>().unwrap();
+            let spinner = utils::say::Spinner::start();
+            std::thread::sleep_ms(1000 * tsecs);
+            spinner.stop();
+            handle_spinner(&matches);
+            Ok(())
+        },
         _ => {
             // ownership issue with use of above defined app
             // so for now...
@@ -221,6 +232,10 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a, 'a, 'a, 'a, 'a> {
                         "-s --server=[server] 'The Delivery server address'"])
                     .args_from_usage(
                         "--api-port=[port] 'Port for Delivery server'"))
+        .subcommand(SubCommand::with_name("spin")
+                    .about("test the spinner")
+                    .args_from_usage("-t --time=[TIME] 'How man seconds to spin'")
+                    .hidden(true))
 }
 
 fn handle_spinner(matches: &ArgMatches) {
