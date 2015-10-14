@@ -10,7 +10,7 @@ use std::io::prelude::*;
 
 use utils::{self, privileged_process};
 
-use utils::say::{say, sayln};
+use utils::say::{self, say, sayln};
 use utils::mkdir_recursive;
 use errors::{DeliveryError, Kind};
 use config::Config;
@@ -70,7 +70,6 @@ fn_arg!(local_arg, "-l --local 'Operate without a Delivery server'");
 
 fn_arg!(no_open_arg, "-n --no-open 'Do not open the change in a browser'");
 
-
 fn_arg!(no_spinner_arg, "--no-spinner 'Disable the spinner'");
 
 macro_rules! validate {
@@ -88,14 +87,17 @@ pub fn run() {
     let cmd_result = match matches.subcommand_name() {
         Some("api") => {
             let matches = matches.subcommand_matches("api").unwrap();
+            handle_spinner(&matches);
             clap_api_req(matches)
         },
         Some("checkout") => {
             let matches = matches.subcommand_matches("checkout").unwrap();
+            handle_spinner(&matches);
             clap_checkout(matches)
         },
         Some("clone") => {
             let matches = matches.subcommand_matches("clone").unwrap();
+            handle_spinner(&matches);
             clap_clone(matches)
         },
         Some("diff") => {
@@ -104,22 +106,27 @@ pub fn run() {
         },
         Some("init") => {
             let matches = matches.subcommand_matches("init").unwrap();
+            handle_spinner(&matches);
             clap_init(matches)
         },
         Some("job") => {
             let matches = matches.subcommand_matches("job").unwrap();
+            handle_spinner(&matches);
             clap_job(matches)
         },
         Some("review") => {
             let matches = matches.subcommand_matches("review").unwrap();
+            handle_spinner(&matches);
             clap_review(matches)
         },
         Some("setup") => {
             let matches = matches.subcommand_matches("setup").unwrap();
+            handle_spinner(&matches);
             clap_setup(matches)
         },
         Some("token") => {
             let matches = matches.subcommand_matches("token").unwrap();
+            handle_spinner(&matches);
             clap_token(matches)
         },
         _ => {
@@ -140,6 +147,7 @@ pub fn run() {
 fn make_app<'a>(version: &'a str) -> App<'a, 'a, 'a, 'a, 'a, 'a> {
     App::new("delivery")
         .version(version)
+        .arg(no_spinner_arg().global(true))
         .subcommand(SubCommand::with_name("review")
                     .about("Submit current branch for review")
                     // NOTE: in the future, we can add extensive
@@ -183,7 +191,7 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a, 'a, 'a, 'a, 'a> {
         .subcommand(SubCommand::with_name("job")
                     .about("Run one or more phase jobs")
                     .args(vec![patchset_arg(), project_arg(), for_arg(),
-                               local_arg(), no_spinner_arg()])
+                               local_arg()])
                     .args(make_arg_vec![
                         "-j --job-root=[root] 'Path to the job root'",
                         "-g --git-url=[url] 'Git URL (-u -s -e -o ignored if used)'",
@@ -213,6 +221,12 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a, 'a, 'a, 'a, 'a> {
                         "-s --server=[server] 'The Delivery server address'"])
                     .args_from_usage(
                         "--api-port=[port] 'Port for Delivery server'"))
+}
+
+fn handle_spinner(matches: &ArgMatches) {
+    if matches.is_present("no-spinner") {
+        say::turn_off_spinner()
+    };
 }
 
 fn cwd() -> PathBuf {
