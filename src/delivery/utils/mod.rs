@@ -24,6 +24,7 @@ use utils::path_join_many::PathJoinMany;
 
 pub mod say;
 pub mod path_join_many;
+pub mod path_ext;
 pub mod open;
 
 #[cfg(not(target_os = "windows"))]

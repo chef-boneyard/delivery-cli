@@ -30,6 +30,8 @@ use utils;
 use utils::path_join_many::PathJoinMany;
 use std::error;
 use config::Config;
+use regex::Regex;
+use utils::path_ext::{is_file, is_dir};
 
 #[derive(RustcDecodable, Debug)]
 pub struct Workspace {
@@ -296,7 +298,7 @@ impl Workspace {
 
     fn berks_vendor(&self, config: &Json) -> Result<(), DeliveryError> {
         try!(utils::remove_recursive(&self.chef.join("cookbooks")));
-        if self.chef.join_many(&["build_cookbook", "Berksfile"]).is_file() {
+        if is_file(&self.chef.join_many(&["build_cookbook", "Berksfile"])) {
             let mut command = utils::make_command("berks");
             command.arg("vendor");
             command.arg(&self.chef.join("cookbooks"));
@@ -351,7 +353,7 @@ impl Workspace {
                 if bc.is_string() {
                     let bc_string = bc.as_string().unwrap();
                     if bc_string.contains("/") {
-                        let r = regex!(r"(.+)/(.+)");
+                        let r = Regex::new(r"(.+)/(.+)").unwrap();
                         let caps_result = r.captures(bc_string);
                         let caps = caps_result.unwrap();
                         caps.at(2).unwrap()
@@ -478,7 +480,7 @@ impl Workspace {
     }
 
     pub fn setup_repo_for_change(&self, git_url: &str, change_branch: &str, pipeline: &str, sha: &str) -> Result<(), DeliveryError> {
-        if ! self.repo.join(".git").is_dir() {
+        if ! is_dir(&self.repo.join(".git")) {
             try!(git::git_command(&["clone", git_url, "."], &self.repo));
         }
         try!(git::git_command(&["fetch", "origin"], &self.repo));

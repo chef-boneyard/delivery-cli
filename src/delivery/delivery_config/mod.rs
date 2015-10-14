@@ -31,6 +31,7 @@ use git;
 use utils::mkdir_recursive;
 use utils::path_join_many::PathJoinMany;
 use utils::say::{say, sayln};
+use utils::path_ext::{is_dir, is_file};
 
 #[derive(RustcEncodable, RustcDecodable, Clone)]
 pub struct DeliveryConfig {
@@ -92,7 +93,7 @@ impl DeliveryConfig {
     }
 
     fn config_file_exists(proj_path: &PathBuf) -> bool {
-        DeliveryConfig::config_file_path(proj_path).is_file()
+        is_file(&DeliveryConfig::config_file_path(proj_path))
     }
 
     pub fn validate_config_file(proj_path: &PathBuf) -> Result<bool, DeliveryError> {
@@ -121,7 +122,7 @@ impl DeliveryConfig {
 
     fn write_file(&self, proj_path: &PathBuf) -> Result<(), DeliveryError> {
         let write_dir = proj_path.join_many(&[".delivery"]);
-        if !write_dir.is_dir() {
+        if !is_dir(&write_dir) {
             try!(mkdir_recursive(&write_dir));
         }
         let write_path = DeliveryConfig::config_file_path(proj_path);
