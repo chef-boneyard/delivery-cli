@@ -5,6 +5,7 @@
 # Copyright (C) Chef Software, Inc. 2014
 #
 include_recipe 'chef-sugar::default'
+include_recipe 'omnibus::default'
 
 include_recipe "delivery_rust::_prep_builder"
 

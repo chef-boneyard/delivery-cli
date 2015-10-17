@@ -95,7 +95,6 @@ platforms:
 suites:
   - name: default
     run_list:
-      - omnibus::default
       - delivery_rust::default
     attributes:
       omnibus:
