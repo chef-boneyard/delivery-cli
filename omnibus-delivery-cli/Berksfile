@@ -1,11 +1,9 @@
 source 'https://api.berkshelf.com'
 
-cookbook 'omnibus',    '>= 2.6.12'
+cookbook 'omnibus', git: 'git@github.com:chef-cookbooks/omnibus'
+cookbook 'languages', git: 'git@github.com:chef-cookbooks/languages'
 
 cookbook 'delivery_rust', path: '../cookbooks/delivery_rust'
-
-# Uncomment to use the latest version of the Omnibus cookbook from GitHub
-# cookbook 'omnibus', github: 'opscode-cookbooks/omnibus'
 
 group :integration do
   cookbook 'apt',      '~> 2.3'
