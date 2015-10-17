@@ -45,3 +45,4 @@ s3_bucket      ENV['AWS_S3_BUCKET'] || 'opscode-omnibus-cache'
 # ------------------------------
 # software_gems ['omnibus-software', 'my-company-software']
 # local_software_dirs ['/path/to/local/software']
+windows_arch :x64
