@@ -83,6 +83,14 @@ platforms:
     attributes:
       omnibus:
         ruby_version: 2.1.6-x64
+  - name: windows-2012r2-standard
+    driver:
+      customize:
+        memory: 4096
+      box: chef/windows-server-2012r2-standard # private
+    attributes:
+      omnibus:
+        ruby_version: 2.1.6-x64
 
 suites:
   - name: default
