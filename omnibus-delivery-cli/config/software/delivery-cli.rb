@@ -38,7 +38,6 @@ build do
   mkdir "#{install_dir}/bin"
   if windows?
     copy "#{project_dir}/target/release/delivery.exe", "#{install_dir}/bin/delivery.exe"
-    copy "#{project_dir}/target/release/libdelivery.rlib", "#{install_dir}/bin/libdelivery.rlib"
   else
     copy "#{project_dir}/target/release/delivery", "#{install_dir}/bin/delivery"
   end
