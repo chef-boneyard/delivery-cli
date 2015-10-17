@@ -37,5 +37,4 @@ exclude "**/bundler/git"
 
 package :msi do
   upgrade_code "178C5A9A-3923-4A65-AECB-3851224D0FDD"
-  bundle_msi true
 end

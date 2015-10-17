@@ -21,7 +21,6 @@ source path: File.expand_path('..', Omnibus::Config.project_root),
        options: {exclude: [".git", "omnibus-delivery-cli", "target", "vendor"]}
 
 dependency "delivery-windows-openssl" if windows?
-dependency "vcredist" if windows?
 
 build do
   # Setup a default environment from Omnibus - you should use this Omnibus
