@@ -8,31 +8,12 @@ include_recipe 'chef-sugar::default'
 
 include_recipe "delivery_rust::_prep_builder"
 
+rust_version = node['delivery_rust']['rust_version']
 
-if windows?
-  windows_package "rust" do
-    source "https://static.rust-lang.org/dist/#{node['delivery_rust']['rust_version']}/rust-nightly-x86_64-pc-windows-gnu.msi"
-  end
-else
-  cache_dir = Chef::Config[:file_cache_path]
-
-  remote_file "#{cache_dir}/rustup.sh" do
-    source "https://static.rust-lang.org/rustup.sh"
-  end
-
-  rust_version = node['delivery_rust']['rust_version']
-  rustup_cmd = ["bash",
-                "#{cache_dir}/rustup.sh",
-                "--channel=nightly",
-                "--date=#{rust_version}",
-                "--yes"].join(' ')
-
-  rustup_cmd << " --disable-sudo" if platform_family?('mac_os_x')
-
-  execute "install rust and cargo" do
-    command rustup_cmd
-    not_if { rust_version == current_rust_version }
-  end
+rust_install "Install #{rust_version}" do
+  channel 'nightly'
+  version rust_version
+  prefix '/usr/local' unless windows?
 end
 
 include_recipe "delivery_rust::_openssl"

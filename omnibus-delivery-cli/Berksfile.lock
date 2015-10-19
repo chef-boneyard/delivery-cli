@@ -3,6 +3,9 @@ DEPENDENCIES
   delivery_rust
     path: ../cookbooks/delivery_rust
   freebsd (~> 0.1)
+  languages
+    git: git@github.com:chef-cookbooks/languages
+    revision: e1053d38117ee6e925d74911da8173eff8c7a65e
   omnibus (>= 2.6.12)
   yum-epel (~> 0.3)
 
@@ -10,17 +13,20 @@ GRAPH
   7-zip (1.0.2)
     windows (>= 1.2.2)
   apt (2.8.2)
-  build-essential (2.2.3)
+  build-essential (2.2.4)
   chef-sugar (3.1.1)
   chef_handler (1.2.0)
   delivery_rust (0.3.4)
     build-essential (>= 0.0.0)
     chef-sugar (>= 0.0.0)
+    languages (>= 0.0.0)
     omnibus (>= 0.0.0)
   freebsd (0.3.0)
   homebrew (1.13.0)
     build-essential (>= 2.1.2)
-  omnibus (2.6.12)
+  languages (0.1.4)
+    chef-sugar (~> 3.1)
+  omnibus (2.7.4)
     7-zip (~> 1.0)
     build-essential (~> 2.0)
     chef-sugar (~> 3.0)
@@ -28,11 +34,11 @@ GRAPH
     windows (~> 1.30)
     windows-sdk (~> 1.0)
     wix (~> 1.1)
-  windows (1.38.1)
+  windows (1.38.2)
     chef_handler (>= 0.0.0)
   windows-sdk (1.0.2)
   wix (1.1.0)
     windows (>= 1.2.2)
-  yum (3.6.3)
-  yum-epel (0.6.2)
+  yum (3.8.1)
+  yum-epel (0.6.3)
     yum (~> 3.2)
