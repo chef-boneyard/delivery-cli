@@ -19,6 +19,7 @@ GRAPH
   chef-sugar (3.1.1)
   chef_handler (1.2.0)
   delivery_rust (0.3.4)
+    apt (>= 0.0.0)
     build-essential (>= 0.0.0)
     chef-sugar (>= 0.0.0)
     languages (>= 0.0.0)
