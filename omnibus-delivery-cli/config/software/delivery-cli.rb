@@ -20,7 +20,7 @@ name "delivery-cli"
 source path: File.expand_path('..', Omnibus::Config.project_root),
        options: {exclude: [".git", "omnibus-delivery-cli", "target", "vendor"]}
 
-dependency "openssl-windows" if windows?
+dependency "delivery-openssl-windows" if windows?
 
 build do
   # Setup a default environment from Omnibus - you should use this Omnibus
@@ -38,7 +38,6 @@ build do
   mkdir "#{install_dir}/bin"
   if windows?
     copy "#{project_dir}/target/release/delivery.exe", "#{install_dir}/bin/delivery.exe"
-    copy "#{install_dir}/bin/ssleay32.dll", "#{install_dir}/bin/libssl32.dll"
   else
     copy "#{project_dir}/target/release/delivery", "#{install_dir}/bin/delivery"
   end
