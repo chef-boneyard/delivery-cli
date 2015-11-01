@@ -133,7 +133,7 @@ impl DeliveryConfig {
         let json_string = format!("{}", json_obj);
         sayln("magenta", "New delivery configuration");
         sayln("magenta", "--------------------------");
-        say("white", &json_string);
+        sayln("white", &json_string);
         try!(f.write_all(json_string.as_bytes()));
         Ok(())
     }
