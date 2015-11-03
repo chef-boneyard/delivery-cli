@@ -36,7 +36,7 @@
           <Directory Id="PROJECTLOCATION" Name="delivery-cli">
             <Directory Id="PROJECTLOCATIONBIN" Name="bin" >
               <Component Id="DeliveryCLIPath" Guid="{1A560FD4-62D5-4568-BD4A-B6295977284A}" >
-                <Environment Id="PATH"
+                <Environment Id="Environment"
                              Name="PATH" Action="set" Part="last" System="yes" Value="[PROJECTLOCATIONBIN]" />
               </Component>
             </Directory>  
@@ -48,6 +48,7 @@
     <!-- Set the components defined in our fragment files that will be used for our feature  -->
     <Feature Id="ProjectFeature" Title="!(loc.FeatureMainName)" Absent="disallow" AllowAdvertise="no" Level="1" ConfigurableDirectory="CHEFLOCATION">
       <ComponentGroupRef Id="ProjectDir" />
+      <ComponentRef Id="DeliveryCLIPath" />
     </Feature>
 
     <!-- UI Stuff -->

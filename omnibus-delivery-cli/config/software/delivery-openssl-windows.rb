@@ -26,31 +26,36 @@
 # openssl 1.0.0n fixes more security vulnerabilities...
 #   https://www.openssl.org/news/secadv_20140806.txt
 
-name "delivery-windows-openssl"
+# Ruby 2.0.0 doesn't support openssl 1.0.1 - so we still need to maintain 1.0.0
+# series for those rubies.
+
+name "delivery-openssl-windows"
 default_version "1.0.1p"
 
-source url: "http://slproweb.com/download/Win64OpenSSL-1_0_1p.exe", md5: "a6cfb5f164746312cca06607195df49c"
+version('1.0.1p') do
+  source url: "https://github.com/jaym/windows-openssl-build/releases/download/openssl-1.0.1p/openssl-1.0.1p-x64-windows.tar.lzma",
+    md5: "ffdcef3e4fd1eca457a2e9a08cdd5aa1"
+end
 
 build do
   env = with_standard_compiler_flags(with_embedded_path)
 
-  tmpdir = File.expand_path(File.join(Omnibus::Config.cache_dir, "openssl-cache"))
+  tmpdir = File.join(Omnibus::Config.cache_dir, "openssl-cache")
+
+  tar_filename = "openssl-#{version}-x64-windows.tar"
 
   # Ensure the directory exists
   mkdir tmpdir
 
-  command "#{project_file} /DIR=#{tmpdir} /SP- /silent /verysilent /suppressmsgboxes", env: env
   # First extract the tar file out of lzma archive.
-  # command "7z.exe x #{project_file} -o#{tmpdir} -r -y", env: env
+  command "7z.exe x #{project_file} -o#{tmpdir} -r -y", env: env
 
   # Now extract the files out of tar archive.
-  # command "7z.exe x #{File.join(tmpdir, "openssl-#{version}-x86-windows.tar")} -o#{tmpdir} -r -y", env: env
+  command "7z.exe x #{File.join(tmpdir, tar_filename)} -o#{tmpdir} -r -y", env: env
 
   # Copy over the required dlls into embedded/bin
-  copy "#{tmpdir}/libeay32.dll", "#{install_dir}/bin/"
-  copy "#{tmpdir}/libssl32.dll", "#{install_dir}/bin/"
-  copy "#{tmpdir}/ssleay32.dll", "#{install_dir}/bin/"
+  copy "#{tmpdir}/bin/libeay32.dll", "#{install_dir}/bin/"
+  copy "#{tmpdir}/bin/ssleay32.dll", "#{install_dir}/bin/"
+  copy "#{tmpdir}/bin/ssleay32.dll", "#{install_dir}/bin/libssl32.dll"
 
-  # Also copy over the openssl executable for debugging
-  copy "#{tmpdir}/bin/openssl.exe", "#{install_dir}/embedded/bin/"
 end

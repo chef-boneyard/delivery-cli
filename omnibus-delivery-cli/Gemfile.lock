@@ -96,10 +96,9 @@ GEM
     mixlib-cli (1.5.0)
     mixlib-config (2.2.1)
     mixlib-log (1.6.0)
-    mixlib-shellout (2.1.0)
-    mixlib-shellout (2.1.0-x86-mingw32)
+    mixlib-shellout (2.2.1)
+    mixlib-shellout (2.2.1-universal-mingw32)
       win32-process (~> 0.7.5)
-      windows-pr (~> 1.2.4)
     mixlib-versioning (1.1.0)
     multi_json (1.11.2)
     multipart-post (2.0.0)
@@ -163,14 +162,8 @@ GEM
     varia_model (0.4.0)
       buff-extensions (~> 1.0)
       hashie (>= 2.0.2, < 3.0.0)
-    win32-api (1.5.3-x86-mingw32)
     win32-process (0.7.5)
       ffi (>= 1.0.0)
-    windows-api (0.4.4)
-      win32-api (>= 1.4.5)
-    windows-pr (1.2.4)
-      win32-api (>= 1.4.5)
-      windows-api (>= 0.4.0)
     wmi-lite (1.0.0)
 
 PLATFORMS
@@ -185,3 +178,6 @@ DEPENDENCIES
   omnibus!
   omnibus-software!
   test-kitchen (~> 1.2)
+
+BUNDLED WITH
+   1.10.0

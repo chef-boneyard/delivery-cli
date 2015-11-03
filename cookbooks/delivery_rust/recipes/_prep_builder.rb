@@ -17,21 +17,26 @@ when 'rhel', 'fedora'
 
   include_recipe "delivery_rust::_omnibus"
 when 'debian'
-  execute "update apt cache" do
-    command "apt-get update"
-    not_if "test -f /tmp/apt-get-update-marker"
-  end
-
-  file "/tmp/apt-get-update-marker" do
-    content "Laste Update: #{Time.now.utc}"
-    not_if "test -f /tmp/apt-get-update-marker"
-  end
+  include_recipe 'apt::default'
 
   package "curl"
   package "git"
 
   include_recipe "delivery_rust::_omnibus"
 when 'windows'
+  env 'Add Omnibus ruby to PATH' do
+    key_name 'PATH'
+    delim ';'
+    action :modify
+    value "C:/rubies/#{node['omnibus']['ruby_version']}/bin"
+  end
+
+  env "Add Omnibus ruby's MinGW to PATH" do
+    key_name 'PATH'
+    delim ';'
+    action :modify
+    value "C:/rubies/#{node['omnibus']['ruby_version']}/mingw/bin"
+  end
 when 'mac_os_x'
 else
   log "Unrecognized platform_family '#{node['platform_family']}'"

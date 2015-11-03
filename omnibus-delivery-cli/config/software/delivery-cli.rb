@@ -20,16 +20,15 @@ name "delivery-cli"
 source path: File.expand_path('..', Omnibus::Config.project_root),
        options: {exclude: [".git", "omnibus-delivery-cli", "target", "vendor"]}
 
-dependency "delivery-windows-openssl" if windows?
-dependency "vcredist" if windows?
+dependency "delivery-openssl-windows" if windows?
 
 build do
   # Setup a default environment from Omnibus - you should use this Omnibus
   # helper everywhere. It will become the default in the future.
   env = if windows?
           ssldir = File.expand_path(File.join(Omnibus::Config.cache_dir, "openssl-cache"))
-          tmp = with_embedded_path.merge("OPENSSL_LIB_DIR" => "#{ssldir}", "OPENSSL_INCLUDE_DIR" => "#{ssldir}/include")
-          with_standard_compiler_flags(tmp)
+          copy "#{ssldir}/bin/ssleay32.dll", "#{ssldir}/bin/libssl32.dll"
+          with_standard_compiler_flags(with_embedded_path).merge("OPENSSL_PREFIX" => ssldir)
         else
           with_standard_compiler_flags(with_embedded_path)
         end
@@ -39,7 +38,6 @@ build do
   mkdir "#{install_dir}/bin"
   if windows?
     copy "#{project_dir}/target/release/delivery.exe", "#{install_dir}/bin/delivery.exe"
-    copy "#{project_dir}/target/release/libdelivery.rlib", "#{install_dir}/bin/libdelivery.rlib"
   else
     copy "#{project_dir}/target/release/delivery", "#{install_dir}/bin/delivery"
   end
