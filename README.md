@@ -197,14 +197,25 @@ If you are developing on OS X, make sure you have [homebrew][] and
 To get going, run:
 
 ```bash
-make setup all
+make dev all
 ```
 
 This will install the proper version of Rust on your system (`make
-setup`) using the setup recipe of the CLI's delivery build cookbook
-(see `cookbooks/delivery_rust/recipes/default.rb`), and then compile
+setup`) using the dev recipe of the CLI's delivery build cookbook
+(see `cookbooks/delivery_rust/recipes/dev.rb`), and then compile
 and build the `delivery` executable (`make all`). You'll find the
 executable at `./target/release/delivery`
+
+For an omnibus build setup, run:
+
+```bash
+make setup all
+```
+
+Omnibus build is how the CLI is built on Delivery build nodes. For local
+development most devlopers will want to use the above dev setup. The omnibus build
+setup will use the default recipe of the build cookbook (see `cookbooks/delivery_rust/recipes/default.rb`) and omnibus builds may need sudo
+permissions for setup.
 
 On OS X, if you've installed Rust before and any directories are owned
 by root, you'll run into issues with `make setup`, since it installs

@@ -76,3 +76,6 @@ vendor_cookbook_deps:
 
 setup: vendor_cookbook_deps
 	chef-client --local-mode --override-runlist delivery_rust --config cli_setup_client.rb
+
+dev: vendor_cookbook_deps
+	chef-client --local-mode --override-runlist delivery_rust::dev --config cli_setup_client.rb
