@@ -63,7 +63,8 @@ pub enum Kind {
     JsonParseError,
     OpenFailed,
     NoToken,
-    NoEditor
+    NoEditor,
+    MissingProjectConfig
 }
 
 #[derive(Debug)]
@@ -120,7 +121,8 @@ impl error::Error for DeliveryError {
             Kind::OpenFailed => "Open command failed",
             Kind::AuthenticationFailed => "Authentication failed",
             Kind::NoToken => "Missing API token. Try `delivery token` to create one",
-            Kind::NoEditor => "Environment variable EDITOR not set"
+            Kind::NoEditor => "Environment variable EDITOR not set",
+            Kind::MissingProjectConfig => "Unable to find .delivery/config.json in this directory or its parents"
         }
     }
 

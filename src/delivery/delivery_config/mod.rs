@@ -26,9 +26,9 @@ use std::path::PathBuf;
 use rustc_serialize::json;
 use rustc_serialize::json::DecoderError;
 
-use errors::DeliveryError;
+use errors::{DeliveryError, Kind};
 use git;
-use utils::mkdir_recursive;
+use utils::{mkdir_recursive, walk_tree_for_path};
 use utils::path_join_many::PathJoinMany;
 use utils::say::{say, sayln};
 use utils::path_ext::{is_dir, is_file};
@@ -96,8 +96,20 @@ impl DeliveryConfig {
         is_file(&DeliveryConfig::config_file_path(proj_path))
     }
 
+    fn find_config_file(proj_path: &PathBuf) -> Result<PathBuf, DeliveryError> {
+        match walk_tree_for_path(proj_path, ".delivery/config.json") {
+            Some(p) => {
+                debug!("found config: {:?}", p);
+                Ok(p)
+            },
+            None => Err(DeliveryError{kind: Kind::MissingProjectConfig,
+                                      detail: Some(format!("current directory: {:?}",
+                                                           proj_path))})
+        }
+    }
+
     pub fn validate_config_file(proj_path: &PathBuf) -> Result<bool, DeliveryError> {
-        let config_file_path = DeliveryConfig::config_file_path(proj_path);
+        let config_file_path = try!(DeliveryConfig::find_config_file(proj_path));
         let mut config_file = try!(File::open(&config_file_path));
         let mut config_file_content = String::new();
         try!(config_file.read_to_string(&mut config_file_content));

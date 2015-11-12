@@ -3,7 +3,7 @@ use delivery::utils::copy_recursive;
 use delivery::utils::say;
 use std::io::prelude::*;
 use tempdir::TempDir;
-use std::fs::File;
+use std::fs::{self, File};
 use std::path::Path;
 use support::paths::fixture_file;
 use std::process::{Command, Output};
@@ -168,6 +168,16 @@ test!(review {
     let local_project = setup_local_project_clone(&delivery_project_git.path());
     setup_change(&local_project.path(), "rust/test", "freaky");
     delivery_review(&local_project.path(), &delivery_project_git.path(), "rust/test", "master");
+    setup_checkout_branch(&delivery_project_git.path(), "_for/master/rust/test");
+});
+
+test!(review_from_child_dir {
+    let delivery_project_git = setup_mock_delivery_project_git("path_config.json");
+    let local_project = setup_local_project_clone(&delivery_project_git.path());
+    setup_change(&local_project.path(), "rust/test", "freaky");
+    let child_dir = local_project.path().join("fuzz-bucket");
+    panic_on_error!(fs::create_dir_all(&child_dir));
+    delivery_review(&child_dir, &delivery_project_git.path(), "rust/test", "master");
     setup_checkout_branch(&delivery_project_git.path(), "_for/master/rust/test");
 });
 
