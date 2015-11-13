@@ -4,6 +4,7 @@ use delivery::utils::say;
 use std::io::prelude::*;
 use tempdir::TempDir;
 use std::fs::File;
+use std::path::Path;
 use support::paths::fixture_file;
 use std::process::{Command, Output};
 use std::env;
@@ -34,12 +35,12 @@ fn setup_mock_delivery_project_git(dot_config: &str) -> TempDir {
 
 /// Given a path, it copies the build cookbook into it, and turns it
 /// into a git repository
-fn setup_build_cookbook_project(tmpdir: &TempDir) {
+fn setup_build_cookbook_project(tmpdir: &Path) {
     let build_cookbook_path = fixture_file("delivery_test");
-    panic_on_error!(copy_recursive(&build_cookbook_path, &tmpdir.path().to_path_buf()));
-    panic_on_error!(git_command(&["init", tmpdir.path().join("delivery_test").to_str().unwrap()], &tmpdir.path().join("delivery_test")));
-    panic_on_error!(git_command(&["add", "."], &tmpdir.path().join("delivery_test")));
-    panic_on_error!(git_command(&["commit", "-a", "-m", "Initial Commit"], &tmpdir.path().join("delivery_test")));
+    panic_on_error!(copy_recursive(&build_cookbook_path, &tmpdir.to_path_buf()));
+    panic_on_error!(git_command(&["init", tmpdir.join("delivery_test").to_str().unwrap()], &tmpdir.join("delivery_test")));
+    panic_on_error!(git_command(&["add", "."], &tmpdir.join("delivery_test")));
+    panic_on_error!(git_command(&["commit", "-a", "-m", "Initial Commit"], &tmpdir.join("delivery_test")));
 }
 
 /// Clones a mock delivery git project to a local copy, as if it was
@@ -209,7 +210,7 @@ test!(job_verify_unit_with_git_config {
     let delivery_project_git = setup_mock_delivery_project_git("git_config.json");
     let local_project = setup_local_project_clone(&delivery_project_git);
     let job_root = TempDir::new("job-root").unwrap();
-    setup_build_cookbook_project(&job_root);
+    setup_build_cookbook_project(&job_root.path());
     setup_change(&local_project, "rust/test", "freaky");
     let mut command = delivery_verify_command(&job_root);
     assert_command_successful(&mut command, &local_project);
