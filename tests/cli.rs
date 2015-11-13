@@ -82,8 +82,8 @@ fn setup_change(tmpdir: &Path, branch: &str, filename: &str) {
 }
 
 /// Checks out the named branch
-fn setup_checkout_branch(tmpdir: &TempDir, branch: &str) {
-    panic_on_error!(git_command(&["checkout", branch], tmpdir.path()));
+fn setup_checkout_branch(tmpdir: &Path, branch: &str) {
+    panic_on_error!(git_command(&["checkout", branch], tmpdir));
 }
 
 /// Runs the `Command` in `Dir`, and makes sure it exists with 0
@@ -168,7 +168,7 @@ test!(review {
     let local_project = setup_local_project_clone(&delivery_project_git.path());
     setup_change(&local_project.path(), "rust/test", "freaky");
     delivery_review(&local_project, &delivery_project_git, "rust/test", "master");
-    setup_checkout_branch(&delivery_project_git, "_for/master/rust/test");
+    setup_checkout_branch(&delivery_project_git.path(), "_for/master/rust/test");
 });
 
 test!(review_with_a_v1_config {
@@ -176,7 +176,7 @@ test!(review_with_a_v1_config {
     let local_project = setup_local_project_clone(&delivery_project_git.path());
     setup_change(&local_project.path(), "rust/test", "freaky");
     delivery_review(&local_project, &delivery_project_git, "rust/test", "master");
-    setup_checkout_branch(&delivery_project_git, "_for/master/rust/test");
+    setup_checkout_branch(&delivery_project_git.path(), "_for/master/rust/test");
 });
 
 test!(review_without_dependencies {
@@ -184,7 +184,7 @@ test!(review_without_dependencies {
     let local_project = setup_local_project_clone(&delivery_project_git.path());
     setup_change(&local_project.path(), "rust/test", "freaky");
     delivery_review(&local_project, &delivery_project_git, "rust/test", "master");
-    setup_checkout_branch(&delivery_project_git, "_for/master/rust/test");
+    setup_checkout_branch(&delivery_project_git.path(), "_for/master/rust/test");
 });
 
 
