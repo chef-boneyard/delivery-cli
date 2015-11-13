@@ -100,12 +100,12 @@ fn assert_command_successful(command: &mut Command, dir: &Path) -> Output {
 
 /// Same as `assert_command_successful` above, excepts it asserts the command
 /// exits with a non-0 status code
-fn assert_command_failed(command: &mut Command, dir: &TempDir) -> Output {
-    let result = panic_on_error!(command.current_dir(&dir.path()).output());
+fn assert_command_failed(command: &mut Command, dir: &Path) -> Output {
+    let result = panic_on_error!(command.current_dir(&dir).output());
     if result.status.success() {
         let output = String::from_utf8_lossy(&result.stdout);
         let error = String::from_utf8_lossy(&result.stderr);
-        panic!("Command {:?} should have failed!\nOUT: {}\nERR: {}\nPath: {}", command, &output, &error, dir.path().to_str().unwrap());
+        panic!("Command {:?} should have failed!\nOUT: {}\nERR: {}\nPath: {}", command, &output, &error, dir.to_str().unwrap());
     };
     result
 }
@@ -194,7 +194,7 @@ test!(review_with_an_invalid_config {
     let local_project = setup_local_project_clone(&delivery_project_git.path());
     setup_change(&local_project.path(), "rust/test", "freaky");
     let mut command = delivery_review_command("rust/test");
-    assert_command_failed(&mut command, &local_project);
+    assert_command_failed(&mut command, &local_project.path());
 });
 
 test!(job_verify_unit_with_path_config {
@@ -225,7 +225,7 @@ test!(job_verify_unit_with_supermarket_config {
     let job_root = TempDir::new("job-root").unwrap();
     setup_change(&local_project.path(), "rust/test", "freaky");
     let mut command = delivery_verify_command(&job_root);
-    assert_command_failed(&mut command, &local_project);
+    assert_command_failed(&mut command, &local_project.path());
     assert!(job_root.path().join_many(&["chef", "cookbooks", "httpd"]).is_dir());
     assert!(job_root.path().join_many(&["chef", "cookbooks", "httpd", "templates", "default", "magic.erb"]).is_file());
 });
