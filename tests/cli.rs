@@ -130,14 +130,14 @@ fn delivery_verify_command(job_root: &Path) -> Command {
 
 /// Calls delivery review, and creates the two stub branches that the
 /// api would create (`_reviews/PIPELINE/BRANCH/1` and `_reviews/PIPELINE/BRANCH/latest`)
-fn delivery_review(local: &TempDir, remote: &TempDir, branch: &str, pipeline: &str) {
-    panic_on_error!(git_command(&["checkout", branch], local.path()));
+fn delivery_review(local: &Path, remote: &Path, branch: &str, pipeline: &str) {
+    panic_on_error!(git_command(&["checkout", branch], local));
     let mut command = delivery_review_command(pipeline);
-    assert_command_successful(&mut command, local.path());
+    assert_command_successful(&mut command, local);
 
     // Stub out the behavior of the delivery-api
-    panic_on_error!(git_command(&["branch", &format!("_reviews/{}/{}/1", pipeline, branch)], remote.path()));
-    panic_on_error!(git_command(&["branch", &format!("_reviews/{}/{}/latest", pipeline, branch)], remote.path()));
+    panic_on_error!(git_command(&["branch", &format!("_reviews/{}/{}/1", pipeline, branch)], remote));
+    panic_on_error!(git_command(&["branch", &format!("_reviews/{}/{}/latest", pipeline, branch)], remote));
 }
 
 /// Returns a Command set to the delivery binary created when you
@@ -167,7 +167,7 @@ test!(review {
     let delivery_project_git = setup_mock_delivery_project_git("path_config.json");
     let local_project = setup_local_project_clone(&delivery_project_git.path());
     setup_change(&local_project.path(), "rust/test", "freaky");
-    delivery_review(&local_project, &delivery_project_git, "rust/test", "master");
+    delivery_review(&local_project.path(), &delivery_project_git.path(), "rust/test", "master");
     setup_checkout_branch(&delivery_project_git.path(), "_for/master/rust/test");
 });
 
@@ -175,7 +175,7 @@ test!(review_with_a_v1_config {
     let delivery_project_git = setup_mock_delivery_project_git("v1_config.json");
     let local_project = setup_local_project_clone(&delivery_project_git.path());
     setup_change(&local_project.path(), "rust/test", "freaky");
-    delivery_review(&local_project, &delivery_project_git, "rust/test", "master");
+    delivery_review(&local_project.path(), &delivery_project_git.path(), "rust/test", "master");
     setup_checkout_branch(&delivery_project_git.path(), "_for/master/rust/test");
 });
 
@@ -183,7 +183,7 @@ test!(review_without_dependencies {
     let delivery_project_git = setup_mock_delivery_project_git("no_deps_config.json");
     let local_project = setup_local_project_clone(&delivery_project_git.path());
     setup_change(&local_project.path(), "rust/test", "freaky");
-    delivery_review(&local_project, &delivery_project_git, "rust/test", "master");
+    delivery_review(&local_project.path(), &delivery_project_git.path(), "rust/test", "master");
     setup_checkout_branch(&delivery_project_git.path(), "_for/master/rust/test");
 });
 
