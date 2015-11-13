@@ -61,7 +61,7 @@ fn setup_local_project_clone(delivery_project_git: &Path) -> TempDir {
            .arg("--org").arg("sepultura")
            .arg("--for").arg("master")
            .arg("--config-path").arg(tmpdir.path().to_str().unwrap());
-    assert_command_successful(&mut command, &tmpdir);
+    assert_command_successful(&mut command, &tmpdir.path());
     tmpdir
 }
 
@@ -88,12 +88,12 @@ fn setup_checkout_branch(tmpdir: &Path, branch: &str) {
 
 /// Runs the `Command` in `Dir`, and makes sure it exists with 0
 /// Returns the result
-fn assert_command_successful(command: &mut Command, dir: &TempDir) -> Output {
-    let result = panic_on_error!(command.current_dir(&dir.path()).output());
+fn assert_command_successful(command: &mut Command, dir: &Path) -> Output {
+    let result = panic_on_error!(command.current_dir(&dir).output());
     if ! result.status.success() {
         let output = String::from_utf8_lossy(&result.stdout);
         let error = String::from_utf8_lossy(&result.stderr);
-        panic!("Failed command {:?}\nOUT: {}\nERR: {}\nPath: {}", command, &output, &error, dir.path().to_str().unwrap());
+        panic!("Failed command {:?}\nOUT: {}\nERR: {}\nPath: {}", command, &output, &error, dir.to_str().unwrap());
     };
     result
 }
@@ -133,7 +133,7 @@ fn delivery_verify_command(job_root: &TempDir) -> Command {
 fn delivery_review(local: &TempDir, remote: &TempDir, branch: &str, pipeline: &str) {
     panic_on_error!(git_command(&["checkout", branch], local.path()));
     let mut command = delivery_review_command(pipeline);
-    assert_command_successful(&mut command, local);
+    assert_command_successful(&mut command, local.path());
 
     // Stub out the behavior of the delivery-api
     panic_on_error!(git_command(&["branch", &format!("_reviews/{}/{}/1", pipeline, branch)], remote.path()));
@@ -203,7 +203,7 @@ test!(job_verify_unit_with_path_config {
     let job_root = TempDir::new("job-root").unwrap();
     setup_change(&local_project.path(), "rust/test", "freaky");
     let mut command = delivery_verify_command(&job_root);
-    assert_command_successful(&mut command, &local_project);
+    assert_command_successful(&mut command, &local_project.path());
 });
 
 test!(job_verify_unit_with_git_config {
@@ -213,7 +213,7 @@ test!(job_verify_unit_with_git_config {
     setup_build_cookbook_project(&job_root.path());
     setup_change(&local_project.path(), "rust/test", "freaky");
     let mut command = delivery_verify_command(&job_root);
-    assert_command_successful(&mut command, &local_project);
+    assert_command_successful(&mut command, &local_project.path());
 });
 
 // TODO: This test requires internet access... we should move it out
@@ -236,7 +236,7 @@ test!(job_verify_dna_json {
     let job_root = TempDir::new("job-root").unwrap();
     setup_change(&local_project.path(), "rust/test", "freaky");
     let mut command = delivery_verify_command(&job_root);
-    assert_command_successful(&mut command, &local_project);
+    assert_command_successful(&mut command, &local_project.path());
     let mut dna_file = panic_on_error!(File::open(&job_root.path().join_many(&["chef", "dna.json"])));
     let mut dna_json = String::new();
     panic_on_error!(dna_file.read_to_string(&mut dna_json));
