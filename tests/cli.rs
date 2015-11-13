@@ -118,13 +118,13 @@ fn delivery_review_command(pipeline: &str) -> Command {
 }
 
 /// Builds the command to run a sample job
-fn delivery_verify_command(job_root: &TempDir) -> Command {
+fn delivery_verify_command(job_root: &Path) -> Command {
     let mut command = delivery_cmd();
     command.arg("job")
            .arg("verify")
            .arg("unit")
            .arg("--no-spinner")
-           .arg("--job-root").arg(job_root.path().to_str().unwrap());
+           .arg("--job-root").arg(job_root.to_str().unwrap());
     command
 }
 
@@ -202,7 +202,7 @@ test!(job_verify_unit_with_path_config {
     let local_project = setup_local_project_clone(&delivery_project_git.path());
     let job_root = TempDir::new("job-root").unwrap();
     setup_change(&local_project.path(), "rust/test", "freaky");
-    let mut command = delivery_verify_command(&job_root);
+    let mut command = delivery_verify_command(&job_root.path());
     assert_command_successful(&mut command, &local_project.path());
 });
 
@@ -212,7 +212,7 @@ test!(job_verify_unit_with_git_config {
     let job_root = TempDir::new("job-root").unwrap();
     setup_build_cookbook_project(&job_root.path());
     setup_change(&local_project.path(), "rust/test", "freaky");
-    let mut command = delivery_verify_command(&job_root);
+    let mut command = delivery_verify_command(&job_root.path());
     assert_command_successful(&mut command, &local_project.path());
 });
 
@@ -224,7 +224,7 @@ test!(job_verify_unit_with_supermarket_config {
     let local_project = setup_local_project_clone(&delivery_project_git.path());
     let job_root = TempDir::new("job-root").unwrap();
     setup_change(&local_project.path(), "rust/test", "freaky");
-    let mut command = delivery_verify_command(&job_root);
+    let mut command = delivery_verify_command(&job_root.path());
     assert_command_failed(&mut command, &local_project.path());
     assert!(job_root.path().join_many(&["chef", "cookbooks", "httpd"]).is_dir());
     assert!(job_root.path().join_many(&["chef", "cookbooks", "httpd", "templates", "default", "magic.erb"]).is_file());
@@ -235,7 +235,7 @@ test!(job_verify_dna_json {
     let local_project = setup_local_project_clone(&delivery_project_git.path());
     let job_root = TempDir::new("job-root").unwrap();
     setup_change(&local_project.path(), "rust/test", "freaky");
-    let mut command = delivery_verify_command(&job_root);
+    let mut command = delivery_verify_command(&job_root.path());
     assert_command_successful(&mut command, &local_project.path());
     let mut dna_file = panic_on_error!(File::open(&job_root.path().join_many(&["chef", "dna.json"])));
     let mut dna_json = String::new();
