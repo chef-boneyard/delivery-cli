@@ -70,15 +70,15 @@ fn setup_local_project_clone(delivery_project_git: &Path) -> TempDir {
 ///
 /// When it returns, the project you pass in will be left on your
 /// new branch.
-fn setup_change(tmpdir: &TempDir, branch: &str, filename: &str) {
-    panic_on_error!(git_command(&["checkout", "master"], tmpdir.path()));
-    panic_on_error!(git_command(&["branch", branch], tmpdir.path()));
+fn setup_change(tmpdir: &Path, branch: &str, filename: &str) {
+    panic_on_error!(git_command(&["checkout", "master"], tmpdir));
+    panic_on_error!(git_command(&["branch", branch], tmpdir));
     {
-        let mut f = panic_on_error!(File::create(&tmpdir.path().join(filename)));
+        let mut f = panic_on_error!(File::create(&tmpdir.join(filename)));
         panic_on_error!(f.write_all(b"I like cookies"));
     }
-    panic_on_error!(git_command(&["add", filename], tmpdir.path()));
-    panic_on_error!(git_command(&["commit", "-a", "-m", filename], tmpdir.path()));
+    panic_on_error!(git_command(&["add", filename], tmpdir));
+    panic_on_error!(git_command(&["commit", "-a", "-m", filename], tmpdir));
 }
 
 /// Checks out the named branch
@@ -166,7 +166,7 @@ fn debug_sleep(tmpdir: &TempDir) {
 test!(review {
     let delivery_project_git = setup_mock_delivery_project_git("path_config.json");
     let local_project = setup_local_project_clone(&delivery_project_git.path());
-    setup_change(&local_project, "rust/test", "freaky");
+    setup_change(&local_project.path(), "rust/test", "freaky");
     delivery_review(&local_project, &delivery_project_git, "rust/test", "master");
     setup_checkout_branch(&delivery_project_git, "_for/master/rust/test");
 });
@@ -174,7 +174,7 @@ test!(review {
 test!(review_with_a_v1_config {
     let delivery_project_git = setup_mock_delivery_project_git("v1_config.json");
     let local_project = setup_local_project_clone(&delivery_project_git.path());
-    setup_change(&local_project, "rust/test", "freaky");
+    setup_change(&local_project.path(), "rust/test", "freaky");
     delivery_review(&local_project, &delivery_project_git, "rust/test", "master");
     setup_checkout_branch(&delivery_project_git, "_for/master/rust/test");
 });
@@ -182,7 +182,7 @@ test!(review_with_a_v1_config {
 test!(review_without_dependencies {
     let delivery_project_git = setup_mock_delivery_project_git("no_deps_config.json");
     let local_project = setup_local_project_clone(&delivery_project_git.path());
-    setup_change(&local_project, "rust/test", "freaky");
+    setup_change(&local_project.path(), "rust/test", "freaky");
     delivery_review(&local_project, &delivery_project_git, "rust/test", "master");
     setup_checkout_branch(&delivery_project_git, "_for/master/rust/test");
 });
@@ -192,7 +192,7 @@ test!(review_without_dependencies {
 test!(review_with_an_invalid_config {
     let delivery_project_git = setup_mock_delivery_project_git("invalid_config.json");
     let local_project = setup_local_project_clone(&delivery_project_git.path());
-    setup_change(&local_project, "rust/test", "freaky");
+    setup_change(&local_project.path(), "rust/test", "freaky");
     let mut command = delivery_review_command("rust/test");
     assert_command_failed(&mut command, &local_project);
 });
@@ -201,7 +201,7 @@ test!(job_verify_unit_with_path_config {
     let delivery_project_git = setup_mock_delivery_project_git("path_config.json");
     let local_project = setup_local_project_clone(&delivery_project_git.path());
     let job_root = TempDir::new("job-root").unwrap();
-    setup_change(&local_project, "rust/test", "freaky");
+    setup_change(&local_project.path(), "rust/test", "freaky");
     let mut command = delivery_verify_command(&job_root);
     assert_command_successful(&mut command, &local_project);
 });
@@ -211,7 +211,7 @@ test!(job_verify_unit_with_git_config {
     let local_project = setup_local_project_clone(&delivery_project_git.path());
     let job_root = TempDir::new("job-root").unwrap();
     setup_build_cookbook_project(&job_root.path());
-    setup_change(&local_project, "rust/test", "freaky");
+    setup_change(&local_project.path(), "rust/test", "freaky");
     let mut command = delivery_verify_command(&job_root);
     assert_command_successful(&mut command, &local_project);
 });
@@ -223,7 +223,7 @@ test!(job_verify_unit_with_supermarket_config {
     let delivery_project_git = setup_mock_delivery_project_git("supermarket_config.json");
     let local_project = setup_local_project_clone(&delivery_project_git.path());
     let job_root = TempDir::new("job-root").unwrap();
-    setup_change(&local_project, "rust/test", "freaky");
+    setup_change(&local_project.path(), "rust/test", "freaky");
     let mut command = delivery_verify_command(&job_root);
     assert_command_failed(&mut command, &local_project);
     assert!(job_root.path().join_many(&["chef", "cookbooks", "httpd"]).is_dir());
@@ -234,7 +234,7 @@ test!(job_verify_dna_json {
     let delivery_project_git = setup_mock_delivery_project_git("path_config.json");
     let local_project = setup_local_project_clone(&delivery_project_git.path());
     let job_root = TempDir::new("job-root").unwrap();
-    setup_change(&local_project, "rust/test", "freaky");
+    setup_change(&local_project.path(), "rust/test", "freaky");
     let mut command = delivery_verify_command(&job_root);
     assert_command_successful(&mut command, &local_project);
     let mut dna_file = panic_on_error!(File::open(&job_root.path().join_many(&["chef", "dna.json"])));
