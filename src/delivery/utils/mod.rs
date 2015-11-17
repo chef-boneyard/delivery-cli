@@ -55,3 +55,42 @@ pub fn home_dir(to_append: &[&str]) -> Result<PathBuf, DeliveryError>
        }
    }
 }
+
+/// Walk up a file hierarchy searching for `dir/target`.
+pub fn walk_tree_for_path(dir: &Path, target: &str) -> Option<PathBuf> {
+    let mut current = dir;
+    loop {
+        let candidate = current.join(target);
+        if fs::metadata(&candidate).is_ok() {
+            let ans = PathBuf::from(candidate);
+            return Some(ans)
+        }
+        match current.parent() {
+            Some(p) => current = p,
+            None => return None
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::walk_tree_for_path;
+    use std::env;
+    use std::path::PathBuf;
+    use std::ffi::OsStr;
+
+    #[test]
+    fn traverse_up_for_dot_delivery_found() {
+        let p = env::current_dir().unwrap();
+        let result = walk_tree_for_path(&p, ".delivery");
+        assert!(result.is_some());
+        assert_eq!(Some(OsStr::new(".delivery")), result.unwrap().file_name());
+    }
+
+    #[test]
+    fn traverse_up_for_dot_delivery_not_found() {
+        // starting from / we don't expect to find .delivery
+        let result = walk_tree_for_path(&PathBuf::from("/"), ".delivery-123");
+        assert!(result.is_none());
+    }
+}

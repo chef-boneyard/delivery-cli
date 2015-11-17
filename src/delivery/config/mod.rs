@@ -244,7 +244,6 @@ fn boolify_or(key: &str, table: &toml::Table, default: Option<bool>) -> Option<b
     Config::boolify_values(table.get(key)).or(default)
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::Config;
