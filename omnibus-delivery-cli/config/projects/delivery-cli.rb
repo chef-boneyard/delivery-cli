@@ -5,6 +5,7 @@
 #
 
 name "delivery-cli"
+friendly_name "Delivery CLI"
 maintainer "Chef Software, Inc."
 homepage "http://chef.io"
 
