@@ -4,17 +4,24 @@
 #
 # Copyright (C) Chef Software, Inc. 2014
 #
+
+# Ensure the Omnibus cookbook and this build cookbook have their Ruby
+# versions in sync.
+node.set['omnibus']['ruby_version'] = node['delivery_rust']['ruby_version']
+
+# The Omnibus build user should be `dbuild`
+node.set['omnibus']['build_user']          = 'dbuild'
+node.set['omnibus']['build_user_group']    = 'root'
+node.set['omnibus']['build_user_home']     = delivery_workspace
+
 include_recipe 'chef-sugar::default'
 include_recipe 'omnibus::default'
-
 include_recipe "delivery_rust::_prep_builder"
 
-rust_version = node['delivery_rust']['rust_version']
+ruby_install node['delivery_rust']['ruby_version']
 
-rust_install "Install #{rust_version}" do
+rust_install node['delivery_rust']['rust_version'] do
   channel 'nightly'
-  version rust_version
-  prefix '/usr/local' unless windows?
 end
 
 include_recipe "delivery_rust::_openssl"

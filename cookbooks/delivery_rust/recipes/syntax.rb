@@ -1,7 +1,9 @@
-execute "cargo clean" do
+rust_execute 'cargo clean' do
+  version node['delivery_rust']['rust_version']
   cwd node['delivery_builder']['repo']
 end
 
-execute "cargo build" do
+rust_execute 'cargo build' do
+  version node['delivery_rust']['rust_version']
   cwd node['delivery_builder']['repo']
 end

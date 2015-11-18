@@ -1,4 +1,6 @@
+default['delivery_rust']['ruby_version'] = '2.1.5'
 default['delivery_rust']['rust_version'] = '2015-10-03'
+
 if platform_family == 'windows'
   override['omnibus']['ruby_version'] = '2.1.6-x64'
   # Working around a weird bug in the 7-zip cookbook where sometimes the installer ignores INSTALLDIR
