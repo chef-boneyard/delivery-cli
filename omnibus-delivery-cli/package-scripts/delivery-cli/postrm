@@ -4,6 +4,8 @@
 # after package is uninstalled.
 #
 
+
+
 is_darwin()
 {
   uname -v | grep "^Darwin" 2>&1 >/dev/null
@@ -19,7 +21,9 @@ cleanup_symlinks() {
   rm -f $PREFIX/bin/delivery
 }
 
-# Clean up binary symlinks if they exist
+# On Redhat based systems, this script is called for the version of
+# the package being removed during an upgrade. For an upgrade, $1 == 1,
+# for a straight uninstall, $1 == 0.
 if [ ! -f /etc/redhat-release -a ! -f /etc/fedora-release -a ! -f /etc/system-release ]; then
   # not a redhat-ish RPM-based system
   cleanup_symlinks
