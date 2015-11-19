@@ -2,7 +2,6 @@ source "https://api.berkshelf.com"
 
 metadata
 
-cookbook 'omnibus',
-  git: 'https://github.com/chef-cookbooks/omnibus.git'
-cookbook 'languages',
-  git: 'https://github.com/chef-cookbooks/languages.git'
+cookbook 'delivery-sugar',
+  git: 'https://github.com/chef-cookbooks/delivery-sugar.git',
+  branch: 'master'

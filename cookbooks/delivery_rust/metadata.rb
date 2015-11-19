@@ -8,6 +8,7 @@ version          '0.3.6'
 
 depends 'apt'
 depends 'build-essential'
-depends 'omnibus'
 depends 'chef-sugar'
+depends 'delivery-sugar'
 depends 'languages'
+depends 'omnibus'

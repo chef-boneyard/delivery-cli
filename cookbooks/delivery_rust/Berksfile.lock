@@ -2,14 +2,6 @@ DEPENDENCIES
   delivery_rust
     path: .
     metadata: true
-  languages
-    git: https://github.com/chef-cookbooks/languages.git
-    revision: eb457c42a8848d5be68501f346e431bae4be9910
-    ref: eb457c4
-  omnibus
-    git: https://github.com/chef-cookbooks/omnibus.git
-    revision: aedb966e1507c048572f3ff1ee642d93d2c0de14
-    ref: aedb966
 
 GRAPH
   7-zip (1.0.2)
@@ -24,20 +16,35 @@ GRAPH
     chef-sugar (>= 0.0.0)
     languages (>= 0.0.0)
     omnibus (>= 0.0.0)
+  dmg (2.3.0)
+  git (4.3.4)
+    build-essential (>= 0.0.0)
+    dmg (>= 0.0.0)
+    windows (>= 0.0.0)
+    yum-epel (>= 0.0.0)
   homebrew (1.13.0)
     build-essential (>= 2.1.2)
-  languages (0.1.4)
-    chef-sugar (~> 3.1)
-  omnibus (2.7.4)
-    7-zip (~> 1.0)
-    build-essential (~> 2.0)
-    chef-sugar (~> 3.0)
-    homebrew (~> 1.9)
-    windows (~> 1.30)
-    windows-sdk (~> 1.0)
-    wix (~> 1.1)
-  windows (1.38.2)
+  languages (0.2.4)
+    build-essential (>= 0.0.0)
+    chef-sugar (>= 0.0.0)
+    remote_install (>= 0.0.0)
+  omnibus (3.1.0)
+    7-zip (>= 0.0.0)
+    build-essential (>= 0.0.0)
+    chef-sugar (>= 0.0.0)
+    git (>= 0.0.0)
+    homebrew (>= 0.0.0)
+    languages (>= 0.0.0)
+    remote_install (>= 0.0.0)
+    windows (>= 0.0.0)
+    windows-sdk (>= 0.0.0)
+    wix (>= 0.0.0)
+  remote_install (1.0.2)
+  windows (1.38.4)
     chef_handler (>= 0.0.0)
   windows-sdk (1.0.2)
-  wix (1.1.0)
+  wix (2.0.0)
     windows (>= 1.2.2)
+  yum (3.8.2)
+  yum-epel (0.6.4)
+    yum (~> 3.2)
