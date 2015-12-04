@@ -27,7 +27,7 @@ secrets = get_project_secrets
 
 omnibus_build 'delivery-cli' do
   project_dir omnibus_path
-  build_user node['delivery_build']['build_user']
+  build_user 'dbuild' # TODO: expose this in delivery-sugar DSL
   log_level :internal
   config_overrides(
     append_timestamp: true
