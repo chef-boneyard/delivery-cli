@@ -32,6 +32,8 @@ pub fn import(config: &Config, path: &PathBuf) -> Result<(), DeliveryError> {
     let url = try!(config.delivery_git_ssh_url());
     if try!(git::config_repo(&url, path)) {
         sayln("white", "Remote 'delivery' added to git config!");
+    } else {
+        sayln("red", "Remote named 'delivery' already exists - not modifying");
     }
 
     let client = try!(APIClient::from_config(config));
