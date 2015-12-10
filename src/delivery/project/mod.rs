@@ -15,6 +15,7 @@
 // limitations under the License.
 //
 
+use hyper::client::response::Response;
 use hyper::status::StatusCode;
 use utils::say::{say, sayln};
 use errors::{DeliveryError, Kind};
@@ -22,6 +23,27 @@ use std::path::{PathBuf};
 use http::APIClient;
 use git;
 use config::Config;
+
+fn call_api<F>(closure: F) where F : Fn() -> Result<Response, Kind> {
+    match closure() {
+        Ok(_) => {
+            sayln("white", "done");
+        },
+        Err(e) => {
+            match e {
+                Kind::ApiError(StatusCode::Conflict, _) => {
+                    sayln("white", " already exists.");
+                },
+                Kind::ApiError(code, Ok(msg)) => {
+                    sayln("red", &format!("{} {}", code, msg));
+                },
+                _ => {
+                    sayln("red", &format!("Other error: {:?}", e));
+                }
+            }
+        }
+    }
+}
 
 pub fn import(config: &Config, path: &PathBuf) -> Result<(), DeliveryError> {
     let org = try!(config.organization());
@@ -60,24 +82,7 @@ pub fn import(config: &Config, path: &PathBuf) -> Result<(), DeliveryError> {
     say("white", "Creating master pipeline for project: ");
     say("magenta", &format!("{} ", proj));
     say("white", "... ");
-    match client.create_pipeline(&org, &proj, "master") {
-         Ok(_) => {
-            sayln("white", "done");
-        },
-        Err(e) => {
-            match e {
-                Kind::ApiError(StatusCode::Conflict, _) => {
-                    sayln("white", " already exists.");
-                },
-                Kind::ApiError(code, Ok(msg)) => {
-                    sayln("red", &format!("{} {}", code, msg));
-                },
-                _ => {
-                    sayln("red", &format!("Other error: {:?}", e));
-                }
-            }
-        }
-    }
+    call_api(|| client.create_pipeline(&org, &proj, "master"));
     return Ok(())
 }
 
