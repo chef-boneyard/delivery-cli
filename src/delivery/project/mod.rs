@@ -62,8 +62,8 @@ pub fn import(config: &Config, path: &PathBuf) -> Result<(), DeliveryError> {
 
     if ! client.project_exists(&org, &proj) {
         say("white", "Creating project: ");
-        sayln("magenta", &format!("{} ", proj));
-        let _ = client.create_project(&org, &proj);
+        say("magenta", &format!("{} ", proj));
+        call_api(|| client.create_project(&org, &proj));
     } else {
         say("white", "Project ");
         say("magenta", &format!("{} ", proj));
