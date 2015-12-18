@@ -25,6 +25,7 @@ delivery_bus_secrets = DeliverySugar::ChefServer.new.encrypted_data_bag_item('de
 #########################################################################
 
 delivery_github 'Push delivery-cli to GitHub' do
+  repo_path delivery_workspace_repo
   cache_path delivery_workspace_cache
   deploy_key delivery_bus_secrets['github_private_key'] # chef-delivery's key
   remote_name 'github'
