@@ -22,6 +22,17 @@ omnibus_path = File.join(delivery_workspace, 'omnibus-delivery-cli')
 secrets = get_project_secrets
 
 #########################################################################
+# PUBLISH TO GITHUB
+#########################################################################
+
+delivery_github 'Push delivery-cli to GitHub' do
+  cache_path delivery_workspace_cache
+  deploy_key secrets['github']
+  remote_name 'github'
+  remote_url 'git@github.com:chef/delivery-cli.git'
+end
+
+#########################################################################
 # BUILD
 #########################################################################
 
@@ -32,17 +43,6 @@ omnibus_build 'delivery-cli' do
   config_overrides(
     append_timestamp: true
   )
-end
-
-#########################################################################
-# PUBLISH TO GITHUB
-#########################################################################
-
-delivery_github 'Push delivery-cli to GitHub' do
-  cache_path delivery_workspace_cache
-  deploy_key secrets['github']
-  remote_name 'github'
-  remote_url 'git@github.com:chef/delivery-cli.git'
 end
 
 #########################################################################
