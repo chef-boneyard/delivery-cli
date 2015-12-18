@@ -18,21 +18,7 @@ end
 Chef::Config.exception_handlers << OmnibusHandler.new()
 Chef::Config.report_handlers << OmnibusHandler.new()
 
-omnibus_path = File.join(delivery_workspace, 'omnibus-delivery-cli')
-secrets = get_project_secrets
-
-#########################################################################
-# BUILD
-#########################################################################
-
-omnibus_build 'delivery-cli' do
-  project_dir omnibus_path
-  build_user 'dbuild' # TODO: expose this in delivery-sugar DSL
-  log_level :internal
-  config_overrides(
-    append_timestamp: true
-  )
-end
+delivery_bus_secrets = DeliverySugar::ChefServer.new.encrypted_data_bag_item('delivery-bus', 'secrets')
 
 #########################################################################
 # PUBLISH TO GITHUB
@@ -40,19 +26,35 @@ end
 
 delivery_github 'Push delivery-cli to GitHub' do
   cache_path delivery_workspace_cache
-  deploy_key secrets['github']
+  deploy_key delivery_bus_secrets['github_private_key'] # chef-delivery's key
   remote_name 'github'
   remote_url 'git@github.com:chef/delivery-cli.git'
+end
+
+#########################################################################
+# BUILD
+#########################################################################
+
+omnibus_path = File.join(delivery_workspace, 'omnibus-delivery-cli')
+
+omnibus_build 'delivery-cli' do
+  project_dir omnibus_path
+  build_user 'dbuild' # TODO: expose this in delivery-sugar DSL
+  log_level :internal
+  config_overrides(
+    base_dir: File.join(delivery_workspace_cache, 'omnibus'),
+    append_timestamp: true
+  )
 end
 
 #########################################################################
 # PUBLISH TO ARTIFACTORY
 #########################################################################
 
-# TODO: config data pushed up into delivery-bus
-node.set['artifactory-pro']['endpoint'] = 'http://artifactory.chef.co'
-node.run_state[:artifactory_client_username] = 'delivery'
-node.run_state[:artifactory_client_password] = secrets['artifactory_password']
+# TODO: set these things in `delivery-bus`
+node.set['artifactory-pro']['endpoint']      = 'http://artifactory.chef.co:8081'
+node.run_state[:artifactory_client_username] = delivery_bus_secrets['artifactory_username']
+node.run_state[:artifactory_client_password] = delivery_bus_secrets['artifactory_password']
 
 # TODO: package path pattern in delivery-bus
 artifactory_omnibus_publisher "#{omnibus_path}/**/*.{bff,deb,dmg,msi,rpm,solaris,amd64.sh,i386.sh}" do
