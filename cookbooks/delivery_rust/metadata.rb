@@ -7,6 +7,7 @@ long_description 'Installs/Configures delivery_rust'
 version          '0.3.6'
 
 depends 'apt'
+depends 'artifactory-pro'
 depends 'build-essential'
 depends 'chef-sugar'
 depends 'delivery-sugar'
