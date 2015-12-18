@@ -42,6 +42,7 @@ omnibus_build 'delivery-cli' do
   build_user 'dbuild' # TODO: expose this in delivery-sugar DSL
   log_level :internal
   config_overrides(
+    base_dir: File.join(delivery_workspace_cache, 'omnibus'),
     append_timestamp: true
   )
 end
