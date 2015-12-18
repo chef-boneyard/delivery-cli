@@ -36,14 +36,16 @@ end
 # BUILD
 #########################################################################
 
-omnibus_path = File.join(delivery_workspace, 'omnibus-delivery-cli')
+omnibus_project_dir = File.join(delivery_workspace, 'omnibus-delivery-cli')
+omnibus_base_dir    = File.join(delivery_workspace_cache, 'omnibus')
 
 omnibus_build 'delivery-cli' do
-  project_dir omnibus_path
+  base_dir omnibus_base_dir
+  project_dir omnibus_project_dir
   build_user 'dbuild' # TODO: expose this in delivery-sugar DSL
   log_level :internal
   config_overrides(
-    base_dir: File.join(delivery_workspace_cache, 'omnibus'),
+    base_dir: omnibus_base_dir,
     append_timestamp: true
   )
 end
@@ -58,7 +60,7 @@ node.run_state[:artifactory_client_username] = delivery_bus_secrets['artifactory
 node.run_state[:artifactory_client_password] = delivery_bus_secrets['artifactory_password']
 
 # TODO: package path pattern in delivery-bus
-artifactory_omnibus_publisher "#{omnibus_path}/**/*.{bff,deb,dmg,msi,rpm,solaris,amd64.sh,i386.sh}" do
+artifactory_omnibus_publisher "#{omnibus_base_dir}/**/*.{bff,deb,dmg,msi,rpm,solaris,amd64.sh,i386.sh}" do
   repository 'omnibus-unstable-local'
   base_path 'com/getchef'
   build_record false
