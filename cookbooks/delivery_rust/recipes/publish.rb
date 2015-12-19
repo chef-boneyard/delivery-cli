@@ -66,6 +66,7 @@ artifactory_omnibus_publisher "#{omnibus_base_dir}/**/*.{bff,deb,dmg,msi,rpm,sol
   build_record false
   platform_mappings(
     'ubuntu-14.04' => %w(
+      ubuntu-12.04
       ubuntu-14.04
     ),
     'el-6' => %w(
