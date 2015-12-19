@@ -36,7 +36,7 @@ end
 # BUILD
 #########################################################################
 
-omnibus_project_dir = File.join(delivery_workspace, 'omnibus-delivery-cli')
+omnibus_project_dir = File.join(delivery_workspace_repo, 'omnibus-delivery-cli')
 omnibus_base_dir    = File.join(delivery_workspace_cache, 'omnibus')
 
 omnibus_build 'delivery-cli' do
