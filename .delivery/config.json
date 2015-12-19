@@ -9,9 +9,7 @@
       "quality",
       "security",
       "smoke",
-      "provision",
-      "deploy",
-      "functional"
+      "deploy"
     ],
     "build_nodes": {
         "default"    : ["name:builder*.shd.chef.co"],
