@@ -7,10 +7,14 @@ long_description 'Installs/Configures delivery_rust'
 version          '0.3.6'
 
 depends 'apt'
-depends 'artifactory-pro'
 depends 'build-essential'
 depends 'chef-sugar'
 depends 'delivery-sugar'
 depends 'fancy_execute'
+
+# Engineering Services cookbooks (will eventually be deps of `delivery-bus`)
+depends 'artifactory-pro'
 depends 'languages'
+depends 'oc-artifactory'
 depends 'omnibus'
+depends 'opscode-ci'
