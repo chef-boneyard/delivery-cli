@@ -17,11 +17,7 @@ else
   install_dir "#{default_root}/#{name}"
 end
 
-build_version do
-  source :git, from_dependency: "delivery-cli"
-  output_format :semver
-end
-
+build_version Time.now.utc.strftime("%Y%m%d%H%M%S")
 build_iteration 1
 
 # Creates required build directories
