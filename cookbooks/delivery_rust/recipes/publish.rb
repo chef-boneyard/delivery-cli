@@ -46,7 +46,7 @@ omnibus_build 'delivery-cli' do
   log_level :internal
   config_overrides(
     base_dir: omnibus_base_dir, # TODO: this should be set automatically based on `base_dir` attribute
-    append_timestamp: true
+    append_timestamp: false # Right now our version is a time stamp so we shouldn't append another one!
   )
   environment(
     # The presence of this ENV var tells Omnibus to sign RPMs
