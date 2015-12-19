@@ -45,8 +45,12 @@ omnibus_build 'delivery-cli' do
   build_user 'dbuild' # TODO: expose this in delivery-sugar DSL
   log_level :internal
   config_overrides(
-    base_dir: omnibus_base_dir,
+    base_dir: omnibus_base_dir, # TODO: this should be set automatically based on `base_dir` attribute
     append_timestamp: true
+  )
+  environment(
+    # The presence of this ENV var tells Omnibus to sign RPMs
+    'OMNIBUS_RPM_SIGNING_PASSPHRASE' => delivery_bus_secrets['rpm_signing_passphrase']
   )
 end
 
