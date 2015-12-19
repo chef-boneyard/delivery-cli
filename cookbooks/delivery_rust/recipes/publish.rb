@@ -65,8 +65,7 @@ artifactory_omnibus_publisher "#{omnibus_base_dir}/**/*.{bff,deb,dmg,msi,rpm,sol
   base_path 'com/getchef'
   build_record false
   platform_mappings(
-    'ubuntu-12.04' => %w(
-      ubuntu-12.04
+    'ubuntu-14.04' => %w(
       ubuntu-14.04
     ),
     'el-6' => %w(
