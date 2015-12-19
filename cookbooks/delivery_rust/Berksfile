@@ -3,8 +3,8 @@ source "https://api.berkshelf.com"
 metadata
 
 cookbook 'delivery-sugar',
-  git: 'https://github.com/chef-cookbooks/delivery-sugar.git',
-  branch: 'master'
+         git: 'https://github.com/chef-cookbooks/delivery-sugar.git',
+         branch: 'master'
 
 # Engineering Services cookbooks (will eventually be deps of `delivery-bus`)
 cookbook 'artifactory-pro',
