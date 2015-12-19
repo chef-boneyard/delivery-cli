@@ -25,3 +25,11 @@ rust_install node['delivery_rust']['rust_version'] do
 end
 
 include_recipe "delivery_rust::_openssl"
+
+# Ensure `dbuild` can create new directories in `/opt`..namely the
+# `/opt/delivery-cli` directory. This is important because the
+# `omnibus_build` resource deletes and recreates the `/opt/delivery-cli`
+# direcotry every time it's executed.
+directory '/opt' do
+  owner 'dbuild'
+end
