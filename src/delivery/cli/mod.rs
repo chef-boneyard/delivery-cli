@@ -134,7 +134,7 @@ pub fn run() {
         Some("spin") => {
             let matches = matches.subcommand_matches("spin").unwrap();
             handle_spinner(&matches);
-            let tsecs = value_of(&matches, "TIME").parse::<u32>().unwrap();
+            let tsecs = value_of(&matches, "TIME").parse::<u32>().unwrap_or(1);
             let spinner = utils::say::Spinner::start();
             std::thread::sleep_ms(1000 * tsecs);
             spinner.stop();
@@ -235,7 +235,7 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a, 'a, 'a, 'a, 'a> {
                         "--api-port=[port] 'Port for Delivery server'"))
         .subcommand(SubCommand::with_name("spin")
                     .about("test the spinner")
-                    .args_from_usage("-t --time=[TIME] 'How man seconds to spin'")
+                    .args_from_usage("-t --time=[TIME] 'How many seconds to spin (default: 1)'")
                     .hidden(true))
 }
 
