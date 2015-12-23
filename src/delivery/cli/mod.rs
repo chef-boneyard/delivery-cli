@@ -190,7 +190,7 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a, 'a, 'a, 'a, 'a> {
                         'Diff against the local branch HEAD'"))
         .subcommand(SubCommand::with_name("init")
                     .about("Add delivery remote to this git repo \
-                            (and lot's more!)")
+                            (and lots more!)")
                     .args(vec![for_arg(), config_path_arg(), no_open_arg(),
                                project_arg(), local_arg()])
                     .args_from_usage(
