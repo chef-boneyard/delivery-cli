@@ -240,6 +240,22 @@ test!(job_verify_unit_with_supermarket_config {
     assert!(job_root.path().join_many(&["chef", "cookbooks", "httpd", "templates", "default", "magic.erb"]).is_file());
 });
 
+// TODO: This test requires internet access... Not only does it require
+// internet, it requires a private supermarket to test against
+// in the future the IP provided in custom_supermarket_config.json
+// is guaranteed to change. Will need an external instance to test
+// against.
+test!(job_verify_unit_with_custom_supermarket_config {
+   let delivery_project_git = setup_mock_delivery_project_git("custom_supermarket_config.json");
+   let local_project = setup_local_project_clone(&delivery_project_git.path());
+   let job_root = TempDir::new("job-root").unwrap();
+   setup_change(&local_project.path(), "rust/test", "freaky");
+   let mut command = delivery_verify_command(&job_root.path());
+   assert_command_successful(&mut command, &local_project.path());
+   assert!(job_root.path().join_many(&["chef", "cookbooks", "test-delivery"]).is_dir());
+   assert!(job_root.path().join_many(&["chef", "cookbooks", "test-delivery", "templates", "test.rb"]).is_file());
+});
+
 test!(job_verify_dna_json {
     let delivery_project_git = setup_mock_delivery_project_git("path_config.json");
     let local_project = setup_local_project_clone(&delivery_project_git.path());

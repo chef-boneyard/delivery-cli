@@ -152,11 +152,19 @@ impl Workspace {
                     detail: Some("Build cookbook 'path' value must be a string".to_string())
                 })
             };
+            let site = match build_cookbook.find("site") {
+                Some(s) => try!(s.as_string().ok_or(DeliveryError{
+                    kind: Kind::ExpectedJsonString,
+                    detail: Some("Expected 'site' value to be a string".to_string())
+                })),
+                None => "https://supermarket.chef.io"
+            };
             let result = try!(utils::make_command("knife")
-                 .arg("cookbook")
-                 .arg("site")
+                 .arg("supermarket")
                  .arg("download")
                  .arg(&name)
+                 .arg("-m")
+                 .arg(&site)
                  .arg("-f")
                  .arg(&path_to_string(&self.chef.join("build_cookbook.tgz")))
                  .current_dir(&self.root)
@@ -164,7 +172,7 @@ impl Workspace {
             if ! result.status.success() {
                 let output = String::from_utf8_lossy(&result.stdout);
                 let error = String::from_utf8_lossy(&result.stderr);
-                return Err(DeliveryError{kind: Kind::SupermarketFailed, detail: Some(format!("Failed 'knife cookbook site download'\nOUT: {}\nERR: {}", &output, &error).to_string())});
+                return Err(DeliveryError{kind: Kind::SupermarketFailed, detail: Some(format!("Failed 'knife supermarket download'\nOUT: {}\nERR: {}\nSite: {}", &output, &error, &site).to_string())});
             }
             let tar_result = try!(utils::make_command("tar")
                  .arg("zxf")
