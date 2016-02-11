@@ -229,8 +229,8 @@ test!(job_verify_unit_with_git_config {
 // TODO: This test requires internet access... we should move it out
 // into an Acceptance-stage test instead of here in unit tests. It's
 // impossible to run on a plane, for instance :(
-test!(job_verify_unit_with_supermarket_config {
-    let delivery_project_git = setup_mock_delivery_project_git("supermarket_config.json");
+test!(job_verify_unit_with_public_supermarket_config {
+    let delivery_project_git = setup_mock_delivery_project_git("public_supermarket_config.json");
     let local_project = setup_local_project_clone(&delivery_project_git.path());
     let job_root = TempDir::new("job-root").unwrap();
     setup_change(&local_project.path(), "rust/test", "freaky");
@@ -238,6 +238,21 @@ test!(job_verify_unit_with_supermarket_config {
     assert_command_failed(&mut command, &local_project.path());
     assert!(job_root.path().join_many(&["chef", "cookbooks", "httpd"]).is_dir());
     assert!(job_root.path().join_many(&["chef", "cookbooks", "httpd", "templates", "default", "magic.erb"]).is_file());
+});
+
+// TODO: This test requires internet access...
+// We are mocking that we are passing a Private Supermarket but instead we
+// will use the public one (verify the mock json file) perhaps we can customize
+// this in acceptance::functional and have an oficial private supermarket
+test!(job_verify_unit_with_private_supermarket_config {
+   let delivery_project_git = setup_mock_delivery_project_git("private_supermarket_config.json");
+   let local_project = setup_local_project_clone(&delivery_project_git.path());
+   let job_root = TempDir::new("job-root").unwrap();
+   setup_change(&local_project.path(), "rust/test", "freaky");
+   let mut command = delivery_verify_command(&job_root.path());
+   assert_command_successful(&mut command, &local_project.path());
+   assert!(job_root.path().join_many(&["chef", "cookbooks", "delivery-truck"]).is_dir());
+   assert!(job_root.path().join_many(&["chef", "cookbooks", "delivery-truck", "recipes", "unit.rb"]).is_file());
 });
 
 test!(job_verify_dna_json {

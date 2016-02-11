@@ -131,12 +131,22 @@ supermarket instance, or from a Delivery server.
 }
 ```
 
-#### From a Supermarket
+#### From the Public Supermarket (https://supermarket.chef.io)
 
 ```json
 "build_cookbook": {
       "name": "delivery-truck",
       "supermarket": "true"
+}
+```
+
+#### From a Private Supermarket
+
+```json
+"build_cookbook": {
+      "name": "delivery-truck",
+      "supermarket": "true",
+      "site": "https://private-supermarket.example.com"
 }
 ```
 

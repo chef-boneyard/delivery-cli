@@ -1,0 +1,14 @@
+{
+    "version": "2",
+    "build_cookbook": {
+      "name": "delivery-truck",
+      "supermarket": "true",
+      "site": "https://supermarket.chef.io"
+    },
+    "build_nodes": {
+        "default"    : ["name:delivery-builder*"]
+    },
+    "dependencies": [
+      "projectA"
+    ]
+}
