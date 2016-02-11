@@ -52,3 +52,8 @@ unless windows?
     only_if "test -f /opt/delivery-cli/bin/delivery"
   end
 end
+
+# Install Knife-Supermarket Gem
+chef_gem 'knife-supermarket' do
+  version '0.2.2'
+end
