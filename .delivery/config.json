@@ -13,8 +13,20 @@
     ],
     "build_nodes": {
         "default"    : ["name:builder*.shd.chef.co"],
-        "unit"       : ["name:builder*.shd.chef.co AND platform_family:debian", "name:builder*.shd.chef.co AND platform_family:rhel"],
-        "syntax"     : ["name:builder*.shd.chef.co AND platform_family:debian", "name:builder*.shd.chef.co AND platform_family:rhel"],
-        "publish"    : ["name:builder*.shd.chef.co AND platform_family:debian", "name:builder*.shd.chef.co AND platform_family:rhel"]
+        "unit"       : [
+          "name:builder*.shd.chef.co AND platform_family:debian AND platform_version:12.04",
+          "name:builder*.shd.chef.co AND platform_family:debian AND platform_version:14.04",
+          "name:builder*.shd.chef.co AND platform_family:rhel"
+        ],
+        "syntax"     : [
+          "name:builder*.shd.chef.co AND platform_family:debian AND platform_version:12.04",
+          "name:builder*.shd.chef.co AND platform_family:debian AND platform_version:14.04",
+          "name:builder*.shd.chef.co AND platform_family:rhel"
+        ],
+        "publish"    : [
+          "name:builder*.shd.chef.co AND platform_family:debian AND platform_version:12.04",
+          "name:builder*.shd.chef.co AND platform_family:debian AND platform_version:14.04",
+          "name:builder*.shd.chef.co AND platform_family:rhel"
+        ]
     }
 }
