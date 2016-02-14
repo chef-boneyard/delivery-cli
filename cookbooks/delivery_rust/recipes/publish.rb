@@ -39,6 +39,13 @@ end
 omnibus_project_dir = File.join(delivery_workspace_repo, 'omnibus-delivery-cli')
 omnibus_base_dir    = File.join(delivery_workspace_cache, 'omnibus')
 
+# Add Rust and Ruby we installed in default to the path. Would really like to
+# find a dynamic way to get this. For now this is fine since we don't build
+# on windows as part of the pipeline. This is here because the omnibus_build
+# resource sets PATH to include ENV['PATH'] inside its own environment so we
+# cannot override it inside the environemnt below.
+ENV['PATH'] = "/opt/languages/rust/#{node['delivery_rust']['rust_version']}/bin:#{ENV['PATH']}"
+
 omnibus_build 'delivery-cli' do
   base_dir omnibus_base_dir
   project_dir omnibus_project_dir
@@ -51,10 +58,6 @@ omnibus_build 'delivery-cli' do
   environment(
     # The presence of this ENV var tells Omnibus to sign RPMs
     'OMNIBUS_RPM_SIGNING_PASSPHRASE' => delivery_bus_secrets['rpm_signing_passphrase'],
-    # Add Rust and Ruby we installed in default to the path. Would really like to
-    # find a dynamic way to get this. For now this is fine since we don't build
-    # on windows as part of the pipeline.
-    'PATH' => "/opt/languages/rust/#{node['delivery_rust']['rust_version']}/bin:#{ENV['PATH']}"
   )
 end
 
@@ -69,7 +72,7 @@ node.run_state[:artifactory_client_password] = delivery_bus_secrets['artifactory
 
 # TODO: package path pattern in delivery-bus
 artifactory_omnibus_publisher "#{omnibus_base_dir}/**/*.{bff,deb,dmg,msi,rpm,solaris,amd64.sh,i386.sh}" do
-  repository 'omnibus-current-local'
+  repository 'omnibus-unstable-local'
   base_path 'com/getchef'
   build_record false
   platform_mappings(
