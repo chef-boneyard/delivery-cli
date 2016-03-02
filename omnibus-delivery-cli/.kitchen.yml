@@ -79,6 +79,15 @@ suites:
     run_list:
       - delivery_rust::default
     attributes:
+      delivery:
+        change:
+          enterprise: kitchen
+          organization: kitchen
+        workspace:
+          repo:         /home/vagrant/delivery-cli
+          cache:        /home/vagrant/workspace/cache
+          chef:         /home/vagrant/workspace/chef
+        workspace_path: /home/vagrant/workspace
       omnibus:
         build_user:          vagrant
         build_user_group:    vagrant
