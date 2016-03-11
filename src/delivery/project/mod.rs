@@ -18,8 +18,9 @@
 use hyper::client::response::Response;
 use hyper::status::StatusCode;
 use utils::say::{say, sayln};
+use utils::walk_tree_for_path;
 use errors::{DeliveryError, Kind};
-use std::path::{PathBuf};
+use std::path::{Path, PathBuf};
 use http::APIClient;
 use git;
 use config::Config;
@@ -84,5 +85,64 @@ pub fn import(config: &Config, path: &PathBuf) -> Result<(), DeliveryError> {
     say("white", "... ");
     call_api(|| client.create_pipeline(&org, &proj, "master"));
     return Ok(())
+}
+
+/// Search for the project root directory
+///
+/// We will walk through the provided path tree until we find the
+/// git config (`.git/config`) annd then we will extract the root
+/// directory.
+///
+/// # Examples
+///
+/// Having this directory tree:
+/// /delivery-cli
+///  ├── .git
+///  │   └── config
+///  ├── src
+///  │   └── delivery
+///  └── features
+///
+/// ```
+/// use std::env;
+/// use delivery::project::root_dir;
+///
+/// let root = env::current_dir().unwrap();
+///
+/// // Stepping into `delivery-cli/src/delivery`
+/// let mut delivery_src = env::current_dir().unwrap();
+/// delivery_src.push("src/delivery");
+///
+/// assert_eq!(root, root_dir(&delivery_src.as_path()).unwrap());
+/// ```
+pub fn root_dir(dir: &Path) -> Result<PathBuf, DeliveryError> {
+    match walk_tree_for_path(&PathBuf::from(&dir), ".git/config") {
+        Some(p) => {
+           let git_d = p.parent().unwrap();
+           let root_d = git_d.parent().unwrap();
+           debug!("found project root dir: {:?}", root_d);
+           Ok(PathBuf::from(root_d))
+        },
+        None => Err(DeliveryError{kind: Kind::NoGitConfig,
+                                  detail: Some(format!("current directory: {:?}",
+                                                       dir))})
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+    use super::root_dir;
+
+    #[test]
+    fn detect_error_if_root_project_is_not_a_git_repo() {
+        // This path doesn't even exist
+        // So we will expect to throw an Err(_)
+        let lib_path = Path::new("/project/src/libraries");
+        match root_dir(&lib_path) {
+            Ok(_) => assert!(false),
+            Err(_) => assert!(true)
+        }
+    }
 }
 

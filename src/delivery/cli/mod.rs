@@ -484,6 +484,7 @@ fn review(for_pipeline: &str,
     let target = validate!(config, pipeline);
     let project_root = try!(project::root_dir(&cwd()));
     try!(DeliveryConfig::validate_config_file(&project_root));
+    // if project is a cookbook, validate version bump
     try!(bump_version(&project_root, &target));
     say("white", "Review for change ");
     let head = try!(git::get_head());
@@ -966,7 +967,7 @@ fn api_req(method: &str, path: &str, data: &str,
 }
 
 fn project_from_cwd() -> Result<String, DeliveryError> {
-    let cwd = try!(env::current_dir());
+    let cwd = try!(project::root_dir(&cwd()));
     Ok(cwd.file_name().unwrap().to_str().unwrap().to_string())
 }
 
