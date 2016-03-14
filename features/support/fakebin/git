@@ -34,6 +34,9 @@ case "$command" in
       ;;
   "fetch" )
       ;;
+  "show" )
+    [ "$3" = "master:metadata.rb" ] || echo "version '1.2.3'"
+      ;;
   "checkout" )
       ;;
   "branch" )
