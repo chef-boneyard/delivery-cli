@@ -73,6 +73,8 @@ fn_arg!(local_arg, "-l --local 'Operate without a Delivery server'");
 
 fn_arg!(no_open_arg, "-n --no-open 'Do not open the change in a browser'");
 
+fn_arg!(auto_bump, "-a --auto-bump 'Automatic cookbook version bump'");
+
 fn_arg!(no_spinner_arg, "--no-spinner 'Disable the spinner'");
 
 macro_rules! validate {
@@ -167,7 +169,7 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a, 'a, 'a, 'a, 'a> {
                     // sub-command specific help via an include file
                     // like this:
                     // .after_help(include!("../help/create-change.txt"))
-                    .args(vec![for_arg(), no_open_arg()])
+                    .args(vec![for_arg(), no_open_arg(), auto_bump()])
                     .args_from_usage(
                         "-e --edit 'Edit change title and description'"))
         .subcommand(SubCommand::with_name("clone")
@@ -381,7 +383,7 @@ fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str,
         // config file, added a build cookbook, and made appropriate local
         // commit(s).
         // Let's create the review!
-        try!(review("master", no_open, &false));
+        try!(review("master", &false, no_open, &false));
     }
     Ok(())
 }
@@ -389,8 +391,9 @@ fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str,
 fn clap_review(matches: &ArgMatches) -> Result<(), DeliveryError> {
     let pipeline = value_of(&matches, "pipeline");
     let no_open = matches.is_present("no-open");
+    let auto_bump = matches.is_present("auto-bump");
     let edit = matches.is_present("edit");
-    review(pipeline, &no_open, &edit)
+    review(pipeline, &auto_bump, &no_open, &edit)
 }
 
 // Return the path to the metadata.rb file
@@ -414,9 +417,8 @@ fn is_cookbook(path: &PathBuf) -> bool {
 fn metadata_version_from(content: String) -> Result<String, DeliveryError> {
     for l in content.lines() {
         let r = Regex::new(r"version\s+'(?P<version>[0-9]*\.[0-9]*\.[0-9]*)'").unwrap();
-        match r.captures(l) {
-            None => {},
-            Some(version) => return Ok(version.name("version").unwrap().to_string())
+        if let Some(version) = r.captures(l) {
+            return Ok(version.name("version").unwrap().to_string())
         };
     };
     return Err(DeliveryError{ kind: Kind::MissingMetadataVersion, detail: None })
@@ -476,7 +478,7 @@ fn bump_version(p_root: &PathBuf, pipeline: &str) -> Result<(), DeliveryError> {
     Ok(())
 }
 
-fn review(for_pipeline: &str,
+fn review(for_pipeline: &str, auto_bump: &bool,
           no_open: &bool, edit: &bool) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
@@ -484,13 +486,19 @@ fn review(for_pipeline: &str,
     let target = validate!(config, pipeline);
     let project_root = try!(project::root_dir(&cwd()));
     try!(DeliveryConfig::validate_config_file(&project_root));
-    // if project is a cookbook, validate version bump
-    try!(bump_version(&project_root, &target));
-    say("white", "Review for change ");
     let head = try!(git::get_head());
     if &target == &head {
         return Err(DeliveryError{ kind: Kind::CannotReviewSameBranch, detail: None })
     }
+    if *auto_bump {
+        config.auto_bump = Some(auto_bump.clone());
+    };
+    if let Some(should_bump) = config.auto_bump {
+        if should_bump {
+            try!(bump_version(&project_root, &target));
+        }
+    };
+    say("white", "Review for change ");
     say("yellow", &head);
     say("white", " targeted for pipeline ");
     sayln("magenta", &target);

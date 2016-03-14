@@ -31,6 +31,7 @@ Scenario: The Happy Path
   # Really want this output comparison, but I'm running into issues with ANSI color codes at the moment:
   #   Then the output should contain "Review for change foo targeted for pipeline master"
   Then the output should contain "Review for change "
+  # This is the default behavior for the `auto_bump` feature. (to be disabled)
   And the output should not contain "is a cookbook"
   And "git push --porcelain --progress --verbose delivery foo:_for/master/foo" should be run
 #  And "open XXX" should be run
@@ -68,11 +69,12 @@ Scenario: I don't want to open a browser
   And I successfully run `delivery review --no-open`
   Then "open" should not be run
 
-Scenario: I review a cookbook that the version hasn't been bumped
+Scenario: I review a cookbook without the auto_bump feature enabled
 
-  If I submit a review of a change in a cookbook that
-  the version hasn't been bumped, the delivery cli will
-  detect it and update it for you.
+  By default, we do not enable the auto_bump feature, so if I submit a
+  review of a change in a cookbook without enabling this functionality
+  the delivery cli will behave normally without detecting or modifying
+  the cookobook itself.
 
   Given a file named "metadata.rb" with:
     """
@@ -81,6 +83,30 @@ Scenario: I review a cookbook that the version hasn't been bumped
   And I have a feature branch "cookbook" off of "master"
   And I checkout the "cookbook" branch
   When I successfully run `delivery review`
+  Then the exit status should be 0
+  And "git show master:metadata.rb" should not be run
+  And the output should not contain "is a cookbook"
+  And the output should not contain "Validating version in metadata"
+  And the output should not contain "Version already updated"
+  And the output should not match /Bumping version to/
+  And the file "metadata.rb" should contain exactly:
+    """
+    version '1.2.3'
+    """
+
+Scenario: I review a cookbook that the version hasn't been bumped
+
+  If I submit a review of a change in a cookbook that
+  the version hasn't been bumped and I enable the auto_bump feature,
+  the delivery cli will detect it and update it for you.
+
+  Given a file named "metadata.rb" with:
+    """
+    version '1.2.3'
+    """
+  And I have a feature branch "cookbook" off of "master"
+  And I checkout the "cookbook" branch
+  When I successfully run `delivery review --auto-bump`
   Then the exit status should be 0
   And "git show master:metadata.rb" should be run
   And the output should contain "is a cookbook"
@@ -95,12 +121,40 @@ Scenario: I review a cookbook that the version hasn't been bumped
 Scenario: I review a cookbook that the version has already been bumped
 
   If I submit a review of a change in a cookbook that
-  the version has already been bumped, the delivery cli will
-  detect it and will NOT update.
+  the version has already been bumped and I enable the auto_bump feature,
+  the delivery cli will detect it and will NOT update.
 
   Given a file named "metadata.rb" with:
     """
     version '1.2.4'
+    """
+  And I have a feature branch "cookbook" off of "master"
+  And I checkout the "cookbook" branch
+  When I successfully run `delivery review -a`
+  Then the exit status should be 0
+  And "git show master:metadata.rb" should be run
+  And the output should contain "is a cookbook"
+  And the output should contain "Validating version in metadata"
+  And the output should contain "Version already updated"
+  And the output should not match /Bumping version to/
+  And the file "metadata.rb" should contain exactly:
+    """
+    version '1.2.4'
+    """
+
+Scenario: I enable the auto_bump feature persistently in the cli.toml
+
+  If I activate the auto_bump feature persistently and I submit a
+  review of a change in a cookbook, the delivery cli will detect it
+  and update the version if it hasn't been bumped already.
+
+  Given a file named "metadata.rb" with:
+    """
+    version '1.2.3'
+    """
+  And a file named ".delivery/cli.toml" with:
+    """
+    auto_bump = true
     """
   And I have a feature branch "cookbook" off of "master"
   And I checkout the "cookbook" branch
@@ -109,8 +163,7 @@ Scenario: I review a cookbook that the version has already been bumped
   And "git show master:metadata.rb" should be run
   And the output should contain "is a cookbook"
   And the output should contain "Validating version in metadata"
-  And the output should contain "Version already updated"
-  And the output should not match /Bumping version to/
+  And the output should match /Bumping version to:(.*)1\.2\.4/
   And the file "metadata.rb" should contain exactly:
     """
     version '1.2.4'
