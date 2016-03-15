@@ -18,7 +18,7 @@
 use hyper::client::response::Response;
 use hyper::status::StatusCode;
 use utils::say::{say, sayln};
-use utils::walk_tree_for_path;
+use utils::{self, walk_tree_for_path};
 use errors::{DeliveryError, Kind};
 use std::path::{Path, PathBuf};
 use http::APIClient;
@@ -126,6 +126,21 @@ pub fn root_dir(dir: &Path) -> Result<PathBuf, DeliveryError> {
         None => Err(DeliveryError{kind: Kind::NoGitConfig,
                                   detail: Some(format!("current directory: {:?}",
                                                        dir))})
+    }
+}
+
+// Return the project name from the current path
+pub fn project_from_cwd() -> Result<String, DeliveryError> {
+    let cwd = try!(self::root_dir(&utils::cwd()));
+    Ok(cwd.file_name().unwrap().to_str().unwrap().to_string())
+}
+
+// Return the project name or try to extract it from the current path
+pub fn project_or_from_cwd(proj: &str) -> Result<String, DeliveryError> {
+    if proj.is_empty() {
+        project_from_cwd()
+    } else {
+        Ok(proj.to_string())
     }
 }
 

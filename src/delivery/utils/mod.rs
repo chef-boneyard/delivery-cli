@@ -101,6 +101,11 @@ pub fn read_file(path: &PathBuf) -> Result<String, DeliveryError> {
     Ok(buffer)
 }
 
+// Return the current directory path
+pub fn cwd() -> PathBuf {
+    env::current_dir().unwrap()
+}
+
 #[cfg(test)]
 mod tests {
     use super::walk_tree_for_path;
