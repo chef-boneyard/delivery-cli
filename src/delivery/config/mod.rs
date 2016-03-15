@@ -40,7 +40,8 @@ pub struct Config {
     pub git_port: Option<String>,
     pub pipeline: Option<String>,
     pub token_file: Option<String>,
-    pub non_interactive: Option<bool>
+    pub non_interactive: Option<bool>,
+    pub auto_bump: Option<bool>
 }
 
 impl Default for Config {
@@ -56,7 +57,8 @@ impl Default for Config {
             git_port: Some(String::from("8989")),
             pipeline: Some(String::from("master")),
             token_file: None,
-            non_interactive: None
+            non_interactive: None,
+            auto_bump: None
         }
     }
 }
@@ -180,6 +182,7 @@ impl Config {
         config.git_port = stringify_or("git_port", &table, config.git_port);
         config.token_file = stringify_or("token_file", &table, config.token_file);
         config.non_interactive = boolify_or("non_interactive", &table, config.non_interactive);
+        config.auto_bump = boolify_or("auto_bump", &table, config.auto_bump);
         return Ok(config);
     }
 
@@ -266,6 +269,7 @@ mod tests {
                 assert_eq!(None, config.organization);
                 assert_eq!(None, config.token_file);
                 assert_eq!(None, config.non_interactive);
+                assert_eq!(None, config.auto_bump);
             },
             Err(e) => {
                 panic!("Failed to parse: {:?}", e.detail)
@@ -284,6 +288,7 @@ mod tests {
             api_port = "7643"
             pipeline = "dev"
             non_interactive = true
+            auto_bump = true
 "#;
         let config_result = Config::parse_config(toml);
         match config_result {
@@ -295,6 +300,7 @@ mod tests {
                 assert_eq!(Some(String::from("127.0.0.1")), config.server);
                 assert_eq!(None, config.organization);
                 assert_eq!(Some(true), config.non_interactive);
+                assert_eq!(Some(true), config.auto_bump);
             },
             Err(e) => {
                 panic!("Failed to parse: {:?}", e.detail)

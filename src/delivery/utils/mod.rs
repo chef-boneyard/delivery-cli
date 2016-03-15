@@ -19,6 +19,8 @@ use errors::{DeliveryError, Kind};
 use std::convert::AsRef;
 use std::fs;
 use std::env;
+use std::fs::File;
+use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use utils::path_join_many::PathJoinMany;
 
@@ -70,6 +72,38 @@ pub fn walk_tree_for_path(dir: &Path, target: &str) -> Option<PathBuf> {
             None => return None
         }
     }
+}
+
+/// Return the content of the provided file
+///
+/// An easy way to read a file
+///
+/// # Examples
+///
+/// ```
+/// use std::fs::{File, remove_file};
+/// use std::io::prelude::*;
+/// use std::path::PathBuf;
+/// use delivery::utils::read_file;
+///
+/// let mut f = File::create("foo.txt").unwrap();
+/// f.write_all(b"Cool beans!");
+///
+/// let f = PathBuf::from("foo.txt");
+/// assert_eq!("Cool beans!", read_file(&f).unwrap());
+///
+/// remove_file("foo.txt");
+/// ```
+pub fn read_file(path: &PathBuf) -> Result<String, DeliveryError> {
+    let mut buffer = String::new();
+    let mut f = try!(File::open(path));
+    try!(f.read_to_string(&mut buffer));
+    Ok(buffer)
+}
+
+// Return the current directory path
+pub fn cwd() -> PathBuf {
+    env::current_dir().unwrap()
 }
 
 #[cfg(test)]

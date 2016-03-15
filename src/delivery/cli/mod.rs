@@ -3,16 +3,15 @@ use std::process;
 use std::process::Command;
 use std::process::Stdio;
 use std::error::Error;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::error;
-use std::path::Path;
 use std::io::prelude::*;
 use std;
-
-use utils::{self, privileged_process};
-
-use utils::say::{self, say, sayln};
-use utils::mkdir_recursive;
+use token;
+use project;
+use cookbook;
+use utils::{self, cwd, privileged_process, mkdir_recursive};
+use utils::say::{self, sayln, say};
 use errors::{DeliveryError, Kind};
 use config::Config;
 use delivery_config::DeliveryConfig;
@@ -20,10 +19,8 @@ use git::{self, ReviewResult};
 use job::change::Change;
 use job::workspace::{Workspace, Privilege};
 use utils::path_join_many::PathJoinMany;
-use token;
 use http::{self, APIClient};
 use hyper::status::StatusCode;
-use project;
 use clap::{Arg, App, SubCommand, ArgMatches};
 use utils::path_ext::is_dir;
 
@@ -71,6 +68,8 @@ fn_arg!(config_path_arg,
 fn_arg!(local_arg, "-l --local 'Operate without a Delivery server'");
 
 fn_arg!(no_open_arg, "-n --no-open 'Do not open the change in a browser'");
+
+fn_arg!(auto_bump, "-a --auto-bump 'Automatic cookbook version bump'");
 
 fn_arg!(no_spinner_arg, "--no-spinner 'Disable the spinner'");
 
@@ -166,7 +165,7 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a, 'a, 'a, 'a, 'a> {
                     // sub-command specific help via an include file
                     // like this:
                     // .after_help(include!("../help/create-change.txt"))
-                    .args(vec![for_arg(), no_open_arg()])
+                    .args(vec![for_arg(), no_open_arg(), auto_bump()])
                     .args_from_usage(
                         "-e --edit 'Edit change title and description'"))
         .subcommand(SubCommand::with_name("clone")
@@ -245,10 +244,6 @@ fn handle_spinner(matches: &ArgMatches) {
     };
 }
 
-fn cwd() -> PathBuf {
-    env::current_dir().unwrap()
-}
-
 fn exit_with(e: DeliveryError, i: isize) {
     sayln("red", e.description());
     match e.detail() {
@@ -313,16 +308,15 @@ fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str,
     sayln("green", "Chef Delivery");
 
     let mut config = try!(load_config(&cwd()));
-    let final_proj = try!(project_or_from_cwd(proj));
+    let final_proj = try!(project::project_or_from_cwd(proj));
     config = config.set_user(user)
         .set_server(server)
         .set_enterprise(ent)
         .set_organization(org)
         .set_project(&final_proj);
 
-    let cwd = try!(env::current_dir());
     if !local {
-        try!(project::import(&config, &cwd));
+        try!(project::import(&config, &cwd()));
     }
 
     // we want to generate the build cookbook by default. let the user
@@ -366,21 +360,21 @@ fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str,
         sayln("green", &msg);
 
         sayln("white", "Git add and commit of build-cookbook");
-        try!(git::git_command(&["add", ".delivery/build-cookbook"], &cwd));
-        try!(git::git_command(&["commit", "-m", "Add Delivery build cookbook"], &cwd));
+        try!(git::git_command(&["add", ".delivery/build-cookbook"], &cwd()));
+        try!(git::git_command(&["commit", "-m", "Add Delivery build cookbook"], &cwd()));
     }
 
     // now to adding the .delivery/config.json, this uses our
     // generated build cookbook always, so we no longer need a project
     // type.
-    try!(DeliveryConfig::init(&cwd));
+    try!(DeliveryConfig::init(&cwd()));
 
     if !local {
         // if we got here, we've checked out a feature branch, added a
         // config file, added a build cookbook, and made appropriate local
         // commit(s).
         // Let's create the review!
-        try!(review("master", no_open, &false));
+        try!(review("master", &false, no_open, &false));
     }
     Ok(())
 }
@@ -388,33 +382,38 @@ fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str,
 fn clap_review(matches: &ArgMatches) -> Result<(), DeliveryError> {
     let pipeline = value_of(&matches, "pipeline");
     let no_open = matches.is_present("no-open");
+    let auto_bump = matches.is_present("auto-bump");
     let edit = matches.is_present("edit");
-    review(pipeline, &no_open, &edit)
+    review(pipeline, &auto_bump, &no_open, &edit)
 }
 
-fn review(for_pipeline: &str,
+fn review(for_pipeline: &str, auto_bump: &bool,
           no_open: &bool, edit: &bool) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
     config = config.set_pipeline(for_pipeline);
     let target = validate!(config, pipeline);
-    // validate the delivery config file
-    // TODO: same as elsewhere in the code, we should get the project's root
-    // (instead of simply cwd), e.g. by looking for the .git dir?
-    let cwd = try!(env::current_dir());
-    try!(DeliveryConfig::validate_config_file(&cwd));
-
-    say("white", "Review for change ");
+    let project_root = try!(project::root_dir(&cwd()));
+    try!(DeliveryConfig::validate_config_file(&project_root));
     let head = try!(git::get_head());
     if &target == &head {
         return Err(DeliveryError{ kind: Kind::CannotReviewSameBranch, detail: None })
     }
+    if *auto_bump {
+        config.auto_bump = Some(auto_bump.clone());
+    };
+    if let Some(should_bump) = config.auto_bump {
+        if should_bump {
+            try!(cookbook::bump_version(&project_root, &target));
+        }
+    };
+    say("white", "Review for change ");
     say("yellow", &head);
     say("white", " targeted for pipeline ");
     sayln("magenta", &target);
     let review = try!(git::git_push_review(&head, &target));
     if *edit {
-        let project = try!(project_from_cwd());
+        let project = try!(project::project_from_cwd());
         config = config.set_pipeline(for_pipeline)
             .set_project(&project);
 
@@ -882,19 +881,6 @@ fn api_req(method: &str, path: &str, data: &str,
         }
     };
     Ok(())
-}
-
-fn project_from_cwd() -> Result<String, DeliveryError> {
-    let cwd = try!(env::current_dir());
-    Ok(cwd.file_name().unwrap().to_str().unwrap().to_string())
-}
-
-fn project_or_from_cwd(proj: &str) -> Result<String, DeliveryError> {
-    if proj.is_empty() {
-        project_from_cwd()
-    } else {
-        Ok(proj.to_string())
-    }
 }
 
 fn value_of<'a>(matches: &'a ArgMatches, key: &str) -> &'a str {
