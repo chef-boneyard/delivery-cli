@@ -19,7 +19,7 @@ use errors::{DeliveryError, Kind};
 use std::path::{Path, PathBuf};
 use std::fs::File;
 use std::io::prelude::*;
-use utils::read_file;
+use utils::{self, read_file};
 use utils::say::{say, sayln};
 use utils::path_ext::is_file;
 use git;
@@ -33,7 +33,7 @@ fn metadata_file(path: &PathBuf) -> String {
     return metadata
 }
 
-// Vefiry if the provided path is a cookbook, or not
+// Verify if the provided path is a cookbook, or not
 fn is_cookbook(path: &PathBuf) -> bool {
     let meta_f = metadata_file(path);
     is_file(&Path::new(&meta_f))
@@ -54,13 +54,47 @@ fn metadata_version_from(content: String) -> Result<String, DeliveryError> {
     return Err(DeliveryError{ kind: Kind::MissingMetadataVersion, detail: None })
 }
 
+// Bump the patchset of the provided version
+fn bump_patchset(version: String) -> Result<String, DeliveryError> {
+    let s = version.split(".");
+    let m_m_p: Vec<&str> = s.collect();
+    let patch = try!(m_m_p[2].parse::<u32>());
+    let new_patch: String = (patch + 1).to_string();
+    let mut new_version: String = m_m_p[0].to_string();
+    new_version.push_str(".");
+    new_version.push_str(m_m_p[1]);
+    new_version.push_str(".");
+    new_version.push_str(&new_patch);
+    Ok(new_version)
+}
+
+// Saves the new version to the metadata and commit the changes
+fn save_version(metadata: &PathBuf, version: String) -> Result<(), DeliveryError> {
+    let current_meta = try!(read_file(metadata));
+    let current_version = try!(metadata_version_from(current_meta.clone()));
+    let new_metadata = current_meta.replace(&*current_version, &*version);
+
+    // Recreate the file and dump the processed contents to it
+    let mut recreate_meta = try!(File::create(metadata));
+    try!(recreate_meta.write_fmt(format_args!("{}", &new_metadata)));
+
+    // Commit the changes made to the metadata
+    let mut commit_msg = String::from("Bump version to ");
+    commit_msg.push_str(&version);
+    try!(git::git_command(&["add", metadata.to_str().unwrap()], &utils::cwd()));
+    try!(git::git_command(&["commit", "-m", &commit_msg], &utils::cwd()));
+    Ok(())
+}
+
+// @Public
+
 // Bump the metadata version, only if:
 // * The project is a cookbook
 // * The version hasn't been updated
 //
 // @param p_root [&PathBuf] The project root path
 // @param pipeline [&str] Pipeline the change is targeting to
-// @return ()
+// @return () if success
 pub fn bump_version(p_root: &PathBuf, pipeline: &str) -> Result<(), DeliveryError> {
     if is_cookbook(&p_root) {
         let project = try!(project::project_from_cwd());
@@ -71,7 +105,8 @@ pub fn bump_version(p_root: &PathBuf, pipeline: &str) -> Result<(), DeliveryErro
 
         let meta_f_p = PathBuf::from(metadata_file(&p_root));
         let current_v = try!(metadata_version_from(try!(read_file(&meta_f_p))));
-        let t_file = [pipeline, ":metadata.rb"].concat();
+        let mut t_file = pipeline.to_string();
+        t_file.push_str(":metadata.rb");
         let pipeline_meta = try!(git::git_command(&["show", &t_file], &p_root));
         let pipeline_v = try!(metadata_version_from(pipeline_meta.stdout));
 
@@ -79,24 +114,10 @@ pub fn bump_version(p_root: &PathBuf, pipeline: &str) -> Result<(), DeliveryErro
             say("yellow", "The version hasn't been updated (");
             say("red", &pipeline_v);
             sayln("yellow", ")");
-            let s = pipeline_v.split(".");
-            let vec: Vec<&str> = s.collect();
-            let patch = vec[2].parse::<u32>().unwrap();
-            let new_patch: String = (patch + 1).to_string();
-            let new_version = [vec[0], ".", vec[1], ".", new_patch.trim()].concat();
+            let new_version = try!(bump_patchset(pipeline_v));
             say("white", "Bumping version to: ");
             sayln("green", &new_version);
-
-            let current_meta = try!(read_file(&meta_f_p));
-            let new_meta = current_meta.replace(&*current_v, &*new_version);
-
-            // Recreate the file and dump the processed contents to it
-            let mut recreate_meta = try!(File::create(metadata_file(&p_root)));
-            try!(recreate_meta.write_fmt(format_args!("{}", &new_meta)));
-
-            let commit_msg = ["Bump version to ", new_version.trim()].concat();
-            try!(git::git_command(&["add", &metadata_file(&p_root)], &p_root));
-            try!(git::git_command(&["commit", "-m", &commit_msg], &p_root));
+            try!(save_version(&meta_f_p, new_version));
         } else {
             say("white", "Version already updated (");
             say("magenta", &pipeline_v);
@@ -106,4 +127,21 @@ pub fn bump_version(p_root: &PathBuf, pipeline: &str) -> Result<(), DeliveryErro
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    #[test]
+    fn verify_version_bumping_using_bump_patchset() {
+        let version = String::from("1.2.3");
+        assert_eq!(String::from("1.2.4"), super::bump_patchset(version).unwrap());
+    }
+
+    #[test]
+    fn return_the_metadata_file_path() {
+        let project_path = PathBuf::from("/cookbook");
+        assert_eq!(String::from("/cookbook/metadata.rb"), super::metadata_file(&project_path));
+    }
 }
