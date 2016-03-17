@@ -17,6 +17,7 @@
 
 use rustc_serialize::json;
 use std::error::{self, Error};
+use std::num;
 use std::io;
 use std::fmt;
 use hyper;
@@ -63,6 +64,7 @@ pub enum Kind {
     UnsupportedProtocol,
     ApiError(hyper::status::StatusCode, Result<String, io::Error>),
     JsonParseError,
+    IntParseError,
     OpenFailed,
     NoToken,
     NoEditor,
@@ -122,6 +124,7 @@ impl error::Error for DeliveryError {
             Kind::HttpError(_) => "An HTTP Error occured",
             Kind::ApiError(_, _) => "An API Error occured",
             Kind::JsonParseError => "Attempted to parse invalid JSON",
+            Kind::IntParseError => "Attempted to parse invalid Int",
             Kind::OpenFailed => "Open command failed",
             Kind::AuthenticationFailed => "Authentication failed",
             Kind::NoToken => "Missing API token. Try `delivery token` to create one",
@@ -191,6 +194,16 @@ impl From<HttpError> for DeliveryError {
         let detail = Some(err.description().to_string());
         DeliveryError{
             kind: Kind::HttpError(err),
+            detail: detail
+        }
+    }
+}
+
+impl From<num::ParseIntError> for DeliveryError {
+    fn from(err: num::ParseIntError) -> DeliveryError {
+        let detail = Some(err.description().to_string());
+        DeliveryError{
+            kind: Kind::IntParseError,
             detail: detail
         }
     }
