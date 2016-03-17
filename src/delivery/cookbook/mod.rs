@@ -25,6 +25,7 @@ use utils::path_ext::is_file;
 use git;
 use project;
 use regex::Regex;
+use regex::Captures;
 
 #[derive(Debug, Clone)]
 pub struct MetadataVersion {
@@ -34,6 +35,14 @@ pub struct MetadataVersion {
 }
 
 impl MetadataVersion {
+    pub fn new(ma: Option<usize>, mi: Option<usize>, pa: Option<usize>) -> MetadataVersion {
+        MetadataVersion {
+            major: ma.unwrap_or_default(),
+            minor: mi.unwrap_or_default(),
+            patch: pa.unwrap_or_default()
+        }
+    }
+
     pub fn to_string(&self) -> String {
         [
             self.major.to_string(), ".".to_string(),
@@ -59,7 +68,8 @@ pub fn bump_version(p_root: &PathBuf, pipeline: &str) -> Result<(), DeliveryErro
         sayln("white", "Validating version in metadata");
 
         let meta_f_p = PathBuf::from(metadata_file(&p_root));
-        let current_meta_v = try!(metadata_version_from(&try!(read_file(&meta_f_p))));
+        let meta_f_c = try!(read_file(&meta_f_p));
+        let current_meta_v = try!(metadata_version_from(&meta_f_c));
         let current_v = current_meta_v.to_string();
         let mut t_file = pipeline.to_string();
         t_file.push_str(":metadata.rb");
@@ -109,26 +119,36 @@ fn is_cookbook(path: &PathBuf) -> bool {
 // line and search for the version to return it.
 //
 // There are two valid version formats:
-// a) 'x.y.z' - The normal semantic version. (mayor.minor.patch)
-// b) 'x.y'   - Where the patchset will be 0 by default. (mayor.minor.0)
-fn metadata_version_from(content: &String) -> Result<MetadataVersion, DeliveryError> {
+// a) 'x.y.z' - The normal semantic version. (major.minor.patch)
+// b) 'x.y'   - Where the patchset will be 0 by default. (major.minor.0)
+fn metadata_version_from(content: &str) -> Result<MetadataVersion, DeliveryError> {
     for l in content.lines() {
-        let r_m_m_p = Regex::new(r"version\s+'(?P<major>\d*)\.(?P<minor>\d*)\.(?P<patch>\d*)'").unwrap();
+        let r_m_m_p = Regex::new(r"version\s+'(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)'").unwrap();
         if let Some(version) = r_m_m_p.captures(l) {
-            let ma: usize = try!(version.name("major").unwrap().parse());
-            let mi: usize = try!(version.name("minor").unwrap().parse());
-            let pa: usize = try!(version.name("patch").unwrap().parse());
-            return Ok(MetadataVersion { major: ma, minor: mi, patch: pa });
+            return generate_metadata_version(version);
         }
         let r_m_m = Regex::new(r"version\s+'(?P<major>\d+)\.(?P<minor>\d+)'").unwrap();
         if let Some(version) = r_m_m.captures(l) {
-            let ma: usize = try!(version.name("major").unwrap().parse());
-            let mi: usize = try!(version.name("minor").unwrap().parse());
-            let pa: usize = 0;
-            return Ok(MetadataVersion { major: ma, minor: mi, patch: pa })
+            return generate_metadata_version(version);
         }
     };
     return Err(DeliveryError{ kind: Kind::MissingMetadataVersion, detail: None })
+}
+
+fn generate_metadata_version(metadata: Captures) -> Result<MetadataVersion, DeliveryError> {
+    let mut ma = None;
+    let mut mi = None;
+    let mut pa = None;
+    if let Some(major) = metadata.name("major") {
+        ma = major.parse::<usize>().ok();
+    };
+    if let Some(minor) =  metadata.name("minor") {
+        mi = minor.parse::<usize>().ok();
+    };
+    if let Some(patch) = metadata.name("patch") {
+        pa = patch.parse::<usize>().ok();
+    };
+    Ok(MetadataVersion::new(ma, mi, pa))
 }
 
 // Bump the patchset of the provided version
@@ -162,6 +182,15 @@ mod tests {
     use cookbook::*;
 
     #[test]
+    fn test_metadata_version_constructor() {
+        let version_generator = MetadataVersion::new(None, Some(2), None);
+        let MetadataVersion { major: ma, minor: mi, patch: pa } = version_generator;
+        assert_eq!(ma, 0);
+        assert_eq!(mi, 2);
+        assert_eq!(pa, 0);
+        assert_eq!("0.2.0", &version_generator.to_string());
+    }
+    #[test]
     fn verify_version_bumping_using_bump_patchset() {
         let version = MetadataVersion { major: 1, minor: 2, patch: 3 };
         let MetadataVersion { major: ma, minor: mi, patch: pa } = super::bump_patchset(version).unwrap();
@@ -181,41 +210,32 @@ mod tests {
         let happy_version = "1.2.3";
         let happy_metadata_content = metadata_from_version(&happy_version);
         let happy_metadata_version = super::metadata_version_from(&happy_metadata_content).unwrap();
-        assert_eq!(String::from(happy_version), happy_metadata_version.to_string());
+        assert_eq!(happy_version, &happy_metadata_version.to_string());
 
         let valid_version = "1.2";
         let valid_metadata_content = metadata_from_version(&valid_version);
         let valid_metadata_version = super::metadata_version_from(&valid_metadata_content).unwrap();
-        assert_eq!(String::from("1.2.0"), valid_metadata_version.to_string());
+        assert_eq!("1.2.0", &valid_metadata_version.to_string());
 
         let awesome_version = "123.123.123";
         let awesome_metadata_content = metadata_from_version(&awesome_version);
         let awesome_metadata_version = super::metadata_version_from(&awesome_metadata_content).unwrap();
-        assert_eq!(String::from(awesome_version), awesome_metadata_version.to_string());
+        assert_eq!(awesome_version, &awesome_metadata_version.to_string());
     }
 
     #[test]
     fn verify_sad_metadata_version_from_content() {
         let sad_version = "1..";
         let sad_metadata =  metadata_from_version(&sad_version);
-        match super::metadata_version_from(&sad_metadata) {
-            Ok(_) => assert!(false),
-            Err(_) => assert!(true)
-        }
+        assert!(super::metadata_version_from(&sad_metadata).is_err());
 
         let typo_version = "1.2.";
         let typo_metadata =  metadata_from_version(&typo_version);
-        match super::metadata_version_from(&typo_metadata) {
-            Ok(_) => assert!(false),
-            Err(_) => assert!(true)
-        }
+        assert!(super::metadata_version_from(&typo_metadata).is_err());
 
         let no_version = "";
         let no_metadata =  metadata_from_version(&no_version);
-        match super::metadata_version_from(&no_metadata) {
-            Ok(_) => assert!(false),
-            Err(_) => assert!(true)
-        }
+        assert!(super::metadata_version_from(&no_metadata).is_err());
     }
 
     // Quick helper to render a dummy metadata from a provided version
