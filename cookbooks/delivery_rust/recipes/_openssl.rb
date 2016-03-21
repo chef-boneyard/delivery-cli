@@ -5,33 +5,9 @@ when 'mac_os_x'
     not_if "brew list|grep -q openssl"
   end
 when 'windows'
-  url = node['delivery_rust']['windows']['openssl_url']
-  install_dir = node['delivery_rust']['windows']['openssl_install_dir']
-  lzma_file = File.join(Chef::Config['file_cache_path'], File.basename(url))
-  tar_file  = File.join(Chef::Config['file_cache_path'], File.basename(url, '.*'))
-
-  remote_file 'OpenSSL Archive' do
-    source   url
-    path     lzma_file
-    checksum node['delivery_rust']['windows']['openssl_checksum']
-  end
-
-  execute 'Uncompress LZMA' do
-    command "7z.exe x #{lzma_file} -o#{tar_file} -r -y"
-    creates tar_file
-  end
-
-  execute 'Unpack TAR' do
-    command "7z.exe x #{tar_file} -o#{install_dir} -r -y"
-    creates install_dir
-  end
-
-  legacy_dll = File.join(install_dir, 'bin', 'ssleay32.dll')
-  copied_dll = File.join(install_dir, 'bin', 'libssl32.dll')
-  powershell_script 'copy dll' do
-    code "Copy-Item #{legacy_dll} #{copied_dll}"
-    creates copied_dll
-  end
+  # We do not need openssl for windows since omnibus is building
+  # it from scratch.
+  log 'Omnibus will build openssl in Windows'
 else
   log "Linux detected"
   include_recipe "build-essential"
