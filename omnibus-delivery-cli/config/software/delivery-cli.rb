@@ -20,7 +20,7 @@ name "delivery-cli"
 source path: File.expand_path('..', Omnibus::Config.project_root),
        options: {exclude: [".git", "omnibus-delivery-cli", "target", "vendor"]}
 
-dependency "openssl" if windows?
+dependency "openssl"
 
 build do
   # Setup a default environment from Omnibus - you should use this Omnibus
@@ -41,9 +41,9 @@ build do
   if windows?
     copy "#{project_dir}/target/release/delivery.exe", "#{install_dir}/bin/delivery.exe"
     # When using `openssl` dependency, by default it builds the libraries inside
-    # `embedded/bin/`. Once we are done building the `delivery-cli.exe` we want to
-    # clean what we will package in the MSI. We are copying the libs inside `bin/`
-    # and then delete what is in embedded since we dont use it.
+    # `embedded/bin/`. We are copying the libs inside `bin/`. Once we are done
+    # building the `delivery-cli` we want to clean what we will package, therefore
+    # we will delete what is in embedded since we dont use it
     copy "#{install_dir}/embedded/bin/ssleay32.dll", "#{install_dir}/bin/ssleay32.dll"
     copy "#{install_dir}/embedded/bin/libeay32.dll", "#{install_dir}/bin/libeay32.dll"
     copy "#{install_dir}/embedded/bin/zlib1.dll", "#{install_dir}/bin/zlib1.dll"

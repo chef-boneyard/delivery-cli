@@ -18,7 +18,7 @@ else
 end
 
 # Sadly, Wix on Windows doesn't allow the use of Int
-# bigged that 32bits, so we need to change the version
+# bigger than 32bits, so we need to change the version
 # to use the standard semantic version (`M.M.P`)
 #
 # TODO: When we change the delivery-cli to use this

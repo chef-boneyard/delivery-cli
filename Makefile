@@ -13,15 +13,13 @@ CARGO_ENV += DELIV_CLI_TIME="$(DELIV_CLI_TIME)"
 UNAME = $(shell uname)
 
 ifeq ($(UNAME),Darwin)
-    OPENSSL_PREFIX = /usr/local/opt/openssl
+    OPENSSL_PREFIX = /opt/delivery-cli/embedded
     CARGO_ENV += OPENSSL_INCLUDE_DIR=$(OPENSSL_PREFIX)/include
     CARGO_ENV += OPENSSL_LIB_DIR=$(OPENSSL_PREFIX)/lib
-    CARGO_ENV += OPENSSL_STATIC=1
 else ifeq ($(UNAME),Linux)
-    OPENSSL_PREFIX = /opt/delivery-cli-build-deps/openssl
+    OPENSSL_PREFIX = /opt/delivery-cli/embedded
     CARGO_ENV += OPENSSL_INCLUDE_DIR=$(OPENSSL_PREFIX)/include
-    CARGO_ENV += OPENSSL_LIB_DIR=$(OPENSSL_PREFIX)
-    CARGO_ENV += OPENSSL_STATIC=1
+    CARGO_ENV += OPENSSL_LIB_DIR=$(OPENSSL_PREFIX)/lib
 else ifeq ($(UNAME),MINGW32_NT-6.2)
     OPENSSL_PREFIX ?= C:/chef/delivery-cli/embedded
     CARGO_ENV += OPENSSL_INCLUDE_DIR=$(OPENSSL_PREFIX)/include
