@@ -85,9 +85,9 @@ suites:
           organization: kitchen
         workspace:
           repo:         /home/vagrant/delivery-cli
-          cache:        /home/vagrant/workspace/cache
-          chef:         /home/vagrant/workspace/chef
-        workspace_path: /home/vagrant/workspace
+          cache:        /home/vagrant/cache
+          chef:         /home/vagrant/chef
+        workspace_path: /home/vagrant
       omnibus:
         build_user:          vagrant
         build_user_group:    vagrant

@@ -23,9 +23,6 @@ rust_install node['delivery_rust']['rust_version'] do
   channel 'nightly'
 end
 
-# TODO: make this recipe go away
-include_recipe "delivery_rust::_openssl"
-
 #########################################################################
 # Unix only: Make a backup so that if the build fails, we can rescue
 # ourselves.

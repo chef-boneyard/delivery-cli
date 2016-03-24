@@ -7,8 +7,3 @@ if platform_family == 'windows'
   override['7-zip']['home'] = 'C:\\Program Files\\7-Zip'
 end
 
-openssl_version = '1.0.1p'
-default['delivery_rust']['windows']['openssl_url']         = "https://github.com/jaym/windows-openssl-build/releases/download/openssl-#{openssl_version}/openssl-#{openssl_version}-x64-windows.tar.lzma"
-default['delivery_rust']['windows']['openssl_checksum']    = 'e857c3c9f892e1b1881689719ef763acd0a01c6ecf6ad0674f6e538c8739a456'
-default['delivery_rust']['windows']['openssl_install_dir'] = "C:\\openssl\\#{openssl_version}"
-
