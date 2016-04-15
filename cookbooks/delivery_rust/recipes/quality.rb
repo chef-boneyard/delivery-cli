@@ -8,6 +8,7 @@
 # Phase groups run atomically. Quality and security
 # will complete before before publish runs, yielding
 # a consistent version.
+git_ssh = File.join('/var/opt/delivery/workspace/bin', 'git_ssh')
     execute "Add Github Remote" do
       command "git remote add github git@github.com:opscode/delivery.git"
       cwd node['delivery']['workspace']['repo']
