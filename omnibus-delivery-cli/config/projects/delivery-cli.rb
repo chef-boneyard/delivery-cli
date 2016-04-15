@@ -17,19 +17,7 @@ else
   install_dir "#{default_root}/#{name}"
 end
 
-# Sadly, Wix on Windows doesn't allow the use of Int
-# bigger than 32bits, so we need to change the version
-# to use the standard semantic version (`M.M.P`)
-#
-# TODO: When we change the delivery-cli to use this
-# version pattern, we will need to get rid of this code
-#
-# Until then :herewego:
-if windows?
-  build_version '0.0.1'
-else
-  build_version Time.now.utc.strftime("%Y%m%d%H%M%S")
-end
+build_version Omnibus::BuildVersion.new.semver
 build_iteration 1
 
 # Creates required build directories
