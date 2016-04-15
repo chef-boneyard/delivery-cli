@@ -10,7 +10,7 @@
 # a consistent version.
 git_ssh = File.join('/var/opt/delivery/workspace/bin', 'git_ssh')
     execute "Add Github Remote" do
-      command "git remote add github git@github.com:opscode/delivery.git"
+      command "git remote add github git@github.com:opscode/delivery-cli.git"
       cwd node['delivery']['workspace']['repo']
       environment({"GIT_SSH" => git_ssh})
       returns [0,128]
