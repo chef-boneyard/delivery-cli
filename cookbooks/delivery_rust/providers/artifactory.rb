@@ -5,7 +5,7 @@ def whyrun_supported?
 end
 
 action :create do
-  omnibus_path = ::File.join(node['delivery']['workspace']['repo'], 'omnibus-delivery-cli')
+  omnibus_path = ::File.join(node['delivery']['workspace']['repo'], 'omnibus')
   omnibus_config = ::File.join(node['delivery']['workspace']['cache'], 'omnibus-publish.rb')
 
   # Render an Omnibus config file for publishing
