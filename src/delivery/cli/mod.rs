@@ -53,10 +53,11 @@ fn u_e_s_o_args<'a>() -> Vec<Arg<'a, 'a, 'a, 'a, 'a, 'a>> {
 fn scp_args<'a>() -> Vec<Arg<'a, 'a, 'a, 'a, 'a, 'a>> {
     make_arg_vec![
         "--bitbucket 'Init a bitbucket repository'",
-        "-k --bit-project-key=[key] 'Project key of the Bitbucket repository'",
+        "-k --bit-project-key=[project-key] 'Project key of the Bitbucket repository'",
         "--github 'Init a github repository'",
-        "-g --git-org-name=[name] 'The Github organization name'",
-        "-r --repo-name 'Source code provider repository name'"]
+        "-g --git-org-name=[org-name] 'The Github organization name'",
+        "-r --repo-name=[repo-name] 'Source code provider repository name'",
+        "--verify-ssl 'Use SSL verification. [Github]'"]
 }
 
 fn_arg!(for_arg,
@@ -317,18 +318,31 @@ fn clap_init(matches: &ArgMatches) -> Result<(), DeliveryError> {
         .set_organization(org)
         .set_project(&final_proj)
         .set_pipeline(pipeline);
-    let mut scp = "delivery";
-    if matches.is_present("github") {
-        scp = "github";
+    let branch = try!(config.pipeline());
+    let git_p = matches.is_present("github");
+    let bit_p = matches.is_present("bitbucket");
+    if git_p && bit_p {
+        return Err(DeliveryError{ kind: Kind::OptionConstraint, detail: Some(format!("Please \
+        specify just one SCP: delivery(default), github or bitbucket.")) })
     }
-    if matches.is_present("bitbucket") {
-        if scp == "github" {
-            return Err(DeliveryError{ kind: Kind::OptionConstraint, detail: Some(format!("Please \
-            specify just one SCP: delivery(default), github or bitbucket.")) })
-        }
-        scp = "bitbucket";
+    let mut scp: Option<project::SourceCodeProvider> = None;
+    if git_p {
+        let repo_name = value_of(&matches, "repo-name");
+        let org_name = value_of(&matches, "org-name");
+        let v_ssl = matches.is_present("verify-ssl");
+        debug!("init github: GitRepo:{:?}, GitOrg:{:?}, Branch:{:?}, SSL:{:?}",
+               repo_name, org_name, branch, v_ssl);
+        scp = Some(try!(project::SourceCodeProvider::new("github", &repo_name,
+                                                         &org_name, &branch, v_ssl)));
+    } else if bit_p {
+        let repo_name = value_of(&matches, "repo-name");
+        let project_key = value_of(&matches, "project-key");
+        debug!("init bitbucket: BitRepo:{:?}, BitProjKey:{:?}, Branch:{:?}",
+               repo_name, project_key, branch);
+        scp = Some(try!(project::SourceCodeProvider::new("bitbucket", &repo_name,
+                                                         &project_key, &branch, false)));
     }
-    project::init(config, &no_open, &skip_build_cookbook, &local, &scp)
+    project::init(config, &no_open, &skip_build_cookbook, &local, scp)
 }
 
 fn clap_review(matches: &ArgMatches) -> Result<(), DeliveryError> {

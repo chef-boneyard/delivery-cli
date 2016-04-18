@@ -193,11 +193,21 @@ impl APIClient {
             },
             None => req
         };
+        debug!("Request: {:?} Path: {:?} Payload: {:?}",
+                http_method, path, payload);
+        let res;
         if !payload.is_empty() {
-            req.body(payload).send()
+            res = req.body(payload).send();
         } else {
-            req.send()
+            res = req.send();
         }
+        // Here we should detect if the token has expired
+        // if so, prompt the user to generate a new one.
+        // then try the Request again with the token. :)
+        //
+        //let body = APIClient::parse_json(res);
+        //println!(format!("Response {}", body));
+        return res
     }
 
     pub fn project_exists(&self,
@@ -223,13 +233,79 @@ impl APIClient {
         }
     }
 
-    pub fn create_project(&self,
-                          org: &str,
-                          proj: &str) -> Result<HyperResponse, DelivError> {
+    pub fn create_delivery_project(&self, org: &str,
+                                   proj: &str) -> Result<HyperResponse, DelivError> {
         let path = format!("orgs/{}/projects", org);
         // FIXME: we'd like to use the native struct->json stuff, but
         // seeing link issues.
         let payload = format!("{{\"name\":\"{}\"}}", proj);
+        match self.post(&path, &payload) {
+            Ok(mut res) => {
+                match res.status {
+                    StatusCode::Created =>
+                        Ok(res),
+                    _ => {
+                        let mut detail = String::new();
+                        let e = match res.read_to_string(&mut detail) {
+                            Ok(_) => Ok(detail),
+                            Err(e) => Err(e)
+                        };
+                        Err(DelivError::ApiError(res.status, e))
+                    }
+                }
+            },
+            Err(e) => Err(DelivError::HttpError(e))
+        }
+    }
+
+    pub fn create_github_project(&self, org: &str, proj: &str,
+                                repo_name: &str, git_org: &str, pipe: &str,
+                                ssl: bool) -> Result<HyperResponse, DelivError> {
+        let path = format!("orgs/{}/github-projects", org);
+        // FIXME: we'd like to use the native struct->json stuff, but
+        // seeing link issues.
+        let payload = format!("{{\
+                                \"name\":\"{}\",\
+                                \"scm\":{{\
+                                    \"type\":\"github\",\
+                                    \"project\":\"{}\",\
+                                    \"organization\":\"{}\",\
+                                    \"branch\":\"{}\",\
+                                    \"verify_ssl\": {}\
+                                }}\
+                              }}", proj, repo_name, git_org, pipe, ssl);
+        match self.post(&path, &payload) {
+            Ok(mut res) => {
+                match res.status {
+                    StatusCode::Created =>
+                        Ok(res),
+                    _ => {
+                        let mut detail = String::new();
+                        let e = match res.read_to_string(&mut detail) {
+                            Ok(_) => Ok(detail),
+                            Err(e) => Err(e)
+                        };
+                        Err(DelivError::ApiError(res.status, e))
+                    }
+                }
+            },
+            Err(e) => Err(DelivError::HttpError(e))
+        }
+    }
+
+    pub fn create_bitbucket_project(&self, org: &str, proj: &str,
+                                    repo_name: &str, project_key: &str,
+                                    pipe: &str) -> Result<HyperResponse, DelivError> {
+        let path = format!("orgs/{}/bitbucket-projects", org);
+        let payload = format!("{{\
+                                \"name\":\"{}\",\
+                                \"scm\":{{\
+                                    \"type\":\"bitbucket\",\
+                                    \"repo_name\":\"{}\",\
+                                    \"project_key\":\"{}\",\
+                                    \"pipeline_branch\":\"{}\"\
+                                }}\
+                              }}", proj, repo_name, project_key, pipe);
         match self.post(&path, &payload) {
             Ok(mut res) => {
                 match res.status {

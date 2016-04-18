@@ -29,6 +29,60 @@ use git;
 use cli;
 use config::Config;
 
+#[derive(Debug, Clone)]
+pub enum Type {
+    Bitbucket,
+    Github
+}
+
+#[derive(Debug, Clone)]
+pub struct SourceCodeProvider {
+    pub repo_name: String,
+    pub organization: String,
+    pub branch: String,
+    pub verify_ssl: bool,
+    pub kind: Type,
+}
+
+impl SourceCodeProvider {
+    pub fn new(scp: &str, repo: &str, org: &str, branch: &str,
+               ssl: bool) -> Result<SourceCodeProvider, DeliveryError> {
+        let scp_kind = match scp {
+            "github" => Type::Github,
+            "bitbucket" => Type::Bitbucket,
+            _ => return Err(DeliveryError{ kind: Kind::OptionConstraint, detail:None })
+        };
+        // Verify all SCP Attributes are valid
+        if repo.to_string().is_empty()
+            || org.to_string().is_empty()
+            || branch.to_string().is_empty() {
+            match scp_kind {
+                Type::Github => return Err(
+                    DeliveryError{
+                        kind: Kind::OptionConstraint,
+                        detail: Some(format!("To initialize a Github project you have to specify: \
+                                              repo-name, org-name and pipeline(default: master)"))
+                    }
+                ),
+                Type::Bitbucket => return Err(
+                    DeliveryError{
+                        kind: Kind::OptionConstraint,
+                        detail: Some(format!("To initialize a Bitbucket project you have to specify: \
+                                              repo-name, project-key and pipeline(default: master)"))
+                    }
+                ),
+            }
+        }
+        Ok(SourceCodeProvider {
+            kind: scp_kind,
+            repo_name: repo.to_string(),
+            organization: org.to_string(),
+            branch: branch.to_string(),
+            verify_ssl: ssl,
+        })
+    }
+}
+
 fn call_api<F>(closure: F) where F : Fn() -> Result<Response, Kind> {
     match closure() {
         Ok(_) => {
@@ -54,22 +108,13 @@ fn call_api<F>(closure: F) where F : Fn() -> Result<Response, Kind> {
     }
 }
 
-pub fn create(config: &Config, path: &PathBuf, scp: &str) -> Result<(), DeliveryError> {
+pub fn create(config: &Config, path: &PathBuf,
+              scp: Option<SourceCodeProvider>) -> Result<(), DeliveryError> {
     let org = try!(config.organization());
     let proj = try!(config.project());
-    let pipe = try!(config.pipeline());
 
     // Init && config local repo if necessary
     try!(git::init_repo(path));
-    let url = try!(config.delivery_git_ssh_url());
-    if try!(git::config_repo(&url, path)) {
-        sayln("white", "Remote 'delivery' added to git config!");
-    } else {
-        sayln("red", "Remote named 'delivery' already exists - not modifying");
-        // We should verify that the remote is the correct one
-        // if not, delete it and create the right one.
-        // Or fail saying that it doesn't match
-    }
 
     let client = try!(APIClient::from_config(config));
 
@@ -79,20 +124,32 @@ pub fn create(config: &Config, path: &PathBuf, scp: &str) -> Result<(), Delivery
         sayln("white", "already exists.");
     } else {
         match scp {
-            "bitbucket" => try!(create_bitbucket(client, &proj, &org, &pipe)),
-            "github" => try!(create_github(client, &proj, &org, &pipe)),
-            _ => try!(create_delivery(client, &proj, &org, &pipe))
+            Some(s) => try!(create_scp_project(client, &org, &proj, s)),
+            None => {
+                try!(create_delivery_project(client, &org, &proj, config, path))
+            }
         }
     }
     Ok(())
 }
 
-fn create_delivery(client: APIClient, proj: &str, org: &str, pipe: &str) -> Result<(), DeliveryError> {
+fn create_delivery_project(client: APIClient, org: &str, proj: &str,
+                           config: &Config, path: &PathBuf,) -> Result<(), DeliveryError> {
+    let pipe = try!(config.pipeline());
+    let url = try!(config.delivery_git_ssh_url());
+    if try!(git::config_repo(&url, path)) {
+        sayln("white", "Remote 'delivery' added to git config!");
+    } else {
+        sayln("red", "Remote named 'delivery' already exists - not modifying");
+        // We should verify that the remote is the correct one
+        // if not, delete it and create the right one.
+        // Or fail saying that it doesn't match
+    }
     say("white", "Creating ");
     say("magenta", "delivery");
     say("white", " project: ");
     say("magenta", &format!("{} ", proj));
-    call_api(|| client.create_project(&org, &proj));
+    call_api(|| client.create_delivery_project(&org, &proj));
     say("white", "Checking for content on the git remote ");
     say("magenta", "delivery: ");
     if git::server_content() {
@@ -103,25 +160,36 @@ fn create_delivery(client: APIClient, proj: &str, org: &str, pipe: &str) -> Resu
         //let _ = git::git_push_pipeline(&pipe);
         let _ = git::git_push_master();
     }
-    say("white", &format!("Creating {:?} pipeline for project: ", pipe));
+    say("white", "Creating ");
+    say("magenta", &format!("{} ", pipe));
+    say("white", " pipeline for project: ");
     say("magenta", &format!("{} ", proj));
     say("white", "... ");
     call_api(|| client.create_pipeline(&org, &proj, &pipe));
     Ok(())
 }
 
-fn create_github(client: APIClient, proj: &str, org: &str, pipe: &str) -> Result<(), DeliveryError> {
+fn create_scp_project(client: APIClient, org: &str, proj: &str,
+                      scp: SourceCodeProvider) -> Result<(), DeliveryError> {
     say("white", "Creating ");
-    say("magenta", "github");
-    say("white", " project: ");
-    say("magenta", &format!("{} ", proj));
-    Ok(())
-}
-fn create_bitbucket(client: APIClient, proj: &str, org: &str, pipe: &str) -> Result<(), DeliveryError> {
-    say("white", "Creating ");
-    say("magenta", "bitbucket");
-    say("white", " project: ");
-    say("magenta", &format!("{} ", proj));
+    match scp.kind {
+        Type::Bitbucket => {
+            say("magenta", "bitbucket");
+            say("white", " project: ");
+            say("magenta", &format!("{} ", proj));
+            call_api(|| client.create_bitbucket_project(&org, &proj, &scp.repo_name,
+                                                        &scp.organization, &scp.branch));
+        },
+        Type::Github => {
+            say("magenta", "github");
+            say("white", " project: ");
+            say("magenta", &format!("{} ", proj));
+            call_api(|| client.create_github_project(&org, &proj, &scp.repo_name,
+                                                     &scp.organization, &scp.branch,
+                                                     scp.verify_ssl));
+        },
+        //_ => Err(),
+    }
     Ok(())
 }
 
@@ -183,19 +251,21 @@ pub fn project_or_from_cwd(proj: &str) -> Result<String, DeliveryError> {
 }
 
 pub fn init(config: Config, no_open: &bool, skip_build_cookbook: &bool,
-        local: &bool, scp: &str) -> Result<(), DeliveryError> {
+        local: &bool, scp: Option<SourceCodeProvider>) -> Result<(), DeliveryError> {
+    let project_path = try!(root_dir(&utils::cwd()));
 
-    // We should use the new fn project::root_dir(&cwd()))
-    // which will detect that we are not running the init from
-    // a valid git repo.
     if !local {
-        try!(create(&config, &utils::cwd(), &scp));
+        try!(create(&config, &project_path, scp.clone()));
     }
 
     // From here we must create a new feature branch
     // since we are going to start modifying the repo.
     // in the case of an Err() we could roll back by
     // reseting to the pipeline/branch (git reset --hard)
+    // Although it could be a good idea to verify and if not, create it.
+    say("white", "Create and checkout add-delivery-config feature branch: ");
+    try!(git::git_command(&["checkout", "-b", "add-delivery-config"], &project_path));
+    sayln("green", "done");
 
     // we want to generate the build cookbook by default. let the user
     // decide to skip if they don't want one.
@@ -234,19 +304,21 @@ pub fn init(config: Config, no_open: &bool, skip_build_cookbook: &bool,
 
         match gen.output() {
             Ok(o) => o,
-            Err(e) => return Err(DeliveryError {
-                                     kind: Kind::FailedToExecute,
-                detail: Some(format!("failed to execute chef generate: {}", error::Error::description(&e)))})
+            Err(e) => return Err(
+                        DeliveryError {
+                            kind: Kind::FailedToExecute,
+                            detail: Some(format!(
+                                        "failed to execute chef generate: {}",
+                                        error::Error::description(&e)
+                                    ))
+                        })
         };
 
-        let msg = format!("PCB generate: {:#?}", gen);
-        sayln("green", &msg);
-
-        // We should checkout a new branch before committing this code
-        // to the pipeline/branch
-        sayln("white", "Git add and commit of build-cookbook");
+        sayln("green", &format!("PCB generate: {:#?}", gen));
+        say("white", "Git add and commit of build-cookbook: ");
         try!(git::git_command(&["add", ".delivery/build-cookbook"], &utils::cwd()));
         try!(git::git_command(&["commit", "-m", "Add Delivery build cookbook"], &utils::cwd()));
+        sayln("green", "done");
     }
 
     // now to adding the .delivery/config.json, this uses our
@@ -255,8 +327,15 @@ pub fn init(config: Config, no_open: &bool, skip_build_cookbook: &bool,
     try!(DeliveryConfig::init(&utils::cwd()));
 
     if !local {
-        let pipeline = try!(config.pipeline());
-        try!(cli::review(&pipeline, &false, no_open, &false));
+        // For now, delivery review only works for projects that the SCP is delivery
+        // TODO: Make it work in bitbucket and github
+        match scp {
+            Some(_) => sayln("green", "Push add-delivery-config branch and create Pull Request"),
+            None => {
+                let pipeline = try!(config.pipeline());
+                try!(cli::review(&pipeline, &false, no_open, &false));
+            }
+        }
     }
     Ok(())
 }
