@@ -3,14 +3,13 @@ use std::process;
 use std::process::Command;
 use std::process::Stdio;
 use std::error::Error;
-use std::path::{Path, PathBuf};
-use std::error;
+use std::path::PathBuf;
 use std::io::prelude::*;
 use std;
 use token;
 use project;
 use cookbook;
-use utils::{self, cwd, privileged_process, mkdir_recursive};
+use utils::{self, cwd, privileged_process};
 use utils::say::{self, sayln, say};
 use errors::{DeliveryError, Kind};
 use config::Config;
@@ -22,7 +21,6 @@ use utils::path_join_many::PathJoinMany;
 use http::{self, APIClient};
 use hyper::status::StatusCode;
 use clap::{Arg, App, SubCommand, ArgMatches};
-use utils::path_ext::is_dir;
 
 macro_rules! make_arg_vec {
     ( $( $x:expr ),* ) => {
@@ -50,6 +48,15 @@ fn u_e_s_o_args<'a>() -> Vec<Arg<'a, 'a, 'a, 'a, 'a, 'a>> {
         "-e --ent=[enterprise] 'The enterprise in which the project lives'",
         "-o --org=[org] 'The organization in which the project lives'",
         "-s --server=[server] 'The Delivery server address'"]
+}
+
+fn scp_args<'a>() -> Vec<Arg<'a, 'a, 'a, 'a, 'a, 'a>> {
+    make_arg_vec![
+        "--bitbucket 'Init a bitbucket repository'",
+        "-k --bit-project-key=[key] 'Project key of the Bitbucket repository'",
+        "--github 'Init a github repository'",
+        "-g --git-org-name=[name] 'The Github organization name'",
+        "-r --repo-name 'Source code provider repository name'"]
 }
 
 fn_arg!(for_arg,
@@ -188,13 +195,14 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a, 'a, 'a, 'a, 'a> {
                         -l --local \
                         'Diff against the local branch HEAD'"))
         .subcommand(SubCommand::with_name("init")
-                    .about("Add delivery remote to this git repo \
+                    .about("Initialize a Delivery project \
                             (and lots more!)")
                     .args(vec![for_arg(), config_path_arg(), no_open_arg(),
                                project_arg(), local_arg()])
                     .args_from_usage(
                         "--skip-build-cookbook 'Do not create a build cookbook'")
-                    .args(u_e_s_o_args()))
+                    .args(u_e_s_o_args())
+                    .args(scp_args()))
         .subcommand(SubCommand::with_name("setup")
                     .about("Write a config file capturing specified options")
                     .args(vec![for_arg(), config_path_arg()])
@@ -297,105 +305,30 @@ fn clap_init(matches: &ArgMatches) -> Result<(), DeliveryError> {
     let org = value_of(&matches, "org");
     let proj = value_of(&matches, "project");
     let no_open = matches.is_present("no-open");
+    let pipeline = value_of(&matches, "pipeline");
     let skip_build_cookbook = matches.is_present("skip-build-cookbook");
     let local = matches.is_present("local");
-    init(user, server, ent, org, proj, &no_open, &skip_build_cookbook, &local)
-}
-
-fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str,
-        no_open: &bool, skip_build_cookbook: &bool,
-        local: &bool) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
-
     let mut config = try!(load_config(&cwd()));
     let final_proj = try!(project::project_or_from_cwd(proj));
     config = config.set_user(user)
         .set_server(server)
         .set_enterprise(ent)
         .set_organization(org)
-        .set_project(&final_proj);
-    
-    // We are going to add a match here to select what kind
-    // of project we are about to create. Bitbucket? Github?
-
-    // We should use the new fn project::root_dir(&cwd())) 
-    // which will detect that we are not running the init from
-    // a valid git repo. 
-    if !local {
-        try!(project::import(&config, &cwd()));
+        .set_project(&final_proj)
+        .set_pipeline(pipeline);
+    let mut scp = "delivery";
+    if matches.is_present("github") {
+        scp = "github";
     }
-    
-    // From here we must create a new feature branch
-    // since we are going to start modifying the repo.
-    // in the case of an Err() we could roll back by
-    // reseting to the pipeline/branch (git reset --hard)
-
-    // we want to generate the build cookbook by default. let the user
-    // decide to skip if they don't want one.
-    if ! *skip_build_cookbook {
-
-        sayln("white", "Generating build cookbook skeleton");
-
-        let pcb_dir = match utils::home_dir(&[".delivery/cache/generator-cookbooks/pcb"]) {
-            Ok(p) => p,
-            Err(e) => return Err(e)
-        };
-
-        if is_dir(&pcb_dir) {
-            sayln("yellow", "Cached copy of build cookbook generator exists; skipping git clone.");
-        } else {
-            sayln("white", &format!("Cloning build cookbook generator dir {:#?}", pcb_dir));
-            // Lets not force the user to use this git repo.
-            // Adding an option --pcb PATH
-            // Where PATH:
-            //    * Local path
-            //    * Git repo
-            //    * Supermarket?
-            try!(git::clone(&pcb_dir.to_string_lossy(),
-                            "https://github.com/chef-cookbooks/pcb"));
+    if matches.is_present("bitbucket") {
+        if scp == "github" {
+            return Err(DeliveryError{ kind: Kind::OptionConstraint, detail: Some(format!("Please \
+            specify just one SCP: delivery(default), github or bitbucket.")) })
         }
-
-        // Generate the cookbook
-        let dot_delivery = Path::new(".delivery");
-        try!(mkdir_recursive(dot_delivery));
-        let mut gen = utils::make_command("chef");
-        gen.arg("generate")
-            .arg("cookbook")
-            .arg(".delivery/build-cookbook")
-            .arg("-g")
-            .arg(pcb_dir);
-
-        match gen.output() {
-            Ok(o) => o,
-            Err(e) => return Err(DeliveryError {
-                                     kind: Kind::FailedToExecute,
-                detail: Some(format!("failed to execute chef generate: {}", error::Error::description(&e)))})
-        };
-
-        let msg = format!("PCB generate: {:#?}", gen);
-        sayln("green", &msg);
-        
-        // We should checkout a new branch before committing this code
-        // to the pipeline/branch
-        sayln("white", "Git add and commit of build-cookbook");
-        try!(git::git_command(&["add", ".delivery/build-cookbook"], &cwd()));
-        try!(git::git_command(&["commit", "-m", "Add Delivery build cookbook"], &cwd()));
+        scp = "bitbucket";
     }
-
-    // now to adding the .delivery/config.json, this uses our
-    // generated build cookbook always, so we no longer need a project
-    // type.
-    try!(DeliveryConfig::init(&cwd()));
-
-    if !local {
-        // if we got here, we've checked out a feature branch, added a
-        // config file, added a build cookbook, and made appropriate local
-        // commit(s).
-        // Let's create the review!
-        // C'mon! Why do we hardcoded the pipeline name??? -_-
-        try!(review("master", &false, no_open, &false));
-    }
-    Ok(())
+    project::init(config, &no_open, &skip_build_cookbook, &local, &scp)
 }
 
 fn clap_review(matches: &ArgMatches) -> Result<(), DeliveryError> {
@@ -406,7 +339,7 @@ fn clap_review(matches: &ArgMatches) -> Result<(), DeliveryError> {
     review(pipeline, &auto_bump, &no_open, &edit)
 }
 
-fn review(for_pipeline: &str, auto_bump: &bool,
+pub fn review(for_pipeline: &str, auto_bump: &bool,
           no_open: &bool, edit: &bool) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));

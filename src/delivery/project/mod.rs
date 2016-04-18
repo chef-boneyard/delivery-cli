@@ -18,17 +18,21 @@
 use hyper::client::response::Response;
 use hyper::status::StatusCode;
 use utils::say::{say, sayln};
-use utils::{self, walk_tree_for_path};
+use utils::{self, walk_tree_for_path, mkdir_recursive};
+use utils::path_ext::is_dir;
 use errors::{DeliveryError, Kind};
+use delivery_config::DeliveryConfig;
+use std::error;
 use std::path::{Path, PathBuf};
 use http::APIClient;
 use git;
+use cli;
 use config::Config;
 
 fn call_api<F>(closure: F) where F : Fn() -> Result<Response, Kind> {
     match closure() {
         Ok(_) => {
-            sayln("white", "done");
+            sayln("green", "done");
         },
         Err(e) => {
             // Why we dont pass the Err() to fail?
@@ -50,9 +54,10 @@ fn call_api<F>(closure: F) where F : Fn() -> Result<Response, Kind> {
     }
 }
 
-pub fn import(config: &Config, path: &PathBuf) -> Result<(), DeliveryError> {
+pub fn create(config: &Config, path: &PathBuf, scp: &str) -> Result<(), DeliveryError> {
     let org = try!(config.organization());
     let proj = try!(config.project());
+    let pipe = try!(config.pipeline());
 
     // Init && config local repo if necessary
     try!(git::init_repo(path));
@@ -68,30 +73,56 @@ pub fn import(config: &Config, path: &PathBuf) -> Result<(), DeliveryError> {
 
     let client = try!(APIClient::from_config(config));
 
-    if ! client.project_exists(&org, &proj) {
-        say("white", "Creating project: ");
-        say("magenta", &format!("{} ", proj));
-        call_api(|| client.create_project(&org, &proj));
-    } else {
+    if client.project_exists(&org, &proj) {
         say("white", "Project ");
         say("magenta", &format!("{} ", proj));
         sayln("white", "already exists.");
+    } else {
+        match scp {
+            "bitbucket" => try!(create_bitbucket(client, &proj, &org, &pipe)),
+            "github" => try!(create_github(client, &proj, &org, &pipe)),
+            _ => try!(create_delivery(client, &proj, &org, &pipe))
+        }
     }
+    Ok(())
+}
 
+fn create_delivery(client: APIClient, proj: &str, org: &str, pipe: &str) -> Result<(), DeliveryError> {
+    say("white", "Creating ");
+    say("magenta", "delivery");
+    say("white", " project: ");
+    say("magenta", &format!("{} ", proj));
+    call_api(|| client.create_project(&org, &proj));
     say("white", "Checking for content on the git remote ");
     say("magenta", "delivery: ");
     if git::server_content() {
         sayln("red", "Found commits upstream, not pushing local commits.");
     } else {
         sayln("white", "No upstream content; pushing local content to server.");
+        // Why here we push to master and not the pipeline ¿?
+        //let _ = git::git_push_pipeline(&pipe);
         let _ = git::git_push_master();
     }
-
-    say("white", "Creating master pipeline for project: ");
+    say("white", &format!("Creating {:?} pipeline for project: ", pipe));
     say("magenta", &format!("{} ", proj));
     say("white", "... ");
-    call_api(|| client.create_pipeline(&org, &proj, "master"));
-    return Ok(())
+    call_api(|| client.create_pipeline(&org, &proj, &pipe));
+    Ok(())
+}
+
+fn create_github(client: APIClient, proj: &str, org: &str, pipe: &str) -> Result<(), DeliveryError> {
+    say("white", "Creating ");
+    say("magenta", "github");
+    say("white", " project: ");
+    say("magenta", &format!("{} ", proj));
+    Ok(())
+}
+fn create_bitbucket(client: APIClient, proj: &str, org: &str, pipe: &str) -> Result<(), DeliveryError> {
+    say("white", "Creating ");
+    say("magenta", "bitbucket");
+    say("white", " project: ");
+    say("magenta", &format!("{} ", proj));
+    Ok(())
 }
 
 /// Search for the project root directory
@@ -150,6 +181,86 @@ pub fn project_or_from_cwd(proj: &str) -> Result<String, DeliveryError> {
         Ok(proj.to_string())
     }
 }
+
+pub fn init(config: Config, no_open: &bool, skip_build_cookbook: &bool,
+        local: &bool, scp: &str) -> Result<(), DeliveryError> {
+
+    // We should use the new fn project::root_dir(&cwd()))
+    // which will detect that we are not running the init from
+    // a valid git repo.
+    if !local {
+        try!(create(&config, &utils::cwd(), &scp));
+    }
+
+    // From here we must create a new feature branch
+    // since we are going to start modifying the repo.
+    // in the case of an Err() we could roll back by
+    // reseting to the pipeline/branch (git reset --hard)
+
+    // we want to generate the build cookbook by default. let the user
+    // decide to skip if they don't want one.
+    if ! *skip_build_cookbook {
+
+        sayln("white", "Generating build cookbook skeleton");
+
+        let pcb_dir = match utils::home_dir(&[".delivery/cache/generator-cookbooks/pcb"]) {
+            Ok(p) => p,
+            Err(e) => return Err(e)
+        };
+
+        if is_dir(&pcb_dir) {
+            sayln("yellow", "Cached copy of build cookbook generator exists; skipping git clone.");
+        } else {
+            sayln("white", &format!("Cloning build cookbook generator dir {:#?}", pcb_dir));
+            // Lets not force the user to use this git repo.
+            // Adding an option --pcb PATH
+            // Where PATH:
+            //    * Local path
+            //    * Git repo
+            //    * Supermarket?
+            try!(git::clone(&pcb_dir.to_string_lossy(),
+                            "https://github.com/chef-cookbooks/pcb"));
+        }
+
+        // Generate the cookbook
+        let dot_delivery = Path::new(".delivery");
+        try!(mkdir_recursive(dot_delivery));
+        let mut gen = utils::make_command("chef");
+        gen.arg("generate")
+            .arg("cookbook")
+            .arg(".delivery/build-cookbook")
+            .arg("-g")
+            .arg(pcb_dir);
+
+        match gen.output() {
+            Ok(o) => o,
+            Err(e) => return Err(DeliveryError {
+                                     kind: Kind::FailedToExecute,
+                detail: Some(format!("failed to execute chef generate: {}", error::Error::description(&e)))})
+        };
+
+        let msg = format!("PCB generate: {:#?}", gen);
+        sayln("green", &msg);
+
+        // We should checkout a new branch before committing this code
+        // to the pipeline/branch
+        sayln("white", "Git add and commit of build-cookbook");
+        try!(git::git_command(&["add", ".delivery/build-cookbook"], &utils::cwd()));
+        try!(git::git_command(&["commit", "-m", "Add Delivery build cookbook"], &utils::cwd()));
+    }
+
+    // now to adding the .delivery/config.json, this uses our
+    // generated build cookbook always, so we no longer need a project
+    // type.
+    try!(DeliveryConfig::init(&utils::cwd()));
+
+    if !local {
+        let pipeline = try!(config.pipeline());
+        try!(cli::review(&pipeline, &false, no_open, &false));
+    }
+    Ok(())
+}
+
 
 #[cfg(test)]
 mod tests {

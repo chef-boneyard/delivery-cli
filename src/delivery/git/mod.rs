@@ -378,10 +378,12 @@ pub fn server_content() -> bool {
     }
 }
 
+//pub fn git_push_pipeline(pipeline: &str) -> Result<(), DeliveryError> {
 pub fn git_push_master() -> Result<(), DeliveryError> {
     match git_command(&["push", "--set-upstream",
                        "--porcelain", "--progress",
                        "--verbose", "delivery", "master"],
+                       //"--verbose", "delivery", pipeline],
                       &cwd()) {
         Ok(msg) => {
             sayln("white", &format!("{}", msg.stdout));
