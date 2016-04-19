@@ -31,6 +31,10 @@ fn call_api<F>(closure: F) where F : Fn() -> Result<Response, Kind> {
             sayln("white", "done");
         },
         Err(e) => {
+            // Why we dont pass the Err() to fail?
+            // We should fail in this point since we could
+            // endup in an unknown state because we assume
+            // that everything is Ok()
             match e {
                 Kind::ApiError(StatusCode::Conflict, _) => {
                     sayln("white", " already exists.");
@@ -57,6 +61,9 @@ pub fn import(config: &Config, path: &PathBuf) -> Result<(), DeliveryError> {
         sayln("white", "Remote 'delivery' added to git config!");
     } else {
         sayln("red", "Remote named 'delivery' already exists - not modifying");
+        // We should verify that the remote is the correct one
+        // if not, delete it and create the right one.
+        // Or fail saying that it doesn't match
     }
 
     let client = try!(APIClient::from_config(config));

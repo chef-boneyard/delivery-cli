@@ -303,7 +303,7 @@ fn clap_init(matches: &ArgMatches) -> Result<(), DeliveryError> {
 }
 
 fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str,
-        no_open: &bool,skip_build_cookbook: &bool,
+        no_open: &bool, skip_build_cookbook: &bool,
         local: &bool) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
 
@@ -314,10 +314,21 @@ fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str,
         .set_enterprise(ent)
         .set_organization(org)
         .set_project(&final_proj);
+    
+    // We are going to add a match here to select what kind
+    // of project we are about to create. Bitbucket? Github?
 
+    // We should use the new fn project::root_dir(&cwd())) 
+    // which will detect that we are not running the init from
+    // a valid git repo. 
     if !local {
         try!(project::import(&config, &cwd()));
     }
+    
+    // From here we must create a new feature branch
+    // since we are going to start modifying the repo.
+    // in the case of an Err() we could roll back by
+    // reseting to the pipeline/branch (git reset --hard)
 
     // we want to generate the build cookbook by default. let the user
     // decide to skip if they don't want one.
@@ -334,7 +345,12 @@ fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str,
             sayln("yellow", "Cached copy of build cookbook generator exists; skipping git clone.");
         } else {
             sayln("white", &format!("Cloning build cookbook generator dir {:#?}", pcb_dir));
-
+            // Lets not force the user to use this git repo.
+            // Adding an option --pcb PATH
+            // Where PATH:
+            //    * Local path
+            //    * Git repo
+            //    * Supermarket?
             try!(git::clone(&pcb_dir.to_string_lossy(),
                             "https://github.com/chef-cookbooks/pcb"));
         }
@@ -358,7 +374,9 @@ fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str,
 
         let msg = format!("PCB generate: {:#?}", gen);
         sayln("green", &msg);
-
+        
+        // We should checkout a new branch before committing this code
+        // to the pipeline/branch
         sayln("white", "Git add and commit of build-cookbook");
         try!(git::git_command(&["add", ".delivery/build-cookbook"], &cwd()));
         try!(git::git_command(&["commit", "-m", "Add Delivery build cookbook"], &cwd()));
@@ -374,6 +392,7 @@ fn init(user: &str, server: &str, ent: &str, org: &str, proj: &str,
         // config file, added a build cookbook, and made appropriate local
         // commit(s).
         // Let's create the review!
+        // C'mon! Why do we hardcoded the pipeline name??? -_-
         try!(review("master", &false, no_open, &false));
     }
     Ok(())
