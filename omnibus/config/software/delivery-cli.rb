@@ -23,21 +23,20 @@ source path: File.expand_path('..', Omnibus::Config.project_root),
 dependency "openssl"
 
 build do
-  # Setup a default environment from Omnibus - you should use this Omnibus
-  # helper everywhere. It will become the default in the future.
-  env = if windows?
-          copy "#{install_dir}/embedded/bin/ssleay32.dll", "#{install_dir}/embedded/bin/libssl32.dll"
-          with_standard_compiler_flags(with_embedded_path).merge(
-            "OPENSSL_LIB_DIR" => "#{install_dir}/embedded/bin",
-            "OPENSSL_INCLUDE_DIR" => "#{install_dir}/embedded/include"
-          )
-        else
-          with_standard_compiler_flags(with_embedded_path)
-        end
+  env = with_standard_compiler_flags(with_embedded_path).merge(
+    "OPENSSL_LIB_DIR" => "#{install_dir}/embedded",
+    "OPENSSL_INCLUDE_DIR" => "#{install_dir}/embedded/include"
+  )
 
-  command "make build", env: env
+  if windows?
+    copy "#{install_dir}/embedded/bin/ssleay32.dll", "#{install_dir}/embedded/bin/libssl32.dll"
+    env["OPENSSL_LIB_DIR"] = "#{install_dir}/embedded/bin"
+  end
+
+  command "cargo build -j #{workers} --release", env: env
 
   mkdir "#{install_dir}/bin"
+
   if windows?
     copy "#{project_dir}/target/release/delivery.exe", "#{install_dir}/bin/delivery.exe"
     # When using `openssl` dependency, by default it builds the libraries inside
