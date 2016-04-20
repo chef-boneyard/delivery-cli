@@ -15,11 +15,11 @@ UNAME = $(shell uname)
 ifeq ($(UNAME),Darwin)
     OPENSSL_PREFIX = /opt/delivery-cli/embedded
     CARGO_ENV += OPENSSL_INCLUDE_DIR=$(OPENSSL_PREFIX)/include
-    CARGO_ENV += OPENSSL_LIB_DIR=$(OPENSSL_PREFIX)/lib
+    CARGO_ENV += OPENSSL_LIB_DIR=$(OPENSSL_PREFIX)
 else ifeq ($(UNAME),Linux)
     OPENSSL_PREFIX = /opt/delivery-cli/embedded
     CARGO_ENV += OPENSSL_INCLUDE_DIR=$(OPENSSL_PREFIX)/include
-    CARGO_ENV += OPENSSL_LIB_DIR=$(OPENSSL_PREFIX)/lib
+    CARGO_ENV += OPENSSL_LIB_DIR=$(OPENSSL_PREFIX)
 else ifeq ($(UNAME),MINGW32_NT-6.2)
     OPENSSL_PREFIX ?= C:/chef/delivery-cli/embedded
     CARGO_ENV += OPENSSL_INCLUDE_DIR=$(OPENSSL_PREFIX)/include
