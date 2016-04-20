@@ -1,0 +1,80 @@
+GIT
+  remote: git://github.com/opscode/omnibus-software.git
+  revision: 6127be3af79941c32419228cbd9e63c4f061d76b
+  branch: master
+  specs:
+    omnibus-software (4.0.0)
+      omnibus (>= 5.2.0)
+
+GIT
+  remote: git://github.com/opscode/omnibus.git
+  revision: a83ee04eff7f9d6b609d1ac9c300d3c714513a43
+  branch: master
+  specs:
+    omnibus (5.4.0)
+      aws-sdk (~> 2)
+      chef-sugar (~> 3.3)
+      cleanroom (~> 1.0)
+      ffi-yajl (~> 2.2)
+      mixlib-shellout (~> 2.0)
+      mixlib-versioning
+      ohai (~> 8.0)
+      ruby-progressbar (~> 1.7)
+      thor (~> 0.18)
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    aws-sdk (2.2.34)
+      aws-sdk-resources (= 2.2.34)
+    aws-sdk-core (2.2.34)
+      jmespath (~> 1.0)
+    aws-sdk-resources (2.2.34)
+      aws-sdk-core (= 2.2.34)
+    chef-config (12.9.38)
+      fuzzyurl (~> 0.8.0)
+      mixlib-config (~> 2.0)
+      mixlib-shellout (~> 2.0)
+    chef-sugar (3.3.0)
+    cleanroom (1.0.0)
+    ffi (1.9.10)
+    ffi-yajl (2.2.3)
+      libyajl2 (~> 1.2)
+    fuzzyurl (0.8.0)
+    ipaddress (0.8.3)
+    jmespath (1.2.4)
+      json_pure (>= 1.8.1)
+    json_pure (1.8.3)
+    libyajl2 (1.2.0)
+    mixlib-cli (1.5.0)
+    mixlib-config (2.2.1)
+    mixlib-log (1.6.0)
+    mixlib-shellout (2.2.6)
+    mixlib-versioning (1.1.0)
+    ohai (8.14.0)
+      chef-config (>= 12.5.0.alpha.1, < 13)
+      ffi (~> 1.9)
+      ffi-yajl (~> 2.2)
+      ipaddress
+      mixlib-cli
+      mixlib-config (~> 2.0)
+      mixlib-log
+      mixlib-shellout (~> 2.0)
+      plist (~> 3.1)
+      systemu (~> 2.6.4)
+      wmi-lite (~> 1.0)
+    plist (3.2.0)
+    ruby-progressbar (1.7.5)
+    systemu (2.6.5)
+    thor (0.19.1)
+    wmi-lite (1.0.0)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  omnibus!
+  omnibus-software!
+
+BUNDLED WITH
+   1.10.6

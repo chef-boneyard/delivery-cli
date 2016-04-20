@@ -5,7 +5,7 @@
 .bundle
 bin/
 vendor/
-/omnibus-delivery-cli/local/
+/omnibus/local/
 nodes/
 local-mode-cache
 

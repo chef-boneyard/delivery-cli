@@ -36,7 +36,7 @@ end
 # BUILD
 #########################################################################
 
-omnibus_project_dir = File.join(delivery_workspace_repo, 'omnibus-delivery-cli')
+omnibus_project_dir = File.join(delivery_workspace_repo, 'omnibus')
 omnibus_base_dir    = File.join(delivery_workspace_cache, 'omnibus')
 
 # Add Rust and Ruby we installed in default to the path. Would really like to

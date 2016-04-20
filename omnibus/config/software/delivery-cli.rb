@@ -18,7 +18,7 @@
 name "delivery-cli"
 
 source path: File.expand_path('..', Omnibus::Config.project_root),
-       options: {exclude: [".git", "omnibus-delivery-cli", "target", "vendor"]}
+       options: {exclude: [".git", "omnibus", "target", "vendor"]}
 
 dependency "openssl"
 

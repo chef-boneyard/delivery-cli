@@ -15,7 +15,7 @@ $ git clone https://github.com/chef/delivery-cli.git
 
 #### Install and prepare omnibus (locally)
 ```
-$ cd delivery-cli/omnibus-delivery-cli
+$ cd delivery-cli/omnibus
 $ bundle install
 ```
 
@@ -40,14 +40,14 @@ C:\> C:\home\vagrant\cache\load-omnibus-toolchain.bat
 
 Prepare and install gem dependencies:
 ```
-C:\> cd C:\home\vagrant\delivery-cli\omnibus-delivery-cli
-C:\home\vagrant\delivery-cli\omnibus-delivery-cli> bundle install --binstubs
+C:\> cd C:\home\vagrant\delivery-cli\omnibus
+C:\home\vagrant\delivery-cli\omnibus> bundle install --binstubs
 ```
 
 Build `delivery-cli` package: (MSI)
 ```
-C:\home\vagrant\delivery-cli\omnibus-delivery-cli> bundle exec omnibus build delivery-cli --log-level internal
+C:\home\vagrant\delivery-cli\omnibus> bundle exec omnibus build delivery-cli --log-level internal
 ```
 
-You will find the package at: `C:\home\vagrant\delivery-cli\omnibus-delivery-cli\pkg`
+You will find the package at: `C:\home\vagrant\delivery-cli\omnibus\pkg`
 
