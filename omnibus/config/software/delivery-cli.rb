@@ -23,10 +23,7 @@ source path: File.expand_path('..', Omnibus::Config.project_root),
 dependency "openssl"
 
 build do
-  env = with_standard_compiler_flags(with_embedded_path).merge(
-    "OPENSSL_LIB_DIR" => "#{install_dir}/embedded",
-    "OPENSSL_INCLUDE_DIR" => "#{install_dir}/embedded/include"
-  )
+  env = with_standard_compiler_flags(with_embedded_path)
 
   if windows?
     copy "#{install_dir}/embedded/bin/ssleay32.dll", "#{install_dir}/embedded/bin/libssl32.dll"
