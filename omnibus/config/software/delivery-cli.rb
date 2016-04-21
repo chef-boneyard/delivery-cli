@@ -25,6 +25,10 @@ dependency "openssl"
 build do
   env = with_standard_compiler_flags(with_embedded_path)
 
+  # pass version info into the build
+  env['DELIV_CLI_VERSION'] = project.build_version
+  env['DELIV_CLI_GIT_SHA'] = project.build_git_revision
+
   if windows?
     copy "#{install_dir}/embedded/bin/ssleay32.dll", "#{install_dir}/embedded/bin/libssl32.dll"
     env["OPENSSL_LIB_DIR"] = "#{install_dir}/embedded/bin"

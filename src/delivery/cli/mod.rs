@@ -835,9 +835,8 @@ fn api_token(server: &str, port: &str, ent: &str,
 }
 
 fn version() -> String {
-    let epoch = "1970-01-01T00:00:00Z";
-    let build_time = option_env!("DELIV_CLI_TIME").unwrap_or(epoch);
-    format!("{}", build_time)
+    let build_version = option_env!("DELIV_CLI_VERSION").unwrap_or("0.0.0");
+    format!("{}", build_version)
 }
 
 fn build_git_sha() -> String {

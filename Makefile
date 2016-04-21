@@ -3,21 +3,23 @@
 # Author: Jon Anderson (janderson@chef.io)
 
 CARGO_OPTS ?=
+DELIV_CLI_VERSION = $(shell git describe --abbrev=0 --tags)
 DELIV_CLI_GIT_SHA = $(shell git rev-parse --short HEAD)
 DELIV_CLI_TIME = $(shell date -u "+%Y-%m-%dT%H:%M:%SZ")
 RUSTC_VERSION = $(shell rustc --version)
-CARGO_ENV = DELIV_CLI_GIT_SHA="$(DELIV_CLI_GIT_SHA)"
+CARGO_ENV += DELIV_CLI_VERSION="$(DELIV_CLI_VERSION)"
+CARGO_ENV += DELIV_CLI_GIT_SHA="$(DELIV_CLI_GIT_SHA)"
 CARGO_ENV += RUSTC_VERSION="$(RUSTC_VERSION)"
 CARGO_ENV += DELIV_CLI_TIME="$(DELIV_CLI_TIME)"
 
 UNAME = $(shell uname)
 
 ifeq ($(UNAME),Darwin)
-    OPENSSL_PREFIX = /opt/delivery-cli/embedded
+    OPENSSL_PREFIX ?= /opt/delivery-cli/embedded
     CARGO_ENV += OPENSSL_INCLUDE_DIR=$(OPENSSL_PREFIX)/include
     CARGO_ENV += OPENSSL_LIB_DIR=$(OPENSSL_PREFIX)
 else ifeq ($(UNAME),Linux)
-    OPENSSL_PREFIX = /opt/delivery-cli/embedded
+    OPENSSL_PREFIX ?= /opt/delivery-cli/embedded
     CARGO_ENV += OPENSSL_INCLUDE_DIR=$(OPENSSL_PREFIX)/include
     CARGO_ENV += OPENSSL_LIB_DIR=$(OPENSSL_PREFIX)
 else ifeq ($(UNAME),MINGW32_NT-6.2)

@@ -6,5 +6,5 @@ Feature: version
 Scenario: asking for the version with --version
 
   When I successfully run `delivery --version`
-  Then the output should match /delivery \d{4}-[0-9TZ:-]+ \([a-f0-9]+\)/
+  Then the output should match /delivery \d\.\d\.\d \([a-f0-9]+\)/
 
