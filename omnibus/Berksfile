@@ -1,6 +1,5 @@
 source 'https://supermarket.chef.io'
 
-cookbook 'omnibus', git: 'git@github.com:chef-cookbooks/omnibus'
 cookbook 'languages', git: 'git@github.com:chef-cookbooks/languages'
 cookbook 'delivery-sugar', git: 'git@github.com:chef-cookbooks/delivery-sugar'
 cookbook 'artifactory-pro', git: 'git@github.com:chef-cookbooks/artifactory-pro'
