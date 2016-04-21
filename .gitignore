@@ -16,3 +16,5 @@ bin/
 tmp/
 /cookbooks/delivery_rust/cookbooks/
 /cookbooks/delivery_rust/nodes/
+/omnibus/Berksfile.lock
+/omnibus/Gemfile.lock
