@@ -1,11 +1,6 @@
 source 'https://supermarket.chef.io'
 
-cookbook 'languages', git: 'git@github.com:chef-cookbooks/languages'
-cookbook 'delivery-sugar', git: 'git@github.com:chef-cookbooks/delivery-sugar'
-cookbook 'artifactory-pro', git: 'git@github.com:chef-cookbooks/artifactory-pro'
-cookbook 'oc-artifactory', git: 'git@github.com:chef-cookbooks/oc-artifactory'
-cookbook 'opscode-ci', git: 'git@github.com:chef-cookbooks/opscode-ci'
-cookbook 'delivery_rust', path: '../cookbooks/delivery_rust'
+cookbook 'omnibus'
 
 group :integration do
   cookbook 'apt',      '~> 2.3'

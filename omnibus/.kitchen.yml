@@ -9,27 +9,20 @@ driver:
 
 provisioner:
   name: chef_zero
-  require_chef_omnibus: true
+  require_chef_omnibus: latest
+  attributes:
+    vagrant:
+      this_key_exists_so_we_have_a_vagrant_key: true
 
 platforms:
-  - name: centos-7.1
-    run_list: yum-epel::default
   - name: centos-6.7
     run_list: yum-epel::default
-  - name: centos-5.11
+  - name: centos-7.2
     run_list: yum-epel::default
-  - name: debian-7.8
-  - name: debian-6.0.10
-  - name: freebsd-10.2
-    run_list: freebsd::portsnap
-  - name: freebsd-9.3
-    run_list:
-      - freebsd::portsnap
-      - freebsd::pkgng
-  - name: ubuntu-14.04
   - name: ubuntu-12.04
-  - name: ubuntu-11.04
-  - name: ubuntu-10.04
+    run_list: apt::default
+  - name: ubuntu-14.04
+    run_list: apt::default
   # The following (private) boxes are shared via Atlas and are only
   # available to users working for Chef. Sorry, it's about software licensing.
   #
@@ -40,40 +33,42 @@ platforms:
   # 3.  Do `vagrant login` with your Atlas creds so that you can download
   #     the private boxes.
   #
-  # The Mac OS X boxes are VMware only also. You can enable VMware Fusion
-  # as the default provider by copying `.kitchen.local.yml.vmware.example`
-  # over to `.kitchen.local.yml`.
+   # The Mac OS X boxes are VMware only also. You can enable VMware Fusion
+  # by activating the `.kitchen.vmware.yml` file with the `KITCHEN_LOCAL_YAML`
+  # environment variable:
   #
-  # If you're not able to access those boxes, we'd recommend creating a
-  # `.kitchen.local.yml` and overriding the windows or OS X boxes.
-  - name: macosx-10.9
+  #   KITCHEN_LOCAL_YAML=.kitchen.vmware.yml kitchen converge chefdk-macosx-109
+  #
+  <% %w(
+    10.9
+    10.10
+    10.11
+  ).each do |mac_version| %>
+  - name: macosx-<%= mac_version %>
     driver:
-      box: chef/macosx-10.9 # private
-  - name: macosx-10.10
-    driver:
-      box: chef/macosx-10.10 # private
+      box: chef/macosx-<%= mac_version %> # private
+      synced_folders:
+      - ['..', '/Users/vagrant/delivery-cli']
+  <% end %>
   - name: windows-2012r2-standard
     driver:
       customize:
         memory: 4096
       box: chef/windows-server-2012r2-standard # private
+      synced_folders:
+      # We have to mount this repos enclosing folder as the Omnibus build
+      # gets cranky if the mounted ChefDK source folder is a symlink. This
+      # mounts at `C:\vagrant\code` and the ChefDK source folder is available
+      # at `C:\vagrant\code\chef-dk`
+      - ['../..', '/vagrant/code']
 
 suites:
-  - name: default
-    run_list:
-      - delivery_rust::default
+  - name: delivery-cli
     attributes:
-      delivery:
-        change:
-          enterprise: kitchen
-          organization: kitchen
-        workspace:
-          repo:         /home/vagrant/delivery-cli
-          cache:        /home/vagrant/cache
-          chef:         /home/vagrant/chef
-        workspace_path: /home/vagrant
       omnibus:
         build_user:          vagrant
         build_user_group:    vagrant
         build_user_password: vagrant
         install_dir:         /opt/delivery-cli
+    run_list:
+      - omnibus::default
