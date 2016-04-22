@@ -26,6 +26,9 @@ dependency "preparation"
 # delivery-cli dependencies/components
 dependency "delivery-cli"
 
+# This is a build-time dependency, so we won't leave it behind:
+dependency "rust-uninstall"
+
 # Version manifest file
 dependency "version-manifest"
 
@@ -38,7 +41,9 @@ end
 
 package :pkg do
   identifier "io.chef.pkg.delivery-cli"
-  signing_identity "Developer ID Installer: Chef Software, Inc. (EU3VF8YLX2)"
+  # TODO: Once we have Mac OS X build-nodes ready to build the cli
+  # we need to uncomment this line so we can sign our MSI packages
+  # signing_identity "Developer ID Installer: Chef Software, Inc. (EU3VF8YLX2)"
 end
 compress :dmg
 
@@ -46,6 +51,6 @@ package :msi do
   upgrade_code "178C5A9A-3923-4A65-AECB-3851224D0FDD"
   wix_candle_extension 'WixUtilExtension'
   # TODO: Once we have Windows build-nodes ready to build the cli
-  # we need to uncomment this line so we can sighn our MSI packages
+  # we need to uncomment this line so we can sign our MSI packages
   #signing_identity "F74E1A68005E8A9C465C3D2FF7B41F3988F0EA09", machine_store: true
 end

@@ -13,7 +13,7 @@
 #
 # Uncomment this line to change the default base directory to "local"
 # -------------------------------------------------------------------
-base_dir File.expand_path('./local')
+# base_dir File.expand_path('./local')
 #
 # Alternatively you can tune the individual values
 # ------------------------------------------------
@@ -31,8 +31,8 @@ base_dir File.expand_path('./local')
 # Enable S3 asset caching
 # ------------------------------
 use_s3_caching true
-# s3_access_key  ENV['AWS_ACCESS_KEY_ID']
-# s3_secret_key  ENV['AWS_SECRET_ACCESS_KEY']
+s3_access_key  ENV['AWS_ACCESS_KEY_ID']
+s3_secret_key  ENV['AWS_SECRET_ACCESS_KEY']
 s3_bucket      ENV['AWS_S3_BUCKET'] || 'opscode-omnibus-cache'
 
 # Customize compiler bits
