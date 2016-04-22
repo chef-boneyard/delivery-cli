@@ -26,6 +26,9 @@ dependency "preparation"
 # delivery-cli dependencies/components
 dependency "delivery-cli"
 
+# This is a build-time dependency, so we won't leave it behind:
+dependency "rust-uninstall"
+
 # Version manifest file
 dependency "version-manifest"
 

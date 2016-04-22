@@ -21,9 +21,17 @@ source path: File.expand_path('..', Omnibus::Config.project_root),
        options: {exclude: [".git", "omnibus", "target", "vendor"]}
 
 dependency "openssl"
+dependency "rust"
 
 build do
   env = with_standard_compiler_flags(with_embedded_path)
+
+  # The rust core libraries are dynamicaly linked
+  if linux?
+    env['LD_LIBRARY_PATH'] = "#{install_dir}/embedded/lib"
+  elsif mac_os_x?
+    env['DYLD_FALLBACK_LIBRARY_PATH'] = "#{install_dir}/embedded/lib:"
+  end
 
   # pass version info into the build
   env['DELIV_CLI_VERSION'] = project.build_version
@@ -41,13 +49,10 @@ build do
   if windows?
     copy "#{project_dir}/target/release/delivery.exe", "#{install_dir}/bin/delivery.exe"
     # When using `openssl` dependency, by default it builds the libraries inside
-    # `embedded/bin/`. We are copying the libs inside `bin/`. Once we are done
-    # building the `delivery-cli` we want to clean what we will package, therefore
-    # we will delete what is in embedded since we dont use it
+    # `embedded/bin/`. We are copying the libs inside `bin/`.
     copy "#{install_dir}/embedded/bin/ssleay32.dll", "#{install_dir}/bin/ssleay32.dll"
     copy "#{install_dir}/embedded/bin/libeay32.dll", "#{install_dir}/bin/libeay32.dll"
     copy "#{install_dir}/embedded/bin/zlib1.dll", "#{install_dir}/bin/zlib1.dll"
-    delete "#{install_dir}/embedded"
   else
     copy "#{project_dir}/target/release/delivery", "#{install_dir}/bin/delivery"
   end
