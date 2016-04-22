@@ -85,19 +85,39 @@ liking, you can bring up an individual build environment using the `kitchen`
 command.
 
 ```shell
-$ bin/kitchen converge ubuntu-1204
+$ kitchen converge ubuntu-1204
 ```
 
 Then login to the instance and build the project as described in the Usage
 section:
 
 ```shell
-$ bundle exec kitchen login ubuntu-1204
+$ kitchen login ubuntu-1204
+[vagrant@ubuntu...] $ source load-omnibus-toolchain.sh
 [vagrant@ubuntu...] $ cd delivery-cli
 [vagrant@ubuntu...] $ bundle install
 [vagrant@ubuntu...] $ ...
-[vagrant@ubuntu...] $ bin/omnibus build delivery-cli
+[vagrant@ubuntu...] $ bundle exec omnibus build delivery-cli -l internal
 ```
+
+You can also login to Windows instances but will have to manually call the
+`load-omnibus-toolchain.bat` script which initializes the build environment.
+
+```shell
+$ kitchen login chefdk-windows-81-professional
+Last login: Sat Sep 13 10:19:04 2014 from 172.16.27.1
+Microsoft Windows [Version 6.3.9600]
+(c) 2013 Microsoft Corporation. All rights reserved.
+
+C:\>C:\vagrant\load-omnibus-toolchain.bat
+
+C:\>cd C:\vagrant\code\delivery-cli\omnibus
+
+C:\vagrant\code\chef-dk\omnibus>bundle install
+
+C:\vagrant\code\chef-dk\omnibus>bundle exec omnibus build delivery-cli -l internal
+```
+
 
 For a complete list of all commands and platforms, run `kitchen list` or
 `kitchen help`.
