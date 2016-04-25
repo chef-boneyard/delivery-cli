@@ -8,6 +8,8 @@ name "delivery-cli"
 friendly_name "Delivery CLI"
 maintainer "Chef Software, Inc."
 homepage "http://chef.io"
+license "Apache-2.0"
+license_file "../LICENSE"
 
 # Defaults to C:\chef\delivery-cli on Windows
 # and /opt/delivery-cli on all other platforms

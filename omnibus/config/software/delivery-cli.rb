@@ -17,6 +17,8 @@
 # These options are required for all software definitions
 name "delivery-cli"
 
+license :project_license
+
 source path: File.expand_path('..', Omnibus::Config.project_root),
        options: {exclude: [".git", "omnibus", "target", "vendor"]}
 
