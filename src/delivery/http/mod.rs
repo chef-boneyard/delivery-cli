@@ -24,7 +24,6 @@ use hyper::client::response::Response as HyperResponse;
 use hyper::error::Error as HttpError;
 use mime;
 use rustc_serialize::json;
-use errors::Kind as DelivError;
 use std::io::prelude::*;
 use errors::{DeliveryError, Kind};
 use token::TokenStore;
@@ -83,7 +82,6 @@ pub struct APIClient {
 }
 
 impl APIClient {
-
     /// Create a new `APIClient` from the specified `Config` instance
     /// for making authenticated requests. Returns an error result if
     /// required configuration values are missing. Expects to find
@@ -133,7 +131,47 @@ impl APIClient {
         }
     }
 
-    pub fn get_auth_from_home(&mut self, server: &str, ent: &str, user: &str) -> Result<APIAuth, DeliveryError> {
+    /// Parse the HyperResponse coming from the APIClient Request
+    /// that Delivery sends back when hitting the endpoints
+    pub fn parse_response(&self, mut response: HyperResponse) -> Result<(), DeliveryError> {
+        match response.status {
+            StatusCode::NoContent => Ok(()),
+            StatusCode::Created => {
+                sayln("green", " created");
+                Ok(())
+            },
+            StatusCode::Conflict => {
+                sayln("white", " already exists.");
+                Ok(())
+            },
+            StatusCode::Unauthorized => {
+                // Verify if the Token has expired
+                let detail = try!(APIClient::extract_pretty_json(&mut response));
+                match detail.find("token_expired") {
+                    Some(_) => Err(DeliveryError{ kind: Kind::TokenExpired, detail: None}),
+                    None => {
+                        let msg = "API request returned 401".to_string();
+                        Err(DeliveryError{ kind: Kind::AuthenticationFailed,
+                                           detail: Some(msg)})
+                    }
+                }
+            },
+            error_code @ _ => {
+                let msg = format!("API request returned {}",
+                                  error_code);
+                let mut detail = String::new();
+                let e = match response.read_to_string(&mut detail) {
+                    Ok(_) => Ok(detail),
+                    Err(e) => Err(e)
+                };
+                Err(DeliveryError{ kind: Kind::ApiError(error_code, e),
+                                   detail: Some(msg)})
+            }
+        }
+    }
+
+    pub fn get_auth_from_home(&mut self, server: &str, ent: &str,
+                              user: &str) -> Result<APIAuth, DeliveryError> {
         match TokenStore::from_home() {
             Ok(tstore) => {
                 APIAuth::from_token_store(tstore, server, ent, user)
@@ -195,19 +233,11 @@ impl APIClient {
         };
         debug!("Request: {:?} Path: {:?} Payload: {:?}",
                 http_method, path, payload);
-        let res;
         if !payload.is_empty() {
-            res = req.body(payload).send();
+            req.body(payload).send()
         } else {
-            res = req.send();
+            req.send()
         }
-        // Here we should detect if the token has expired
-        // if so, prompt the user to generate a new one.
-        // then try the Request again with the token. :)
-        //
-        //let body = APIClient::parse_json(res);
-        //println!(format!("Response {}", body));
-        return res
     }
 
     pub fn project_exists(&self,
@@ -234,33 +264,17 @@ impl APIClient {
     }
 
     pub fn create_delivery_project(&self, org: &str,
-                                   proj: &str) -> Result<HyperResponse, DelivError> {
+                                   proj: &str) -> Result<(), DeliveryError> {
         let path = format!("orgs/{}/projects", org);
         // FIXME: we'd like to use the native struct->json stuff, but
         // seeing link issues.
         let payload = format!("{{\"name\":\"{}\"}}", proj);
-        match self.post(&path, &payload) {
-            Ok(mut res) => {
-                match res.status {
-                    StatusCode::Created =>
-                        Ok(res),
-                    _ => {
-                        let mut detail = String::new();
-                        let e = match res.read_to_string(&mut detail) {
-                            Ok(_) => Ok(detail),
-                            Err(e) => Err(e)
-                        };
-                        Err(DelivError::ApiError(res.status, e))
-                    }
-                }
-            },
-            Err(e) => Err(DelivError::HttpError(e))
-        }
+        self.parse_response(try!(self.post(&path, &payload)))
     }
 
     pub fn create_github_project(&self, org: &str, proj: &str,
                                 repo_name: &str, git_org: &str, pipe: &str,
-                                ssl: bool) -> Result<HyperResponse, DelivError> {
+                                ssl: bool) -> Result<(), DeliveryError> {
         let path = format!("orgs/{}/github-projects", org);
         // FIXME: we'd like to use the native struct->json stuff, but
         // seeing link issues.
@@ -274,28 +288,12 @@ impl APIClient {
                                     \"verify_ssl\": {}\
                                 }}\
                               }}", proj, repo_name, git_org, pipe, ssl);
-        match self.post(&path, &payload) {
-            Ok(mut res) => {
-                match res.status {
-                    StatusCode::Created =>
-                        Ok(res),
-                    _ => {
-                        let mut detail = String::new();
-                        let e = match res.read_to_string(&mut detail) {
-                            Ok(_) => Ok(detail),
-                            Err(e) => Err(e)
-                        };
-                        Err(DelivError::ApiError(res.status, e))
-                    }
-                }
-            },
-            Err(e) => Err(DelivError::HttpError(e))
-        }
+        self.parse_response(try!(self.post(&path, &payload)))
     }
 
     pub fn create_bitbucket_project(&self, org: &str, proj: &str,
                                     repo_name: &str, project_key: &str,
-                                    pipe: &str) -> Result<HyperResponse, DelivError> {
+                                    pipe: &str) -> Result<(), DeliveryError> {
         let path = format!("orgs/{}/bitbucket-projects", org);
         let payload = format!("{{\
                                 \"name\":\"{}\",\
@@ -306,52 +304,20 @@ impl APIClient {
                                     \"pipeline_branch\":\"{}\"\
                                 }}\
                               }}", proj, repo_name, project_key, pipe);
-        match self.post(&path, &payload) {
-            Ok(mut res) => {
-                match res.status {
-                    StatusCode::Created =>
-                        Ok(res),
-                    _ => {
-                        let mut detail = String::new();
-                        let e = match res.read_to_string(&mut detail) {
-                            Ok(_) => Ok(detail),
-                            Err(e) => Err(e)
-                        };
-                        Err(DelivError::ApiError(res.status, e))
-                    }
-                }
-            },
-            Err(e) => Err(DelivError::HttpError(e))
-        }
+        self.parse_response(try!(self.post(&path, &payload)))
     }
 
     pub fn create_pipeline(&self,
                            org: &str,
                            proj: &str,
-                           pipe: &str) -> Result<HyperResponse, DelivError> {
+                           pipe: &str) -> Result<(), DeliveryError> {
         let path = format!("orgs/{}/projects/{}/pipelines", org, proj);
         // FIXME: we'd like to use the native struct->json stuff, but
         // seeing link issues.
         let base_branch = "master";
         let payload = format!("{{\"name\":\"{}\",\"base\":\"{}\"}}",
                               pipe, base_branch);
-        match self.post(&path, &payload) {
-            Ok(mut res) => {
-                match res.status {
-                    StatusCode::Created =>
-                        Ok(res),
-                    _ => {
-                        let mut detail = String::new();
-                        let e = match res.read_to_string(&mut detail) {
-                            Ok(_) => Ok(detail),
-                            Err(e) => Err(e)
-                        };
-                        Err(DelivError::ApiError(res.status, e))
-                    }
-                }
-            },
-            Err(e) => Err(DelivError::HttpError(e))
-        }
+        self.parse_response(try!(self.post(&path, &payload)))
     }
 
     pub fn parse_json(result: Result<HyperResponse, HttpError>) -> Result<json::Json, DeliveryError> {

@@ -15,8 +15,6 @@
 // limitations under the License.
 //
 
-use hyper::client::response::Response;
-use hyper::status::StatusCode;
 use utils::say::{say, sayln};
 use utils::{self, walk_tree_for_path, mkdir_recursive};
 use utils::path_ext::is_dir;
@@ -45,14 +43,16 @@ pub struct SourceCodeProvider {
 }
 
 impl SourceCodeProvider {
+    /// Create a new `SourceCodeProvider`. Returns an error result if
+    /// required configuration values are missing. Expects to find
+    /// `scp`, `repository`, `scp-organization`, `branch`, and `ssl`.
     pub fn new(scp: &str, repo: &str, org: &str, branch: &str,
                ssl: bool) -> Result<SourceCodeProvider, DeliveryError> {
         let scp_kind = match scp {
             "github" => Type::Github,
             "bitbucket" => Type::Bitbucket,
-            _ => return Err(DeliveryError{ kind: Kind::OptionConstraint, detail:None })
+            _ => return Err(DeliveryError{ kind: Kind::UnknownProjectType, detail:None })
         };
-        // Verify all SCP Attributes are valid
         if repo.to_string().is_empty()
             || org.to_string().is_empty()
             || branch.to_string().is_empty() {
@@ -60,14 +60,14 @@ impl SourceCodeProvider {
                 Type::Github => return Err(
                     DeliveryError{
                         kind: Kind::OptionConstraint,
-                        detail: Some(format!("To initialize a Github project you have to specify: \
+                        detail: Some(format!("Missing Github SCP attributes, specify: \
                                               repo-name, org-name and pipeline(default: master)"))
                     }
                 ),
                 Type::Bitbucket => return Err(
                     DeliveryError{
                         kind: Kind::OptionConstraint,
-                        detail: Some(format!("To initialize a Bitbucket project you have to specify: \
+                        detail: Some(format!("Missing Bitbucket SCP attributes, specify: \
                                               repo-name, project-key and pipeline(default: master)"))
                     }
                 ),
@@ -83,39 +83,11 @@ impl SourceCodeProvider {
     }
 }
 
-fn call_api<F>(closure: F) where F : Fn() -> Result<Response, Kind> {
-    match closure() {
-        Ok(_) => {
-            sayln("green", "done");
-        },
-        Err(e) => {
-            // Why we dont pass the Err() to fail?
-            // We should fail in this point since we could
-            // endup in an unknown state because we assume
-            // that everything is Ok()
-            match e {
-                Kind::ApiError(StatusCode::Conflict, _) => {
-                    sayln("white", " already exists.");
-                },
-                Kind::ApiError(code, Ok(msg)) => {
-                    sayln("red", &format!("{} {}", code, msg));
-                },
-                _ => {
-                    sayln("red", &format!("Other error: {:?}", e));
-                }
-            }
-        }
-    }
-}
-
 pub fn create(config: &Config, path: &PathBuf,
               scp: Option<SourceCodeProvider>) -> Result<(), DeliveryError> {
     let org = try!(config.organization());
     let proj = try!(config.project());
-
-    // Init && config local repo if necessary
     try!(git::init_repo(path));
-
     let client = try!(APIClient::from_config(config));
 
     if client.project_exists(&org, &proj) {
@@ -149,23 +121,20 @@ fn create_delivery_project(client: APIClient, org: &str, proj: &str,
     say("magenta", "delivery");
     say("white", " project: ");
     say("magenta", &format!("{} ", proj));
-    call_api(|| client.create_delivery_project(&org, &proj));
+    try!(client.create_delivery_project(&org, &proj));
     say("white", "Checking for content on the git remote ");
     say("magenta", "delivery: ");
     if git::server_content() {
         sayln("red", "Found commits upstream, not pushing local commits.");
     } else {
         sayln("white", "No upstream content; pushing local content to server.");
-        // Why here we push to master and not the pipeline ¿?
-        //let _ = git::git_push_pipeline(&pipe);
         let _ = git::git_push_master();
     }
     say("white", "Creating ");
     say("magenta", &format!("{} ", pipe));
     say("white", " pipeline for project: ");
-    say("magenta", &format!("{} ", proj));
-    say("white", "... ");
-    call_api(|| client.create_pipeline(&org, &proj, &pipe));
+    say("magenta", &format!("{}: ", proj));
+    try!(client.create_pipeline(&org, &proj, &pipe));
     Ok(())
 }
 
@@ -177,18 +146,16 @@ fn create_scp_project(client: APIClient, org: &str, proj: &str,
             say("magenta", "bitbucket");
             say("white", " project: ");
             say("magenta", &format!("{} ", proj));
-            call_api(|| client.create_bitbucket_project(&org, &proj, &scp.repo_name,
-                                                        &scp.organization, &scp.branch));
+            try!(client.create_bitbucket_project(&org, &proj, &scp.repo_name,
+                                                 &scp.organization, &scp.branch));
         },
         Type::Github => {
             say("magenta", "github");
             say("white", " project: ");
             say("magenta", &format!("{} ", proj));
-            call_api(|| client.create_github_project(&org, &proj, &scp.repo_name,
-                                                     &scp.organization, &scp.branch,
-                                                     scp.verify_ssl));
-        },
-        //_ => Err(),
+            try!(client.create_github_project(&org, &proj, &scp.repo_name,
+                                              &scp.organization, &scp.branch, scp.verify_ssl));
+        }
     }
     Ok(())
 }
@@ -260,9 +227,8 @@ pub fn init(config: Config, no_open: &bool, skip_build_cookbook: &bool,
 
     // From here we must create a new feature branch
     // since we are going to start modifying the repo.
-    // in the case of an Err() we could roll back by
-    // reseting to the pipeline/branch (git reset --hard)
-    // Although it could be a good idea to verify and if not, create it.
+    // in the case of an Err() we could roll back although
+    // it could be a good idea to verify and if not, create it.
     say("white", "Create and checkout add-delivery-config feature branch: ");
     try!(git::git_command(&["checkout", "-b", "add-delivery-config"], &project_path));
     sayln("green", "done");
@@ -339,7 +305,6 @@ pub fn init(config: Config, no_open: &bool, skip_build_cookbook: &bool,
     }
     Ok(())
 }
-
 
 #[cfg(test)]
 mod tests {
