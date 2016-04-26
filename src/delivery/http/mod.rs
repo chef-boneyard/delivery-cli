@@ -134,6 +134,7 @@ impl APIClient {
     /// Parse the HyperResponse coming from the APIClient Request
     /// that Delivery sends back when hitting the endpoints
     pub fn parse_response(&self, mut response: HyperResponse) -> Result<(), DeliveryError> {
+        debug!("Parsing response with status: {:?}", response.status);
         match response.status {
             StatusCode::NoContent => Ok(()),
             StatusCode::Created => {
@@ -291,6 +292,36 @@ impl APIClient {
         self.parse_response(try!(self.post(&path, &payload)))
     }
 
+    fn get_scm_server_config(&self, scm: &str) -> Result<Vec<json::Json>, DeliveryError> {
+        let json = try!(APIClient::parse_json(self.get("scm-providers")));
+        debug!("Endpoint[scm-providers]: {:?}", json);
+        if let Some(data) = json.as_array() {
+            for obj in data.iter() {
+                if let Some(scp) = obj.as_object() {
+                    let name = scp.get("name").unwrap().as_string().unwrap();
+                    if name == scm {
+                        let scp_config = scp.get("scmSetupConfigs").unwrap().as_array().unwrap();
+                        debug!("{:?} Config: {:?}", scm, scp_config);
+                        return Ok(scp_config.clone())
+                    }
+                }
+            }
+        }
+        Err(DeliveryError {
+            kind: Kind::ExpectedJsonString,
+            detail: Some(format!("Unable to find {:?} SCM Config in Delivery Server.\n\
+                                 JSON Output: {:?}", scm, json))
+        })
+    }
+
+    pub fn get_github_server_config(&self) -> Result<Vec<json::Json>, DeliveryError> {
+        self.get_scm_server_config("Github")
+    }
+
+    pub fn get_bitbucket_server_config(&self) -> Result<Vec<json::Json>, DeliveryError> {
+        self.get_scm_server_config("Bitbucket")
+    }
+
     pub fn create_bitbucket_project(&self, org: &str, proj: &str,
                                     repo_name: &str, project_key: &str,
                                     pipe: &str) -> Result<(), DeliveryError> {
@@ -304,7 +335,14 @@ impl APIClient {
                                     \"pipeline_branch\":\"{}\"\
                                 }}\
                               }}", proj, repo_name, project_key, pipe);
-        self.parse_response(try!(self.post(&path, &payload)))
+        // Sadly the endpoint returns a Status 204 NoContent instead of 201 Created
+        // therefor we need to hardcode the output of the sayln(" createda)"
+        //
+        try!(self.parse_response(try!(self.post(&path, &payload))));
+        sayln("green", " created");
+        Ok(())
+        // TODO: Fix the endpoint, delete this code and uncomment this line:
+        //self.parse_response(try!(self.post(&path, &payload)))
     }
 
     pub fn create_pipeline(&self,

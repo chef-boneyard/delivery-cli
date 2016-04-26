@@ -81,6 +81,26 @@ impl SourceCodeProvider {
             verify_ssl: !no_ssl,
         })
     }
+
+    /// Verify if the SCP is configured on the Delivery Server
+    pub fn verify_server_config(&self, client: &APIClient) -> Result<(), DeliveryError> {
+        match self.kind {
+            // Currently there is no way to validate this for Github
+            Type::Github => {
+                let scp_config = try!(client.get_github_server_config());
+                if scp_config.is_empty() {
+                    return Err(DeliveryError{ kind: Kind::NoGithubSCPConfig, detail: None })
+                }
+            },
+            Type::Bitbucket => {
+                let scp_config = try!(client.get_bitbucket_server_config());
+                if scp_config.is_empty() {
+                    return Err(DeliveryError{ kind: Kind::NoBitbucketSCPConfig, detail: None })
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 pub fn create(config: &Config, path: &PathBuf,
@@ -140,6 +160,7 @@ fn create_delivery_project(client: APIClient, org: &str, proj: &str,
 
 fn create_scp_project(client: APIClient, org: &str, proj: &str,
                       scp: SourceCodeProvider) -> Result<(), DeliveryError> {
+    try!(scp.verify_server_config(&client));
     say("white", "Creating ");
     match scp.kind {
         Type::Bitbucket => {
