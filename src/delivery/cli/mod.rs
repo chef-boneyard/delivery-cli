@@ -57,7 +57,7 @@ fn scp_args<'a>() -> Vec<Arg<'a, 'a, 'a, 'a, 'a, 'a>> {
         "--github 'Init a github repository'",
         "-g --git-org-name=[org-name] 'The Github organization name'",
         "-r --repo-name=[repo-name] 'Source code provider repository name'",
-        "--verify-ssl 'Use SSL verification. [Github]'"]
+        "--no-verify-ssl 'Do not use SSL verification. [Github]'"]
 }
 
 fn_arg!(for_arg,
@@ -329,18 +329,18 @@ fn clap_init(matches: &ArgMatches) -> Result<(), DeliveryError> {
     if git_p {
         let repo_name = value_of(&matches, "repo-name");
         let org_name = value_of(&matches, "org-name");
-        let v_ssl = matches.is_present("verify-ssl");
+        let no_v_ssl = matches.is_present("no-verify-ssl");
         debug!("init github: GitRepo:{:?}, GitOrg:{:?}, Branch:{:?}, SSL:{:?}",
-               repo_name, org_name, branch, v_ssl);
+               repo_name, org_name, branch, no_v_ssl);
         scp = Some(try!(project::SourceCodeProvider::new("github", &repo_name,
-                                                         &org_name, &branch, v_ssl)));
+                                                         &org_name, &branch, no_v_ssl)));
     } else if bit_p {
         let repo_name = value_of(&matches, "repo-name");
         let project_key = value_of(&matches, "project-key");
         debug!("init bitbucket: BitRepo:{:?}, BitProjKey:{:?}, Branch:{:?}",
                repo_name, project_key, branch);
         scp = Some(try!(project::SourceCodeProvider::new("bitbucket", &repo_name,
-                                                         &project_key, &branch, false)));
+                                                         &project_key, &branch, true)));
     }
     project::init(config, &no_open, &skip_build_cookbook, &local, scp)
 }

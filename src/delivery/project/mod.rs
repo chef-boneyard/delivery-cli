@@ -47,7 +47,7 @@ impl SourceCodeProvider {
     /// required configuration values are missing. Expects to find
     /// `scp`, `repository`, `scp-organization`, `branch`, and `ssl`.
     pub fn new(scp: &str, repo: &str, org: &str, branch: &str,
-               ssl: bool) -> Result<SourceCodeProvider, DeliveryError> {
+               no_ssl: bool) -> Result<SourceCodeProvider, DeliveryError> {
         let scp_kind = match scp {
             "github" => Type::Github,
             "bitbucket" => Type::Bitbucket,
@@ -78,7 +78,7 @@ impl SourceCodeProvider {
             repo_name: repo.to_string(),
             organization: org.to_string(),
             branch: branch.to_string(),
-            verify_ssl: ssl,
+            verify_ssl: !no_ssl,
         })
     }
 }
