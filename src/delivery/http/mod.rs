@@ -131,8 +131,10 @@ impl APIClient {
         }
     }
 
-    /// Parse the HyperResponse coming from the APIClient Request
-    /// that Delivery sends back when hitting the endpoints
+    /// Parse the HyperResponse coming from a APIClient Request that
+    /// Delivery sends back when hitting an endpoints. It will
+    /// interprete the response by, either printing a message and
+    /// returning Ok() or throwing an Err() if we don't know it
     pub fn parse_response(&self, mut response: HyperResponse) -> Result<(), DeliveryError> {
         debug!("Parsing response with status: {:?}", response.status);
         match response.status {
@@ -208,10 +210,10 @@ impl APIClient {
         self.req_with_body(HTTPMethod::POST, path, payload)
     }
 
-    // Send a request using the specified HTTP verb. If `payload` is
-    // an empty string, no request body will be sent. This could be an
-    // `Options<String>` but (I think) keeping the simple `&str`
-    // avoids an allocation.
+    /// Send a request using the specified HTTP verb. If `payload` is
+    /// an empty string, no request body will be sent. This could be an
+    /// `Options<String>` but (I think) keeping the simple `&str`
+    /// avoids an allocation.
     fn req_with_body(&self,
                      http_method: HTTPMethod,
                      path: &str,
@@ -277,8 +279,6 @@ impl APIClient {
                                 repo_name: &str, git_org: &str, pipe: &str,
                                 ssl: bool) -> Result<(), DeliveryError> {
         let path = format!("orgs/{}/github-projects", org);
-        // FIXME: we'd like to use the native struct->json stuff, but
-        // seeing link issues.
         let payload = format!("{{\
                                 \"name\":\"{}\",\
                                 \"scm\":{{\

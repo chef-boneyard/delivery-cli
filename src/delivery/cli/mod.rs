@@ -52,9 +52,9 @@ fn u_e_s_o_args<'a>() -> Vec<Arg<'a, 'a, 'a, 'a, 'a, 'a>> {
 
 fn scp_args<'a>() -> Vec<Arg<'a, 'a, 'a, 'a, 'a, 'a>> {
     make_arg_vec![
-        "--bitbucket 'Init a bitbucket repository'",
+        "--bitbucket 'Use a Bitbucket repository for Code Review'",
         "-k --bit-project-key=[project-key] 'Project key of the Bitbucket repository'",
-        "--github 'Init a github repository'",
+        "--github 'Use a Github repository for Code Review'",
         "-g --git-org-name=[org-name] 'The Github organization name'",
         "-r --repo-name=[repo-name] 'Source code provider repository name'",
         "--no-verify-ssl 'Do not use SSL verification. [Github]'"]
