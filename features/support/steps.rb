@@ -1,3 +1,24 @@
+# Mock a custom config.json
+def custom_config
+<<EOF
+{
+  "version": "2",
+  "build_cookbook": {
+    "path": ".delivery/build-cookbook",
+    "name": "build-cookbook"
+  },
+  "skip_phases": [ "smoke", "security", "syntax", "uni", "quality" ],
+  "build_nodes": {},
+  "delivery-truck": {
+    "publish": {
+      "chef_server": true
+    }
+  },
+  "dependencies": []
+}
+EOF
+end
+
 # Creates a new directory, "git init"s it and creates an empty commit
 # so we can have a branch
 Given(/^a git repo "(.*?)"$/) do |repo|
@@ -160,6 +181,18 @@ Given(/^a change configuring delivery is created$/) do
   step %(the file ".delivery/config.json" should contain:), %("skip_phases": [],)
   step %(the file ".delivery/config.json" should contain:), %("build_nodes": {},)
   step %(the file ".delivery/config.json" should contain:), %("dependencies": [])
+end
+
+Given(/^a user creates a project with a custom config\.json$/) do
+  step %(a file named "../my_custom_config.json" with:), custom_config
+  step %(I checkout the "add-delivery-config" branch)
+  step %(I successfully run `delivery init -c ../my_custom_config.json`)
+end
+
+Given(/^a change configuring a custom delivery is created$/) do
+  step %("git checkout -b add-delivery-config" should be run)
+  step %("git commit -m Add Delivery config" should be run)
+  step %(the file ".delivery/config.json" should contain exactly:), custom_config
 end
 
 Given(/^the change has the default generated build_cookbook$/) do

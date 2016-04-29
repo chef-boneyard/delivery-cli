@@ -54,5 +54,8 @@ Scenario: When skipping the build-cookbook generator
   Then a delivery project is created in delivery
   And no build-cookbook is generated
 
-# When providing a custom `config.json`
 Scenario: When providing a custom config.json
+  When a user creates a project with a custom config.json
+  Then the output should contain "Copying configuration to"
+  And a change configuring a custom delivery is created
+  And the exit status should be 0

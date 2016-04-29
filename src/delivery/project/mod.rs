@@ -107,14 +107,15 @@ impl SourceCodeProvider {
 /// This method will create a Delivery Project depending on the SCP that we specify,
 /// either a Github, Bitbucket or Delivery (default). It also creates a pipeline,
 /// adds the `delivery` remote and push the content of the local repo to the Server.
-pub fn create_on_server(config: &Config, path: &PathBuf,
+pub fn create_on_server(config: &Config,
               scp: Option<SourceCodeProvider>, local: &bool) -> Result<(), DeliveryError> {
     if *local {
         return Ok(())
     }
     let org = try!(config.organization());
     let proj = try!(config.project());
-    try!(git::init_repo(path));
+    let path = try!(root_dir(&utils::cwd()));
+    try!(git::init_repo(&path));
     let client = try!(APIClient::from_config(config));
 
     if client.project_exists(&org, &proj) {
@@ -123,8 +124,8 @@ pub fn create_on_server(config: &Config, path: &PathBuf,
         sayln("white", "already exists.");
     } else {
         match scp {
-            Some(scp_config) => try!(create_scp_project(client, config, path, scp_config)),
-            None => try!(create_delivery_project(client, config, path))
+            Some(scp_config) => try!(create_scp_project(client, config, &path, scp_config)),
+            None => try!(create_delivery_project(client, config, &path))
         }
     }
     Ok(())
@@ -273,17 +274,23 @@ pub fn project_or_from_cwd(proj: &str) -> Result<String, DeliveryError> {
 pub fn init(config: Config, no_open: &bool, skip_build_cookbook: &bool,
             local: &bool, scp: Option<SourceCodeProvider>) -> Result<(), DeliveryError> {
     let project_path = try!(root_dir(&utils::cwd()));
-    try!(create_on_server(&config, &project_path, scp.clone(), local));
+    let config_json = config.config_json.clone();
+    try!(create_on_server(&config, scp.clone(), local));
     try!(create_feature_branch(&project_path));
-    try!(generate_build_cookbook(&project_path, skip_build_cookbook));
-    try!(generate_delivery_config());
+    try!(generate_build_cookbook(skip_build_cookbook));
+    try!(generate_delivery_config(config_json));
     try!(trigger_review(config, scp, &no_open, &local));
     Ok(())
 }
 
-fn generate_delivery_config() -> Result<(), DeliveryError> {
-    // TODO: Enable an option to pass a custom config
-    DeliveryConfig::init(&utils::cwd())
+fn generate_delivery_config(config_json: Option<String>) -> Result<(), DeliveryError> {
+    let project_path = try!(root_dir(&utils::cwd()));
+    if let Some(json) = config_json {
+        let json_path = PathBuf::from(json);
+        DeliveryConfig::copy_config_file(&json_path, &project_path)
+    } else {
+        DeliveryConfig::init(&project_path)
+    }
 }
 
 fn trigger_review(config: Config, scp: Option<SourceCodeProvider>,
@@ -319,12 +326,12 @@ fn create_feature_branch(project_path: &PathBuf) -> Result<(), DeliveryError> {
     Ok(())
 }
 
-fn generate_build_cookbook(project_path: &PathBuf,
-                           skip_build_cookbook: &bool) -> Result<(), DeliveryError> {
+fn generate_build_cookbook(skip_build_cookbook: &bool) -> Result<(), DeliveryError> {
     if *skip_build_cookbook {
         return Ok(())
     }
     sayln("white", "Generating build cookbook skeleton");
+    let project_path = try!(root_dir(&utils::cwd()));
     let pcb_dir = match utils::home_dir(&[".delivery/cache/generator-cookbooks/pcb"]) {
         Ok(p) => p,
         Err(e) => return Err(e)
@@ -353,7 +360,7 @@ fn generate_build_cookbook(project_path: &PathBuf,
         .arg(".delivery/build-cookbook")
         .arg("-g")
         .arg(pcb_dir)
-        .current_dir(project_path);
+        .current_dir(&project_path);
 
     match gen.output() {
         Ok(o) => o,
@@ -369,8 +376,8 @@ fn generate_build_cookbook(project_path: &PathBuf,
 
     sayln("green", &format!("PCB generate: {:#?}", gen));
     say("white", "Git add and commit of build-cookbook: ");
-    try!(git::git_command(&["add", ".delivery/build-cookbook"], project_path));
-    try!(git::git_command(&["commit", "-m", "Add Delivery build cookbook"], project_path));
+    try!(git::git_command(&["add", ".delivery/build-cookbook"], &project_path));
+    try!(git::git_command(&["commit", "-m", "Add Delivery build cookbook"], &project_path));
     sayln("green", "done");
     Ok(())
 }

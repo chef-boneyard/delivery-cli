@@ -28,7 +28,7 @@ use rustc_serialize::json::DecoderError;
 
 use errors::{DeliveryError, Kind};
 use git;
-use utils::{mkdir_recursive, walk_tree_for_path};
+use utils::{mkdir_recursive, walk_tree_for_path, read_file, copy_recursive};
 use utils::path_join_many::PathJoinMany;
 use utils::say::{say, sayln};
 use utils::path_ext::{is_dir, is_file};
@@ -77,11 +77,34 @@ impl DeliveryConfig {
 
         debug!("proj_path: {:?}\n", proj_path);
         debug!("Creating a new config file");
-
-        // Let the user pass a custom config, if they dont specify it
-        // we can then create the default.
         let config = DeliveryConfig::default();
         try!(config.write_file(proj_path));
+        DeliveryConfig::git_add_commit_config(&proj_path)
+    }
+
+    /// Copy a provided `config.json` file to `.delivery/` of
+    /// the project root path. Also verify that the config is
+    /// valid and finally add/commit the changes.
+    /// If the config already exists, skip this process.
+    pub fn copy_config_file(config_f: &PathBuf,
+                            proj_path: &PathBuf) -> Result<(), DeliveryError> {
+        if DeliveryConfig::config_file_exists(proj_path) {
+            debug!("Delivery config file already exists, skipping");
+            return Ok(())
+        }
+        let write_path = DeliveryConfig::config_file_path(proj_path);
+        say("white", "Copying configuration to ");
+        sayln("yellow", &format!("{}", write_path.display()));
+        try!(copy_recursive(config_f, &write_path));
+        try!(DeliveryConfig::validate_config_file(proj_path));
+        sayln("magenta", "New delivery configuration");
+        sayln("magenta", "--------------------------");
+        let content = try!(read_file(&write_path));
+        sayln("white", &content);
+        DeliveryConfig::git_add_commit_config(proj_path)
+    }
+
+    fn git_add_commit_config(proj_path: &PathBuf) -> Result<(), DeliveryError> {
         let config_path = DeliveryConfig::config_file_path(proj_path);
         let config_path_str = &config_path.to_str().unwrap();
         say("white", "Git add and commit delivery config: ");
