@@ -78,13 +78,16 @@ impl DeliveryConfig {
         debug!("proj_path: {:?}\n", proj_path);
         debug!("Creating a new config file");
 
+        // Let the user pass a custom config, if they dont specify it
+        // we can then create the default.
         let config = DeliveryConfig::default();
         try!(config.write_file(proj_path));
         let config_path = DeliveryConfig::config_file_path(proj_path);
         let config_path_str = &config_path.to_str().unwrap();
-        try!(git::git_command(&["checkout", "-b", "add-delivery-config"], proj_path));
+        say("white", "Git add and commit delivery config: ");
         try!(git::git_command(&["add", &config_path_str], proj_path));
         try!(git::git_command(&["commit", "-m", "Add Delivery config"], proj_path));
+        sayln("green", "done");
         Ok(())
     }
 

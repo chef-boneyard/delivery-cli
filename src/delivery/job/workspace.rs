@@ -307,6 +307,7 @@ impl Workspace {
     fn berks_vendor(&self, config: &Json) -> Result<(), DeliveryError> {
         try!(utils::remove_recursive(&self.chef.join("cookbooks")));
         if is_file(&self.chef.join_many(&["build_cookbook", "Berksfile"])) {
+            debug!("Running 'berks vendor cookbooks' inside the build-cookbooks");
             let mut command = utils::make_command("berks");
             command.arg("vendor");
             command.arg(&self.chef.join("cookbooks"));
