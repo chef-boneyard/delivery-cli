@@ -35,6 +35,10 @@ pub enum Kind {
     MissingMetadataVersion,
     BadMetadataVersionMatch,
     NoGitConfig,
+    NoBitbucketSCPConfig,
+    NoGithubSCPConfig,
+    OptionConstraint,
+    UnknownProjectType,
     GitFailed,
     GitSetupFailed,
     ConfigParse,
@@ -67,6 +71,7 @@ pub enum Kind {
     IntParseError,
     OpenFailed,
     NoToken,
+    TokenExpired,
     NoEditor,
     MissingProjectConfig
 }
@@ -97,6 +102,10 @@ impl error::Error for DeliveryError {
             Kind::BadMetadataVersionMatch => "Metadata version mismatch!",
             Kind::MissingMetadataVersion => "Missing a version entry into the metadata.rb",
             Kind::NoGitConfig => "Cannot find a .git/config file",
+            Kind::NoBitbucketSCPConfig => "Bitbucket Source Code Provider configuration not found; a Delivery administrator must first configure the link with Bitbucket",
+            Kind::NoGithubSCPConfig => "Github Source Code Provider configuration not found; a Delivery administrator must first configure the link with Github",
+            Kind::OptionConstraint => "Invalid option constraint",
+            Kind::UnknownProjectType => "Unknown Project Type",
             Kind::ConfigParse => "Failed to parse the cli config file",
             Kind::MissingConfig => "A configuration value is missing",
             Kind::ConfigValidation => "A required option is missing - use the command line options or 'delivery setup'",
@@ -128,6 +137,7 @@ impl error::Error for DeliveryError {
             Kind::OpenFailed => "Open command failed",
             Kind::AuthenticationFailed => "Authentication failed",
             Kind::NoToken => "Missing API token. Try `delivery token` to create one",
+            Kind::TokenExpired => "The API token has expired. Try `delivery token` to generate a new one",
             Kind::NoEditor => "Environment variable EDITOR not set",
             Kind::MissingProjectConfig => "Unable to find .delivery/config.json in this directory or its parents"
         }
