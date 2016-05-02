@@ -57,3 +57,25 @@ Given(/^the Delivery API server on port "(\d+)":$/) do |port, endpoints|
     eval(endpoints, binding)
   end
 end
+
+Given(/^a user creates a delivery backed project$/) do
+  pending "not implemented"
+end
+Given(/^a user creates a github backed project$/) do
+  pending "not implemented"
+end
+Given(/^a user creates a bitbucket backed project$/) do
+  pending "not implemented"
+end
+Given(/^a bitbucket project is created in delivery$/) do
+  pending "not implemented"
+end
+Given(/^a github project is created in delivery$/) do
+  pending "not implemented"
+end
+Given(/^a change configuring delivery is created$/) do
+  pending "not implemented"
+end
+Given(/^the change has the default generated build_cookbook$/) do
+  step %("git push --porcelain --progress --verbose delivery foo:_for/master/add-delivery-config" should be run)
+end
