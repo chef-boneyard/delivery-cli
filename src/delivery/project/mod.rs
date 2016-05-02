@@ -60,14 +60,14 @@ impl SourceCodeProvider {
                 Type::Github => return Err(
                     DeliveryError{
                         kind: Kind::OptionConstraint,
-                        detail: Some(format!("Missing Github SCP attributes, specify: \
+                        detail: Some(format!("Missing Github Source Code Provider attributes, specify: \
                                               repo-name, org-name and pipeline(default: master)"))
                     }
                 ),
                 Type::Bitbucket => return Err(
                     DeliveryError{
                         kind: Kind::OptionConstraint,
-                        detail: Some(format!("Missing Bitbucket SCP attributes, specify: \
+                        detail: Some(format!("Missing Bitbucket Source Code Provider attributes, specify: \
                                               repo-name, project-key and pipeline(default: master)"))
                     }
                 ),
@@ -275,7 +275,7 @@ pub fn init(config: Config, no_open: &bool, skip_build_cookbook: &bool,
     let project_path = try!(root_dir(&utils::cwd()));
     try!(create_on_server(&config, &project_path, scp.clone(), local));
     try!(create_feature_branch(&project_path));
-    try!(generate_build_cookbook(skip_build_cookbook));
+    try!(generate_build_cookbook(&project_path, skip_build_cookbook));
     try!(generate_delivery_config());
     try!(trigger_review(config, scp, &no_open, &local));
     Ok(())
@@ -319,7 +319,8 @@ fn create_feature_branch(project_path: &PathBuf) -> Result<(), DeliveryError> {
     Ok(())
 }
 
-fn generate_build_cookbook(skip_build_cookbook: &bool) -> Result<(), DeliveryError> {
+fn generate_build_cookbook(project_path: &PathBuf,
+                           skip_build_cookbook: &bool) -> Result<(), DeliveryError> {
     if *skip_build_cookbook {
         return Ok(())
     }
@@ -351,7 +352,8 @@ fn generate_build_cookbook(skip_build_cookbook: &bool) -> Result<(), DeliveryErr
         .arg("cookbook")
         .arg(".delivery/build-cookbook")
         .arg("-g")
-        .arg(pcb_dir);
+        .arg(pcb_dir)
+        .current_dir(project_path);
 
     match gen.output() {
         Ok(o) => o,
@@ -367,8 +369,8 @@ fn generate_build_cookbook(skip_build_cookbook: &bool) -> Result<(), DeliveryErr
 
     sayln("green", &format!("PCB generate: {:#?}", gen));
     say("white", "Git add and commit of build-cookbook: ");
-    try!(git::git_command(&["add", ".delivery/build-cookbook"], &utils::cwd()));
-    try!(git::git_command(&["commit", "-m", "Add Delivery build cookbook"], &utils::cwd()));
+    try!(git::git_command(&["add", ".delivery/build-cookbook"], project_path));
+    try!(git::git_command(&["commit", "-m", "Add Delivery build cookbook"], project_path));
     sayln("green", "done");
     Ok(())
 }

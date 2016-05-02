@@ -1,0 +1,16 @@
+#!/bin/bash
+# A quick fakebin for chefDK commands
+#
+# Catch `chef generate` command. Add others!
+command="$1"
+
+case "$command" in
+  "generate" )
+    # Mock chef cookbook generate
+    mkdir -p ${PWD}/.delivery/build-cookbook
+    echo chef "$1 $2 $3" >> "$FAKE_BINS_HISTORY_FILE"
+  ;;
+  * )
+    echo chef "$@" >> "$FAKE_BINS_HISTORY_FILE"
+  ;;
+esac

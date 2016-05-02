@@ -317,28 +317,26 @@ fn clap_init(matches: &ArgMatches) -> Result<(), DeliveryError> {
         .set_project(&final_proj)
         .set_pipeline(pipeline);
     let branch = try!(config.pipeline());
-    let git_p = matches.is_present("github");
-    let bit_p = matches.is_present("bitbucket");
-    if git_p && bit_p {
+    let github_org_name = value_of(&matches, "org-name");
+    let bitbucket_project_key = value_of(&matches, "project-key");
+    if !github_org_name.is_empty() && !bitbucket_project_key.is_empty() {
         return Err(DeliveryError{ kind: Kind::OptionConstraint, detail: Some(format!("Please \
-        specify just one SCP: delivery(default), github or bitbucket.")) })
+        specify just one Source Code Provider: delivery(default), github or bitbucket.")) })
     }
     let mut scp: Option<project::SourceCodeProvider> = None;
-    if git_p {
+    if !github_org_name.is_empty() {
         let repo_name = value_of(&matches, "repo-name");
-        let org_name = value_of(&matches, "org-name");
         let no_v_ssl = matches.is_present("no-verify-ssl");
         debug!("init github: GitRepo:{:?}, GitOrg:{:?}, Branch:{:?}, SSL:{:?}",
-               repo_name, org_name, branch, no_v_ssl);
+               repo_name, github_org_name, branch, no_v_ssl);
         scp = Some(try!(project::SourceCodeProvider::new("github", &repo_name,
-                                                         &org_name, &branch, no_v_ssl)));
-    } else if bit_p {
+                                                         &github_org_name, &branch, no_v_ssl)));
+    } else if !bitbucket_project_key.is_empty() {
         let repo_name = value_of(&matches, "repo-name");
-        let project_key = value_of(&matches, "project-key");
         debug!("init bitbucket: BitRepo:{:?}, BitProjKey:{:?}, Branch:{:?}",
-               repo_name, project_key, branch);
+               repo_name, bitbucket_project_key, branch);
         scp = Some(try!(project::SourceCodeProvider::new("bitbucket", &repo_name,
-                                                         &project_key, &branch, true)));
+                                                         &bitbucket_project_key, &branch, true)));
     }
     project::init(config, &no_open, &skip_build_cookbook, &local, scp)
 }

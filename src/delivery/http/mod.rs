@@ -336,7 +336,7 @@ impl APIClient {
                                 }}\
                               }}", proj, repo_name, project_key, pipe);
         // Sadly the endpoint returns a Status 204 NoContent instead of 201 Created
-        // therefor we need to hardcode the output of the sayln(" createda)"
+        // therefore we need to hardcode the output of the sayln(" created)"
         //
         try!(self.parse_response(try!(self.post(&path, &payload))));
         sayln("green", " created");
