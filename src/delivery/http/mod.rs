@@ -24,7 +24,6 @@ use hyper::client::response::Response as HyperResponse;
 use hyper::error::Error as HttpError;
 use mime;
 use rustc_serialize::json;
-use errors::Kind as DelivError;
 use std::io::prelude::*;
 use errors::{DeliveryError, Kind};
 use token::TokenStore;
@@ -83,7 +82,6 @@ pub struct APIClient {
 }
 
 impl APIClient {
-
     /// Create a new `APIClient` from the specified `Config` instance
     /// for making authenticated requests. Returns an error result if
     /// required configuration values are missing. Expects to find
@@ -133,7 +131,50 @@ impl APIClient {
         }
     }
 
-    pub fn get_auth_from_home(&mut self, server: &str, ent: &str, user: &str) -> Result<APIAuth, DeliveryError> {
+    /// Parse the HyperResponse coming from a APIClient Request that
+    /// Delivery sends back when hitting an endpoints. It will
+    /// interprete the response by, either printing a message and
+    /// returning Ok() or throwing an Err() if we don't know it
+    pub fn parse_response(&self, mut response: HyperResponse) -> Result<(), DeliveryError> {
+        debug!("Parsing response with status: {:?}", response.status);
+        match response.status {
+            StatusCode::NoContent => Ok(()),
+            StatusCode::Created => {
+                sayln("green", " created");
+                Ok(())
+            },
+            StatusCode::Conflict => {
+                sayln("white", " already exists.");
+                Ok(())
+            },
+            StatusCode::Unauthorized => {
+                // Verify if the Token has expired
+                let detail = try!(APIClient::extract_pretty_json(&mut response));
+                match detail.find("token_expired") {
+                    Some(_) => Err(DeliveryError{ kind: Kind::TokenExpired, detail: None}),
+                    None => {
+                        let msg = "API request returned 401".to_string();
+                        Err(DeliveryError{ kind: Kind::AuthenticationFailed,
+                                           detail: Some(msg)})
+                    }
+                }
+            },
+            error_code @ _ => {
+                let msg = format!("API request returned {}",
+                                  error_code);
+                let mut detail = String::new();
+                let e = match response.read_to_string(&mut detail) {
+                    Ok(_) => Ok(detail),
+                    Err(e) => Err(e)
+                };
+                Err(DeliveryError{ kind: Kind::ApiError(error_code, e),
+                                   detail: Some(msg)})
+            }
+        }
+    }
+
+    pub fn get_auth_from_home(&mut self, server: &str, ent: &str,
+                              user: &str) -> Result<APIAuth, DeliveryError> {
         match TokenStore::from_home() {
             Ok(tstore) => {
                 APIAuth::from_token_store(tstore, server, ent, user)
@@ -169,10 +210,10 @@ impl APIClient {
         self.req_with_body(HTTPMethod::POST, path, payload)
     }
 
-    // Send a request using the specified HTTP verb. If `payload` is
-    // an empty string, no request body will be sent. This could be an
-    // `Options<String>` but (I think) keeping the simple `&str`
-    // avoids an allocation.
+    /// Send a request using the specified HTTP verb. If `payload` is
+    /// an empty string, no request body will be sent. This could be an
+    /// `Options<String>` but (I think) keeping the simple `&str`
+    /// avoids an allocation.
     fn req_with_body(&self,
                      http_method: HTTPMethod,
                      path: &str,
@@ -193,6 +234,8 @@ impl APIClient {
             },
             None => req
         };
+        debug!("Request: {:?} Path: {:?} Payload: {:?}",
+                http_method, path, payload);
         if !payload.is_empty() {
             req.body(payload).send()
         } else {
@@ -223,59 +266,96 @@ impl APIClient {
         }
     }
 
-    pub fn create_project(&self,
-                          org: &str,
-                          proj: &str) -> Result<HyperResponse, DelivError> {
+    pub fn create_delivery_project(&self, org: &str,
+                                   proj: &str) -> Result<(), DeliveryError> {
         let path = format!("orgs/{}/projects", org);
         // FIXME: we'd like to use the native struct->json stuff, but
         // seeing link issues.
         let payload = format!("{{\"name\":\"{}\"}}", proj);
-        match self.post(&path, &payload) {
-            Ok(mut res) => {
-                match res.status {
-                    StatusCode::Created =>
-                        Ok(res),
-                    _ => {
-                        let mut detail = String::new();
-                        let e = match res.read_to_string(&mut detail) {
-                            Ok(_) => Ok(detail),
-                            Err(e) => Err(e)
-                        };
-                        Err(DelivError::ApiError(res.status, e))
+        self.parse_response(try!(self.post(&path, &payload)))
+    }
+
+    pub fn create_github_project(&self, org: &str, proj: &str,
+                                repo_name: &str, git_org: &str, pipe: &str,
+                                ssl: bool) -> Result<(), DeliveryError> {
+        let path = format!("orgs/{}/github-projects", org);
+        let payload = format!("{{\
+                                \"name\":\"{}\",\
+                                \"scm\":{{\
+                                    \"type\":\"github\",\
+                                    \"project\":\"{}\",\
+                                    \"organization\":\"{}\",\
+                                    \"branch\":\"{}\",\
+                                    \"verify_ssl\": {}\
+                                }}\
+                              }}", proj, repo_name, git_org, pipe, ssl);
+        self.parse_response(try!(self.post(&path, &payload)))
+    }
+
+    fn get_scm_server_config(&self, scm: &str) -> Result<Vec<json::Json>, DeliveryError> {
+        let json = try!(APIClient::parse_json(self.get("scm-providers")));
+        debug!("Endpoint[scm-providers]: {:?}", json);
+        if let Some(data) = json.as_array() {
+            for obj in data.iter() {
+                if let Some(scp) = obj.as_object() {
+                    let name = scp.get("name").unwrap().as_string().unwrap();
+                    if name == scm {
+                        let scp_config = scp.get("scmSetupConfigs").unwrap().as_array().unwrap();
+                        debug!("{:?} Config: {:?}", scm, scp_config);
+                        return Ok(scp_config.clone())
                     }
                 }
-            },
-            Err(e) => Err(DelivError::HttpError(e))
+            }
         }
+        Err(DeliveryError {
+            kind: Kind::ExpectedJsonString,
+            detail: Some(format!("Unable to find {:?} SCM Config in Delivery Server.\n\
+                                 JSON Output: {:?}", scm, json))
+        })
+    }
+
+    pub fn get_github_server_config(&self) -> Result<Vec<json::Json>, DeliveryError> {
+        self.get_scm_server_config("Github")
+    }
+
+    pub fn get_bitbucket_server_config(&self) -> Result<Vec<json::Json>, DeliveryError> {
+        self.get_scm_server_config("Bitbucket")
+    }
+
+    pub fn create_bitbucket_project(&self, org: &str, proj: &str,
+                                    repo_name: &str, project_key: &str,
+                                    pipe: &str) -> Result<(), DeliveryError> {
+        let path = format!("orgs/{}/bitbucket-projects", org);
+        let payload = format!("{{\
+                                \"name\":\"{}\",\
+                                \"scm\":{{\
+                                    \"type\":\"bitbucket\",\
+                                    \"repo_name\":\"{}\",\
+                                    \"project_key\":\"{}\",\
+                                    \"pipeline_branch\":\"{}\"\
+                                }}\
+                              }}", proj, repo_name, project_key, pipe);
+        // Sadly the endpoint returns a Status 204 NoContent instead of 201 Created
+        // therefore we need to hardcode the output of the sayln(" created)"
+        //
+        try!(self.parse_response(try!(self.post(&path, &payload))));
+        sayln("green", " created");
+        Ok(())
+        // TODO: Fix the endpoint, delete this code and uncomment this line:
+        //self.parse_response(try!(self.post(&path, &payload)))
     }
 
     pub fn create_pipeline(&self,
                            org: &str,
                            proj: &str,
-                           pipe: &str) -> Result<HyperResponse, DelivError> {
+                           pipe: &str) -> Result<(), DeliveryError> {
         let path = format!("orgs/{}/projects/{}/pipelines", org, proj);
         // FIXME: we'd like to use the native struct->json stuff, but
         // seeing link issues.
         let base_branch = "master";
         let payload = format!("{{\"name\":\"{}\",\"base\":\"{}\"}}",
                               pipe, base_branch);
-        match self.post(&path, &payload) {
-            Ok(mut res) => {
-                match res.status {
-                    StatusCode::Created =>
-                        Ok(res),
-                    _ => {
-                        let mut detail = String::new();
-                        let e = match res.read_to_string(&mut detail) {
-                            Ok(_) => Ok(detail),
-                            Err(e) => Err(e)
-                        };
-                        Err(DelivError::ApiError(res.status, e))
-                    }
-                }
-            },
-            Err(e) => Err(DelivError::HttpError(e))
-        }
+        self.parse_response(try!(self.post(&path, &payload)))
     }
 
     pub fn parse_json(result: Result<HyperResponse, HttpError>) -> Result<json::Json, DeliveryError> {

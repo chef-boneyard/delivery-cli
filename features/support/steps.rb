@@ -57,3 +57,121 @@ Given(/^the Delivery API server on port "(\d+)":$/) do |port, endpoints|
     eval(endpoints, binding)
   end
 end
+
+Given(/^a dummy Delivery API server/) do
+  endpoints = %(
+    get('/api/v0/e/dummy/scm-providers') do
+      status 200
+      [
+        {
+          "name" => "Github",
+          "projectCreateUri" => "/github-projects",
+          "scmSetupConfigs" => [
+            true
+          ],
+          "type" => "github",
+          "verify_ssl" => true
+        },
+        {
+          "name" => "Bitbucket",
+          "projectCreateUri" => "/bitbucket-projects",
+          "scmSetupConfigs" => [
+            {
+              "_links" => {
+                "self" => {
+                  "href" => "https://127.0.0.1/api/v0/e/skinkworks/bitbucket-servers/dummy.bitbucket.com"
+                }
+              },
+              "root_api_url" => "https://dummy.bitbucket.com",
+              "user_id" => "dummy"
+            }
+          ],
+          "type" => "bitbucket"
+        }
+      ]
+    end
+    get('/api/v0/e/dummy/orgs/dummy/projects/delivery-cli-init') do
+      status 201
+      { "error" => "not_found" }
+    end
+    post('/api/v0/e/dummy/orgs/dummy/projects') do
+      status 201
+      { "project" => "delivery-cli-init" }
+    end
+    post('/api/v0/e/dummy/orgs/dummy/projects/delivery-cli-init/pipelines') do
+      status 201
+      { "pipeline" => "master" }
+    end
+    post('/api/v0/e/dummy/orgs/dummy/bitbucket-projects') do
+      status 201
+      { "project" => "delivery-cli-init" }
+    end
+    post('/api/v0/e/dummy/orgs/dummy/github-projects') do
+      status 201
+      { "project" => "delivery-cli-init" }
+    end
+  )
+  step %(the Delivery API server on port "8080":), endpoints
+end
+
+Given(/^a user creates a delivery backed project$/) do
+  step %(I checkout the "add-delivery-config" branch)
+  step %(I successfully run `delivery init`)
+end
+
+Given(/^a user creates a github backed project$/) do
+  step %(I checkout the "add-delivery-config" branch)
+  step %(I successfully run `delivery init --github chef --repo-name delivery-cli-init`)
+end
+
+Given(/^a user creates a bitbucket backed project$/) do
+  step %(I checkout the "add-delivery-config" branch)
+  step %(I successfully run `delivery init --bitbucket chef --repo-name delivery-cli-init`)
+end
+
+Given(/^a delivery project is created in delivery$/) do
+  step %(the output should match /Creating(.*)delivery(.*)project/)
+  step %(the output should contain "Remote 'delivery' added to git config")
+  step %(the output should contain "Create and checkout add-delivery-config feature branch")
+  step %("git push --porcelain --progress --verbose delivery add-delivery-config:_for/master/add-delivery-config" should be run)
+end
+
+Given(/^a bitbucket project is created in delivery$/) do
+  step %(the output should match /Creating(.*)bitbucket(.*)project/)
+  step %(the output should contain "Remote 'delivery' added to git config")
+  step %(the output should contain "Create and checkout add-delivery-config feature branch")
+  step %("git push --porcelain --progress --verbose delivery add-delivery-config:_for/master/add-delivery-config" should be run)
+end
+
+Given(/^a github project is created in delivery$/) do
+  step %(the output should match /Creating(.*)github(.*)project/)
+  step %(the output should not contain "Remote 'delivery' added to git config")
+  step %(the output should contain "Create and checkout add-delivery-config feature branch")
+end
+
+Given(/^a change configuring delivery is created$/) do
+  step %("git checkout -b add-delivery-config" should be run)
+  step %("git commit -m Add Delivery config" should be run)
+  step %(the file ".delivery/config.json" should contain:), %("version": "2",)
+  step %(the file ".delivery/config.json" should contain:), %("build_cookbook": {)
+  step %(the file ".delivery/config.json" should contain:), %("path": ".delivery/build-cookbook")
+  step %(the file ".delivery/config.json" should contain:), %("name": "build-cookbook")
+  step %(the file ".delivery/config.json" should contain:), %(},)
+  step %(the file ".delivery/config.json" should contain:), %("skip_phases": [],)
+  step %(the file ".delivery/config.json" should contain:), %("build_nodes": {},)
+  step %(the file ".delivery/config.json" should contain:), %("dependencies": [])
+end
+
+Given(/^the change has the default generated build_cookbook$/) do
+  step %("git commit -m Add Delivery build cookbook" should be run)
+  step %("chef generate cookbook .delivery/build-cookbook" should be run)
+  step %(a directory named ".delivery/build-cookbook" should exist)
+end
+
+Given(/^specifies the option "([^"]*)"$/) do |option|
+  pending "not implemented"
+end
+
+Then(/^no build\-cookbook is generated$/) do
+  pending "not implemented"
+end
