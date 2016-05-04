@@ -58,6 +58,9 @@ fn scp_args<'a>() -> Vec<Arg<'a, 'a, 'a, 'a, 'a, 'a>> {
         "--no-verify-ssl 'Do not use SSL verification. [Github]'"]
 }
 
+fn_arg!(config_project_arg,
+       "-c --config-json=[config-json] 'Path of a custom config.json file'");
+
 fn_arg!(for_arg,
        "-f --for=[pipeline] 'Target pipeline for change (default: master)'");
 
@@ -197,7 +200,7 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a, 'a, 'a, 'a, 'a> {
                     .about("Initialize a Delivery project \
                             (and lots more!)")
                     .args(vec![for_arg(), config_path_arg(), no_open_arg(),
-                               project_arg(), local_arg()])
+                               project_arg(), local_arg(), config_project_arg()])
                     .args_from_usage(
                         "--skip-build-cookbook 'Do not create a build cookbook'")
                     .args(u_e_s_o_args())
@@ -310,12 +313,14 @@ fn clap_init(matches: &ArgMatches) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
     let final_proj = try!(project::project_or_from_cwd(proj));
+    let config_json = value_of(&matches, "config-json");
     config = config.set_user(user)
         .set_server(server)
         .set_enterprise(ent)
         .set_organization(org)
         .set_project(&final_proj)
-        .set_pipeline(pipeline);
+        .set_pipeline(pipeline)
+        .set_config_json(config_json);
     let branch = try!(config.pipeline());
     let github_org_name = value_of(&matches, "org-name");
     let bitbucket_project_key = value_of(&matches, "project-key");

@@ -41,7 +41,8 @@ pub struct Config {
     pub pipeline: Option<String>,
     pub token_file: Option<String>,
     pub non_interactive: Option<bool>,
-    pub auto_bump: Option<bool>
+    pub auto_bump: Option<bool>,
+    pub config_json: Option<String>
 }
 
 impl Default for Config {
@@ -58,7 +59,8 @@ impl Default for Config {
             pipeline: Some(String::from("master")),
             token_file: None,
             non_interactive: None,
-            auto_bump: None
+            auto_bump: None,
+            config_json: None
         }
     }
 }
@@ -93,6 +95,7 @@ config_accessor_for!(project, set_project, "Project not set; try --project or se
 config_accessor_for!(git_port, set_git_port, "Git Port not set; please set it in your .toml config file");
 config_accessor_for!(pipeline, set_pipeline, "Pipeline not set; try --for or set it in your .toml config file");
 config_accessor_for!(token_file, set_token_file, "token_file not set; set it in your cli.toml");
+config_accessor_for!(config_json, set_config_json, "config_json not set; set it in your cli.toml");
 
 impl Config {
 
@@ -183,6 +186,7 @@ impl Config {
         config.token_file = stringify_or("token_file", &table, config.token_file);
         config.non_interactive = boolify_or("non_interactive", &table, config.non_interactive);
         config.auto_bump = boolify_or("auto_bump", &table, config.auto_bump);
+        config.config_json = stringify_or("config_json", &table, config.config_json);
         return Ok(config);
     }
 
@@ -270,6 +274,7 @@ mod tests {
                 assert_eq!(None, config.token_file);
                 assert_eq!(None, config.non_interactive);
                 assert_eq!(None, config.auto_bump);
+                assert_eq!(None, config.config_json);
             },
             Err(e) => {
                 panic!("Failed to parse: {:?}", e.detail)
@@ -289,6 +294,7 @@ mod tests {
             pipeline = "dev"
             non_interactive = true
             auto_bump = true
+            config_json = "/path/to/my/custom/config.json"
 "#;
         let config_result = Config::parse_config(toml);
         match config_result {
@@ -301,6 +307,8 @@ mod tests {
                 assert_eq!(None, config.organization);
                 assert_eq!(Some(true), config.non_interactive);
                 assert_eq!(Some(true), config.auto_bump);
+                assert_eq!(Some("/path/to/my/custom/config.json".to_string()),
+                          config.config_json);
             },
             Err(e) => {
                 panic!("Failed to parse: {:?}", e.detail)
