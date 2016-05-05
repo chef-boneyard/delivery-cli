@@ -35,7 +35,7 @@ use utils;
 use utils::path_join_many::PathJoinMany;
 use config::Config;
 use http;
-use utils::say::sayln;
+use utils::say::{sayln,say};
 use getpass;
 
 #[derive(Debug)]
@@ -86,6 +86,35 @@ impl TokenStore {
             Ok(_) => Ok(result),
             Err(e) => Err(e)
         }
+    }
+
+    pub fn verify_token(config: &Config) -> Result<String, DeliveryError>  {
+      let server = try!(config.server());
+      let ent = try!(config.enterprise());
+      let user = try!(config.user());
+      let tstore = try!(TokenStore::from_home());
+      match tstore.lookup(&server, &ent, &user) {
+        Some(token) => {
+            sayln("magenta", &format!("token: {}", &token));
+            say("yellow", "Verifying Token: ");
+            match http::token::verify(&config) {
+                Err(e) => Err(e),
+                Ok(valid) => {
+                    if valid {
+                        sayln("green", "valid");
+                        Ok(token.clone())
+                    } else {
+                        sayln("red", "expired");
+                        TokenStore::request_token(config)
+                    }
+                }
+            }
+          },
+          None => {
+              sayln("red", "Token not found");
+              TokenStore::request_token(config)
+          }
+      }
     }
 
     pub fn request_token(config: &Config) -> Result<String, DeliveryError>  {

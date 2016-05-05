@@ -49,6 +49,32 @@ impl TokenResponse {
     }
 }
 
+pub fn verify(config: &Config) -> Result<bool, DeliveryError> {
+    let client = try!(APIClient::from_config(config));
+    let mut result = try!(client.get("orgs"));
+    match result.status {
+        StatusCode::Ok => Ok(true),
+        StatusCode::Unauthorized => {
+            let detail = try!(APIClient::extract_pretty_json(&mut result));
+            match detail.find("token_expired") {
+                Some(_) => Ok(false),
+                None => {
+                    let mut msg = "API request returned 401\nDetails:\n".to_string();
+                    msg.push_str(&detail);
+                    Err(DeliveryError{ kind: Kind::AuthenticationFailed,
+                                       detail: Some(msg)})
+                }
+            }
+        },
+        _ => {
+            let pretty_json = try!(APIClient::extract_pretty_json(&mut result));
+            println!("{}", pretty_json);
+            Err(DeliveryError{ kind: Kind::AuthenticationFailed,
+                               detail: Some(pretty_json)})
+        }
+    }
+}
+
 /// Request an API token for a user from a Delivery server.
 pub fn request(config: &Config, pass: &str) -> Result<String, DeliveryError> {
     let client = try!(APIClient::from_config_no_auth(config));

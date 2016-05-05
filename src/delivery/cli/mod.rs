@@ -239,6 +239,7 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a, 'a, 'a, 'a, 'a> {
                     .args(make_arg_vec![
                         "-u --user=[user] 'User name for Delivery authentication'",
                         "-e --ent=[enterprise] 'The enterprise in which the project lives'",
+                        "--verify 'Verify the Token has expired'",
                         "-s --server=[server] 'The Delivery server address'"])
                     .args_from_usage(
                         "--api-port=[port] 'Port for Delivery server'"))
@@ -786,18 +787,18 @@ fn clap_token(matches: &ArgMatches) -> Result<(), DeliveryError> {
     let port = value_of(&matches, "port");
     let ent = value_of(&matches, "enterprise");
     let user = value_of(&matches, "user");
-    api_token(server, port, ent, user)
-}
-
-fn api_token(server: &str, port: &str, ent: &str,
-             user: &str) -> Result<(), DeliveryError> {
+    let verify = matches.is_present("verify");
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
     config = config.set_server(server)
         .set_api_port(port)
         .set_enterprise(ent)
         .set_user(user);
-    try!(token::TokenStore::request_token(&config));
+    if verify {
+        try!(token::TokenStore::verify_token(&config));
+    } else {
+        try!(token::TokenStore::request_token(&config));
+    }
     Ok(())
 }
 
