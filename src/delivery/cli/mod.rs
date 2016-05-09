@@ -82,6 +82,8 @@ fn_arg!(auto_bump, "-a --auto-bump 'Automatic cookbook version bump'");
 
 fn_arg!(no_spinner_arg, "--no-spinner 'Disable the spinner'");
 
+fn_arg!(non_interactive_arg, "--non-interactive 'Disable cli interactions'");
+
 macro_rules! validate {
     ($config:ident, $value:ident) => (
         try!($config.$value());
@@ -168,6 +170,7 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a, 'a, 'a, 'a, 'a> {
     App::new("delivery")
         .version(version)
         .arg(no_spinner_arg().global(true))
+        .arg(non_interactive_arg().global(true))
         .subcommand(SubCommand::with_name("review")
                     .about("Submit current branch for review")
                     // NOTE: in the future, we can add extensive

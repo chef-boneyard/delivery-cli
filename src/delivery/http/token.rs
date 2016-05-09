@@ -63,8 +63,11 @@ pub fn verify(config: &Config) -> Result<bool, DeliveryError> {
     let ent = try!(config.enterprise());
     let user = try!(config.user());
     let tstore = try!(TokenStore::from_home());
+    let auth = try!(APIAuth::from_token_store(tstore, &api_server, &ent, &user).or_else(|e| {
+        debug!("Ignoring {:?}\nRequesting token from config", e);
+        APIAuth::from_token_request(&config)
+    }));
     let client = try!(APIClient::from_config_no_auth(config).and_then((|mut c| {
-        let auth = try!(APIAuth::from_token_store(tstore, &api_server, &ent, &user));
         c.set_auth(auth);
         Ok(c)
     })));

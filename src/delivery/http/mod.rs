@@ -407,6 +407,10 @@ impl APIAuth {
     /// Reads API tokens from `$HOME/.delivery/api-tokens`.
     /// Lookup for the stored token, if it does not exist request it.
     pub fn from_config(config: &Config) -> Result<APIAuth, DeliveryError> {
+        if !try!(http::token::verify(&config)) {
+            sayln("red", "Token expired");
+            return APIAuth::from_token_request(config)
+        }
         let tstore = match config.token_file {
             Some(ref f) => {
                 let file = PathBuf::from(f);
@@ -417,11 +421,10 @@ impl APIAuth {
         let api_server = try!(config.api_host_and_port());
         let ent = try!(config.enterprise());
         let user = try!(config.user());
-        if !try!(http::token::verify(&config)) {
-            sayln("red", "Token expired");
-            return APIAuth::from_token_request(config)
-        }
-        APIAuth::from_token_store(tstore, &api_server, &ent, &user)
+        APIAuth::from_token_store(tstore, &api_server, &ent, &user).or_else(|e| {
+            debug!("Ignoring {:?}\nRequesting token from config", e);
+            APIAuth::from_token_request(&config)
+        })
     }
 
     pub fn from_token_store(tstore: TokenStore,
@@ -429,10 +432,12 @@ impl APIAuth {
                             user: &str) -> Result<APIAuth, DeliveryError> {
         match tstore.lookup(server, ent, user) {
             Some(token) => {
+                debug!("Token found");
                 Ok(APIAuth{ user: String::from(user),
                             token: token.clone()})
             },
             None => {
+                debug!("Token not found");
                 let msg = format!("server: {}, ent: {}, user: {}",
                                   server, ent, user);
                 Err(DeliveryError{ kind: Kind::NoToken,
@@ -441,11 +446,12 @@ impl APIAuth {
         }
     }
 
-    fn from_token_request(config: &Config) -> Result<APIAuth, DeliveryError> {
+    pub fn from_token_request(config: &Config) -> Result<APIAuth, DeliveryError> {
         let user = try!(config.user());
         let interactive = !config.non_interactive.unwrap_or(false);
         if interactive {
             let token = try!(TokenStore::request_token(&config));
+            debug!("APIAuth from_token_request: {:?}@{:?}", user, token);
             Ok(APIAuth{ user: user.clone(), token: token.clone()})
         } else {
             let msg = format!("Unable to request token due to --no-interactive \
@@ -501,9 +507,10 @@ mod tests {
 
     #[test]
     fn from_config_needs_user() {
-        let config = Config::default()
+        let mut config = Config::default()
             .set_enterprise("ncc-1701")
             .set_server("earth");
+        config.non_interactive = Some(true);
 
         match APIClient::from_config(&config) {
             Ok(_) => assert!(false),
@@ -521,11 +528,12 @@ mod tests {
         let tempdir = TempDir::new("t1").ok().expect("TempDir failed");
         let path = tempdir.path();
         let token_file = path.join_many(&["api-tokens"]);
-        let config = Config::default()
+        let mut config = Config::default()
             .set_enterprise("ncc-1701")
             .set_server("earth")
             .set_user("kirk")
             .set_token_file(token_file.to_str().unwrap());
+        config.non_interactive = Some(true);
 
         let mut tstore = TokenStore::from_file(&token_file).ok().expect("tstore sad");
         let write_result = tstore.write_token("earth", "ncc-1701", "kirk",
@@ -612,11 +620,12 @@ mod tests {
         let tempdir = TempDir::new("t1").ok().expect("TempDir failed");
         let path = tempdir.path();
         let token_file = path.join_many(&["api-tokens"]);
-        let config = Config::default()
+        let mut config = Config::default()
             .set_enterprise("ncc-1701")
             .set_server("earth")
             .set_user("kirk")
             .set_token_file(token_file.to_str().unwrap());
+        config.non_interactive = Some(true);
 
         let mut tstore = TokenStore::from_file(&token_file).ok().expect("tstore sad");
         let write_result = tstore.write_token("earth", "ncc-1701", "kirk",
@@ -642,9 +651,10 @@ mod tests {
 
     #[test]
     fn api_auth_from_config_when_missing_test() {
-        let config = Config::default()
+        let mut config = Config::default()
             .set_enterprise("ncc-1701")
             .set_server("earth");
+        config.non_interactive = Some(true);
 
         // NOTE: for now, the use of the HOME environment variable
         // makes this test unsafe for parallel execution.
