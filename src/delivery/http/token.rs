@@ -16,6 +16,7 @@
 //
 
 use errors::{DeliveryError, Kind};
+use token::TokenStore;
 use http::*;
 use hyper::status::StatusCode;
 use rustc_serialize::json;
@@ -47,28 +48,35 @@ impl TokenResponse {
         let tresponse: TokenResponse = try!(json::decode(response));
         Ok(tresponse.token)
     }
+
+    pub fn parse_token_expired(content: &str) -> bool {
+        match content.find("token_expired") {
+            Some(_) => true,
+            None => false
+        }
+    }
 }
 
+/// Verify an API token for a user from a Delivery server.
 pub fn verify(config: &Config) -> Result<bool, DeliveryError> {
-    let client = try!(APIClient::from_config(config));
-    let mut result = try!(client.get("orgs"));
-    match result.status {
+    let api_server = try!(config.api_host_and_port());
+    let ent = try!(config.enterprise());
+    let user = try!(config.user());
+    let tstore = try!(TokenStore::from_home());
+    let client = try!(APIClient::from_config_no_auth(config).and_then((|mut c| {
+        let auth = try!(APIAuth::from_token_store(tstore, &api_server, &ent, &user));
+        c.set_auth(auth);
+        Ok(c)
+    })));
+    let mut response = try!(client.get("orgs"));
+    match response.status {
         StatusCode::Ok => Ok(true),
         StatusCode::Unauthorized => {
-            let detail = try!(APIClient::extract_pretty_json(&mut result));
-            match detail.find("token_expired") {
-                Some(_) => Ok(false),
-                None => {
-                    let mut msg = "API request returned 401\nDetails:\n".to_string();
-                    msg.push_str(&detail);
-                    Err(DeliveryError{ kind: Kind::AuthenticationFailed,
-                                       detail: Some(msg)})
-                }
-            }
+            let content = try!(APIClient::extract_pretty_json(&mut response));
+            Ok(TokenResponse::parse_token_expired(&content))
         },
         _ => {
-            let pretty_json = try!(APIClient::extract_pretty_json(&mut result));
-            println!("{}", pretty_json);
+            let pretty_json = try!(APIClient::extract_pretty_json(&mut response));
             Err(DeliveryError{ kind: Kind::AuthenticationFailed,
                                detail: Some(pretty_json)})
         }
@@ -122,5 +130,17 @@ mod tests {
         let response = "{\"token\":\"abc123\"}";
         let token = TokenResponse::parse_token(response).unwrap();
         assert_eq!("abc123", token);
+    }
+
+    #[test]
+    fn token_response_parse_token_expired_test() {
+        let r_token_expired = "{\"error\":\"token_expired\"}";
+        assert!(TokenResponse::parse_token_expired(r_token_expired));
+
+        let r_token_denied = "{\"error\":\"token_denied\"}";
+        assert!(!TokenResponse::parse_token_expired(r_token_denied));
+
+        let r_other = "{\"orgs\":\"[]\"}";
+        assert!(!TokenResponse::parse_token_expired(r_other))
     }
 }

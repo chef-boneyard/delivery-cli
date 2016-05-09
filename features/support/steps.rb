@@ -111,6 +111,10 @@ Given(/^a dummy Delivery API server/) do
         }
       ]
     end
+    get('/api/v0/e/dummy/orgs') do
+      status 200
+      { "orgs" => ["dummy"] }
+    end
     get('/api/v0/e/dummy/orgs/dummy/projects/delivery-cli-init') do
       status 201
       { "error" => "not_found" }
