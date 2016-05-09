@@ -22,6 +22,8 @@ use hyper;
 use hyper::status::StatusCode;
 use hyper::client::response::Response as HyperResponse;
 use hyper::error::Error as HttpError;
+use http;
+use http::token::TokenResponse;
 use mime;
 use rustc_serialize::json;
 use std::io::prelude::*;
@@ -148,15 +150,14 @@ impl APIClient {
                 Ok(())
             },
             StatusCode::Unauthorized => {
-                // Verify if the Token has expired
                 let detail = try!(APIClient::extract_pretty_json(&mut response));
-                match detail.find("token_expired") {
-                    Some(_) => Err(DeliveryError{ kind: Kind::TokenExpired, detail: None}),
-                    None => {
-                        let msg = "API request returned 401".to_string();
-                        Err(DeliveryError{ kind: Kind::AuthenticationFailed,
-                                           detail: Some(msg)})
-                    }
+                if TokenResponse::parse_token_expired(&detail) {
+                    Err(DeliveryError{ kind: Kind::TokenExpired, detail: None})
+                } else {
+                    let mut msg = "API request returned 401\nDetails:\n".to_string();
+                    msg.push_str(&detail);
+                    Err(DeliveryError{ kind: Kind::AuthenticationFailed,
+                                       detail: Some(msg)})
                 }
             },
             error_code @ _ => {
@@ -236,10 +237,10 @@ impl APIClient {
         };
         debug!("Request: {:?} Path: {:?} Payload: {:?}",
                 http_method, path, payload);
-        if !payload.is_empty() {
-            req.body(payload).send()
-        } else {
+        if payload.is_empty() {
             req.send()
+        } else {
+             req.body(payload).send()
         }
     }
 
@@ -406,6 +407,10 @@ impl APIAuth {
     /// Reads API tokens from `$HOME/.delivery/api-tokens`.
     /// Lookup for the stored token, if it does not exist request it.
     pub fn from_config(config: &Config) -> Result<APIAuth, DeliveryError> {
+        if !try!(http::token::verify(&config)) {
+            sayln("red", "Token expired");
+            return APIAuth::from_token_request(config)
+        }
         let tstore = match config.token_file {
             Some(ref f) => {
                 let file = PathBuf::from(f);
@@ -416,17 +421,9 @@ impl APIAuth {
         let api_server = try!(config.api_host_and_port());
         let ent = try!(config.enterprise());
         let user = try!(config.user());
-        let api_auth = APIAuth::from_token_store(tstore, &api_server,
-                                                 &ent, &user);
-        api_auth.or_else(|e| {
-            let interactive = !config.non_interactive.unwrap_or(false);
-            if interactive {
-                let token = try!(TokenStore::request_token(&config));
-                Ok(APIAuth{ user: user.clone(),
-                            token: token.clone()})
-            } else {
-                Err(e)
-            }
+        APIAuth::from_token_store(tstore, &api_server, &ent, &user).or_else(|e| {
+            debug!("Ignoring {:?}\nRequesting token from config", e);
+            APIAuth::from_token_request(&config)
         })
     }
 
@@ -435,15 +432,31 @@ impl APIAuth {
                             user: &str) -> Result<APIAuth, DeliveryError> {
         match tstore.lookup(server, ent, user) {
             Some(token) => {
+                debug!("Token found");
                 Ok(APIAuth{ user: String::from(user),
                             token: token.clone()})
             },
             None => {
+                debug!("Token not found");
                 let msg = format!("server: {}, ent: {}, user: {}",
                                   server, ent, user);
                 Err(DeliveryError{ kind: Kind::NoToken,
                                    detail: Some(msg)})
             }
+        }
+    }
+
+    pub fn from_token_request(config: &Config) -> Result<APIAuth, DeliveryError> {
+        let user = try!(config.user());
+        let interactive = !config.non_interactive.unwrap_or(false);
+        if interactive {
+            let token = try!(TokenStore::request_token(&config));
+            debug!("APIAuth from_token_request: {:?}@{:?}", user, token);
+            Ok(APIAuth{ user: user.clone(), token: token.clone()})
+        } else {
+            let msg = format!("Unable to request token due to --no-interactive \
+                               flag.\nTry `delivery token` to create one");
+            Err(DeliveryError{ kind: Kind::NoToken, detail: Some(msg)})
         }
     }
 
@@ -494,9 +507,10 @@ mod tests {
 
     #[test]
     fn from_config_needs_user() {
-        let config = Config::default()
+        let mut config = Config::default()
             .set_enterprise("ncc-1701")
             .set_server("earth");
+        config.non_interactive = Some(true);
 
         match APIClient::from_config(&config) {
             Ok(_) => assert!(false),
@@ -514,19 +528,27 @@ mod tests {
         let tempdir = TempDir::new("t1").ok().expect("TempDir failed");
         let path = tempdir.path();
         let token_file = path.join_many(&["api-tokens"]);
-        let config = Config::default()
+        let mut config = Config::default()
             .set_enterprise("ncc-1701")
             .set_server("earth")
             .set_user("kirk")
             .set_token_file(token_file.to_str().unwrap());
+        config.non_interactive = Some(true);
 
         let mut tstore = TokenStore::from_file(&token_file).ok().expect("tstore sad");
         let write_result = tstore.write_token("earth", "ncc-1701", "kirk",
                                               "cafecafe");
         assert_eq!(true, write_result.is_ok());
 
-        let client = APIClient::from_config(&config).unwrap();
-        let url = client.api_url("foo");
+        // Turning this test into a verification instead since `from_config`
+        // now validatates that the token extracted from the tstore is valid.
+        // That means that it hits an endpoint and we can't mock it in this test.
+        let client = APIClient::from_config(&config);
+        assert!(client.is_err());
+
+        // Instead we use `from_config_no_auth` that doesn't validate the token
+        let client_from_store = APIClient::from_config_no_auth(&config).unwrap();
+        let url = client_from_store.api_url("foo");
         assert_eq!("https://earth/api/v0/e/ncc-1701/foo", url)
     }
 
@@ -598,11 +620,12 @@ mod tests {
         let tempdir = TempDir::new("t1").ok().expect("TempDir failed");
         let path = tempdir.path();
         let token_file = path.join_many(&["api-tokens"]);
-        let config = Config::default()
+        let mut config = Config::default()
             .set_enterprise("ncc-1701")
             .set_server("earth")
             .set_user("kirk")
             .set_token_file(token_file.to_str().unwrap());
+        config.non_interactive = Some(true);
 
         let mut tstore = TokenStore::from_file(&token_file).ok().expect("tstore sad");
         let write_result = tstore.write_token("earth", "ncc-1701", "kirk",
@@ -611,8 +634,15 @@ mod tests {
 
         let auth = APIAuth::from_config(&config);
 
+        // Turning this test into a verification instead since `from_config`
+        // now validatates that the token extracted from the tstore is valid.
+        // That means that it hits an endpoint and we can't mock it in this test.
+        assert!(auth.is_err());
+
+        // Instead we use `from_token_store` that doesn't validate the token
+        let auth_from_tstore = APIAuth::from_token_store(tstore, "earth", "ncc-1701", "kirk");
         assert_eq!(true,
-                   auth.and_then(|a| {
+                   auth_from_tstore.and_then(|a| {
                        assert_eq!("kirk", a.user());
                        assert_eq!("cafecafe", a.token());
                        Ok(a)
@@ -621,9 +651,10 @@ mod tests {
 
     #[test]
     fn api_auth_from_config_when_missing_test() {
-        let config = Config::default()
+        let mut config = Config::default()
             .set_enterprise("ncc-1701")
             .set_server("earth");
+        config.non_interactive = Some(true);
 
         // NOTE: for now, the use of the HOME environment variable
         // makes this test unsafe for parallel execution.
