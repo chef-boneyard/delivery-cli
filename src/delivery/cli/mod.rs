@@ -53,7 +53,7 @@ fn u_e_s_o_args<'a>() -> Vec<Arg<'a, 'a, 'a, 'a, 'a, 'a>> {
 fn scp_args<'a>() -> Vec<Arg<'a, 'a, 'a, 'a, 'a, 'a>> {
     make_arg_vec![
         "--bitbucket=[project-key] 'Use a Bitbucket repository for Code Review with the provided Project Key'",
-        "--github=[org-name] 'Use a Github repository for Code Review with the provided Org'",
+        "--github=[org-name] 'Use a Github repository for Code Review with the provided Organization'",
         "-r --repo-name=[repo-name] 'Source code provider repository name'",
         "--no-verify-ssl 'Do not use SSL verification. [Github]'"]
 }
@@ -71,8 +71,7 @@ fn_arg!(project_arg,
        "-p --project=[project] 'The project name'");
 
 fn_arg!(config_path_arg,
-        "--config-path=[dir] 'Directory to read/write your config file \
-         (cli.toml)'");
+        "--config-path=[dir] 'Directory to read/write your config file (cli.toml)'");
 
 fn_arg!(local_arg, "-l --local 'Operate without a Delivery server'");
 
@@ -205,7 +204,9 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a, 'a, 'a, 'a, 'a> {
                     .args(vec![for_arg(), config_path_arg(), no_open_arg(),
                                project_arg(), local_arg(), config_project_arg()])
                     .args_from_usage(
-                        "--skip-build-cookbook 'Do not create a build cookbook'")
+                        "--generator=[generator] 'Local path or Git repo to a \
+                         custom ChefDK build-cookbook generator (default:github)'
+                        --skip-build-cookbook 'Do not create a build cookbook'")
                     .args(u_e_s_o_args())
                     .args(scp_args()))
         .subcommand(SubCommand::with_name("setup")
@@ -318,12 +319,14 @@ fn clap_init(matches: &ArgMatches) -> Result<(), DeliveryError> {
     let mut config = try!(load_config(&cwd()));
     let final_proj = try!(project::project_or_from_cwd(proj));
     let config_json = value_of(&matches, "config-json");
+    let generator = value_of(&matches, "generator");
     config = config.set_user(user)
         .set_server(server)
         .set_enterprise(ent)
         .set_organization(org)
         .set_project(&final_proj)
         .set_pipeline(pipeline)
+        .set_generator(generator)
         .set_config_json(config_json);
     let branch = try!(config.pipeline());
     let github_org_name = value_of(&matches, "org-name");

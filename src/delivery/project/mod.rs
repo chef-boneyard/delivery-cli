@@ -20,7 +20,6 @@ use utils::{self, walk_tree_for_path, mkdir_recursive};
 use utils::path_ext::is_dir;
 use errors::{DeliveryError, Kind};
 use delivery_config::DeliveryConfig;
-use std::error;
 use std::path::{Path, PathBuf};
 use http::APIClient;
 use git;
@@ -274,15 +273,18 @@ pub fn project_or_from_cwd(proj: &str) -> Result<String, DeliveryError> {
 pub fn init(config: Config, no_open: &bool, skip_build_cookbook: &bool,
             local: &bool, scp: Option<SourceCodeProvider>) -> Result<(), DeliveryError> {
     let project_path = try!(root_dir(&utils::cwd()));
-    let config_json = config.config_json.clone();
     try!(create_on_server(&config, scp.clone(), local));
     try!(create_feature_branch(&project_path));
-    try!(generate_build_cookbook(skip_build_cookbook));
-    try!(generate_delivery_config(config_json));
+    try!(generate_build_cookbook(skip_build_cookbook, config.generator().ok()));
+    try!(generate_delivery_config(config.config_json().ok()));
     try!(trigger_review(config, scp, &no_open, &local));
     Ok(())
 }
 
+/// Handle the delivery config generation
+///
+/// Receives a custom config.json file that will be copy to the current project repo
+/// otherwise it will generate the default config.
 fn generate_delivery_config(config_json: Option<String>) -> Result<(), DeliveryError> {
     let project_path = try!(root_dir(&utils::cwd()));
     if let Some(json) = config_json {
@@ -293,6 +295,7 @@ fn generate_delivery_config(config_json: Option<String>) -> Result<(), DeliveryE
     }
 }
 
+/// Triggers a delvery review
 fn trigger_review(config: Config, scp: Option<SourceCodeProvider>,
                  no_open: &bool, local: &bool) -> Result<(), DeliveryError> {
     if *local {
@@ -317,41 +320,97 @@ fn trigger_review(config: Config, scp: Option<SourceCodeProvider>,
     Ok(())
 }
 
+/// Create the feature branch `add-delivery-config`
+///
+/// This branch is created to start modifying the project repository
+/// In the case of a failure,we could roll back it fearly easy by checking
+/// master and deleting this feature branch.
 fn create_feature_branch(project_path: &PathBuf) -> Result<(), DeliveryError> {
-    // In the case of an Err() we could roll back although
-    // it could be a good idea to verify and if not, create it.
     say("white", "Create and checkout add-delivery-config feature branch: ");
     try!(git::git_command(&["checkout", "-b", "add-delivery-config"], project_path));
     sayln("green", "done");
     Ok(())
 }
 
-fn generate_build_cookbook(skip_build_cookbook: &bool) -> Result<(), DeliveryError> {
+/// Add and commit the generated build-cookbook
+fn add_commit_build_cookbook() -> Result<(), DeliveryError> {
+    let project_path = try!(root_dir(&utils::cwd()));
+    say("white", "Git add and commit of build-cookbook: ");
+    try!(git::git_command(&["add", ".delivery/build-cookbook"], &project_path));
+    try!(git::git_command(&["commit", "-m", "Add Delivery build cookbook"], &project_path));
+    sayln("green", "done");
+    Ok(())
+}
+
+/// Clone a build-cookbook generator if it doesn't exist already on the cache
+fn git_clone_build_cookbook_generator(path: &str, url: &str) -> Result<(), DeliveryError> {
+    if is_dir(&Path::new(path)) {
+        sayln("yellow", &format!("Using cached copy of build-cookbook generator {:?}",
+                                 path));
+        Ok(())
+    } else {
+        say("white", "Downloading build-cookbook generator from: ");
+        sayln("yellow", &format!("{:?}", url));
+        git::clone(path, url)
+    }
+}
+
+/// Custom build-cookbook generation
+///
+/// This method handles a custom generator which could be:
+/// 1) A local path
+/// 2) Or a git repo URL
+/// TODO) From Supermarket
+fn custom_build_cookbook_generator(generator: &Path, path: &Path) -> Result<(), DeliveryError> {
+    if generator.has_root() {
+        say("white", "Copying custom build-cookbook generator to ");
+        sayln("yellow", &format!("{:?}", path));
+        try!(utils::copy_recursive(&generator, &path));
+    } else {
+        try!(git_clone_build_cookbook_generator(&path.to_string_lossy(),
+                                                &generator.to_string_lossy()));
+    }
+    Ok(())
+}
+
+/// Default cookbooks generator cache path
+fn generator_cache_path() -> Result<PathBuf, DeliveryError> {
+    utils::home_dir(&[".delivery/cache/generator-cookbooks"])
+}
+
+/// Handles the build-cookbook generation
+///
+/// This method could receive a custom generator, if it is not provided,
+/// we use the default cookbook generator called PCB:
+/// => https://github.com/chef-cookbooks/pcb.git
+fn generate_build_cookbook(skip_build_cookbook: &bool,
+                           generator: Option<String>) -> Result<(), DeliveryError> {
     if *skip_build_cookbook {
         return Ok(())
     }
     sayln("white", "Generating build cookbook skeleton");
-    let project_path = try!(root_dir(&utils::cwd()));
-    let pcb_dir = match utils::home_dir(&[".delivery/cache/generator-cookbooks/pcb"]) {
-        Ok(p) => p,
-        Err(e) => return Err(e)
+    let mut generator_path = try!(generator_cache_path());
+    debug!("Cookbook generator cached path: {:?}", generator_path);
+    match generator {
+        Some(generator_str) => {
+            let gen_path = Path::new(&generator_str);
+            generator_path.push(gen_path.file_stem().unwrap());
+            try!(custom_build_cookbook_generator(&gen_path, &generator_path));
+        },
+        None => {
+            generator_path.push("pcb");
+            try!(git_clone_build_cookbook_generator(&generator_path.to_string_lossy(),
+                                                    "https://github.com/chef-cookbooks/pcb.git"));
+        }
     };
+    try!(chef_generate_build_cookbook(&generator_path));
+    try!(add_commit_build_cookbook());
+    Ok(())
+}
 
-    if is_dir(&pcb_dir) {
-        sayln("yellow", "Cached copy of build cookbook generator exists; skipping git clone.");
-    } else {
-        sayln("white", &format!("Cloning build cookbook generator dir {:#?}", pcb_dir));
-        // Lets not force the user to use this git repo.
-        // Adding an option --pcb PATH
-        // Where PATH:
-        //    * Local path
-        //    * Git repo
-        //    * Supermarket?
-        try!(git::clone(&pcb_dir.to_string_lossy(),
-                        "https://github.com/chef-cookbooks/pcb"));
-    }
-
-    // Generate the cookbook
+/// Generate the build-cookbook using ChefDK generate
+fn chef_generate_build_cookbook(generator: &Path) -> Result<(), DeliveryError> {
+    let project_path = try!(root_dir(&utils::cwd()));
     let dot_delivery = Path::new(".delivery");
     try!(mkdir_recursive(dot_delivery));
     let mut gen = utils::make_command("chef");
@@ -359,26 +418,27 @@ fn generate_build_cookbook(skip_build_cookbook: &bool) -> Result<(), DeliveryErr
         .arg("cookbook")
         .arg(".delivery/build-cookbook")
         .arg("-g")
-        .arg(pcb_dir)
+        .arg(generator)
         .current_dir(&project_path);
 
-    match gen.output() {
-        Ok(o) => o,
-        Err(e) => return Err(
-                    DeliveryError {
-                        kind: Kind::FailedToExecute,
-                        detail: Some(format!(
-                                    "failed to execute chef generate: {}",
-                                    error::Error::description(&e)
-                                ))
-                    })
-    };
+    debug!("build-cookbook generation with command: {:#?}", gen);
+    let output = try!(gen.output());
 
-    sayln("green", &format!("PCB generate: {:#?}", gen));
-    say("white", "Git add and commit of build-cookbook: ");
-    try!(git::git_command(&["add", ".delivery/build-cookbook"], &project_path));
-    try!(git::git_command(&["commit", "-m", "Add Delivery build cookbook"], &project_path));
-    sayln("green", "done");
+    debug!("chef-generate-cmd status: {}", output.status);
+    if !output.status.success() {
+        return Err(
+            DeliveryError {
+                kind: Kind::FailedToExecute,
+                detail: Some(format!(
+                            "Failed to execute chef generate:\n\
+                            STDOUT: {}\nSTDERR: {}",
+                            String::from_utf8_lossy(&output.stdout),
+                            String::from_utf8_lossy(&output.stderr)
+                        ))
+            }
+        )
+    }
+    sayln("green", &format!("Build-cookbook generated: {:#?}", gen));
     Ok(())
 }
 
