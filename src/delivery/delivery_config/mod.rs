@@ -109,7 +109,7 @@ impl DeliveryConfig {
         let config_path_str = &config_path.to_str().unwrap();
         say("white", "Git add and commit delivery config: ");
         try!(git::git_command(&["add", &config_path_str], proj_path));
-        try!(git::git_command(&["commit", "-m", "Add Delivery config"], proj_path));
+        try!(git::git_command(&["commit", "-m", "Adds Delivery config"], proj_path));
         sayln("green", "done");
         Ok(())
     }
