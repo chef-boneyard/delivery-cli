@@ -71,7 +71,8 @@ fn_arg!(project_arg,
        "-p --project=[project] 'The project name'");
 
 fn_arg!(config_path_arg,
-        "--config-path=[dir] 'Directory to read/write your config file (cli.toml)'");
+        "--config-path=[dir] 'Directory to read/write your config file \
+         (cli.toml) from'");
 
 fn_arg!(local_arg, "-l --local 'Operate without a Delivery server'");
 
@@ -204,7 +205,7 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a, 'a, 'a, 'a, 'a> {
                     .args(vec![for_arg(), config_path_arg(), no_open_arg(),
                                project_arg(), local_arg(), config_project_arg()])
                     .args_from_usage(
-                        "--generator=[generator] 'Local path or Git repo to a \
+                        "--generator=[generator] 'Local path or Git repo URL to a \
                          custom ChefDK build-cookbook generator (default:github)'
                         --skip-build-cookbook 'Do not create a build cookbook'")
                     .args(u_e_s_o_args())

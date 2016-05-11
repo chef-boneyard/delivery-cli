@@ -323,10 +323,12 @@ fn trigger_review(config: Config, scp: Option<SourceCodeProvider>,
 /// Create the feature branch `add-delivery-config`
 ///
 /// This branch is created to start modifying the project repository
-/// In the case of a failure,we could roll back it fearly easy by checking
-/// master and deleting this feature branch.
+/// In the case of a failure, we could roll back fearly easy by checking
+/// out master and deleting this feature branch.
 fn create_feature_branch(project_path: &PathBuf) -> Result<(), DeliveryError> {
-    say("white", "Create and checkout add-delivery-config feature branch: ");
+    say("white", "Creating and checking out ");
+    say("yellow", "add-delivery-config");
+    say("white", " feature branch: ");
     try!(git::git_command(&["checkout", "-b", "add-delivery-config"], project_path));
     sayln("green", "done");
     Ok(())
@@ -335,9 +337,9 @@ fn create_feature_branch(project_path: &PathBuf) -> Result<(), DeliveryError> {
 /// Add and commit the generated build-cookbook
 fn add_commit_build_cookbook() -> Result<(), DeliveryError> {
     let project_path = try!(root_dir(&utils::cwd()));
-    say("white", "Git add and commit of build-cookbook: ");
+    say("white", "Adding and commiting build-cookbook: ");
     try!(git::git_command(&["add", ".delivery/build-cookbook"], &project_path));
-    try!(git::git_command(&["commit", "-m", "Add Delivery build cookbook"], &project_path));
+    try!(git::git_command(&["commit", "-m", "Adds Delivery build cookbook"], &project_path));
     sayln("green", "done");
     Ok(())
 }
@@ -349,7 +351,7 @@ fn git_clone_build_cookbook_generator(path: &str, url: &str) -> Result<(), Deliv
                                  path));
         Ok(())
     } else {
-        say("white", "Downloading build-cookbook generator from: ");
+        say("white", "Downloading build-cookbook generator from ");
         sayln("yellow", &format!("{:?}", url));
         git::clone(path, url)
     }

@@ -47,12 +47,23 @@ Scenario: When trying to specify both github and bitbucket
   Then the output should contain "specify just one Source Code Provider: delivery(default), github or bitbucket"
   And the exit status should be 1
 
-# Pending
 Scenario: When skipping the build-cookbook generator
-  When a user creates a delivery backed project
-  And specifies the option "--skip-build-cookbook"
+  When a user creates a delivery backed project with option "--skip-build-cookbook"
   Then a delivery project is created in delivery
   And no build-cookbook is generated
+  And the exit status should be 0
+
+Scenario: When specifying a local build-cookbook generator
+  When a user creates a delivery backed project with option "--generator /tmp/bc-cookbook"
+  Then a delivery project is created in delivery
+  And a custom build-cookbook is generated from "local_path"
+  And the exit status should be 0
+
+Scenario: When specifying a GitRepo Url for the build-cookbook generator
+  When a user creates a delivery backed project with option "--generator https://github.com/afiune/bc-cookbook"
+  Then a delivery project is created in delivery
+  And a custom build-cookbook is generated from "git_repo"
+  And the exit status should be 0
 
 Scenario: When providing a custom config.json
   When a user creates a project with a custom config.json
