@@ -35,6 +35,7 @@ use config::Config;
 mod headers;
 pub mod token;
 pub mod change;
+pub mod user;
 
 #[derive(Debug)]
 enum HProto {

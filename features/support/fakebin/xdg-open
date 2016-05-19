@@ -1,0 +1,3 @@
+#!/bin/sh
+
+echo xdg-open "$@" >> "$FAKE_BINS_HISTORY_FILE"
