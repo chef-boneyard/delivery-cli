@@ -96,7 +96,7 @@ pub fn request(config: &Config, pass: &str) -> Result<String, DeliveryError> {
     match result.status {
         StatusCode::Ok => {
             let mut body_string = String::new();
-            let _x = try!(result.read_to_string(&mut body_string));
+            try!(result.read_to_string(&mut body_string));
             let token = try!(TokenResponse::parse_token(&body_string));
             Ok(token)
         },

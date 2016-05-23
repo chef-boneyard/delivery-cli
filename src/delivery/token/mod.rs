@@ -98,23 +98,22 @@ impl TokenStore {
             sayln("magenta", &format!("token: {}", &token));
             say("yellow", "Verifying Token: ");
             match http::token::verify(&config) {
-                Err(e) => Err(e),
+                Err(e) => return Err(e),
                 Ok(valid) => {
                     if valid {
                         sayln("green", "valid");
-                        Ok(token.clone())
+                        return Ok(token.clone())
                     } else {
                         sayln("red", "expired");
-                        TokenStore::request_token(config)
                     }
                 }
             }
           },
           None => {
               sayln("red", "Token not found");
-              TokenStore::request_token(config)
           }
       }
+      TokenStore::request_token(&config)
     }
 
     pub fn request_token(config: &Config) -> Result<String, DeliveryError>  {
@@ -123,12 +122,21 @@ impl TokenStore {
       let user = try!(config.user());
       let api_server = try!(config.api_host_and_port());
       let mut tstore = try!(TokenStore::from_home());
-      let pass = getpass::read("Delivery password: ");
-      let token = try!(http::token::request(&config, &pass));
-      sayln("magenta", &format!("token: {}", &token));
-      try!(tstore.write_token(&api_server, &ent, &user, &token));
-      sayln("green", &format!("saved API token to: {}", tstore.path().display()));
-      Ok(token)
+      let saml = try!(http::user::is_saml(&config));
+      if saml {
+         Err(DeliveryError{
+              kind: Kind::NoToken,
+              detail: Some("Token retrieval for SAML authenticated \
+              users is not supported yet.".to_string())
+          })
+      } else {
+          let pass = getpass::read("Delivery password: ");
+          let token = try!(http::token::request(&config, &pass));
+          sayln("magenta", &format!("token: {}", &token));
+          try!(tstore.write_token(&api_server, &ent, &user, &token));
+          sayln("green", &format!("saved API token to: {}", tstore.path().display()));
+          Ok(token)
+      }
     }
 
     fn key(server: &str, ent: &str, user: &str) -> String {
