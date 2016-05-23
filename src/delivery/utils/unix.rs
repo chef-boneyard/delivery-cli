@@ -17,7 +17,7 @@
 
 use std::process::Command;
 use errors::{DeliveryError, Kind};
-use libc::funcs::posix88::unistd;
+use libc;
 use std::path::Path;
 use std::convert::AsRef;
 use std::error;
@@ -101,7 +101,7 @@ pub fn chown_all<P: AsRef<Path>>(who: &str,
 }
 
 pub fn privileged_process() -> bool {
-    match unsafe { unistd::getuid() } {
+    match unsafe { libc::getuid() } {
         0 => true,
         _ => false
     }

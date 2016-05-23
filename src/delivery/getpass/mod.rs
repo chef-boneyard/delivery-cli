@@ -21,7 +21,7 @@
 //! the input being echoed on the terminal. Expect this to work on OS
 //! X and Linux only.
 
-use libc::types::os::arch::c95::c_char;
+use std::os::raw::c_char;
 
 #[cfg(not(target_os = "windows"))]
 use std::ffi::{CString, CStr};
