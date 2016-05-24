@@ -252,7 +252,7 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a> {
                         "--api-port=[port] 'Port for Delivery server'"))
         .subcommand(SubCommand::with_name("spin")
                     .about("test the spinner")
-                    .args_from_usage("-t --time=[TIME] 'How man seconds to spin'"))
+                    .args_from_usage("-t --time=[TIME] 'How many seconds to spin'"))
 }
 
 fn handle_spinner(matches: &ArgMatches) {

@@ -1,5 +1,5 @@
 default['delivery_rust']['ruby_version'] = '2.1.5'
-default['delivery_rust']['rust_version'] = '2015-10-03'
+default['delivery_rust']['rust_version'] = '1.8.0'
 
 if platform_family == 'windows'
   override['omnibus']['ruby_version'] = '2.1.6-x64'
