@@ -68,7 +68,37 @@ Scenario: SAML user
             "saml_user" => true
         }
       end
+      post('/api/v0/e/Foobar/users/alice/get-token') do
+        status 200
+        {
+            "token" => "xOsqI8qiBrUCGGRttfFy768R8ZAMJ24RC+0UGyX9/II="
+        }
+      end
+      get('/api/v0/e/Foobar/orgs') do
+        {
+          "_links" => {
+            "create_org" => {
+              "href" => "/api/v0/e/Foobar/orgs"
+            },
+            "show_org" => {
+              "href" => "/api/v0/e/Foobar/orgs/{org_name}",
+              "templated" => true
+            }
+          },
+          "orgs" => []
+        }
+      end
     """
   When I run `delivery token` interactively
-  Then the exit status should be 1
-  And the output should contain "Token retrieval for SAML authenticated users is not supported yet."
+  And I type "Enter"
+  And I type "xOsqI8qiBrUCGGRttfFy768R8ZAMJ24RC+0UGyX9/II="
+  Then the exit status should be 0
+  And the output should contain:
+  """
+  Press Enter to open a browser window to retrieve a new token.
+  """
+  And a file named ".delivery/api-tokens" should exist
+  And the file ".delivery/api-tokens" should contain:
+    """
+    127.0.0.1:8080,Foobar,alice|xOsqI8qiBrUCGGRttfFy768R8ZAMJ24RC+0UGyX9/II=
+    """
