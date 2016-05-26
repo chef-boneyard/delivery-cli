@@ -238,7 +238,7 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a> {
                     .args_from_usage(
                         "<method> 'HTTP method for the request'
                          <path> 'Path for rqeuest URL'
-                         --api-port=[port] 'Port for Delivery server'
+                         --api-port=[api-port] 'Port for Delivery server'
                          -d --data=[data] 'Data to send for PUT/POST request'")
                     .args(&u_e_s_o_args()))
         .subcommand(SubCommand::with_name("token")
@@ -249,7 +249,7 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a> {
                         "--verify 'Verify the Token has expired'",
                         "-s --server=[server] 'The Delivery server address'"])
                     .args_from_usage(
-                        "--api-port=[port] 'Port for Delivery server'"))
+                        "--api-port=[api-port] 'Port for Delivery server'"))
         .subcommand(SubCommand::with_name("spin")
                     .about("test the spinner")
                     .args_from_usage("-t --time=[TIME] 'How many seconds to spin'"))
@@ -284,8 +284,8 @@ fn clap_setup(matches: &ArgMatches) -> Result<(), DeliveryError> {
     let server = value_of(&matches, "server");
     let ent = value_of(&matches, "ent");
     let org = value_of(&matches, "org");
-    let path = value_of(&matches, "dir");
-    let pipeline = value_of(&matches, "pipeline");
+    let path = value_of(&matches, "config-path");
+    let pipeline = value_of(&matches, "for");
     setup(user, server, ent, org, path, pipeline)
 }
 
@@ -331,8 +331,8 @@ fn clap_init(matches: &ArgMatches) -> Result<(), DeliveryError> {
         .set_generator(generator)
         .set_config_json(config_json);
     let branch = try!(config.pipeline());
-    let github_org_name = value_of(&matches, "org-name");
-    let bitbucket_project_key = value_of(&matches, "project-key");
+    let github_org_name = value_of(&matches, "github");
+    let bitbucket_project_key = value_of(&matches, "bitbucket");
     if !github_org_name.is_empty() && !bitbucket_project_key.is_empty() {
         return Err(DeliveryError{ kind: Kind::OptionConstraint, detail: Some(format!("Please \
         specify just one Source Code Provider: delivery(default), github or bitbucket.")) })
@@ -497,7 +497,7 @@ fn clap_clone(matches: &ArgMatches) -> Result<(), DeliveryError> {
     let server = value_of(&matches, "server");
     let ent = value_of(&matches, "ent");
     let org = value_of(&matches, "org");
-    let git_url = value_of(&matches, "url");
+    let git_url = value_of(&matches, "git-url");
     clone(project, user, server, ent, org, git_url)
 }
 
@@ -541,14 +541,14 @@ fn clap_job(matches: &ArgMatches) -> Result<(), DeliveryError> {
     let org = value_of(&matches, "org");
 
     let patchset = value_of(&matches, "patchset");
-    let change_id = value_of(&matches, "id");
-    let git_url = value_of(&matches, "url");
-    let shasum = value_of(&matches, "gitsha");
+    let change_id = value_of(&matches, "change-id");
+    let git_url = value_of(&matches, "git-url");
+    let shasum = value_of(&matches, "shasum");
     let branch = value_of(&matches, "branch");
 
     let skip_default = matches.is_present("skip-default");
     let local = matches.is_present("local");
-    let docker_image = value_of(&matches, "image");
+    let docker_image = value_of(&matches, "docker");
 
     job(stage, phases, change, pipeline, job_root,
         proj, user, server, ent, org, patchset,
@@ -792,7 +792,7 @@ fn with_default<'a>(val: &'a str, default: &'a str, local: &bool) -> &'a str {
 
 fn clap_token(matches: &ArgMatches) -> Result<(), DeliveryError> {
     let server = value_of(&matches, "server");
-    let port = value_of(&matches, "port");
+    let port = value_of(&matches, "api-port");
     let ent = value_of(&matches, "ent");
     let user = value_of(&matches, "user");
     let verify = matches.is_present("verify");
@@ -826,7 +826,7 @@ fn clap_api_req(matches: &ArgMatches) -> Result<(), DeliveryError> {
     let data = value_of(&matches, "data");
 
     let server = value_of(&matches, "server");
-    let api_port = value_of(&matches, "port");
+    let api_port = value_of(&matches, "api-port");
     let ent = value_of(&matches, "ent");
     let user = value_of(&matches, "user");
     api_req(method, path, data, server, api_port, ent, user)
