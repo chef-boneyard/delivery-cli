@@ -4,18 +4,85 @@ A command line tool for continuous delivery workflow. The `delivery`
 command is a component of Chef Delivery. It can be used to setup and
 execute phase jobs as well as interact with a Chef Delivery server.
 
-## Usage
+It is a part of the ChefDK and can be downloaded [here](https://downloads.chef.io/chef-dk/).
 
-Start using `delivery` by issuing the setup command:
+## Getting Started With Delivery
 
-```shell
-$ delivery setup --user USER --server SERVER --ent ENTERPRISE --org ORGANIZATION --config-path /Users/adam
++ [Delivery CLI Docs](https://docs.chef.io/ctl_delivery.html)
++ [Delivery Docs](https://docs.chef.io/start_delivery.html)
+
+In particular, you will want to be familar with:
+
++ [Your First Delivery Project](https://docs.chef.io/delivery_truck.html#validate-the-installation)
++ [The Delivery Setup Command](https://docs.chef.io/ctl_delivery.html#delivery-setup)
++ [Delivery config.json](https://docs.chef.io/config_json_delivery.html)
+
+## Development
+
+To get started make sure you have the following installed:
++ [Homebrew](http://brew.sh/)
++ [Ruby 2.1.5](https://github.com/rbenv/rbenv)
++ Rust 1.8.0 (`brew install rust`)
++ Openssl (`brew install openssl`)
+
+Main technologies used in this project:
++ Rust (learn more [here](http://doc.rust-lang.org/book/installing-rust.html))
++ [Cucumber](https://cucumber.io/docs) and [Aruba](https://github.com/cucumber/aruba) for functional testing
++ [Clap](https://github.com/kbknapp/clap-rs), a CLI parsing library for Rust
+
+We use [make](https://en.wikipedia.org/wiki/Make_(software)) to perform various development
+operations like building and testing. The commands reside in the Makefile, but the Makefile
+is _only_ used for development. It is not used by omnibus or our delivery cookbooks.
+
+Make targets:
++ `make` builds the project.
++ `make test` runs the unit and functional tests.
++ `make cucumber` will run the cucumber tests.
++ `make clean` will clean the state of the build.
++ `make update_deps` will update the `Cargo.lock` file, this should be run periodically
+  to pull in new deps and at the very least when upgrading to a new version of Rust.
++ `make release` builds the project clean with the `--release` flag and updates cargo deps.
++ `make check` builds and runs unit tests.
+
+After you `make` the project, you can execute your compiled binary
+by running `target/debug/delivery <delivery_args>`. So, you could run something like
+
+```
+$ target/debug/delivery review
 ```
 
-This will configure delivery to, by default, contact the delivery
-server at SERVER, with a default ENTERPRISE and ORGANIZATION.
+to test the review command with your code in it.
 
-### `delivery job`
+If, for whatever reason, you want to compile and test with cargo's `--release` flag,
+run `make release`, and use `target/release/delivery`, but it will take longer to compile.
+
+### Tips
+
++ You can set the logging level by exporting the `RUST_LOG`
+  environment variable (e.g `RUST_LOG=debug cargo run`).
+
++ Export `RUST_BACKTRACE=1` for better stack traces on panics.
+
++ Run only the embedded unit tests (not functional tests in the
+  `tests/` directory nor code embedded in doc comments) via `cargo
+  test --lib`. You can also pass a module name to only run matching
+  tests (e.g. `cargo test --lib job`).
+
++ To test a specific cucumber module, after a `bundle install`, you can run `bin/cucumber features/<feature>.feature`.
+
+### Updating Rust Version
+
+When a new version of Rust comes out and it is on homebrew, it's time to update the Rust
+version in this repo. There are a few spots to update:
+
+1. Very top of the Makefile
+2. omnibus-software's default version
+3. The default attributes for the build cookbook for this project
+
+You should also run `make release` to bump the `Cargo.lock` file to get new versions of our
+dependencies.
+
+## Delivery Job Implementation Details
 
 The `delivery job` subcommand is used to execute phase recipes for a
 project in a workspace. The Delivery server uses `delivery job` to
@@ -75,91 +142,13 @@ so:
 delivery job verify "lint syntax unit"
 ```
 
-## The project config file
+## Delivery Pipeline For This Project
 
-The `delivery` tool expects to find a JSON configuration file in the
-top-level directory of a project located at
-`.delivery/config.json`. This file specifies the build cookbook for
-the project. It can also be used to pass data that can be read by the
-build cookbook recipes. There are additional fields that are used by
-the Delivery server to control job dispatch.
+Omnibus build is how the CLI is built on Delivery build nodes. The omnibus build
+setup will use the default recipe of the build cookbook (see `cookbooks/delivery_rust/recipes/default.rb`)
+and omnibus builds may need sudo permissions for setup.
 
-You can create a starting config file (as well as a build cookbook)
-using the `init` subcommand:
-
-```bash
-delivery init --local
-```
-
-Example `.delivery/config.json` specifying an embedded build cookbook:
-
-```json
-{
-  "version": "2",
-  "build_cookbook": {
-    "path": ".delivery/build-cookbook",
-    "name": "build-cookbook"
-  },
-  "skip_phases": [],
-  "build_nodes": {}
-}
-```
-
-### Specifying a project's build cookbook
-
-The `build_cookbook` field of the config file is used to specify the
-build cookbook for the project. Build cookbooks can be fetched from
-four sources: local directory within the project, a git repository, a
-supermarket instance, or from a Delivery server.
-
-#### From a local directory
-
-```json
-"build_cookbook": {
-      "name": "delivery_rust",
-      "path": "cookbooks/delivery_rust"
-}
-```
-
-#### From a Git source
-
-```json
-"build_cookbook": {
-      "name"  : "delivery-truck",
-      "git"   : "https://github.com/opscode-cookbooks/delivery-truck.git",
-      "branch": "master"
-}
-```
-
-#### From the Public Supermarket (https://supermarket.chef.io)
-
-```json
-"build_cookbook": {
-      "name": "delivery-truck",
-      "supermarket": "true"
-}
-```
-
-#### From a Private Supermarket
-
-```json
-"build_cookbook": {
-      "name": "delivery-truck",
-      "supermarket": "true",
-      "site": "https://private-supermarket.example.com"
-}
-```
-
-#### From a Chef Server
-
-```json
-"build_cookbook": {
-      "name": "delivery-truck",
-      "server": "true"
-}
-```
-
-## Node Attributes
+### Node Attributes
 
 Attributes specific to the project and change are made available for
 use in build cookbook recipes.
@@ -194,77 +183,6 @@ this particular job execution.
 ### Project Configuration Details
 The contents of your `.delivery/config.json` file are made available to you in the
 `node['delivery']['config']` namespace.
-
-## Development
-
-To setup your machine for hacking on `delivery-cli`, follow these
-steps. Note that we are currently using Rust nightlies and the the
-setup instructions will install the correct build for you.
-
-If you are developing on OS X, make sure you have [homebrew][] and
-[ChefDK][] installed.
-
-To get going, run:
-
-```bash
-make dev all
-```
-
-This will install the proper version of Rust on your system (`make
-setup`) using the dev recipe of the CLI's delivery build cookbook
-(see `cookbooks/delivery_rust/recipes/dev.rb`), and then compile
-and build the `delivery` executable (`make all`). You'll find the
-executable at `./target/release/delivery`
-
-For an omnibus build setup, run:
-
-```bash
-make setup all
-```
-
-Omnibus build is how the CLI is built on Delivery build nodes. For local
-development most devlopers will want to use the above dev setup. The omnibus build
-setup will use the default recipe of the build cookbook (see `cookbooks/delivery_rust/recipes/default.rb`) and omnibus builds may need sudo
-permissions for setup.
-
-On OS X, if you've installed Rust before and any directories are owned
-by root, you'll run into issues with `make setup`, since it installs
-without `sudo`. To fix it, you'll want to uninstall your
-previously-installed Rust. Per [the instructions][] run:
-
-    sudo /usr/local/lib/rustlib/uninstall.sh
-
-I also had to manually delete some empty documentation directories
-before `make setup` worked for me, as these were also owned by root:
-
-    sudo rmdir /usr/local/share/doc/cargo
-    sudo rmdir /usr/local/share/doc/rust
-
-Once you've gotten Rust installed and are doing everyday hacking, you
-can just run a simple `make`.
-
-You can run the tests like this:
-
-```bash
-make test
-make cucumber
-```
-
-[homebrew]: http://brew.sh/
-[ChefDK]: https://downloads.chef.io/chef-dk/
-[the instructions]: http://doc.rust-lang.org/book/installing-rust.html
-
-Tips:
-
-* You can set the logging level by exporting the `RUST_LOG`
-  environment variable (e.g `RUST_LOG=debug cargo run`).
-
-* Export `RUST_BACKTRACE=1` for better stack traces on panics.
-
-* Run only the embedded unit tests (not functional tests in the
-  `tests/` directory nor code embedded in doc comments) via `cargo
-  test --lib`. You can also pass a module name to only run matching
-  tests (e.g. `cargo test --lib job`).
 
 ## License & Authors
 
