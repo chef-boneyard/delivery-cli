@@ -2,6 +2,8 @@
 #
 # Author: Jon Anderson (janderson@chef.io)
 
+RUST_VERSION ?= 1.8.0
+
 CARGO_OPTS ?=
 DELIV_CLI_VERSION = $(shell git describe --abbrev=0 --tags)
 DELIV_CLI_GIT_SHA = $(shell git rev-parse --short HEAD)
@@ -33,15 +35,24 @@ CARGO = $(CARGO_ENV) cargo
 all:
 	$(MAKE) build
 
-build: openssl
-	$(CARGO) $(CARGO_OPTS) build --release
+# --release takes longer to compile but is slightly more optimized.
+# For dev iterations (which is the only thing this Makefile is used for)
+# we should leave off the --release flag.
+build: check_deps
+	$(CARGO) $(CARGO_OPTS) build
 
-openssl:
-	@test -d $(OPENSSL_PREFIX) || \
-         (echo "MISSING DEP: $(OPENSSL_PREFIX)" && exit 101)
+update_deps:
+	$(CARGO) $(CARGO_OPTS) update
+
+# Update all cargo deps and build a "release" version of a local dev build.
+# Should be run periodically to pull in new deps.
+release: check_deps clean update_deps
+	$(CARGO) $(CARGO_OPTS) build --release
 
 clean:
 	@$(CARGO) $(CARGO_OPTS) clean
+
+check_deps: openssl_check rust_check cargo_check ruby_check
 
 check:
 	$(MAKE) build
@@ -51,7 +62,7 @@ test:
 	$(CARGO) $(CARGO_OPTS) test
 
 
-.PHONY: all build clean check test
+.PHONY: all build update_deps release clean check_deps check test 
 
 bin/cucumber: Gemfile
 	bundle install --binstubs=bin --path=vendor/bundle
@@ -64,18 +75,43 @@ bin/cucumber: Gemfile
 cucumber: build bin/cucumber
 	bin/cucumber 2>/dev/null && rm -rf features/tmp
 
-# Run the build cookbook's default recipe on the current machine. Use
-# this to set up your workstation to build the CLI (e.g., to install
-# the proper version of Rust)
-#
-# (If you had the CLI already, you could run `delivery job verify
-# default`, but you're trying to build the CLI; we can't have
-# Chefception *all* the time.)
-vendor_cookbook_deps:
-	berks vendor --berksfile=cookbooks/delivery_rust/Berksfile vendor/cookbooks
+openssl_check:
+	@ls $(OPENSSL_PREFIX) >> /dev/null || \
+	(echo "\nWe could not find openssl on your local development machine.\n"\
+	"If you are developing on OS X try:\n\n"\
+	"brew install openssl\n\n"\
+	"And run this command again.\n\n"\
+	"If you are still hitting this error after that, it is likely you have installed openssl somewhere custom or are not developing on OS X.\n"\
+	"This script assumes /usr/local/opt/openssl is the path to folder containing your openssl libaries and headers.\n"\
+	"If you have put them somewhere custom, please set OPENSSL_PREFIX to the openssl folder that contains (lib, include, etc.) and run make again.\n"\
+	&& exit 1)
 
-setup: vendor_cookbook_deps
-	chef-client --local-mode --override-runlist delivery_rust --config cli_setup_client.rb
+# Check if rust is installed at all and instruct user if not.
+# Check if the proper version of rust is installed,
+# and if not, prompt the user to update via homebrew.
+# If the project if it is out of date with latest homebrew,
+# instruct user to follow readme docs on how to update rust.
+rust_check:
+	@which rustc >> /dev/null || \
+	(echo "Rust is not installed.\n"\
+	"We recommend installing with brew by running:\n\n"\
+	"brew install rust\n" && exit 1)
+	@rustc --version | grep $(RUST_VERSION) >> /dev/null || \
+	(echo "\nRust is not installed at the proper version ($(RUST_VERSION)) on your machine.\n"\
+	"Please install at the right version (we recommend brew install rust).\n"\
+	"If the default version from homebrew is out of date,\n"\
+	"Please update the version of rust we ship with delivery-cli by following the instuctions in the readme under Updating Rust Version.\n")
 
-dev: vendor_cookbook_deps
-	chef-client --local-mode --override-runlist delivery_rust::dev --config cli_setup_client.rb
+cargo_check:
+	@which cargo >> /dev/null || \
+	(echo "Cargo is not installed but rust is.\n"\
+	"If you used to develop for delivery-cli and used the automated rust installer, it installed a old version of rust without cargo.\n"\
+	"You should uninstall rust via:\n\n"\
+	"sudo /usr/local/lib/rustlib/uninstall.sh\n\n"\
+	"Then installing via brew with:\n\n"\
+	"brew install rust\n" && exit 1)
+
+ruby_check:
+	@which ruby >> /dev/null || \
+	(echo "Ruby is not installed. Install via your preferred method, or use rbenv if you are unsure how to get started.")
+
