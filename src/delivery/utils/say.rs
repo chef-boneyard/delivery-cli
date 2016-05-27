@@ -21,6 +21,7 @@ use std::sync::mpsc::channel;
 use std::thread::{self, JoinHandle};
 use std::io::prelude::*;
 use std::io;
+use std::time::Duration;
 
 /// Because sometimes, you just want a global variable.
 static mut show_spinner: bool = true;
@@ -61,7 +62,7 @@ impl Spinner {
                     break;
                 },
                 Err(_) => {
-                    thread::sleep_ms(100);
+                    thread::sleep(Duration::from_millis(100));
                     unsafe {
                         if show_spinner {
                             say("white", "\x08");

@@ -28,7 +28,7 @@ use std::io::prelude::*;
 use utils::path_join_many::PathJoinMany;
 use utils::path_ext::{is_dir, is_file};
 
-#[derive(RustcEncodable, Clone)]
+#[derive(RustcEncodable, Clone, Debug)]
 pub struct Config {
     pub server: Option<String>,
     pub api_port: Option<String>,

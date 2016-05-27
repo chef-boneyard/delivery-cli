@@ -190,7 +190,7 @@ impl TokenStore {
         let mut opener = OpenOptions::new();
         opener.create(true);
         opener.truncate(false);
-        opener.write(false);
+        opener.write(true);
         opener.read(true);
         let file = try!(opener.open(&path));
         let reader = BufReader::new(file);
