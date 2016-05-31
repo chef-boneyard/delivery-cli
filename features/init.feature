@@ -21,6 +21,19 @@ Background:
     [config]
     """
 
+Scenario: When creating a delivery backed project and
+	  the project already exist on the server
+  When I am in the "already-created" git repo
+  And a file named ".git/config" with:
+    """
+    [config]
+    """
+  And a user creates a delivery backed project
+  Then a delivery project should not be created in delivery
+  And a change configuring delivery is created
+  And the change has the default generated build_cookbook
+  And the exit status should be 0
+
 Scenario: When creating a delivery backed project
   When a user creates a delivery backed project
   Then a delivery project is created in delivery

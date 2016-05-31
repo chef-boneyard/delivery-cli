@@ -245,6 +245,28 @@ impl APIClient {
         }
     }
 
+    pub fn pipeline_exists(&self,
+                          org: &str, proj: &str, pipe: &str) -> bool {
+
+        let path = format!("orgs/{}/projects/{}/pipeline/{}", org, proj, pipe);
+        match self.get(&path) {
+            Ok(res) => {
+                match res.status {
+                    StatusCode::Ok => {
+                        return true;
+                    },
+                    _ => {
+                        return false;
+                    }
+                }
+            },
+            Err(e) => {
+                sayln("red", &format!("pipeline_exists: HttpError: {:?}", e));
+                return false;
+            }
+        }
+    }
+
     pub fn project_exists(&self,
                           org: &str,
                           proj: &str) -> bool {

@@ -111,42 +111,56 @@ pub fn create_on_server(config: &Config,
     if *local {
         return Ok(())
     }
-    let org = try!(config.organization());
-    let proj = try!(config.project());
     let path = try!(root_dir(&utils::cwd()));
     try!(git::init_repo(&path));
     let client = try!(APIClient::from_config(config));
 
-    if client.project_exists(&org, &proj) {
-        say("white", "Project ");
-        say("magenta", &format!("{} ", proj));
-        sayln("white", "already exists.");
-    } else {
-        match scp {
-            Some(scp_config) => try!(create_scp_project(client, config, &path, scp_config)),
-            None => try!(create_delivery_project(client, config, &path))
+    match scp {
+        Some(scp_config) => try!(create_scp_project(client, config, &path, scp_config)),
+        None => {
+            try!(create_delivery_project(&client, config));
+            try!(push_project_content_to_delivery(config, &path));
+            try!(create_delivery_pipeline(&client, config));
         }
     }
     Ok(())
 }
 
-/// Create a Delivery Project with Delivery as SCP (default)
-fn create_delivery_project(client: APIClient, config: &Config,
-                           path: &PathBuf) -> Result<(), DeliveryError> {
+/// Create a Delivery Pipeline
+fn create_delivery_pipeline(client: &APIClient, config: &Config) -> Result<(), DeliveryError> {
     let org = try!(config.organization());
     let proj = try!(config.project());
     let pipe = try!(config.pipeline());
-    say("white", "Creating ");
-    say("magenta", "delivery");
-    say("white", " project: ");
-    say("magenta", &format!("{} ", proj));
-    try!(client.create_delivery_project(&org, &proj));
-    try!(push_project_content_to_delivery(config, path));
-    say("white", "Creating ");
-    say("magenta", &format!("{} ", pipe));
-    say("white", " pipeline for project: ");
-    say("magenta", &format!("{}: ", proj));
-    try!(client.create_pipeline(&org, &proj, &pipe));
+    if client.pipeline_exists(&org, &proj, &pipe) {
+        say("white", "Pipeline ");
+        say("magenta", &format!("{} ", pipe));
+        sayln("white", "already exists.");
+    } else {
+        say("white", "Creating ");
+        say("magenta", &format!("{}", pipe));
+        say("white", " pipeline for project: ");
+        say("magenta", &format!("{}: ", proj));
+        try!(client.create_pipeline(&org, &proj, &pipe));
+    }
+    Ok(())
+}
+
+/// Create a Delivery Project with Delivery as SCP (default)
+fn create_delivery_project(client: &APIClient,
+                           config: &Config) -> Result<(), DeliveryError> {
+    let org = try!(config.organization());
+    let proj = try!(config.project());
+    if client.project_exists(&org, &proj) {
+        say("white", "Project ");
+        say("magenta", &format!("{} ", proj));
+        sayln("white", "already exists.");
+    } else {
+        say("white", "Creating ");
+        say("magenta", "delivery");
+        say("white", " project: ");
+        say("magenta", &format!("{} ", proj));
+        try!(client.create_delivery_project(&org, &proj));
+    }
     Ok(())
 }
 

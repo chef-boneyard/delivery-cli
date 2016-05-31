@@ -115,6 +115,13 @@ Given(/^a dummy Delivery API server/) do
       status 200
       { "orgs" => ["dummy"] }
     end
+    get('/api/v0/e/dummy/orgs/dummy/projects/already-created') do
+      status 200
+    end
+    post('/api/v0/e/dummy/orgs/dummy/projects/already-created/pipelines') do
+      status 201
+      { "pipeline" => "master" }
+    end
     get('/api/v0/e/dummy/orgs/dummy/projects/delivery-cli-init') do
       status 201
       { "error" => "not_found" }
@@ -156,6 +163,14 @@ end
 
 Given(/^a delivery project is created in delivery$/) do
   step %(the output should match /Creating(.*)delivery(.*)project/)
+  step %(the output should contain "Remote 'delivery' added to git config")
+  step %(the output should match /Creating and checking out (.*)add-delivery-config(.*) feature branch/)
+  step %("git push --porcelain --progress --verbose delivery add-delivery-config:_for/master/add-delivery-config" should be run)
+end
+
+Given(/^a delivery project should not be created in delivery$/) do
+  step %(the output should not match /Creating(.*)delivery(.*)project/)
+  step %(the output should match /Project(.*)already exists./)
   step %(the output should contain "Remote 'delivery' added to git config")
   step %(the output should match /Creating and checking out (.*)add-delivery-config(.*) feature branch/)
   step %("git push --porcelain --progress --verbose delivery add-delivery-config:_for/master/add-delivery-config" should be run)
