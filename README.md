@@ -56,6 +56,42 @@ to test the review command with your code in it.
 If, for whatever reason, you want to compile and test with cargo's `--release` flag,
 run `make release`, and use `target/release/delivery`, but it will take longer to compile.
 
+### Cucumber Testing
+
+We heavily rely on git in the project. Some of the cucumber tests mock out parts of git.
+Those mocks exist in `features/support/fakebin/git`.
+
+To mock a git call in your cucumber test, set `<NAME_OF_GIT_COMMAND>_MOCKED` to true in
+your cucumber test. For example, `features/job.feature` mocks several git commands with:
+
+```
+  Given I set the environment variables to:
+    | variable             | value      |
+    | CHECKOUT_MOCKED      | true       |
+    | MERGE_MOCKED         | true       |
+    | CLEAN_MOCKED         | true       |
+    | RESET_MOCKED         | true       |
+```
+
+You can also mock _all_ of git by setting MOCK_ALL_BASH to true:
+
+```
+  Given I set the environment variables to:
+    | variable           | value      |
+    | MOCK_ALL_BASH      | true       |
+```
+
+NOTE THAT A FEW COMMANDS ARE MOCKED BY DEFAULT STILL! We want to change this eventually.
+They are:
+
++ clone
++ push
++ fetch
++ ls-remote
++ show
+
+These commands will never actuall execute until their mocks are refactored out of `features/support/fakebin/`.
+
 ### Tips
 
 + You can set the logging level by exporting the `RUST_LOG`

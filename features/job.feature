@@ -1,7 +1,14 @@
 Feature: job
 
 Background:
-  Given a file named ".delivery/cli.toml" with:
+  Given I set the environment variables to:
+    | variable             | value      |
+    | CHECKOUT_MOCKED      | true       |
+    | MERGE_MOCKED         | true       |
+    | CLEAN_MOCKED         | true       |
+    | RESET_MOCKED         | true       |
+  And I am in the "delivery-cli-init" git repo
+  And a file named ".delivery/cli.toml" with:
   """
     git_port = "2828"
     pipeline = "master"

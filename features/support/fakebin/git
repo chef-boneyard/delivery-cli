@@ -12,37 +12,41 @@ features_dir=$( cd "$( dirname "${BASH_SOURCE[0]}" )/../.." && pwd )
 tmp_dir=$features_dir/tmp
 mkdir -p $tmp_dir
 
-case "$command" in
-    "clone" )
-        repo_dir=$3
-        mkdir -p $repo_dir
-        cd $repo_dir
-        mkdir .delivery
-        echo '{
-    "version": "2",
-    "build_cookbook": {
-        "name": "build_cookbook",
-        "path": ".delivery/build_cookbook"
-    },
-    "build_nodes": {
-        "default"    : ["name:delivery-builder*"]
-    }
-}' > .delivery/config.json
-      ;;
-  # there are some commands we don't want to run
-  "push" )
-      ;;
-  "fetch" )
-      ;;
-  "show" )
-    [ "$3" = "master:metadata.rb" ] || echo "version '1.2.3'"
-      ;;
-  "checkout" )
-      ;;
-  "branch" )
-      # Let's pretend we're on the foo branch.
-      echo "* $FAKE_BRANCH"
-      ;;
-  * )
-      ;;
-esac
+upper_command=$(echo "$command" | tr '[:lower:]' '[:upper:]')
+eval mocked_var_reference="${upper_command}_MOCKED"
+if [[ $MOCK_ALL_BASH = true ]] || [[ ${!mocked_var_reference} = true ]]; then
+    echo "Skipping mocked git call: $command"
+else
+    case "$command" in
+	"clone" )
+            repo_dir=$3
+            mkdir -p $repo_dir
+            cd $repo_dir
+	    $DELIVERY_SYSTEM_GIT init
+            mkdir .delivery
+            echo '{
+                    "version": "2",
+                    "build_cookbook": {
+                      "name": "build_cookbook",
+                      "path": ".delivery/build_cookbook"
+                    },
+                      "build_nodes": {
+                      "default"    : ["name:delivery-builder*"]
+                    }
+                  }' > .delivery/config.json
+	    ;;
+	# there are some commands we don't want to run
+	"push" )
+	    ;;
+	"fetch" )
+	    ;;
+	"ls-remote" )
+	    ;;
+	"show" )
+	    [ "$3" = "master:metadata.rb" ] || echo "version '1.2.3'"
+	    ;;
+	* )
+	    $DELIVERY_SYSTEM_GIT "$@"
+	    ;;
+    esac
+fi

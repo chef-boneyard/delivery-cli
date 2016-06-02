@@ -252,14 +252,14 @@ fn parse_line_from_remote(line: &str, review_result: &mut ReviewResult) -> () {
     }
 }
 
-pub fn init_repo(path: &PathBuf) -> Result<(), DeliveryError> {
+pub fn check_repo_init(path: &PathBuf) -> Result<(), DeliveryError> {
     say("white", "Is ");
     say("magenta", &format!("{} ", path.display()));
     say("white", "a git repo?  ");
 
-    let git_dir = Path::new("./.git");
+    let git_dir = path.join(".git");
 
-    if is_dir(git_dir) {
+    if is_dir(git_dir.as_path()) {
         sayln("white", "yes");
         return Ok(())
     } else {
@@ -292,7 +292,22 @@ pub fn config_repo(url: &str, path: &PathBuf) -> Result<bool, DeliveryError> {
             match e.detail.clone() {
                 Some(msg) => {
                     if msg.contains("remote delivery already exists") {
-                        return Ok(false);
+                        // Check to see if the current delivery git remote matches
+                        // the url passed in.
+                        let git_version_result = git_command(&["remote", "-v", "show", "-n", "delivery"], path);
+                        match git_version_result {
+                            Ok(git_result) => {
+                                if git_result.stdout.contains(url) {
+                                    return Ok(false);
+                                } else {
+                                    return Err(DeliveryError {
+                                        kind: Kind::GitFailed,
+                                        detail: Some(remote_already_exists_error_msg(url))
+                                    });
+                                }
+                            },
+                            Err(e) => return Err(e)
+                        }
                     } else {
                         return Err(e)
                     }
@@ -303,6 +318,11 @@ pub fn config_repo(url: &str, path: &PathBuf) -> Result<bool, DeliveryError> {
             }
         },
     }
+}
+
+fn remote_already_exists_error_msg(url: &str) -> String {
+    let error = "A git remote named 'delivery' already exists in this repo, but it is different than what was contained in your config file:\n\n".to_string() + url;
+    return error + "\n\nPlease either update your cli.toml or your git remote. Run:\n\ngit remote -v show -n delivery\n\nto see your current delivery remote."
 }
 
 pub fn checkout_branch_name(change: &str, patchset: &str) -> String {
@@ -378,34 +398,79 @@ pub fn server_content() -> bool {
     }
 }
 
+// TODO: This and all its error messages needs to be reworked
+// to support pipelines that are not master when --for is passed to init.
+// Currently, the --for argument to the init command is broken.
+// Also, write a cucumber test to cover this case.
 pub fn git_push_master() -> Result<(), DeliveryError> {
+    // Check if the master branch exists and has commits.
+    // If the master branch exists and does not have commits,
+    // then `git branch` will not return it, so just checking
+    // `git branch` output will handle both cases (master does not exist
+    // and master exists but without commits).
+    match git_command(&["branch"], &cwd()) {
+        Ok(msg) => {
+            if !msg.stdout.contains("master") {
+                sayln("red", "A master branch does not exist locally.");
+                sayln("red", "A master branch with commits is needed to create the master pipeline.\n");
+                sayln("red", "If your project already has git history, you should pull it into master locally.");
+                sayln("red", "For example, if your remote is named origin, and your git history is in master run:\n");
+                sayln("red", "git pull origin master\n");
+                sayln("red", "However, if this is a brand new project, make an initial commit by running:\n");
+                sayln("red", "git checkout -b master");
+                sayln("red", "git commit --allow-empty -m 'Initial commit.'\n");
+                sayln("red", "Once you have commits on the master branch, run `delivery init` again.");
+                return Err(DeliveryError{ kind: Kind::GitFailed, detail: None });
+            }
+            true
+        },
+        Err(e) => return Err(e)
+    };
+
+    // Master branch exists with commits on it, push it up so the master pipeline can be made.
     match git_command(&["push", "--set-upstream",
-                       "--porcelain", "--progress",
-                       "--verbose", "delivery", "master"],
+                        "--porcelain", "--progress",
+                        "--verbose", "delivery", "master"],
                       &cwd()) {
         Ok(msg) => {
             sayln("white", &format!("{}", msg.stdout));
             return Ok(())
         },
-        Err(e) => {
-            match e.detail {
-                Some(msg) => {
-                    if msg.contains("failed to push some refs") {
-                        sayln("red", &format!("Failed to push; perhaps there are no local commits?"));
-                    }
-                    return Ok(())
-                },
-                None => {
-                    return Err(e)
-                }
-            }
-        }
+        // Not expecting any errors at this point.
+        Err(e) => return Err(e)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{ReviewResult, parse_line_from_remote};
+    use super::{ReviewResult, parse_line_from_remote, check_repo_init};
+    use std::path::PathBuf;
+    use std::fs::DirBuilder;
+
+    #[test]
+    fn test_check_repo_init_with_invalid_path() {
+        let path = PathBuf::from("/tmp/not_real");
+        assert!(check_repo_init(&path).is_err());
+    }
+
+    #[test]
+    fn test_check_repo_init_with_valid_path_no_git() {
+        let path = PathBuf::from("/tmp/real1");
+        DirBuilder::new()
+            .recursive(true)
+            .create(&path).unwrap();
+        assert!(check_repo_init(&path).is_err());
+    }
+
+    #[test]
+    fn test_check_repo_init_with_valid_path() {
+        let path = PathBuf::from("/tmp/real2/");
+        let full_path = path.join(".git");
+        DirBuilder::new()
+            .recursive(true)
+            .create(&full_path).unwrap();
+        assert!(check_repo_init(&path).is_ok());
+    }
 
     #[test]
     fn test_parse_line_from_remote() {

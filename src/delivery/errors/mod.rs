@@ -103,7 +103,7 @@ impl error::Error for DeliveryError {
             Kind::BadGitOutputMatch => "A line of git porcelain did not match!",
             Kind::BadMetadataVersionMatch => "Metadata version mismatch!",
             Kind::MissingMetadataVersion => "Missing a version entry into the metadata.rb",
-            Kind::NoGitConfig => "Cannot find a .git/config file",
+            Kind::NoGitConfig => "Cannot find a .git/config file. Run 'git init' in your project root to initialize it.",
             Kind::NoBitbucketSCPConfig => "Bitbucket Source Code Provider configuration not found; a Delivery administrator must first configure the link with Bitbucket",
             Kind::NoGithubSCPConfig => "Github Source Code Provider configuration not found; a Delivery administrator must first configure the link with Github",
             Kind::OptionConstraint => "Invalid option constraint",

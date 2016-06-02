@@ -112,7 +112,6 @@ pub fn create_on_server(config: &Config,
         return Ok(())
     }
     let path = try!(root_dir(&utils::cwd()));
-    try!(git::init_repo(&path));
     let client = try!(APIClient::from_config(config));
 
     match scp {
@@ -171,10 +170,7 @@ fn push_project_content_to_delivery(config: &Config, path: &PathBuf) -> Result<(
     if try!(git::config_repo(&url, path)) {
         sayln("white", "Remote 'delivery' added to git config!");
     } else {
-        sayln("red", "Remote named 'delivery' already exists - not modifying");
-        // We should verify that the remote is the correct one
-        // if not, delete it and create the right one.
-        // Or fail saying that it doesn't match
+        sayln("white", "Remote named 'delivery' already exists and is correct - not modifying");
     }
     say("white", "Checking for content on the git remote ");
     say("magenta", "delivery: ");
@@ -325,7 +321,29 @@ fn trigger_review(config: Config, scp: Option<SourceCodeProvider>,
                 Type::Github => {
                     // For now, delivery review doesn't works for Github projects
                     // TODO: Make it work in github
-                    sayln("green", "Push add-delivery-config branch and create Pull Request");
+                    sayln("green", "\nYour project is now set up with changes in the add-delivery-config branch!");
+                    sayln("green", "To finalize your project, you must submit and accept a Pull Request in github.");
+
+                    // Check to see if the origin remote is set up, and if not, output something useful.
+                    let dir = try!(root_dir(&utils::cwd()));
+                    let git_remote_result = git::git_command(&["remote"], &dir);
+                    match git_remote_result {
+                        Ok(git_result) => {
+                            if !(git_result.stdout.contains("origin")) {
+                                sayln("green", "First, you must add your remote.");
+                                sayln("green", "Run this if you want to use ssh:\n");
+                                sayln("green", &format!("git remote add origin git@github.com:{}/{}.git\n", s.organization, s.repo_name));
+                                sayln("green", "Or this for https:\n");
+                                sayln("green", &format!("git remote add origin https://github.com/{}/{}.git\n", s.organization, s.repo_name));
+                            }
+                            true
+                        },
+                        Err(_) => false
+                    };
+
+                    sayln("green", "Push your project to github by running:\n");
+                    sayln("green", "git push origin add-delivery-config\n");
+                    sayln("green", "Then log into github via your browser, make a Pull Request, then comment `@delivery approve`.");
                 }
             }
         },
@@ -343,16 +361,35 @@ fn create_feature_branch(project_path: &PathBuf) -> Result<(), DeliveryError> {
     say("white", "Creating and checking out ");
     say("yellow", "add-delivery-config");
     say("white", " feature branch: ");
-    try!(git::git_command(&["checkout", "-b", "add-delivery-config"], project_path));
-    sayln("green", "done");
-    Ok(())
+    match git::git_command(&["checkout", "-b", "add-delivery-config"], project_path) {
+        Ok(_) => {
+            sayln("green", "done");
+            return Ok(());
+        },
+        Err(e) => {
+            match e.detail.clone() {
+                Some(msg) => {
+                    if msg.contains("A branch named 'add-delivery-config' already exists") {
+                        say("white", "A branch named 'add-delivery-config' already exists, switching to it.\n");
+                        try!(git::git_command(&["checkout", "add-delivery-config"], project_path));
+                        return Ok(());
+                    } else {
+                        return Err(e)
+                    }
+                },
+                None => return Err(e)
+            }
+        }
+    }
 }
 
 /// Add and commit the generated build-cookbook
 fn add_commit_build_cookbook() -> Result<(), DeliveryError> {
     let project_path = try!(root_dir(&utils::cwd()));
     say("white", "Adding and commiting build-cookbook: ");
-    try!(git::git_command(&["add", ".delivery/build-cookbook"], &project_path));
+    // .delivery is probably not yet under version control, so we have to add
+    // the whole folder instead of .delivery/build-cookbook.
+    try!(git::git_command(&["add", ".delivery"], &project_path));
     try!(git::git_command(&["commit", "-m", "Adds Delivery build cookbook"], &project_path));
     sayln("green", "done");
     Ok(())
@@ -414,9 +451,16 @@ fn generate_build_cookbook(skip_build_cookbook: &bool,
             try!(custom_build_cookbook_generator(&gen_path, &generator_path));
         },
         None => {
-            generator_path.push("pcb");
-            try!(git_clone_build_cookbook_generator(&generator_path.to_string_lossy(),
-                                                    "https://github.com/chef-cookbooks/pcb.git"));
+            let project_path = try!(root_dir(&utils::cwd()));
+            let path = project_path.join(".delivery/build-cookbook");
+            if path.exists() {
+                sayln("red", ".delivery/build-cookbook folder already exists, skipping build cookbook generation.");
+                return Ok(());
+            } else {
+                generator_path.push("pcb");
+                try!(git_clone_build_cookbook_generator(&generator_path.to_string_lossy(),
+                                                        "https://github.com/chef-cookbooks/pcb.git"));
+            }
         }
     };
     try!(chef_generate_build_cookbook(&generator_path));
@@ -474,4 +518,3 @@ mod tests {
         }
     }
 }
-
