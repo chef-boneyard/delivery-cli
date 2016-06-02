@@ -46,7 +46,7 @@ update_deps:
 
 # Update all cargo deps and build a "release" version of a local dev build.
 # Should be run periodically to pull in new deps.
-release: check_deps clean update_deps
+release: check_deps clean
 	$(CARGO) $(CARGO_OPTS) build --release
 
 clean:
@@ -72,7 +72,7 @@ bin/cucumber: Gemfile
 # cleans up the output a little bit.
 #
 # Depends on the target/release/delivery executable having been built
-cucumber: build bin/cucumber
+cucumber: release bin/cucumber
 	bin/cucumber 2>/dev/null && rm -rf features/tmp
 
 openssl_check:

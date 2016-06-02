@@ -41,7 +41,7 @@ Make targets:
 + `make clean` will clean the state of the build.
 + `make update_deps` will update the `Cargo.lock` file, this should be run periodically
   to pull in new deps and at the very least when upgrading to a new version of Rust.
-+ `make release` builds the project clean with the `--release` flag and updates cargo deps.
++ `make release` builds the project clean with the `--release` flag.
 + `make check` builds and runs unit tests.
 
 After you `make` the project, you can execute your compiled binary
