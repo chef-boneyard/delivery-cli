@@ -44,7 +44,7 @@ use std::process::{Command, Output};
 use errors::{DeliveryError, Kind};
 use tempdir::TempDir;
 use std::io::prelude::*;
-use std::fs::{File, OpenOptions};
+use std::fs::File;
 use utils::path_join_many::PathJoinMany;
 
 // The MIT License (MIT)
@@ -172,13 +172,8 @@ pub fn edit_str(name: &str,
     let mut in_file = try!(File::create(tfile_path.clone()));
     try!(in_file.write_all(content.as_bytes()));
     try!(edit_path(tfile_str));
-    let mut opener = OpenOptions::new();
-    opener.create(true);
-    opener.truncate(false);
-    opener.write(false);
-    opener.read(true);
-    let mut out_file = try!(opener.open(&tfile_path));
+    let mut f = try!(File::open(&tfile_str));
     let mut content = String::new();
-    try!(out_file.read_to_string(&mut content));
+    try!(f.read_to_string(&mut content));
     Ok(content)
 }
