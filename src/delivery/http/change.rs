@@ -76,8 +76,18 @@ pub fn get(config: &Config,
             let description = try!(Description::parse_json(&body_string));
             Ok(description)
         },
+        StatusCode::NotFound => {
+            let msg1 = "API request returned 404 (not found) while trying to fetch this change's description.\n".to_string();
+            let msg2 = "This is usually because the Delivery organization in your config does not match the organization for this project.\n";
+            let msg3 = "Your organization is current set to:\n\n";
+            let msg4 = &org;
+            let msg5 = "\n\nTo fix this, try editing your cli.toml file's organization setting to match the organization this project resides in.";
+            let err_msg = msg1 + msg2 + msg3 + msg4 + msg5;
+            Err(DeliveryError{ kind: Kind::ChangeNotFound,
+                               detail: Some(err_msg)})
+        },
         StatusCode::Unauthorized => {
-            let msg = "API request returned 401".to_string();
+            let msg = "API request returned 401 (unauthorized)".to_string();
             Err(DeliveryError{ kind: Kind::AuthenticationFailed,
                                detail: Some(msg)})
         },

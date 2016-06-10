@@ -25,6 +25,7 @@ use hyper::error::Error as HttpError;
 
 #[derive(Debug)]
 pub enum Kind {
+    ChangeNotFound,
     AuthenticationFailed,
     NoMatchingCommand,
     NotOnABranch,
@@ -91,6 +92,7 @@ impl DeliveryError {
 impl error::Error for DeliveryError {
     fn description(&self) -> &str {
         match self.kind {
+            Kind::ChangeNotFound => "GET failed for specific change",
             Kind::NoMatchingCommand => "No command matches your arguments - likely unimplemented feature",
             Kind::NotOnABranch => "You must be on a branch",
             Kind::CannotReviewSameBranch => "You cannot target code for review from the same branch as the review is targeted for",
