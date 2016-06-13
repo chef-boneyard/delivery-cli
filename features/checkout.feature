@@ -7,6 +7,9 @@ Feature: checkout
 
 Background:
   Given I am in the "project" git repo
+  Given I set the environment variables to:
+    | variable           | value      |
+    | MOCK_ALL_BASH      | true       |
   And a file named ".delivery/config.json" with:
     """
     {
