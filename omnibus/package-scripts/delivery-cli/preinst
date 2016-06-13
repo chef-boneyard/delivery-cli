@@ -1,7 +1,0 @@
-#!/bin/bash
-#
-# Perform necessary delivery-cli setup steps
-# before package is installed.
-#
-
-echo "You're about to install delivery-cli!"

@@ -8,7 +8,10 @@
       "lint",
       "security",
       "smoke",
-      "deploy"
+      "deploy",
+      "publish",
+      "quality",
+      "provision"
     ],
     "build_nodes": {
         "default"    : ["name:builder*.shd.chef.co"],

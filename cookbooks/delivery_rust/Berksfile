@@ -6,15 +6,3 @@ cookbook 'delivery-sugar',
          git: 'https://github.com/chef-cookbooks/delivery-sugar.git',
          branch: 'master'
 
-# Engineering Services cookbooks (will eventually be deps of `delivery-bus`)
-cookbook 'artifactory-pro',
-         git: 'git@github.com:chef-cookbooks/artifactory-pro.git',
-         branch: 'master'
-
-cookbook 'oc-artifactory',
-         git: 'git@github.com:chef-cookbooks/oc-artifactory.git',
-         branch: 'master'
-
-cookbook 'opscode-ci',
-         git: 'git@github.com:chef-cookbooks/opscode-ci.git',
-         branch: 'master'

@@ -56,6 +56,30 @@ to test the review command with your code in it.
 If, for whatever reason, you want to compile and test with cargo's `--release` flag,
 run `make release`, and use `target/release/delivery`, but it will take longer to compile.
 
+### Promoting to Github
+
+Currently, when you hit accept in the Delivery RFR UI, it will merge to delivery master,
+but not github master. That happens in delivered/functional.
+
+**TO SHIP YOUR CHANGES, YOU MUST DELIVER THEM AS WELL AS APPOVE THEM VIA THE DELIVERY UI**
+
+ChefDK builds pull from master of delivery-cli on github, so delivering your changes in
+the delivery project for delivery-cli will "ship" them to the next build of the ChefDK.
+
+### Tips
+
++ You can set the logging level by exporting the `RUST_LOG`
+  environment variable (e.g `RUST_LOG=debug cargo run`).
+
++ Export `RUST_BACKTRACE=1` for better stack traces on panics.
+
++ Run only the embedded unit tests (not functional tests in the
+  `tests/` directory nor code embedded in doc comments) via `cargo
+  test --lib`. You can also pass a module name to only run matching
+  tests (e.g. `cargo test --lib job`).
+
++ To test a specific cucumber module, after a `bundle install`, you can run `bin/cucumber features/<feature>.feature`.
+
 ### Cucumber Testing
 
 We heavily rely on git in the project. Some of the cucumber tests mock out parts of git.
@@ -91,20 +115,6 @@ They are:
 + show
 
 These commands will never actuall execute until their mocks are refactored out of `features/support/fakebin/`.
-
-### Tips
-
-+ You can set the logging level by exporting the `RUST_LOG`
-  environment variable (e.g `RUST_LOG=debug cargo run`).
-
-+ Export `RUST_BACKTRACE=1` for better stack traces on panics.
-
-+ Run only the embedded unit tests (not functional tests in the
-  `tests/` directory nor code embedded in doc comments) via `cargo
-  test --lib`. You can also pass a module name to only run matching
-  tests (e.g. `cargo test --lib job`).
-
-+ To test a specific cucumber module, after a `bundle install`, you can run `bin/cucumber features/<feature>.feature`.
 
 ### Updating Rust Version
 
