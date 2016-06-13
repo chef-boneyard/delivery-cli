@@ -41,13 +41,13 @@ all:
 build: check_deps
 	$(CARGO) $(CARGO_OPTS) build
 
-update_deps:
-	$(CARGO) $(CARGO_OPTS) update
-
-# Update all cargo deps and build a "release" version of a local dev build.
-# Should be run periodically to pull in new deps.
-release: check_deps clean
+release: check_deps
 	$(CARGO) $(CARGO_OPTS) build --release
+
+# Updates all cargo deps.
+# Should be run periodically to pull in new deps.
+update_deps: clean
+	$(CARGO) $(CARGO_OPTS) update
 
 clean:
 	@$(CARGO) $(CARGO_OPTS) clean

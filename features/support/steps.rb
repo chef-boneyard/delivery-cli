@@ -208,9 +208,7 @@ Given(/^a github project is created in delivery$/) do
   step %(the output should match /Creating and checking out (.*)add-delivery-config(.*) feature branch/)
 end
 
-Given(/^a change configuring delivery is created$/) do
-  step %("git checkout -b add-delivery-config" should be run)
-  step %("git commit -m Adds Delivery config" should be run)
+Given(/^a default config.json is created$/) do
   step %(the file ".delivery/config.json" should contain:), %("version": "2",)
   step %(the file ".delivery/config.json" should contain:), %("build_cookbook": {)
   step %(the file ".delivery/config.json" should contain:), %("path": ".delivery/build-cookbook")
@@ -237,6 +235,7 @@ Given(/^a change configuring a custom delivery is created$/) do
 end
 
 Given(/^the change has the default generated build_cookbook$/) do
+  step %("git checkout -b add-delivery-config" should be run)
   step %("git commit -m Adds Delivery build cookbook" should be run)
   step %("chef generate cookbook .delivery/build-cookbook" should be run)
   step %(a directory named ".delivery/build-cookbook" should exist)
