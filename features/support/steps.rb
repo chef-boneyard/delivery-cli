@@ -70,6 +70,16 @@ Given(/^I set up basic delivery and git configs$/) do
   step %(a file named ".git/config" with:), basic_git_config
 end
 
+Given(/^I clean up the ruby env so I can run other ruby bins like ChefDK$/) do
+  step "I set the environment variables to:", table(%{
+          | variable        | value |
+          | RUBYOPT         |       |
+	  | BUNDLE_PATH     |       |
+	  | BUNDLE_BIN_PATH |       |
+	  | BUNDLE_GEMFILE  |       |
+  })
+end
+
 # When in a git repository, checks out the given branch. The branch
 # must already exist
 When(/^I checkout the "(.*?)" branch$/) do |branch|

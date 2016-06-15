@@ -1,6 +1,7 @@
 Feature: init
 
 Background:
+  Given I clean up the ruby env so I can run other ruby bins like ChefDK
   Given a file named ".delivery/api-tokens" with:
     """
     127.0.0.1:8080,dummy,dummy|this_is_a_fake_token
