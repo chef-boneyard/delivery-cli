@@ -21,7 +21,9 @@ use job::workspace::{Workspace, Privilege};
 use utils::path_join_many::PathJoinMany;
 use http::{self, APIClient};
 use hyper::status::StatusCode;
-use clap::{Arg, App, ArgMatches};
+use clap::{Arg, App, SubCommand, ArgMatches, AppSettings};
+
+use command::lint;
 
 macro_rules! make_arg_vec {
     ( $( $x:expr ),* ) => {
@@ -106,57 +108,87 @@ pub fn run() {
     let build_version = format!("{} {}", version(), build_git_sha());
 
     let app = make_app(&build_version);
-    let matches = app.get_matches();
+    let app_matches = app.get_matches();
 
-    let cmd_result = match matches.subcommand_name() {
-        Some(api::SUBCOMMAND_NAME) => {
-            let matches = matches.subcommand_matches(api::SUBCOMMAND_NAME).unwrap();
+    let cmd_result = match app_matches.subcommand() {
+        (api::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
             api_req(&api::ApiClapOptions::new(matches))
         },
-        Some(checkout::SUBCOMMAND_NAME) => {
-            let matches = matches.subcommand_matches(checkout::SUBCOMMAND_NAME).unwrap();
+
+        (checkout::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
             checkout(&checkout::CheckoutClapOptions::new(matches))
         },
-        Some(clone::SUBCOMMAND_NAME) => {
-            let matches = matches.subcommand_matches(clone::SUBCOMMAND_NAME).unwrap();
+        (clone::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
             clone(&clone::CloneClapOptions::new(matches))
         },
-        Some(diff::SUBCOMMAND_NAME) => {
-            let matches = matches.subcommand_matches(diff::SUBCOMMAND_NAME).unwrap();
+        (diff::SUBCOMMAND_NAME, Some(matches)) => {
             diff(&diff::DiffClapOptions::new(&matches))
+
         },
-        Some(init::SUBCOMMAND_NAME) => {
-            let matches = matches.subcommand_matches(init::SUBCOMMAND_NAME).unwrap();
+        (init::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
             clap_init(matches)
         },
-        Some(job::SUBCOMMAND_NAME) => {
-            let matches = matches.subcommand_matches(job::SUBCOMMAND_NAME).unwrap();
+        (job::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
             job(&job::JobClapOptions::new(&matches))
         },
-        Some(review::SUBCOMMAND_NAME) => {
-            let matches = matches.subcommand_matches(review::SUBCOMMAND_NAME).unwrap();
+        (review::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
             let review_opts = review::ReviewClapOptions::new(matches);
             review(review_opts.pipeline, &review_opts.auto_bump,
                    &review_opts.no_open, &review_opts.edit)
         },
-        Some(setup::SUBCOMMAND_NAME) => {
-            let matches = matches.subcommand_matches(setup::SUBCOMMAND_NAME).unwrap();
+        (setup::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
             setup(&setup::SetupClapOptions::new(&matches))
         },
-        Some(token::SUBCOMMAND_NAME) => {
-            let matches = matches.subcommand_matches(token::SUBCOMMAND_NAME).unwrap();
+        (token::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
             token(&token::TokenClapOptions::new(&matches))
         },
-        Some(spin::SUBCOMMAND_NAME) => {
-            let matches = matches.subcommand_matches(spin::SUBCOMMAND_NAME).unwrap();
+        ("local", Some(found_matches)) => {
+            match found_matches.subcommand() {
+                // Matches any `delivery local <any_subcommand>`.
+                (external, Some(sub_matches)) => {
+                    // This will get all args following <any_subcommand> from above match in an array, so:
+                    // `delivery local lint --lol fun hehe`
+                    // Would return:
+                    // ["--lol", "fun", "hehe"]
+                    // post_subcommand_args: Vec<&str>
+                    let post_subcommand_args: Vec<&str> = match sub_matches.values_of(external) {
+                        Some(values) => values.collect(),
+                        None => Vec::new()
+                    };
+
+                    // Unfortunately, if you use AppSettings::AllowExternalSubcommands,
+                    // clap does not actually capture what the original subcommand to local was.
+                    // However, it is the only way I found to allow arbitary arguments along in clap,
+                    // so we will just validate the subcommand to local directly.
+                    let args: Vec<_> = env::args().collect();
+
+                    // Match the third arg of `delivery local <any_subcommand>`.
+                    match args[2].as_ref() {
+                        "lint" => {
+                            let return_code = lint::run(&post_subcommand_args);
+                            process::exit(return_code)
+                        },
+                        unknown => {
+                            sayln("red", &format!("You passed subcommand '{}' to 'delivery local'.", unknown));
+                            sayln("red", &format!("'{}' is not a valid subcommand for 'delivery local'.", unknown));
+                            process::exit(1)
+                        }
+                    }
+                },
+                _ => {
+                    process::exit(1);
+                }
+            }
+        },
+        (spin::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
             let spin_opts = spin::SpinClapOptions::new(&matches);
             let spinner = utils::say::Spinner::start();
@@ -196,6 +228,12 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a> {
         .subcommand(api::clap_subcommand())
         .subcommand(token::clap_subcommand())
         .subcommand(spin::clap_subcommand())
+        // Use custome usage because gloabl flags will break parsing for this command
+        .subcommand(SubCommand::with_name("local")
+                    .template("{bin}\n{about}\n\n{usage}\n\n{flags}\nSUBCOMMANDS:\n    lint")
+                    .usage("delivery local <SUBCOMMAND> [SUBCOMMAND_FLAGS]")
+                    .about("Run Delivery phases on your local workstation.")
+                    .setting(AppSettings::AllowExternalSubcommands))
 }
 
 fn handle_spinner(matches: &ArgMatches) {
