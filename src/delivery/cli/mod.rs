@@ -314,7 +314,7 @@ fn clap_init(matches: &ArgMatches) -> Result<(), DeliveryError> {
     let org = value_of(&matches, "org");
     let proj = value_of(&matches, "project");
     let no_open = matches.is_present("no-open");
-    let pipeline = value_of(&matches, "pipeline");
+    let pipeline = value_of(&matches, "for");
     let skip_build_cookbook = matches.is_present("skip-build-cookbook");
     let local = matches.is_present("local");
     sayln("green", "Chef Delivery");
@@ -356,7 +356,7 @@ fn clap_init(matches: &ArgMatches) -> Result<(), DeliveryError> {
 }
 
 fn clap_review(matches: &ArgMatches) -> Result<(), DeliveryError> {
-    let pipeline = value_of(&matches, "pipeline");
+    let pipeline = value_of(&matches, "for");
     let no_open = matches.is_present("no-open");
     let auto_bump = matches.is_present("auto-bump");
     let edit = matches.is_present("edit");
@@ -434,7 +434,7 @@ fn handle_review_result(review: &ReviewResult,
 fn clap_checkout(matches: &ArgMatches) -> Result<(), DeliveryError> {
     let change = matches.value_of("change").unwrap();
     let patchset = value_of(&matches, "patchset");
-    let pipeline = value_of(&matches, "pipeline");
+    let pipeline = value_of(&matches, "for");
     checkout(change, patchset, pipeline)
 }
 
@@ -466,7 +466,7 @@ fn checkout(change: &str, patchset: &str, pipeline: &str) -> Result<(), Delivery
 fn clap_diff(matches: &ArgMatches) ->  Result<(), DeliveryError> {
     let change = matches.value_of("change").unwrap();
     let patchset = value_of(&matches, "patchset");
-    let pipeline = value_of(&matches, "pipeline");
+    let pipeline = value_of(&matches, "for");
     let local = matches.is_present("local");
     diff(change, patchset, pipeline, &local)
 }
@@ -531,7 +531,7 @@ fn clap_job(matches: &ArgMatches) -> Result<(), DeliveryError> {
     let phases = matches.value_of("phases").unwrap();
 
     let change = value_of(&matches, "change");
-    let pipeline = value_of(&matches, "pipeline");
+    let pipeline = value_of(&matches, "for");
     let job_root = value_of(&matches, "job-root");
     let proj = value_of(&matches, "project");
 
