@@ -27,10 +27,12 @@ use self::api::ApiClapOptions;
 use self::review::ReviewClapOptions;
 use self::checkout::CheckoutClapOptions;
 use self::clone::CloneClapOptions;
+use self::diff::DiffClapOptions;
 mod api;
 mod review;
 mod checkout;
 mod clone;
+mod diff;
 
 macro_rules! make_arg_vec {
     ( $( $x:expr ),* ) => {
@@ -122,8 +124,8 @@ pub fn run() {
             handle_spinner(&matches);
             clap_clone(matches)
         },
-        Some("diff") => {
-            let matches = matches.subcommand_matches("diff").unwrap();
+        Some(diff::SUBCOMMAND_NAME) => {
+            let matches = matches.subcommand_matches(diff::SUBCOMMAND_NAME).unwrap();
             clap_diff(matches)
         },
         Some("init") => {
@@ -185,13 +187,7 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a> {
         .subcommand(review::clap_subcommand())
         .subcommand(clone::clap_subcommand())
         .subcommand(checkout::clap_subcommand())
-        .subcommand(SubCommand::with_name("diff")
-                    .about("Display diff for a change")
-                    .args(&vec![for_arg(), patchset_arg()])
-                    .args_from_usage(
-                        "<change> 'Name of the feature branch to compare'
-                        -l --local \
-                        'Diff against the local branch HEAD'"))
+        .subcommand(diff::clap_subcommand())
         .subcommand(SubCommand::with_name("init")
                     .about("Initialize a Delivery project \
                             (and lots more!)")
@@ -443,11 +439,8 @@ fn checkout(change: &str, patchset: &str, pipeline: &str) -> Result<(), Delivery
 }
 
 fn clap_diff(matches: &ArgMatches) ->  Result<(), DeliveryError> {
-    let change = matches.value_of("change").unwrap();
-    let patchset = value_of(&matches, "patchset");
-    let pipeline = value_of(&matches, "for");
-    let local = matches.is_present("local");
-    diff(change, patchset, pipeline, &local)
+    let diff_opts = DiffClapOptions::new(&matches);
+    diff(diff_opts.change, diff_opts.patchset, diff_opts.pipeline, &diff_opts.local)
 }
 
 fn diff(change: &str, patchset: &str, pipeline: &str, local: &bool) -> Result<(), DeliveryError> {
@@ -842,7 +835,8 @@ mod tests {
     use cli::review::ReviewClapOptions;
     use cli::checkout::CheckoutClapOptions;
     use cli::clone::CloneClapOptions;
-    use cli::{api, review, clone, checkout};
+    use cli::diff::DiffClapOptions;
+    use cli::{api, review, clone, checkout, diff};
 
     #[test]
     fn test_clap_api_options() {
@@ -909,5 +903,20 @@ mod tests {
         assert_eq!(clone_opts.ent, "world");
         assert_eq!(clone_opts.org, "coolest");
         assert_eq!(clone_opts.git_url, "ssh://another.world.com:123/awesome");
+    }
+
+    #[test]
+    fn test_clap_diff_options() {
+        let build_version = format!("{} {}", cli::version(), cli::build_git_sha());
+        let app = cli::make_app(&build_version);
+        let matches = app.get_matches_from(vec!["delivery", "diff", "change-me", "-l",
+                                           "-P", "p4tchs3t", "-f", "coolest"]);
+        assert_eq!(Some("diff"), matches.subcommand_name());
+        let diff_matches = matches.subcommand_matches(diff::SUBCOMMAND_NAME).unwrap();
+        let diff_opts = DiffClapOptions::new(&diff_matches);
+        assert_eq!(diff_opts.change, "change-me");
+        assert_eq!(diff_opts.patchset, "p4tchs3t");
+        assert_eq!(diff_opts.pipeline, "coolest");
+        assert_eq!(diff_opts.local, true);
     }
 }
