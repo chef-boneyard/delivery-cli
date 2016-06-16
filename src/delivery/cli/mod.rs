@@ -22,12 +22,15 @@ use utils::path_join_many::PathJoinMany;
 use http::{self, APIClient};
 use hyper::status::StatusCode;
 use clap::{Arg, App, SubCommand, ArgMatches};
+
 use self::api::ApiClapOptions;
 use self::review::ReviewClapOptions;
 use self::checkout::CheckoutClapOptions;
+use self::clone::CloneClapOptions;
 mod api;
 mod review;
 mod checkout;
+mod clone;
 
 macro_rules! make_arg_vec {
     ( $( $x:expr ),* ) => {
@@ -114,8 +117,8 @@ pub fn run() {
             handle_spinner(&matches);
             clap_checkout(matches)
         },
-        Some("clone") => {
-            let matches = matches.subcommand_matches("clone").unwrap();
+        Some(clone::SUBCOMMAND_NAME) => {
+            let matches = matches.subcommand_matches(clone::SUBCOMMAND_NAME).unwrap();
             handle_spinner(&matches);
             clap_clone(matches)
         },
@@ -180,13 +183,7 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a> {
         .arg(no_spinner_arg().global(true))
         .arg(non_interactive_arg().global(true))
         .subcommand(review::clap_subcommand())
-        .subcommand(SubCommand::with_name("clone")
-                    .about("Clone a project repository")
-                    .args_from_usage(
-                        "<project> 'Name of project to clone'
-                        -g --git-url=[url] \
-                        'Git URL (-u -s -e -o ignored if used)'")
-                    .args(&u_e_s_o_args()))
+        .subcommand(clone::clap_subcommand())
         .subcommand(checkout::clap_subcommand())
         .subcommand(SubCommand::with_name("diff")
                     .about("Display diff for a change")
@@ -474,13 +471,9 @@ fn diff(change: &str, patchset: &str, pipeline: &str, local: &bool) -> Result<()
 }
 
 fn clap_clone(matches: &ArgMatches) -> Result<(), DeliveryError> {
-    let project = matches.value_of("project").unwrap();
-    let user = value_of(&matches, "user");
-    let server = value_of(&matches, "server");
-    let ent = value_of(&matches, "ent");
-    let org = value_of(&matches, "org");
-    let git_url = value_of(&matches, "git-url");
-    clone(project, user, server, ent, org, git_url)
+    let clone_opts = CloneClapOptions::new(matches);
+    clone(clone_opts.project, clone_opts.user, clone_opts.server,
+          clone_opts.ent, clone_opts.org, clone_opts.git_url)
 }
 
 fn clone(project: &str, user: &str, server: &str, ent: &str, org: &str, git_url: &str) -> Result<(), DeliveryError> {
@@ -848,7 +841,8 @@ mod tests {
     use cli::api::ApiClapOptions;
     use cli::review::ReviewClapOptions;
     use cli::checkout::CheckoutClapOptions;
-    use cli::{api, review,checkout};
+    use cli::clone::CloneClapOptions;
+    use cli::{api, review, clone, checkout};
 
     #[test]
     fn test_clap_api_options() {
@@ -857,7 +851,7 @@ mod tests {
         let matches = app.get_matches_from(vec!["delivery", "api", "get", "endpoint",
                                            "--data", "data", "-e", "starwars", "-u", "vader",
                                            "-s", "death-star", "--api-port", "9999"]);
-        assert_eq!(Some(api::SUBCOMMAND_NAME), matches.subcommand_name());
+        assert_eq!(Some("api"), matches.subcommand_name());
         let api_matches = matches.subcommand_matches(api::SUBCOMMAND_NAME).unwrap();
         let api_opts = ApiClapOptions::new(&api_matches);
         assert_eq!(api_opts.method, "get");
@@ -875,7 +869,7 @@ mod tests {
         let app = cli::make_app(&build_version);
         let matches = app.get_matches_from(vec!["delivery", "review", "--auto-bump",
                                            "--no-open", "--edit", "-f", "custom-pipe"]);
-        assert_eq!(Some(review::SUBCOMMAND_NAME), matches.subcommand_name());
+        assert_eq!(Some("review"), matches.subcommand_name());
         let review_matches = matches.subcommand_matches(review::SUBCOMMAND_NAME).unwrap();
         let review_opts = ReviewClapOptions::new(&review_matches);
         assert_eq!(review_opts.pipeline, "custom-pipe");
@@ -890,11 +884,30 @@ mod tests {
         let app = cli::make_app(&build_version);
         let matches = app.get_matches_from(vec!["delivery", "checkout", "change_the_force",
                                            "-P", "p4tchs3t", "-f", "custom-pipe"]);
-        assert_eq!(Some(checkout::SUBCOMMAND_NAME), matches.subcommand_name());
+        assert_eq!(Some("checkout"), matches.subcommand_name());
         let checkout_matches = matches.subcommand_matches(checkout::SUBCOMMAND_NAME).unwrap();
         let checkout_opts = CheckoutClapOptions::new(&checkout_matches);
         assert_eq!(checkout_opts.pipeline, "custom-pipe");
         assert_eq!(checkout_opts.change, "change_the_force");
         assert_eq!(checkout_opts.patchset, "p4tchs3t");
+    }
+
+    #[test]
+    fn test_clap_clone_options() {
+        let build_version = format!("{} {}", cli::version(), cli::build_git_sha());
+        let app = cli::make_app(&build_version);
+        let matches = app.get_matches_from(vec!["delivery", "clone", "minecraft",
+                                           "-e", "world", "-o", "coolest", "-u",
+                                           "dummy", "-s", "m.craft.com", "-g",
+                                           "ssh://another.world.com:123/awesome"]);
+        assert_eq!(Some("clone"), matches.subcommand_name());
+        let clone_matches = matches.subcommand_matches(clone::SUBCOMMAND_NAME).unwrap();
+        let clone_opts = CloneClapOptions::new(&clone_matches);
+        assert_eq!(clone_opts.project, "minecraft");
+        assert_eq!(clone_opts.user, "dummy");
+        assert_eq!(clone_opts.server, "m.craft.com");
+        assert_eq!(clone_opts.ent, "world");
+        assert_eq!(clone_opts.org, "coolest");
+        assert_eq!(clone_opts.git_url, "ssh://another.world.com:123/awesome");
     }
 }
