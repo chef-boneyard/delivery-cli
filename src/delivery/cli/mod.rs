@@ -22,6 +22,8 @@ use utils::path_join_many::PathJoinMany;
 use http::{self, APIClient};
 use hyper::status::StatusCode;
 use clap::{Arg, App, SubCommand, ArgMatches};
+use self::api::ApiClapOptions;
+mod api;
 
 macro_rules! make_arg_vec {
     ( $( $x:expr ),* ) => {
@@ -232,20 +234,12 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a> {
                     .args_from_usage("<stage> 'Stage for the run'
                                       <phases> 'One or more phases'")
                     .args(&u_e_s_o_args()))
-        .subcommand(SubCommand::with_name("api")
-                    .about("Helper to call Delivery's HTTP API")
-                    .args(&vec![config_path_arg()])
-                    .args_from_usage(
-                        "<method> 'HTTP method for the request'
-                         <path> 'Path for rqeuest URL'
-                         --api-port=[api-port] 'Port for Delivery server'
-                         -d --data=[data] 'Data to send for PUT/POST request'")
-                    .args(&u_e_s_o_args()))
+        .subcommand(api::clap_subcommand())
         .subcommand(SubCommand::with_name("token")
                     .about("Create a local API token")
                     .args(&make_arg_vec![
                         "-u --user=[user] 'User name for Delivery authentication'",
-                        "-e --ent=[enterprise] 'The enterprise in which the project lives'",
+                        "-e --ent=[ent] 'The enterprise in which the project lives'",
                         "--verify 'Verify the Token has expired'",
                         "-s --server=[server] 'The Delivery server address'"])
                     .args_from_usage(
@@ -821,15 +815,12 @@ fn build_git_sha() -> String {
 }
 
 fn clap_api_req(matches: &ArgMatches) -> Result<(), DeliveryError> {
-    let method = matches.value_of("method").unwrap();
-    let path = matches.value_of("path").unwrap();
-    let data = value_of(&matches, "data");
-
-    let server = value_of(&matches, "server");
-    let api_port = value_of(&matches, "api-port");
-    let ent = value_of(&matches, "ent");
-    let user = value_of(&matches, "user");
-    api_req(method, path, data, server, api_port, ent, user)
+    let api_opts = ApiClapOptions::new(matches);
+    api_req(
+        api_opts.method, api_opts.path, api_opts.data,
+        api_opts.server, api_opts.api_port, api_opts.ent,
+        api_opts.user
+    )
 }
 
 fn api_req(method: &str, path: &str, data: &str,
@@ -860,4 +851,30 @@ fn api_req(method: &str, path: &str, data: &str,
 
 fn value_of<'a>(matches: &'a ArgMatches, key: &str) -> &'a str {
     matches.value_of(key).unwrap_or("")
+}
+
+
+#[cfg(test)]
+mod tests {
+    use cli;
+    use cli::api::ApiClapOptions;
+
+    #[test]
+    fn test_clap_api_options() {
+        let build_version = format!("{} {}", cli::version(), cli::build_git_sha());
+        let app = cli::make_app(&build_version);
+        let matches = app.get_matches_from(vec!["delivery", "api", "get", "endpoint",
+                                           "--data", "data", "-e", "starwars", "-u", "vader",
+                                           "-s", "death-star", "--api-port", "9999"]);
+        assert_eq!(Some("api"), matches.subcommand_name());
+        let api_matches = matches.subcommand_matches("api").unwrap();
+        let api_opts = ApiClapOptions::new(&api_matches);
+        assert_eq!(api_opts.method, "get");
+        assert_eq!(api_opts.path, "endpoint");
+        assert_eq!(api_opts.data, "data");
+        assert_eq!(api_opts.server, "death-star");
+        assert_eq!(api_opts.api_port, "9999");
+        assert_eq!(api_opts.ent, "starwars");
+        assert_eq!(api_opts.user, "vader");
+    }
 }
