@@ -22,17 +22,12 @@ use utils::path_join_many::PathJoinMany;
 use http::{self, APIClient};
 use hyper::status::StatusCode;
 use clap::{Arg, App, SubCommand, ArgMatches};
-
-use self::api::ApiClapOptions;
-use self::review::ReviewClapOptions;
-use self::checkout::CheckoutClapOptions;
-use self::clone::CloneClapOptions;
-use self::diff::DiffClapOptions;
 mod api;
 mod review;
 mod checkout;
 mod clone;
 mod diff;
+mod init;
 
 macro_rules! make_arg_vec {
     ( $( $x:expr ),* ) => {
@@ -128,8 +123,8 @@ pub fn run() {
             let matches = matches.subcommand_matches(diff::SUBCOMMAND_NAME).unwrap();
             clap_diff(matches)
         },
-        Some("init") => {
-            let matches = matches.subcommand_matches("init").unwrap();
+        Some(init::SUBCOMMAND_NAME) => {
+            let matches = matches.subcommand_matches(init::SUBCOMMAND_NAME).unwrap();
             handle_spinner(&matches);
             clap_init(matches)
         },
@@ -188,17 +183,7 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a> {
         .subcommand(clone::clap_subcommand())
         .subcommand(checkout::clap_subcommand())
         .subcommand(diff::clap_subcommand())
-        .subcommand(SubCommand::with_name("init")
-                    .about("Initialize a Delivery project \
-                            (and lots more!)")
-                    .args(&vec![for_arg(), config_path_arg(), no_open_arg(),
-                               project_arg(), local_arg(), config_project_arg()])
-                    .args_from_usage(
-                        "--generator=[generator] 'Local path or Git repo URL to a \
-                         custom ChefDK build-cookbook generator (default:github)'
-                        --skip-build-cookbook 'Do not create a build cookbook'")
-                    .args(&u_e_s_o_args())
-                    .args(&scp_args()))
+        .subcommand(init::clap_subcommand())
         .subcommand(SubCommand::with_name("setup")
                     .about("Write a config file capturing specified options")
                     .args(&vec![for_arg(), config_path_arg()])
@@ -287,55 +272,42 @@ fn setup(user: &str, server: &str, ent: &str,
 }
 
 fn clap_init(matches: &ArgMatches) -> Result<(), DeliveryError> {
-    let user = value_of(&matches, "user");
-    let server = value_of(&matches, "server");
-    let ent = value_of(&matches, "ent");
-    let org = value_of(&matches, "org");
-    let proj = value_of(&matches, "project");
-    let no_open = matches.is_present("no-open");
-    let pipeline = value_of(&matches, "for");
-    let skip_build_cookbook = matches.is_present("skip-build-cookbook");
-    let local = matches.is_present("local");
+    let init = init::InitClapOptions::new(&matches);
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
-    let final_proj = try!(project::project_or_from_cwd(proj));
-    let config_json = value_of(&matches, "config-json");
-    let generator = value_of(&matches, "generator");
-    config = config.set_user(user)
-        .set_server(server)
-        .set_enterprise(ent)
-        .set_organization(org)
+    let final_proj = try!(project::project_or_from_cwd(init.project));
+    config = config.set_user(init.user)
+        .set_server(init.server)
+        .set_enterprise(init.ent)
+        .set_organization(init.org)
         .set_project(&final_proj)
-        .set_pipeline(pipeline)
-        .set_generator(generator)
-        .set_config_json(config_json);
+        .set_pipeline(init.pipeline)
+        .set_generator(init.generator)
+        .set_config_json(init.config_json);
     let branch = try!(config.pipeline());
-    let github_org_name = value_of(&matches, "github");
-    let bitbucket_project_key = value_of(&matches, "bitbucket");
-    if !github_org_name.is_empty() && !bitbucket_project_key.is_empty() {
+    if !init.github_org_name.is_empty() && !init.bitbucket_project_key.is_empty() {
         return Err(DeliveryError{ kind: Kind::OptionConstraint, detail: Some(format!("Please \
         specify just one Source Code Provider: delivery(default), github or bitbucket.")) })
     }
     let mut scp: Option<project::SourceCodeProvider> = None;
-    if !github_org_name.is_empty() {
-        let repo_name = value_of(&matches, "repo-name");
-        let no_v_ssl = matches.is_present("no-verify-ssl");
+    if !init.github_org_name.is_empty() {
         debug!("init github: GitRepo:{:?}, GitOrg:{:?}, Branch:{:?}, SSL:{:?}",
-               repo_name, github_org_name, branch, no_v_ssl);
-        scp = Some(try!(project::SourceCodeProvider::new("github", &repo_name,
-                                                         &github_org_name, &branch, no_v_ssl)));
-    } else if !bitbucket_project_key.is_empty() {
-        let repo_name = value_of(&matches, "repo-name");
+               init.repo_name, init.github_org_name, branch, init.no_v_ssl);
+        scp = Some(try!(project::SourceCodeProvider::new("github", &init.repo_name,
+                                                         &init.github_org_name, &branch,
+                                                         init.no_v_ssl)));
+    } else if !init.bitbucket_project_key.is_empty() {
         debug!("init bitbucket: BitRepo:{:?}, BitProjKey:{:?}, Branch:{:?}",
-               repo_name, bitbucket_project_key, branch);
-        scp = Some(try!(project::SourceCodeProvider::new("bitbucket", &repo_name,
-                                                         &bitbucket_project_key, &branch, true)));
+               init.repo_name, init.bitbucket_project_key, branch);
+        scp = Some(try!(project::SourceCodeProvider::new("bitbucket", &init.repo_name,
+                                                         &init.bitbucket_project_key,
+                                                         &branch, true)));
     }
-    project::init(config, &no_open, &skip_build_cookbook, &local, scp)
+    project::init(config, &init.no_open, &init.skip_build_cookbook, &init.local, scp)
 }
 
 fn clap_review(matches: &ArgMatches) -> Result<(), DeliveryError> {
-    let review_opts = ReviewClapOptions::new(matches);
+    let review_opts = review::ReviewClapOptions::new(matches);
     review(review_opts.pipeline, &review_opts.auto_bump,
            &review_opts.no_open, &review_opts.edit)
 }
@@ -409,7 +381,7 @@ fn handle_review_result(review: &ReviewResult,
 }
 
 fn clap_checkout(matches: &ArgMatches) -> Result<(), DeliveryError> {
-    let checkout_opts = CheckoutClapOptions::new(matches);
+    let checkout_opts = checkout::CheckoutClapOptions::new(matches);
     checkout(checkout_opts.change, checkout_opts.patchset, checkout_opts.pipeline)
 }
 
@@ -439,7 +411,7 @@ fn checkout(change: &str, patchset: &str, pipeline: &str) -> Result<(), Delivery
 }
 
 fn clap_diff(matches: &ArgMatches) ->  Result<(), DeliveryError> {
-    let diff_opts = DiffClapOptions::new(&matches);
+    let diff_opts = diff::DiffClapOptions::new(&matches);
     diff(diff_opts.change, diff_opts.patchset, diff_opts.pipeline, &diff_opts.local)
 }
 
@@ -464,7 +436,7 @@ fn diff(change: &str, patchset: &str, pipeline: &str, local: &bool) -> Result<()
 }
 
 fn clap_clone(matches: &ArgMatches) -> Result<(), DeliveryError> {
-    let clone_opts = CloneClapOptions::new(matches);
+    let clone_opts = clone::CloneClapOptions::new(matches);
     clone(clone_opts.project, clone_opts.user, clone_opts.server,
           clone_opts.ent, clone_opts.org, clone_opts.git_url)
 }
@@ -789,7 +761,7 @@ fn build_git_sha() -> String {
 }
 
 fn clap_api_req(matches: &ArgMatches) -> Result<(), DeliveryError> {
-    let api_opts = ApiClapOptions::new(matches);
+    let api_opts = api::ApiClapOptions::new(matches);
     api_req(
         api_opts.method, api_opts.path, api_opts.data,
         api_opts.server, api_opts.api_port, api_opts.ent,
@@ -831,12 +803,7 @@ fn value_of<'a>(matches: &'a ArgMatches, key: &str) -> &'a str {
 #[cfg(test)]
 mod tests {
     use cli;
-    use cli::api::ApiClapOptions;
-    use cli::review::ReviewClapOptions;
-    use cli::checkout::CheckoutClapOptions;
-    use cli::clone::CloneClapOptions;
-    use cli::diff::DiffClapOptions;
-    use cli::{api, review, clone, checkout, diff};
+    use cli::{api, review, clone, checkout, diff, init};
 
     #[test]
     fn test_clap_api_options() {
@@ -847,7 +814,7 @@ mod tests {
                                            "-s", "death-star", "--api-port", "9999"]);
         assert_eq!(Some("api"), matches.subcommand_name());
         let api_matches = matches.subcommand_matches(api::SUBCOMMAND_NAME).unwrap();
-        let api_opts = ApiClapOptions::new(&api_matches);
+        let api_opts = api::ApiClapOptions::new(&api_matches);
         assert_eq!(api_opts.method, "get");
         assert_eq!(api_opts.path, "endpoint");
         assert_eq!(api_opts.data, "data");
@@ -865,7 +832,7 @@ mod tests {
                                            "--no-open", "--edit", "-f", "custom-pipe"]);
         assert_eq!(Some("review"), matches.subcommand_name());
         let review_matches = matches.subcommand_matches(review::SUBCOMMAND_NAME).unwrap();
-        let review_opts = ReviewClapOptions::new(&review_matches);
+        let review_opts = review::ReviewClapOptions::new(&review_matches);
         assert_eq!(review_opts.pipeline, "custom-pipe");
         assert_eq!(review_opts.no_open, true);
         assert_eq!(review_opts.auto_bump, true);
@@ -880,7 +847,7 @@ mod tests {
                                            "-P", "p4tchs3t", "-f", "custom-pipe"]);
         assert_eq!(Some("checkout"), matches.subcommand_name());
         let checkout_matches = matches.subcommand_matches(checkout::SUBCOMMAND_NAME).unwrap();
-        let checkout_opts = CheckoutClapOptions::new(&checkout_matches);
+        let checkout_opts = checkout::CheckoutClapOptions::new(&checkout_matches);
         assert_eq!(checkout_opts.pipeline, "custom-pipe");
         assert_eq!(checkout_opts.change, "change_the_force");
         assert_eq!(checkout_opts.patchset, "p4tchs3t");
@@ -896,7 +863,7 @@ mod tests {
                                            "ssh://another.world.com:123/awesome"]);
         assert_eq!(Some("clone"), matches.subcommand_name());
         let clone_matches = matches.subcommand_matches(clone::SUBCOMMAND_NAME).unwrap();
-        let clone_opts = CloneClapOptions::new(&clone_matches);
+        let clone_opts = clone::CloneClapOptions::new(&clone_matches);
         assert_eq!(clone_opts.project, "minecraft");
         assert_eq!(clone_opts.user, "dummy");
         assert_eq!(clone_opts.server, "m.craft.com");
@@ -913,10 +880,41 @@ mod tests {
                                            "-P", "p4tchs3t", "-f", "coolest"]);
         assert_eq!(Some("diff"), matches.subcommand_name());
         let diff_matches = matches.subcommand_matches(diff::SUBCOMMAND_NAME).unwrap();
-        let diff_opts = DiffClapOptions::new(&diff_matches);
+        let diff_opts = diff::DiffClapOptions::new(&diff_matches);
         assert_eq!(diff_opts.change, "change-me");
         assert_eq!(diff_opts.patchset, "p4tchs3t");
         assert_eq!(diff_opts.pipeline, "coolest");
         assert_eq!(diff_opts.local, true);
+    }
+
+    #[test]
+    fn test_clap_init_options() {
+        let build_version = format!("{} {}", cli::version(), cli::build_git_sha());
+        let app = cli::make_app(&build_version);
+        let init_cmd = vec!["delivery", "init", "-l", "-p", "frijol", "-u", "cocha",
+                        "-s", "cocina.central.com", "-e", "mexicana", "-o", "oaxaca",
+                        "-f", "postres", "-c", "receta.json", "--generator", "/original",
+                        "--github", "git-mx", "--bitbucket", "bit-mx", "-r", "antojitos",
+                        "--no-verify-ssl", "--skip-build-cookbook", "-n"];
+        let matches = app.get_matches_from(init_cmd);
+        assert_eq!(Some("init"), matches.subcommand_name());
+        let init_matches = matches.subcommand_matches(init::SUBCOMMAND_NAME).unwrap();
+        let init_opts = init::InitClapOptions::new(&init_matches);
+        assert_eq!(init_opts.pipeline, "postres");
+        assert_eq!(init_opts.user, "cocha");
+        assert_eq!(init_opts.server, "cocina.central.com");
+        assert_eq!(init_opts.ent, "mexicana");
+        assert_eq!(init_opts.org, "oaxaca");
+        assert_eq!(init_opts.project, "frijol");
+        assert_eq!(init_opts.config_json, "receta.json");
+        assert_eq!(init_opts.generator, "/original");
+        assert_eq!(init_opts.github_org_name, "git-mx");
+        assert_eq!(init_opts.bitbucket_project_key, "bit-mx");
+        assert_eq!(init_opts.repo_name, "antojitos");
+        assert_eq!(init_opts.pipeline, "postres");
+        assert_eq!(init_opts.no_v_ssl, true);
+        assert_eq!(init_opts.no_open, true);
+        assert_eq!(init_opts.skip_build_cookbook, true);
+        assert_eq!(init_opts.local, true);
     }
 }
