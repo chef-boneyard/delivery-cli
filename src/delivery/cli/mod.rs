@@ -22,12 +22,6 @@ use utils::path_join_many::PathJoinMany;
 use http::{self, APIClient};
 use hyper::status::StatusCode;
 use clap::{Arg, App, SubCommand, ArgMatches};
-mod api;
-mod review;
-mod checkout;
-mod clone;
-mod diff;
-mod init;
 
 macro_rules! make_arg_vec {
     ( $( $x:expr ),* ) => {
@@ -48,6 +42,20 @@ macro_rules! fn_arg {
         }
     )
 }
+
+macro_rules! validate {
+    ($config:ident, $value:ident) => (
+        try!($config.$value());
+    )
+}
+
+mod api;
+mod review;
+mod checkout;
+mod clone;
+mod diff;
+mod init;
+mod job;
 
 fn u_e_s_o_args<'a>() -> Vec<Arg<'a, 'a>> {
     make_arg_vec![
@@ -90,12 +98,6 @@ fn_arg!(auto_bump, "-a --auto-bump 'Automatic cookbook version bump'");
 fn_arg!(no_spinner_arg, "--no-spinner 'Disable the spinner'");
 
 fn_arg!(non_interactive_arg, "--non-interactive 'Disable cli interactions'");
-
-macro_rules! validate {
-    ($config:ident, $value:ident) => (
-        try!($config.$value());
-    )
-}
 
 pub fn run() {
     let build_version = format!("{} {}", version(), build_git_sha());
@@ -188,22 +190,7 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a> {
                     .about("Write a config file capturing specified options")
                     .args(&vec![for_arg(), config_path_arg()])
                     .args(&u_e_s_o_args()))
-        .subcommand(SubCommand::with_name("job")
-                    .about("Run one or more phase jobs")
-                    .args(&vec![patchset_arg(), project_arg(), for_arg(),
-                                local_arg()])
-                    .args(&make_arg_vec![
-                        "-j --job-root=[root] 'Path to the job root'",
-                        "-g --git-url=[url] 'Git URL (-u -s -e -o ignored if used)'",
-                        "-C --change=[change] 'Feature branch name'",
-                        "-b --branch=[branch] 'Branch to merge'",
-                        "-S --shasum=[gitsha] 'Git SHA of change'",
-                        "--change-id=[id] 'The change ID'",
-                        "--skip-default 'skip default'",
-                        "--docker=[image] 'Docker image'"])
-                    .args_from_usage("<stage> 'Stage for the run'
-                                      <phases> 'One or more phases'")
-                    .args(&u_e_s_o_args()))
+        .subcommand(job::clap_subcommand())
         .subcommand(api::clap_subcommand())
         .subcommand(SubCommand::with_name("token")
                     .about("Create a local API token")
@@ -467,33 +454,14 @@ fn clone(project: &str, user: &str, server: &str, ent: &str, org: &str, git_url:
 }
 
 fn clap_job(matches: &ArgMatches) -> Result<(), DeliveryError> {
-    let stage = matches.value_of("stage").unwrap();
-    let phases = matches.value_of("phases").unwrap();
-
-    let change = value_of(&matches, "change");
-    let pipeline = value_of(&matches, "for");
-    let job_root = value_of(&matches, "job-root");
-    let proj = value_of(&matches, "project");
-
-    let user = value_of(&matches, "user");
-    let server = value_of(&matches, "server");
-    let ent = value_of(&matches, "ent");
-    let org = value_of(&matches, "org");
-
-    let patchset = value_of(&matches, "patchset");
-    let change_id = value_of(&matches, "change-id");
-    let git_url = value_of(&matches, "git-url");
-    let shasum = value_of(&matches, "shasum");
-    let branch = value_of(&matches, "branch");
-
-    let skip_default = matches.is_present("skip-default");
-    let local = matches.is_present("local");
-    let docker_image = value_of(&matches, "docker");
-
-    job(stage, phases, change, pipeline, job_root,
-        proj, user, server, ent, org, patchset,
-        change_id, git_url, shasum, branch,
-        &skip_default, &local, docker_image)
+    let job_opts = job::JobClapOptions::new(&matches);
+    // TODO: Maybe we should just pass the JobClapOptions directly
+    // to the `job` fn below, instead of passing every single attr
+    job(job_opts.stage, job_opts.phases, job_opts.change, job_opts.pipeline,
+        job_opts.job_root, job_opts.project, job_opts.user, job_opts.server,
+        job_opts.ent, job_opts.org, job_opts.patchset, job_opts.change_id,
+        job_opts.git_url, job_opts.shasum, job_opts.branch,
+        &job_opts.skip_default, &job_opts.local, job_opts.docker_image)
 }
 
 fn job(stage: &str,
@@ -803,7 +771,7 @@ fn value_of<'a>(matches: &'a ArgMatches, key: &str) -> &'a str {
 #[cfg(test)]
 mod tests {
     use cli;
-    use cli::{api, review, clone, checkout, diff, init};
+    use cli::{api, review, clone, checkout, diff, init, job};
 
     #[test]
     fn test_clap_api_options() {
@@ -891,7 +859,7 @@ mod tests {
     fn test_clap_init_options() {
         let build_version = format!("{} {}", cli::version(), cli::build_git_sha());
         let app = cli::make_app(&build_version);
-        let init_cmd = vec!["delivery", "init", "-l", "-p", "frijol", "-u", "cocha",
+        let init_cmd = vec!["delivery", "init", "-l", "-p", "frijol", "-u", "concha",
                         "-s", "cocina.central.com", "-e", "mexicana", "-o", "oaxaca",
                         "-f", "postres", "-c", "receta.json", "--generator", "/original",
                         "--github", "git-mx", "--bitbucket", "bit-mx", "-r", "antojitos",
@@ -901,7 +869,7 @@ mod tests {
         let init_matches = matches.subcommand_matches(init::SUBCOMMAND_NAME).unwrap();
         let init_opts = init::InitClapOptions::new(&init_matches);
         assert_eq!(init_opts.pipeline, "postres");
-        assert_eq!(init_opts.user, "cocha");
+        assert_eq!(init_opts.user, "concha");
         assert_eq!(init_opts.server, "cocina.central.com");
         assert_eq!(init_opts.ent, "mexicana");
         assert_eq!(init_opts.org, "oaxaca");
@@ -916,5 +884,38 @@ mod tests {
         assert_eq!(init_opts.no_open, true);
         assert_eq!(init_opts.skip_build_cookbook, true);
         assert_eq!(init_opts.local, true);
+    }
+
+    #[test]
+    fn test_clap_job_options() {
+        let build_version = format!("{} {}", cli::version(), cli::build_git_sha());
+        let app = cli::make_app(&build_version);
+        let job_cmd = vec!["delivery", "job", "anime", "ninja", "-C", "rasengan",
+                        "-u", "naruto", "-s", "manga.com", "-e", "shippuden", "-o",
+                        "akatsuki", "-f", "sharingan", "-j", "/path", "-p", "uchiha",
+                        "-P", "latest", "--change-id", "super-cool-id", "-g", "powerful-url",
+                        "-S", "SHA", "-b", "evil", "--skip-default", "-l", "--docker", "uzumaki"];
+        let matches = app.get_matches_from(job_cmd);
+        assert_eq!(Some("job"), matches.subcommand_name());
+        let job_matches = matches.subcommand_matches(job::SUBCOMMAND_NAME).unwrap();
+        let job_opts = job::JobClapOptions::new(&job_matches);
+        assert_eq!(job_opts.pipeline, "sharingan");
+        assert_eq!(job_opts.stage, "anime");
+        assert_eq!(job_opts.phases, "ninja");
+        assert_eq!(job_opts.user, "naruto");
+        assert_eq!(job_opts.server, "manga.com");
+        assert_eq!(job_opts.change, "rasengan");
+        assert_eq!(job_opts.ent, "shippuden");
+        assert_eq!(job_opts.org, "akatsuki");
+        assert_eq!(job_opts.job_root, "/path");
+        assert_eq!(job_opts.project, "uchiha");
+        assert_eq!(job_opts.patchset, "latest");
+        assert_eq!(job_opts.change_id, "super-cool-id");
+        assert_eq!(job_opts.git_url, "powerful-url");
+        assert_eq!(job_opts.shasum, "SHA");
+        assert_eq!(job_opts.branch, "evil");
+        assert_eq!(job_opts.docker_image, "uzumaki");
+        assert_eq!(job_opts.local, true);
+        assert_eq!(job_opts.skip_default, true);
     }
 }
