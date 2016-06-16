@@ -23,7 +23,9 @@ use http::{self, APIClient};
 use hyper::status::StatusCode;
 use clap::{Arg, App, SubCommand, ArgMatches};
 use self::api::ApiClapOptions;
+use self::review::ReviewClapOptions;
 mod api;
+mod review;
 
 macro_rules! make_arg_vec {
     ( $( $x:expr ),* ) => {
@@ -100,8 +102,8 @@ pub fn run() {
     let matches = app.get_matches();
 
     let cmd_result = match matches.subcommand_name() {
-        Some("api") => {
-            let matches = matches.subcommand_matches("api").unwrap();
+        Some(api::SUBCOMMAND_NAME) => {
+            let matches = matches.subcommand_matches(api::SUBCOMMAND_NAME).unwrap();
             handle_spinner(&matches);
             clap_api_req(matches)
         },
@@ -129,8 +131,8 @@ pub fn run() {
             handle_spinner(&matches);
             clap_job(matches)
         },
-        Some("review") => {
-            let matches = matches.subcommand_matches("review").unwrap();
+        Some(review::SUBCOMMAND_NAME) => {
+            let matches = matches.subcommand_matches(review::SUBCOMMAND_NAME).unwrap();
             handle_spinner(&matches);
             clap_review(matches)
         },
@@ -175,15 +177,7 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a> {
         .version(version)
         .arg(no_spinner_arg().global(true))
         .arg(non_interactive_arg().global(true))
-        .subcommand(SubCommand::with_name("review")
-                    .about("Submit current branch for review")
-                    // NOTE: in the future, we can add extensive
-                    // sub-command specific help via an include file
-                    // like this:
-                    // .after_help(include!("../help/create-change.txt"))
-                    .args(&vec![for_arg(), no_open_arg(), auto_bump()])
-                    .args_from_usage(
-                        "-e --edit 'Edit change title and description'"))
+        .subcommand(review::clap_subcommand())
         .subcommand(SubCommand::with_name("clone")
                     .about("Clone a project repository")
                     .args_from_usage(
@@ -350,11 +344,9 @@ fn clap_init(matches: &ArgMatches) -> Result<(), DeliveryError> {
 }
 
 fn clap_review(matches: &ArgMatches) -> Result<(), DeliveryError> {
-    let pipeline = value_of(&matches, "for");
-    let no_open = matches.is_present("no-open");
-    let auto_bump = matches.is_present("auto-bump");
-    let edit = matches.is_present("edit");
-    review(pipeline, &auto_bump, &no_open, &edit)
+    let review_opts = ReviewClapOptions::new(matches);
+    review(review_opts.pipeline, &review_opts.auto_bump,
+           &review_opts.no_open, &review_opts.edit)
 }
 
 pub fn review(for_pipeline: &str, auto_bump: &bool,
@@ -858,6 +850,8 @@ fn value_of<'a>(matches: &'a ArgMatches, key: &str) -> &'a str {
 mod tests {
     use cli;
     use cli::api::ApiClapOptions;
+    use cli::review::ReviewClapOptions;
+    use cli::{api, review};
 
     #[test]
     fn test_clap_api_options() {
@@ -866,8 +860,8 @@ mod tests {
         let matches = app.get_matches_from(vec!["delivery", "api", "get", "endpoint",
                                            "--data", "data", "-e", "starwars", "-u", "vader",
                                            "-s", "death-star", "--api-port", "9999"]);
-        assert_eq!(Some("api"), matches.subcommand_name());
-        let api_matches = matches.subcommand_matches("api").unwrap();
+        assert_eq!(Some(api::SUBCOMMAND_NAME), matches.subcommand_name());
+        let api_matches = matches.subcommand_matches(api::SUBCOMMAND_NAME).unwrap();
         let api_opts = ApiClapOptions::new(&api_matches);
         assert_eq!(api_opts.method, "get");
         assert_eq!(api_opts.path, "endpoint");
@@ -876,5 +870,20 @@ mod tests {
         assert_eq!(api_opts.api_port, "9999");
         assert_eq!(api_opts.ent, "starwars");
         assert_eq!(api_opts.user, "vader");
+    }
+
+    #[test]
+    fn test_clap_review_options() {
+        let build_version = format!("{} {}", cli::version(), cli::build_git_sha());
+        let app = cli::make_app(&build_version);
+        let matches = app.get_matches_from(vec!["delivery", "review", "--auto-bump",
+                                           "--no-open", "--edit", "-f", "custom-pipe"]);
+        assert_eq!(Some(review::SUBCOMMAND_NAME), matches.subcommand_name());
+        let review_matches = matches.subcommand_matches(review::SUBCOMMAND_NAME).unwrap();
+        let review_opts = ReviewClapOptions::new(&review_matches);
+        assert_eq!(review_opts.pipeline, "custom-pipe");
+        assert_eq!(review_opts.no_open, true);
+        assert_eq!(review_opts.auto_bump, true);
+        assert_eq!(review_opts.edit, true);
     }
 }
