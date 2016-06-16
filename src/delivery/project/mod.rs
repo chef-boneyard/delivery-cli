@@ -286,23 +286,27 @@ pub fn init(config: Config, no_open: &bool, skip_build_cookbook: &bool,
     let project_path = try!(root_dir(&utils::cwd()));
     try!(create_on_server(&config, scp.clone(), local));
     try!(create_feature_branch(&project_path));
-    try!(generate_build_cookbook(skip_build_cookbook, config.generator().ok()));
-    try!(generate_custom_delivery_config(config.config_json().ok()));
+    try!(create_dot_delivery());
+    let build_cookbook_generated = try!(generate_build_cookbook(skip_build_cookbook, config.generator().ok()));
+    let custom_config_passed = try!(generate_custom_delivery_config(config.config_json().ok()));
+    if build_cookbook_generated {
+        try!(add_commit_build_cookbook(&custom_config_passed));
+    }
     try!(trigger_review(config, scp, &no_open, &local));
     Ok(())
 }
 
-/// Handle the delivery config generation
+/// Handle custom delivery config generation
 ///
 /// Receives a custom config.json file that will be copy to the current project repo
-/// otherwise it will generate the default config.
-fn generate_custom_delivery_config(config_json: Option<String>) -> Result<(), DeliveryError> {
+fn generate_custom_delivery_config(config_json: Option<String>) -> Result<bool, DeliveryError> {
     let project_path = try!(root_dir(&utils::cwd()));
     if let Some(json) = config_json {
         let json_path = PathBuf::from(json);
-        DeliveryConfig::copy_config_file(&json_path, &project_path)
+        try!(DeliveryConfig::copy_config_file(&json_path, &project_path));
+        return Ok(true)
     } else {
-        return Ok(());
+        return Ok(false)
     }
 }
 
@@ -385,14 +389,24 @@ fn create_feature_branch(project_path: &PathBuf) -> Result<(), DeliveryError> {
 }
 
 /// Add and commit the generated build-cookbook
-fn add_commit_build_cookbook() -> Result<(), DeliveryError> {
+fn add_commit_build_cookbook(custom_config_passed: &bool) -> Result<(), DeliveryError> {
     let project_path = try!(root_dir(&utils::cwd()));
     say("white", "Adding and commiting build-cookbook: ");
     // .delivery is probably not yet under version control, so we have to add
     // the whole folder instead of .delivery/build-cookbook.
     try!(git::git_command(&["add", ".delivery"], &project_path));
-    try!(git::git_command(&["commit", "-m", "Adds Delivery build cookbook and config"], &project_path));
+    let mut commit_msg = "Adds Delivery build cookbook".to_string();
+    if !(*custom_config_passed) {
+        commit_msg = commit_msg + " and config";
+    }
+    try!(git::git_command(&["commit", "-m", &commit_msg], &project_path));
     sayln("green", "done");
+    Ok(())
+}
+
+fn create_dot_delivery() -> Result<(), DeliveryError> {
+    let dot_delivery = Path::new(".delivery");
+    try!(mkdir_recursive(dot_delivery));
     Ok(())
 }
 
@@ -416,6 +430,7 @@ fn git_clone_build_cookbook_generator(path: &str, url: &str) -> Result<(), Deliv
 /// 2) Or a git repo URL
 /// TODO) From Supermarket
 fn custom_build_cookbook_generator(generator: &Path, path: &Path) -> Result<(), DeliveryError> {
+    try!(mkdir_recursive(path));
     if generator.has_root() {
         say("white", "Copying custom build-cookbook generator to ");
         sayln("yellow", &format!("{:?}", path));
@@ -435,32 +450,39 @@ fn generator_cache_path() -> Result<PathBuf, DeliveryError> {
 /// Handles the build-cookbook generation
 ///
 /// This method could receive a custom generator, if it is not provided,
-/// we use the default cookbook generator called PCB:
-/// => https://github.com/chef-cookbooks/pcb.git
+/// we use the default build-cookbook generator from the ChefDK.
+///
+/// Returns true if a build cookbook was generated, false if not.
 fn generate_build_cookbook(skip_build_cookbook: &bool,
-                           generator: Option<String>) -> Result<(), DeliveryError> {
+                           generator: Option<String>) -> Result<bool, DeliveryError> {
     if *skip_build_cookbook {
-        return Ok(())
+        return Ok((false))
     }
     sayln("white", "Generating build cookbook skeleton");
-    let mut generator_path = try!(generator_cache_path());
-    debug!("Cookbook generator cached path: {:?}", generator_path);
+    let cache_path = try!(generator_cache_path());
+    debug!("Cookbook generator cached path: {:?}", cache_path);
+    let project_path = try!(root_dir(&utils::cwd()));
     match generator {
         Some(generator_str) => {
             let gen_path = Path::new(&generator_str);
+            let mut generator_path = cache_path.clone();
             generator_path.push(gen_path.file_stem().unwrap());
-            try!(custom_build_cookbook_generator(&gen_path, &generator_path));
-            try!(chef_generate_build_cookbook_from_generator(&generator_path));
+            try!(custom_build_cookbook_generator(&gen_path, &cache_path));
+            try!(chef_generate_build_cookbook_from_generator(&generator_path, &project_path));
+            let config_path = project_path.join(".delivery/config.json");
+            if !(config_path.exists()) {
+                sayln("red", "You used a custom build cookbook generator, but .delivery/config.json was not created.");
+                sayln("red", "Please update your generator to create a valid .delivery/config.json or pass in a custom config.");
+                return Err(DeliveryError{ kind: Kind::NoDeliveryConfig, detail: None });
+            }
+            return Ok(true)
         },
         None => {
-            let project_path = try!(root_dir(&utils::cwd()));
             let path = project_path.join(".delivery/build-cookbook");
             if path.exists() {
                 sayln("red", ".delivery/build-cookbook folder already exists, skipping build cookbook generation.");
-                return Ok(());
+                return Ok(false);
             } else {
-                let dot_delivery = Path::new(".delivery");
-                try!(mkdir_recursive(dot_delivery));
                 let mut gen = utils::make_command("chef");
                 gen.arg("generate")
                     .arg("build-cookbook")
@@ -469,18 +491,14 @@ fn generate_build_cookbook(skip_build_cookbook: &bool,
                 let output = try!(gen.output());
                 try!(handle_chef_generate_cookbook_cmd(output));
                 sayln("green", &format!("Build-cookbook generated: {:#?}", gen));
+                return Ok(true)
             }
         }
     };
-    try!(add_commit_build_cookbook());
-    Ok(())
 }
 
 /// Generate the build-cookbook using ChefDK generate
-fn chef_generate_build_cookbook_from_generator(generator: &Path) -> Result<(), DeliveryError> {
-    let project_path = try!(root_dir(&utils::cwd()));
-    let dot_delivery = Path::new(".delivery");
-    try!(mkdir_recursive(dot_delivery));
+fn chef_generate_build_cookbook_from_generator(generator: &Path, project_path: &Path) -> Result<(), DeliveryError> {
     let mut gen = utils::make_command("chef");
     gen.arg("generate")
         .arg("cookbook")

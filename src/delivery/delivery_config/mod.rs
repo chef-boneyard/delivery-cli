@@ -31,7 +31,6 @@ use git;
 use utils::{walk_tree_for_path, read_file, copy_recursive};
 use utils::path_join_many::PathJoinMany;
 use utils::say::{say, sayln};
-use utils::path_ext::is_file;
 
 #[derive(RustcEncodable, RustcDecodable, Clone)]
 pub struct DeliveryConfig {
@@ -75,10 +74,6 @@ impl DeliveryConfig {
     /// If the config already exists, skip this process.
     pub fn copy_config_file(config_f: &PathBuf,
                             proj_path: &PathBuf) -> Result<(), DeliveryError> {
-        if DeliveryConfig::config_file_exists(proj_path) {
-            debug!("Delivery config file already exists, skipping");
-            return Ok(())
-        }
         let write_path = DeliveryConfig::config_file_path(proj_path);
         say("white", "Copying configuration to ");
         sayln("yellow", &format!("{}", write_path.display()));
@@ -103,10 +98,6 @@ impl DeliveryConfig {
 
     fn config_file_path(proj_path: &PathBuf) -> PathBuf {
         proj_path.join_many(&[".delivery", "config.json"])
-    }
-
-    fn config_file_exists(proj_path: &PathBuf) -> bool {
-        is_file(&DeliveryConfig::config_file_path(proj_path))
     }
 
     fn find_config_file(proj_path: &PathBuf) -> Result<PathBuf, DeliveryError> {

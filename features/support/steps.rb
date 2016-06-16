@@ -30,10 +30,41 @@ organization = "dummy"
 EOF
 end
 
+def default_delivery_config
+<<EOF
+  {
+    "version": "2",
+    "build_cookbook": {
+      "path": ".delivery/build-cookbook",
+      "name": "build-cookbook"
+    },
+    "skip_phases": [],
+    "build_nodes": {},
+    "dependencies": []
+  }
+EOF
+end
+
 def basic_git_config
 <<EOF
 [config]
 EOF
+end
+
+def additional_gen_recipe
+<<EOF
+file "\#{cookbook_dir}/test_file" do
+  content 'THIS IS ONLY A TEST.'
+end
+EOF
+end
+
+
+Given(/^I have a custom generator cookbook$/) do
+  step %(I successfully run `rm -rf /tmp/test-generator`)
+  step %(I successfully run `chef generate generator /tmp/test-generator`)
+  # throw a file into the custom generator we can check for later
+  step %(I append to "/tmp/test-generator/recipes/cookbook.rb" with:), additional_gen_recipe
 end
 
 # Creates a new directory, "git init"s it and creates an empty commit
@@ -68,6 +99,10 @@ end
 Given(/^I set up basic delivery and git configs$/) do
   step %(a file named ".delivery/cli.toml" with:), basic_delivery_config
   step %(a file named ".git/config" with:), basic_git_config
+end
+
+Given(/^I already have a .delivery\/config.json on disk$/) do
+  step %(a file named ".delivery/config.json" with:), default_delivery_config
 end
 
 Given(/^I clean up the ruby env so I can run other ruby bins like ChefDK$/) do
@@ -240,19 +275,19 @@ end
 
 Given(/^a change configuring a custom delivery is created$/) do
   step %("git checkout -b add-delivery-config" should be run)
-  step %("git commit -m Adds Delivery config" should be run)
+  step %("git commit -m Adds custom Delivery config" should be run)
+  step %("git commit -m Adds Delivery build cookbook" should be run)
   step %(the file ".delivery/config.json" should contain exactly:), custom_config
 end
 
 Given(/^the change has the default generated build_cookbook$/) do
   step %("git checkout -b add-delivery-config" should be run)
-  step %("git commit -m Adds Delivery build cookbook" should be run)
-  step %("chef generate cookbook .delivery/build-cookbook" should be run)
+  step %("git commit -m Adds Delivery build cookbook and config" should be run)
   step %(a directory named ".delivery/build-cookbook" should exist)
 end
 
 Given(/^the change does not have the default generated build_cookbook$/) do
-  step %("git commit -m Adds Delivery build cookbook" should not be run)
+  step %("git commit -m Adds Delivery build cookbook and config" should not be run)
   step %("chef generate cookbook .delivery/build-cookbook" should not be run)
 end
 
@@ -260,17 +295,28 @@ Given(/^a user creates a delivery backed project with option "([^"]*)"$/) do |op
   step %(I successfully run `delivery init #{option}`)
 end
 
+Given(/^a generator cookbook cache exists$/) do
+  step %(a directory named ".delivery")
+  step %(a directory named ".delivery/cache")
+  step %(a directory named ".delivery/cache/generator-cookbooks")
+end
+
+Given(/^a custom build cookbook is already downloaded in the cache$/) do
+  step %(I successfully run `chef generate generator ../.delivery/cache/generator-cookbooks/test-generator`)
+  step %(I append to "../.delivery/cache/generator-cookbooks/test-generator/recipes/cookbook.rb" with:), additional_gen_recipe
+end
+
 Given(/^a custom build-cookbook is generated from "([^"]*)"$/) do |type|
   case type
   when "local_path"
     step %(the output should match /Copying custom build-cookbook generator to/)
   when "git_repo"
-    step %(the output should match /Downloading build-cookbook generator from/)
+    step %(the output should match /Using cached copy of build-cookbook generator/)
   else
     pending "not implemented"
   end
-  step %("git commit -m Adds Delivery build cookbook" should be run)
-  step %("chef generate cookbook .delivery/build-cookbook" should be run)
+  step %(the file ".delivery/build-cookbook/test_file" should contain "THIS IS ONLY A TEST.")
+  step %("git commit -m Adds Delivery build cookbook and config" should be run)
   step %(a directory named ".delivery/build-cookbook" should exist)
 end
 

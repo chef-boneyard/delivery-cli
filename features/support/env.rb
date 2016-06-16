@@ -6,10 +6,10 @@ require_relative "../support/api_server"
 # will hit it first.
 fake_bin = File.expand_path('../fakebin', __FILE__)
 
-# However, we'll still need to know where the "real" git is located;
-# we'll stash that away in the DELIVERY_SYSTEM_GIT environment
-# variable.
+# Be able to call original binary in mocks.
 system_git = `which git 2>/dev/null`.chomp
+system_cp = `which cp 2>/dev/null`.chomp
+system_mv = `which mv 2>/dev/null`.chomp
 
 # Ensure that the delivery binary we just built is the one that we're
 # using.
@@ -36,6 +36,9 @@ Before do
   set_env('EMAIL', 'cukes@mycompany.com')
 
   set_env('DELIVERY_SYSTEM_GIT', system_git)
+  set_env('DELIVERY_SYSTEM_CP', system_cp)
+  set_env('DELIVERY_SYSTEM_MV', system_mv)
+
   set_env('PATH', "#{cli_dir}#{File::PATH_SEPARATOR}#{fake_bin}#{File::PATH_SEPARATOR}#{ENV['PATH']}")
   # We don't use the `HOME` env var for this as it is frequently
   # overriden to other values when running executables
