@@ -24,8 +24,10 @@ use hyper::status::StatusCode;
 use clap::{Arg, App, SubCommand, ArgMatches};
 use self::api::ApiClapOptions;
 use self::review::ReviewClapOptions;
+use self::checkout::CheckoutClapOptions;
 mod api;
 mod review;
+mod checkout;
 
 macro_rules! make_arg_vec {
     ( $( $x:expr ),* ) => {
@@ -107,8 +109,8 @@ pub fn run() {
             handle_spinner(&matches);
             clap_api_req(matches)
         },
-        Some("checkout") => {
-            let matches = matches.subcommand_matches("checkout").unwrap();
+        Some(checkout::SUBCOMMAND_NAME) => {
+            let matches = matches.subcommand_matches(checkout::SUBCOMMAND_NAME).unwrap();
             handle_spinner(&matches);
             clap_checkout(matches)
         },
@@ -185,11 +187,7 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a> {
                         -g --git-url=[url] \
                         'Git URL (-u -s -e -o ignored if used)'")
                     .args(&u_e_s_o_args()))
-        .subcommand(SubCommand::with_name("checkout")
-                    .about("Create a local branch tracking an in-progress change")
-                    .args(&vec![for_arg(), patchset_arg()])
-                    .args_from_usage(
-                        "<change> 'Name of the feature branch to checkout'"))
+        .subcommand(checkout::clap_subcommand())
         .subcommand(SubCommand::with_name("diff")
                     .about("Display diff for a change")
                     .args(&vec![for_arg(), patchset_arg()])
@@ -418,10 +416,8 @@ fn handle_review_result(review: &ReviewResult,
 }
 
 fn clap_checkout(matches: &ArgMatches) -> Result<(), DeliveryError> {
-    let change = matches.value_of("change").unwrap();
-    let patchset = value_of(&matches, "patchset");
-    let pipeline = value_of(&matches, "for");
-    checkout(change, patchset, pipeline)
+    let checkout_opts = CheckoutClapOptions::new(matches);
+    checkout(checkout_opts.change, checkout_opts.patchset, checkout_opts.pipeline)
 }
 
 fn checkout(change: &str, patchset: &str, pipeline: &str) -> Result<(), DeliveryError> {
@@ -851,7 +847,8 @@ mod tests {
     use cli;
     use cli::api::ApiClapOptions;
     use cli::review::ReviewClapOptions;
-    use cli::{api, review};
+    use cli::checkout::CheckoutClapOptions;
+    use cli::{api, review,checkout};
 
     #[test]
     fn test_clap_api_options() {
@@ -885,5 +882,19 @@ mod tests {
         assert_eq!(review_opts.no_open, true);
         assert_eq!(review_opts.auto_bump, true);
         assert_eq!(review_opts.edit, true);
+    }
+
+    #[test]
+    fn test_clap_checkout_options() {
+        let build_version = format!("{} {}", cli::version(), cli::build_git_sha());
+        let app = cli::make_app(&build_version);
+        let matches = app.get_matches_from(vec!["delivery", "checkout", "change_the_force",
+                                           "-P", "p4tchs3t", "-f", "custom-pipe"]);
+        assert_eq!(Some(checkout::SUBCOMMAND_NAME), matches.subcommand_name());
+        let checkout_matches = matches.subcommand_matches(checkout::SUBCOMMAND_NAME).unwrap();
+        let checkout_opts = CheckoutClapOptions::new(&checkout_matches);
+        assert_eq!(checkout_opts.pipeline, "custom-pipe");
+        assert_eq!(checkout_opts.change, "change_the_force");
+        assert_eq!(checkout_opts.patchset, "p4tchs3t");
     }
 }
