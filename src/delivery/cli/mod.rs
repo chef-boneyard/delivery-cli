@@ -21,7 +21,7 @@ use job::workspace::{Workspace, Privilege};
 use utils::path_join_many::PathJoinMany;
 use http::{self, APIClient};
 use hyper::status::StatusCode;
-use clap::{Arg, App, SubCommand, ArgMatches};
+use clap::{Arg, App, ArgMatches};
 
 macro_rules! make_arg_vec {
     ( $( $x:expr ),* ) => {
@@ -58,6 +58,7 @@ mod init;
 mod job;
 mod spin;
 mod token;
+mod setup;
 
 fn u_e_s_o_args<'a>() -> Vec<Arg<'a, 'a>> {
     make_arg_vec![
@@ -142,10 +143,10 @@ pub fn run() {
             handle_spinner(&matches);
             clap_review(matches)
         },
-        Some("setup") => {
-            let matches = matches.subcommand_matches("setup").unwrap();
+        Some(setup::SUBCOMMAND_NAME) => {
+            let matches = matches.subcommand_matches(setup::SUBCOMMAND_NAME).unwrap();
             handle_spinner(&matches);
-            clap_setup(matches)
+            setup(&setup::SetupClapOptions::new(&matches))
         },
         Some(token::SUBCOMMAND_NAME) => {
             let matches = matches.subcommand_matches(token::SUBCOMMAND_NAME).unwrap();
@@ -188,10 +189,7 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a> {
         .subcommand(checkout::clap_subcommand())
         .subcommand(diff::clap_subcommand())
         .subcommand(init::clap_subcommand())
-        .subcommand(SubCommand::with_name("setup")
-                    .about("Write a config file capturing specified options")
-                    .args(&vec![for_arg(), config_path_arg()])
-                    .args(&u_e_s_o_args()))
+        .subcommand(setup::clap_subcommand())
         .subcommand(job::clap_subcommand())
         .subcommand(api::clap_subcommand())
         .subcommand(token::clap_subcommand())
@@ -222,30 +220,19 @@ fn load_config(path: &PathBuf) -> Result<Config, DeliveryError> {
     Ok(config)
 }
 
-fn clap_setup(matches: &ArgMatches) -> Result<(), DeliveryError> {
-    let user = value_of(&matches, "user");
-    let server = value_of(&matches, "server");
-    let ent = value_of(&matches, "ent");
-    let org = value_of(&matches, "org");
-    let path = value_of(&matches, "config-path");
-    let pipeline = value_of(&matches, "for");
-    setup(user, server, ent, org, path, pipeline)
-}
-
-fn setup(user: &str, server: &str, ent: &str,
-         org: &str, path: &str, pipeline: &str) -> Result<(), DeliveryError> {
+fn setup(opts: &setup::SetupClapOptions) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
-    let config_path = if path.is_empty() {
+    let config_path = if opts.path.is_empty() {
         cwd()
     } else {
-        PathBuf::from(path)
+        PathBuf::from(opts.path)
     };
     let mut config = try!(load_config(&config_path));
-    config = config.set_server(server)
-        .set_user(user)
-        .set_enterprise(ent)
-        .set_organization(org)
-        .set_pipeline(pipeline) ;
+    config = config.set_server(opts.server)
+        .set_user(opts.user)
+        .set_enterprise(opts.ent)
+        .set_organization(opts.org)
+        .set_pipeline(opts.pipeline) ;
     try!(config.write_file(&config_path));
     Ok(())
 }
@@ -730,7 +717,7 @@ fn value_of<'a>(matches: &'a ArgMatches, key: &str) -> &'a str {
 #[cfg(test)]
 mod tests {
     use cli;
-    use cli::{api, review, clone, checkout, diff, init, job, spin, token};
+    use cli::{api, review, clone, checkout, diff, init, job, spin, token, setup};
 
     #[test]
     fn test_clap_api_options() {
@@ -904,5 +891,23 @@ mod tests {
         assert_eq!(token_opts.ent, "fellowship");
         assert_eq!(token_opts.user, "gandalf");
         assert_eq!(token_opts.verify, true);
+    }
+
+    #[test]
+    fn test_clap_setup_options() {
+        let build_version = format!("{} {}", cli::version(), cli::build_git_sha());
+        let app = cli::make_app(&build_version);
+        let matches = app.get_matches_from(vec!["delivery", "setup", "-e", "e", "-u", "u",
+                                           "-s", "s", "--config-path", "/my/config/cli.toml",
+                                           "-f", "p", "-o", "good"]);
+        assert_eq!(Some("setup"), matches.subcommand_name());
+        let setup_matches = matches.subcommand_matches(setup::SUBCOMMAND_NAME).unwrap();
+        let setup_opts = setup::SetupClapOptions::new(&setup_matches);
+        assert_eq!(setup_opts.server, "s");
+        assert_eq!(setup_opts.org, "good");
+        assert_eq!(setup_opts.ent, "e");
+        assert_eq!(setup_opts.user, "u");
+        assert_eq!(setup_opts.pipeline, "p");
+        assert_eq!(setup_opts.path, "/my/config/cli.toml");
     }
 }
