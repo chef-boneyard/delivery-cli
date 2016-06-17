@@ -130,10 +130,10 @@ pub fn run() {
             handle_spinner(&matches);
             clap_init(matches)
         },
-        Some("job") => {
-            let matches = matches.subcommand_matches("job").unwrap();
+        Some(job::SUBCOMMAND_NAME) => {
+            let matches = matches.subcommand_matches(job::SUBCOMMAND_NAME).unwrap();
             handle_spinner(&matches);
-            clap_job(matches)
+            job(&job::JobClapOptions::new(&matches))
         },
         Some(review::SUBCOMMAND_NAME) => {
             let matches = matches.subcommand_matches(review::SUBCOMMAND_NAME).unwrap();
@@ -453,38 +453,9 @@ fn clone(project: &str, user: &str, server: &str, ent: &str, org: &str, git_url:
     Ok(())
 }
 
-fn clap_job(matches: &ArgMatches) -> Result<(), DeliveryError> {
-    let job_opts = job::JobClapOptions::new(&matches);
-    // TODO: Maybe we should just pass the JobClapOptions directly
-    // to the `job` fn below, instead of passing every single attr
-    job(job_opts.stage, job_opts.phases, job_opts.change, job_opts.pipeline,
-        job_opts.job_root, job_opts.project, job_opts.user, job_opts.server,
-        job_opts.ent, job_opts.org, job_opts.patchset, job_opts.change_id,
-        job_opts.git_url, job_opts.shasum, job_opts.branch,
-        &job_opts.skip_default, &job_opts.local, job_opts.docker_image)
-}
-
-fn job(stage: &str,
-       phase: &str,
-       change: &str,
-       pipeline: &str,
-       job_root: &str,
-       project: &str,
-       user: &str,
-       server: &str,
-       ent: &str,
-       org: &str,
-       patchset: &str,
-       change_id: &str,
-       git_url: &str,
-       shasum: &str,
-       branch: &str,
-       skip_default: &bool,
-       local: &bool,
-       docker_image: &str) -> Result<(), DeliveryError>
-{
+fn job(opts: &job::JobClapOptions) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
-    if !docker_image.is_empty() {
+    if !opts.docker_image.is_empty() {
         // The --docker flag was specified, let's do this!
         let cwd_path = cwd();
         let cwd_str = cwd_path.to_str().unwrap();
@@ -502,29 +473,29 @@ fn job(stage: &str,
             .arg("-w").arg(cwd_str)
             // TODO: get this via config
             .arg("--dns").arg("8.8.8.8")
-            .arg(docker_image)
-            .arg("delivery").arg("job").arg(stage).arg(phase);
+            .arg(opts.docker_image)
+            .arg("delivery").arg("job").arg(opts.stage).arg(opts.phases);
 
-        let flags_with_values = vec![("--change", change),
-                                     ("--for", pipeline),
-                                     ("--job-root", job_root),
-                                     ("--project", project),
-                                     ("--user", user),
-                                     ("--server", server),
-                                     ("--ent", ent),
-                                     ("--org", org),
-                                     ("--patchset", patchset),
-                                     ("--change_id", change_id),
-                                     ("--git-url", git_url),
-                                     ("--shasum", shasum),
-                                     ("--branch", branch)];
+        let flags_with_values = vec![("--change", opts.change),
+                                     ("--for", opts.pipeline),
+                                     ("--job-root", opts.job_root),
+                                     ("--project", opts.project),
+                                     ("--user", opts.user),
+                                     ("--server", opts.server),
+                                     ("--ent", opts.ent),
+                                     ("--org", opts.org),
+                                     ("--patchset", opts.patchset),
+                                     ("--change_id", opts.change_id),
+                                     ("--git-url", opts.git_url),
+                                     ("--shasum", opts.shasum),
+                                     ("--branch", opts.branch)];
 
         for (flag, value) in flags_with_values {
             maybe_add_flag_value(&mut docker, flag, value);
         }
 
-        let flags = vec![("--skip-default", skip_default),
-                         ("--local", local)];
+        let flags = vec![("--skip-default", &opts.skip_default),
+                         ("--local", &opts.local)];
 
         for (flag, value) in flags {
             maybe_add_flag(&mut docker, flag, value);
@@ -567,18 +538,18 @@ fn job(stage: &str,
     }
 
     let mut config = try!(load_config(&cwd()));
-    config = if project.is_empty() {
+    config = if opts.project.is_empty() {
         let filename = String::from(cwd().file_name().unwrap().to_str().unwrap());
         config.set_project(&filename)
     } else {
-        config.set_project(project)
+        config.set_project(opts.project)
     };
 
-    config = config.set_pipeline(pipeline)
-        .set_user(with_default(user, "you", local))
-        .set_server(with_default(server, "localhost", local))
-        .set_enterprise(with_default(ent, "local", local))
-        .set_organization(with_default(org, "workstation", local));
+    config = config.set_pipeline(opts.pipeline)
+        .set_user(with_default(opts.user, "you", &opts.local))
+        .set_server(with_default(opts.server, "localhost", &opts.local))
+        .set_enterprise(with_default(opts.ent, "local", &opts.local))
+        .set_organization(with_default(opts.org, "workstation", &opts.local));
     let p = try!(config.project());
     let s = try!(config.server());
     let e = try!(config.enterprise());
@@ -586,9 +557,9 @@ fn job(stage: &str,
     let pi = try!(config.pipeline());
     say("white", "Starting job for ");
     say("green", &format!("{}", &p));
-    say("yellow", &format!(" {}", stage));
-    sayln("magenta", &format!(" {}", phase));
-    let phases: Vec<&str> = phase.split(" ").collect();
+    say("yellow", &format!(" {}", opts.stage));
+    sayln("magenta", &format!(" {}", opts.phases));
+    let phases: Vec<&str> = opts.phases.split(" ").collect();
     let phase_dir = phases.join("-");
     let ws_path = match env::home_dir() {
         Some(path) => if privileged_process() {
@@ -599,26 +570,26 @@ fn job(stage: &str,
         None => return Err(DeliveryError{ kind: Kind::NoHomedir, detail: None })
     };
     debug!("Workspace Path: {}", ws_path.display());
-    let job_root_path = if job_root.is_empty() {
-        let phase_path: &[&str] = &[&s[..], &e, &o, &p, &pi, stage, &phase_dir];
+    let job_root_path = if opts.job_root.is_empty() {
+        let phase_path: &[&str] = &[&s[..], &e, &o, &p, &pi, opts.stage, &phase_dir];
         ws_path.join_many(phase_path)
     } else {
-        PathBuf::from(job_root)
+        PathBuf::from(opts.job_root)
     };
     let ws = Workspace::new(&job_root_path);
     sayln("white", &format!("Creating workspace in {}", job_root_path.to_string_lossy()));
     try!(ws.build());
     say("white", "Cloning repository, and merging");
     let mut local_change = false;
-    let patch = if patchset.is_empty() { "latest" } else { patchset };
-    let c = if ! branch.is_empty() {
-        say("yellow", &format!(" {}", &branch));
-        String::from(branch)
-    } else if ! change.is_empty() {
-        say("yellow", &format!(" {}", &change));
-        format!("_reviews/{}/{}/{}", pi, change, patch)
-    } else if ! shasum.is_empty() {
-        say("yellow", &format!(" {}", shasum));
+    let patch = if opts.patchset.is_empty() { "latest" } else { opts.patchset };
+    let c = if ! opts.branch.is_empty() {
+        say("yellow", &format!(" {}", &opts.branch));
+        String::from(opts.branch)
+    } else if ! opts.change.is_empty() {
+        say("yellow", &format!(" {}", &opts.change));
+        format!("_reviews/{}/{}/{}", pi, opts.change, patch)
+    } else if ! opts.shasum.is_empty() {
+        say("yellow", &format!(" {}", opts.shasum));
         String::new()
     } else {
         local_change = true;
@@ -628,16 +599,16 @@ fn job(stage: &str,
     };
     say("white", " to ");
     sayln("magenta", &pi);
-    let clone_url = if git_url.is_empty() {
+    let clone_url = if opts.git_url.is_empty() {
         if local_change {
             cwd().into_os_string().to_string_lossy().into_owned()
         } else {
             try!(config.delivery_git_ssh_url())
         }
     } else {
-        String::from(git_url)
+        String::from(opts.git_url)
     };
-    try!(ws.setup_repo_for_change(&clone_url, &c, &pi, shasum));
+    try!(ws.setup_repo_for_change(&clone_url, &c, &pi, opts.shasum));
     sayln("white", "Configuring the job");
     // This can be optimized out, almost certainly
     try!(utils::remove_recursive(&ws.chef.join("build_cookbook")));
@@ -646,12 +617,12 @@ fn job(stage: &str,
         organization: o.to_string(),
         project: p.to_string(),
         pipeline: pi.to_string(),
-        stage: stage.to_string(),
-        phase: phase.to_string(),
+        stage: opts.stage.to_string(),
+        phase: opts.phases.to_string(),
         git_url: clone_url.to_string(),
-        sha: shasum.to_string(),
+        sha: opts.shasum.to_string(),
         patchset_branch: c.to_string(),
-        change_id: change_id.to_string(),
+        change_id: opts.change_id.to_string(),
         patchset_number: patch.to_string()
     };
     try!(ws.setup_chef_for_job(&config, change, &ws_path));
@@ -663,7 +634,7 @@ fn job(stage: &str,
         Privilege::NoDrop
     };
 
-    if privileged_process() && !skip_default {
+    if privileged_process() && !&opts.skip_default {
         sayln("yellow", "Setting up the builder");
         try!(ws.run_job("default", &Privilege::NoDrop, &local_change));
     }
@@ -674,7 +645,7 @@ fn job(stage: &str,
         "phase"
     };
     sayln("magenta", &format!("Running {} {}", phase_msg, phases.join(", ")));
-    try!(ws.run_job(phase, &privilege_drop, &local_change));
+    try!(ws.run_job(opts.phases, &privilege_drop, &local_change));
     Ok(())
 }
 
