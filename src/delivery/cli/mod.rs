@@ -7,9 +7,9 @@ use std::path::PathBuf;
 use std::io::prelude::*;
 use std::time::Duration;
 use std;
-use token;
 use project;
 use cookbook;
+use token::TokenStore;
 use utils::{self, cwd, privileged_process};
 use utils::say::{self, sayln, say};
 use errors::{DeliveryError, Kind};
@@ -21,13 +21,7 @@ use job::workspace::{Workspace, Privilege};
 use utils::path_join_many::PathJoinMany;
 use http::{self, APIClient};
 use hyper::status::StatusCode;
-use clap::{Arg, App, SubCommand, ArgMatches};
-mod api;
-mod review;
-mod checkout;
-mod clone;
-mod diff;
-mod init;
+use clap::{Arg, App, ArgMatches};
 
 macro_rules! make_arg_vec {
     ( $( $x:expr ),* ) => {
@@ -48,6 +42,23 @@ macro_rules! fn_arg {
         }
     )
 }
+
+macro_rules! validate {
+    ($config:ident, $value:ident) => (
+        try!($config.$value());
+    )
+}
+
+mod api;
+mod review;
+mod checkout;
+mod clone;
+mod diff;
+mod init;
+mod job;
+mod spin;
+mod token;
+mod setup;
 
 fn u_e_s_o_args<'a>() -> Vec<Arg<'a, 'a>> {
     make_arg_vec![
@@ -91,12 +102,6 @@ fn_arg!(no_spinner_arg, "--no-spinner 'Disable the spinner'");
 
 fn_arg!(non_interactive_arg, "--non-interactive 'Disable cli interactions'");
 
-macro_rules! validate {
-    ($config:ident, $value:ident) => (
-        try!($config.$value());
-    )
-}
-
 pub fn run() {
     let build_version = format!("{} {}", version(), build_git_sha());
 
@@ -107,53 +112,55 @@ pub fn run() {
         Some(api::SUBCOMMAND_NAME) => {
             let matches = matches.subcommand_matches(api::SUBCOMMAND_NAME).unwrap();
             handle_spinner(&matches);
-            clap_api_req(matches)
+            api_req(&api::ApiClapOptions::new(matches))
         },
         Some(checkout::SUBCOMMAND_NAME) => {
             let matches = matches.subcommand_matches(checkout::SUBCOMMAND_NAME).unwrap();
             handle_spinner(&matches);
-            clap_checkout(matches)
+            checkout(&checkout::CheckoutClapOptions::new(matches))
         },
         Some(clone::SUBCOMMAND_NAME) => {
             let matches = matches.subcommand_matches(clone::SUBCOMMAND_NAME).unwrap();
             handle_spinner(&matches);
-            clap_clone(matches)
+            clone(&clone::CloneClapOptions::new(matches))
         },
         Some(diff::SUBCOMMAND_NAME) => {
             let matches = matches.subcommand_matches(diff::SUBCOMMAND_NAME).unwrap();
-            clap_diff(matches)
+            diff(&diff::DiffClapOptions::new(&matches))
         },
         Some(init::SUBCOMMAND_NAME) => {
             let matches = matches.subcommand_matches(init::SUBCOMMAND_NAME).unwrap();
             handle_spinner(&matches);
             clap_init(matches)
         },
-        Some("job") => {
-            let matches = matches.subcommand_matches("job").unwrap();
+        Some(job::SUBCOMMAND_NAME) => {
+            let matches = matches.subcommand_matches(job::SUBCOMMAND_NAME).unwrap();
             handle_spinner(&matches);
-            clap_job(matches)
+            job(&job::JobClapOptions::new(&matches))
         },
         Some(review::SUBCOMMAND_NAME) => {
             let matches = matches.subcommand_matches(review::SUBCOMMAND_NAME).unwrap();
             handle_spinner(&matches);
-            clap_review(matches)
+            let review_opts = review::ReviewClapOptions::new(matches);
+            review(review_opts.pipeline, &review_opts.auto_bump,
+                   &review_opts.no_open, &review_opts.edit)
         },
-        Some("setup") => {
-            let matches = matches.subcommand_matches("setup").unwrap();
+        Some(setup::SUBCOMMAND_NAME) => {
+            let matches = matches.subcommand_matches(setup::SUBCOMMAND_NAME).unwrap();
             handle_spinner(&matches);
-            clap_setup(matches)
+            setup(&setup::SetupClapOptions::new(&matches))
         },
-        Some("token") => {
-            let matches = matches.subcommand_matches("token").unwrap();
+        Some(token::SUBCOMMAND_NAME) => {
+            let matches = matches.subcommand_matches(token::SUBCOMMAND_NAME).unwrap();
             handle_spinner(&matches);
-            clap_token(matches)
+            token(&token::TokenClapOptions::new(&matches))
         },
-        Some("spin") => {
-            let matches = matches.subcommand_matches("spin").unwrap();
+        Some(spin::SUBCOMMAND_NAME) => {
+            let matches = matches.subcommand_matches(spin::SUBCOMMAND_NAME).unwrap();
             handle_spinner(&matches);
-            let tsecs = value_of(&matches, "TIME").parse::<u64>().unwrap();
+            let spin_opts = spin::SpinClapOptions::new(&matches);
             let spinner = utils::say::Spinner::start();
-            let sleep_time = Duration::from_secs(tsecs);
+            let sleep_time = Duration::from_secs(spin_opts.time);
             std::thread::sleep(sleep_time);
             spinner.stop();
             handle_spinner(&matches);
@@ -184,39 +191,11 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a> {
         .subcommand(checkout::clap_subcommand())
         .subcommand(diff::clap_subcommand())
         .subcommand(init::clap_subcommand())
-        .subcommand(SubCommand::with_name("setup")
-                    .about("Write a config file capturing specified options")
-                    .args(&vec![for_arg(), config_path_arg()])
-                    .args(&u_e_s_o_args()))
-        .subcommand(SubCommand::with_name("job")
-                    .about("Run one or more phase jobs")
-                    .args(&vec![patchset_arg(), project_arg(), for_arg(),
-                                local_arg()])
-                    .args(&make_arg_vec![
-                        "-j --job-root=[root] 'Path to the job root'",
-                        "-g --git-url=[url] 'Git URL (-u -s -e -o ignored if used)'",
-                        "-C --change=[change] 'Feature branch name'",
-                        "-b --branch=[branch] 'Branch to merge'",
-                        "-S --shasum=[gitsha] 'Git SHA of change'",
-                        "--change-id=[id] 'The change ID'",
-                        "--skip-default 'skip default'",
-                        "--docker=[image] 'Docker image'"])
-                    .args_from_usage("<stage> 'Stage for the run'
-                                      <phases> 'One or more phases'")
-                    .args(&u_e_s_o_args()))
+        .subcommand(setup::clap_subcommand())
+        .subcommand(job::clap_subcommand())
         .subcommand(api::clap_subcommand())
-        .subcommand(SubCommand::with_name("token")
-                    .about("Create a local API token")
-                    .args(&make_arg_vec![
-                        "-u --user=[user] 'User name for Delivery authentication'",
-                        "-e --ent=[ent] 'The enterprise in which the project lives'",
-                        "--verify 'Verify the Token has expired'",
-                        "-s --server=[server] 'The Delivery server address'"])
-                    .args_from_usage(
-                        "--api-port=[api-port] 'Port for Delivery server'"))
-        .subcommand(SubCommand::with_name("spin")
-                    .about("test the spinner")
-                    .args_from_usage("-t --time=[TIME] 'How many seconds to spin'"))
+        .subcommand(token::clap_subcommand())
+        .subcommand(spin::clap_subcommand())
 }
 
 fn handle_spinner(matches: &ArgMatches) {
@@ -243,30 +222,19 @@ fn load_config(path: &PathBuf) -> Result<Config, DeliveryError> {
     Ok(config)
 }
 
-fn clap_setup(matches: &ArgMatches) -> Result<(), DeliveryError> {
-    let user = value_of(&matches, "user");
-    let server = value_of(&matches, "server");
-    let ent = value_of(&matches, "ent");
-    let org = value_of(&matches, "org");
-    let path = value_of(&matches, "config-path");
-    let pipeline = value_of(&matches, "for");
-    setup(user, server, ent, org, path, pipeline)
-}
-
-fn setup(user: &str, server: &str, ent: &str,
-         org: &str, path: &str, pipeline: &str) -> Result<(), DeliveryError> {
+fn setup(opts: &setup::SetupClapOptions) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
-    let config_path = if path.is_empty() {
+    let config_path = if opts.path.is_empty() {
         cwd()
     } else {
-        PathBuf::from(path)
+        PathBuf::from(opts.path)
     };
     let mut config = try!(load_config(&config_path));
-    config = config.set_server(server)
-        .set_user(user)
-        .set_enterprise(ent)
-        .set_organization(org)
-        .set_pipeline(pipeline) ;
+    config = config.set_server(opts.server)
+        .set_user(opts.user)
+        .set_enterprise(opts.ent)
+        .set_organization(opts.org)
+        .set_pipeline(opts.pipeline) ;
     try!(config.write_file(&config_path));
     Ok(())
 }
@@ -304,12 +272,6 @@ fn clap_init(matches: &ArgMatches) -> Result<(), DeliveryError> {
                                                          &branch, true)));
     }
     project::init(config, &init.no_open, &init.skip_build_cookbook, &init.local, scp)
-}
-
-fn clap_review(matches: &ArgMatches) -> Result<(), DeliveryError> {
-    let review_opts = review::ReviewClapOptions::new(matches);
-    review(review_opts.pipeline, &review_opts.auto_bump,
-           &review_opts.no_open, &review_opts.edit)
 }
 
 pub fn review(for_pipeline: &str, auto_bump: &bool,
@@ -380,22 +342,17 @@ fn handle_review_result(review: &ReviewResult,
     Ok(())
 }
 
-fn clap_checkout(matches: &ArgMatches) -> Result<(), DeliveryError> {
-    let checkout_opts = checkout::CheckoutClapOptions::new(matches);
-    checkout(checkout_opts.change, checkout_opts.patchset, checkout_opts.pipeline)
-}
-
-fn checkout(change: &str, patchset: &str, pipeline: &str) -> Result<(), DeliveryError> {
+fn checkout(opts: &checkout::CheckoutClapOptions) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
-    config = config.set_pipeline(pipeline);
+    config = config.set_pipeline(opts.pipeline);
     let target = validate!(config, pipeline);
     say("white", "Checking out ");
-    say("yellow", change);
+    say("yellow", opts.change);
     say("white", " targeted for pipeline ");
     say("magenta", &target);
 
-    let pset = match patchset {
+    let pset = match opts.patchset {
         "" | "latest" => {
             sayln("white", " tracking latest changes");
             "latest"
@@ -406,117 +363,58 @@ fn checkout(change: &str, patchset: &str, pipeline: &str) -> Result<(), Delivery
             p
         }
     };
-    try!(git::checkout_review(change, pset, &target));
+    try!(git::checkout_review(opts.change, pset, &target));
     Ok(())
 }
 
-fn clap_diff(matches: &ArgMatches) ->  Result<(), DeliveryError> {
-    let diff_opts = diff::DiffClapOptions::new(&matches);
-    diff(diff_opts.change, diff_opts.patchset, diff_opts.pipeline, &diff_opts.local)
-}
-
-fn diff(change: &str, patchset: &str, pipeline: &str, local: &bool) -> Result<(), DeliveryError> {
+fn diff(opts: &diff::DiffClapOptions) ->  Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
-    config = config.set_pipeline(pipeline);
+    config = config.set_pipeline(opts.pipeline);
     let target = validate!(config, pipeline);
     say("white", "Showing diff for ");
-    say("yellow", change);
+    say("yellow", opts.change);
     say("white", " targeted for pipeline ");
     say("magenta", &target);
 
-    if patchset == "latest" {
+    if opts.patchset == "latest" {
         sayln("white", " latest patchset");
     } else {
         say("white", " at patchset ");
-        sayln("yellow", patchset);
+        sayln("yellow", opts.patchset);
     }
-    try!(git::diff(change, patchset, &target, local));
+    try!(git::diff(opts.change, opts.patchset, &target, &opts.local));
     Ok(())
 }
 
-fn clap_clone(matches: &ArgMatches) -> Result<(), DeliveryError> {
-    let clone_opts = clone::CloneClapOptions::new(matches);
-    clone(clone_opts.project, clone_opts.user, clone_opts.server,
-          clone_opts.ent, clone_opts.org, clone_opts.git_url)
-}
-
-fn clone(project: &str, user: &str, server: &str, ent: &str, org: &str, git_url: &str) -> Result<(), DeliveryError> {
+fn clone(opts: &clone::CloneClapOptions) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
-    config = config.set_user(user)
-        .set_server(server)
-        .set_enterprise(ent)
-        .set_organization(org)
-        .set_project(project);
+    config = config.set_user(opts.user)
+        .set_server(opts.server)
+        .set_enterprise(opts.ent)
+        .set_organization(opts.org)
+        .set_project(opts.project);
     say("white", "Cloning ");
     let delivery_url = try!(config.delivery_git_ssh_url());
-    let clone_url = if git_url.is_empty() {
+    let clone_url = if opts.git_url.is_empty() {
         delivery_url.clone()
     } else {
-        String::from(git_url)
+        String::from(opts.git_url)
     };
     say("yellow", &clone_url);
     say("white", " to ");
-    sayln("magenta", &format!("{}", project));
-    try!(git::clone(project, &clone_url));
-    let project_root = cwd().join(project);
+    sayln("magenta", &format!("{}", opts.project));
+    try!(git::clone(opts.project, &clone_url));
+    let project_root = cwd().join(opts.project);
     try!(git::config_repo(&delivery_url,
                           &project_root));
     Ok(())
 }
 
-fn clap_job(matches: &ArgMatches) -> Result<(), DeliveryError> {
-    let stage = matches.value_of("stage").unwrap();
-    let phases = matches.value_of("phases").unwrap();
-
-    let change = value_of(&matches, "change");
-    let pipeline = value_of(&matches, "for");
-    let job_root = value_of(&matches, "job-root");
-    let proj = value_of(&matches, "project");
-
-    let user = value_of(&matches, "user");
-    let server = value_of(&matches, "server");
-    let ent = value_of(&matches, "ent");
-    let org = value_of(&matches, "org");
-
-    let patchset = value_of(&matches, "patchset");
-    let change_id = value_of(&matches, "change-id");
-    let git_url = value_of(&matches, "git-url");
-    let shasum = value_of(&matches, "shasum");
-    let branch = value_of(&matches, "branch");
-
-    let skip_default = matches.is_present("skip-default");
-    let local = matches.is_present("local");
-    let docker_image = value_of(&matches, "docker");
-
-    job(stage, phases, change, pipeline, job_root,
-        proj, user, server, ent, org, patchset,
-        change_id, git_url, shasum, branch,
-        &skip_default, &local, docker_image)
-}
-
-fn job(stage: &str,
-       phase: &str,
-       change: &str,
-       pipeline: &str,
-       job_root: &str,
-       project: &str,
-       user: &str,
-       server: &str,
-       ent: &str,
-       org: &str,
-       patchset: &str,
-       change_id: &str,
-       git_url: &str,
-       shasum: &str,
-       branch: &str,
-       skip_default: &bool,
-       local: &bool,
-       docker_image: &str) -> Result<(), DeliveryError>
-{
+fn job(opts: &job::JobClapOptions) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
-    if !docker_image.is_empty() {
+    if !opts.docker_image.is_empty() {
         // The --docker flag was specified, let's do this!
         let cwd_path = cwd();
         let cwd_str = cwd_path.to_str().unwrap();
@@ -534,29 +432,29 @@ fn job(stage: &str,
             .arg("-w").arg(cwd_str)
             // TODO: get this via config
             .arg("--dns").arg("8.8.8.8")
-            .arg(docker_image)
-            .arg("delivery").arg("job").arg(stage).arg(phase);
+            .arg(opts.docker_image)
+            .arg("delivery").arg("job").arg(opts.stage).arg(opts.phases);
 
-        let flags_with_values = vec![("--change", change),
-                                     ("--for", pipeline),
-                                     ("--job-root", job_root),
-                                     ("--project", project),
-                                     ("--user", user),
-                                     ("--server", server),
-                                     ("--ent", ent),
-                                     ("--org", org),
-                                     ("--patchset", patchset),
-                                     ("--change_id", change_id),
-                                     ("--git-url", git_url),
-                                     ("--shasum", shasum),
-                                     ("--branch", branch)];
+        let flags_with_values = vec![("--change", opts.change),
+                                     ("--for", opts.pipeline),
+                                     ("--job-root", opts.job_root),
+                                     ("--project", opts.project),
+                                     ("--user", opts.user),
+                                     ("--server", opts.server),
+                                     ("--ent", opts.ent),
+                                     ("--org", opts.org),
+                                     ("--patchset", opts.patchset),
+                                     ("--change_id", opts.change_id),
+                                     ("--git-url", opts.git_url),
+                                     ("--shasum", opts.shasum),
+                                     ("--branch", opts.branch)];
 
         for (flag, value) in flags_with_values {
             maybe_add_flag_value(&mut docker, flag, value);
         }
 
-        let flags = vec![("--skip-default", skip_default),
-                         ("--local", local)];
+        let flags = vec![("--skip-default", &opts.skip_default),
+                         ("--local", &opts.local)];
 
         for (flag, value) in flags {
             maybe_add_flag(&mut docker, flag, value);
@@ -599,18 +497,18 @@ fn job(stage: &str,
     }
 
     let mut config = try!(load_config(&cwd()));
-    config = if project.is_empty() {
+    config = if opts.project.is_empty() {
         let filename = String::from(cwd().file_name().unwrap().to_str().unwrap());
         config.set_project(&filename)
     } else {
-        config.set_project(project)
+        config.set_project(opts.project)
     };
 
-    config = config.set_pipeline(pipeline)
-        .set_user(with_default(user, "you", local))
-        .set_server(with_default(server, "localhost", local))
-        .set_enterprise(with_default(ent, "local", local))
-        .set_organization(with_default(org, "workstation", local));
+    config = config.set_pipeline(opts.pipeline)
+        .set_user(with_default(opts.user, "you", &opts.local))
+        .set_server(with_default(opts.server, "localhost", &opts.local))
+        .set_enterprise(with_default(opts.ent, "local", &opts.local))
+        .set_organization(with_default(opts.org, "workstation", &opts.local));
     let p = try!(config.project());
     let s = try!(config.server());
     let e = try!(config.enterprise());
@@ -618,9 +516,9 @@ fn job(stage: &str,
     let pi = try!(config.pipeline());
     say("white", "Starting job for ");
     say("green", &format!("{}", &p));
-    say("yellow", &format!(" {}", stage));
-    sayln("magenta", &format!(" {}", phase));
-    let phases: Vec<&str> = phase.split(" ").collect();
+    say("yellow", &format!(" {}", opts.stage));
+    sayln("magenta", &format!(" {}", opts.phases));
+    let phases: Vec<&str> = opts.phases.split(" ").collect();
     let phase_dir = phases.join("-");
     let ws_path = match env::home_dir() {
         Some(path) => if privileged_process() {
@@ -631,26 +529,26 @@ fn job(stage: &str,
         None => return Err(DeliveryError{ kind: Kind::NoHomedir, detail: None })
     };
     debug!("Workspace Path: {}", ws_path.display());
-    let job_root_path = if job_root.is_empty() {
-        let phase_path: &[&str] = &[&s[..], &e, &o, &p, &pi, stage, &phase_dir];
+    let job_root_path = if opts.job_root.is_empty() {
+        let phase_path: &[&str] = &[&s[..], &e, &o, &p, &pi, opts.stage, &phase_dir];
         ws_path.join_many(phase_path)
     } else {
-        PathBuf::from(job_root)
+        PathBuf::from(opts.job_root)
     };
     let ws = Workspace::new(&job_root_path);
     sayln("white", &format!("Creating workspace in {}", job_root_path.to_string_lossy()));
     try!(ws.build());
     say("white", "Cloning repository, and merging");
     let mut local_change = false;
-    let patch = if patchset.is_empty() { "latest" } else { patchset };
-    let c = if ! branch.is_empty() {
-        say("yellow", &format!(" {}", &branch));
-        String::from(branch)
-    } else if ! change.is_empty() {
-        say("yellow", &format!(" {}", &change));
-        format!("_reviews/{}/{}/{}", pi, change, patch)
-    } else if ! shasum.is_empty() {
-        say("yellow", &format!(" {}", shasum));
+    let patch = if opts.patchset.is_empty() { "latest" } else { opts.patchset };
+    let c = if ! opts.branch.is_empty() {
+        say("yellow", &format!(" {}", &opts.branch));
+        String::from(opts.branch)
+    } else if ! opts.change.is_empty() {
+        say("yellow", &format!(" {}", &opts.change));
+        format!("_reviews/{}/{}/{}", pi, opts.change, patch)
+    } else if ! opts.shasum.is_empty() {
+        say("yellow", &format!(" {}", opts.shasum));
         String::new()
     } else {
         local_change = true;
@@ -660,16 +558,16 @@ fn job(stage: &str,
     };
     say("white", " to ");
     sayln("magenta", &pi);
-    let clone_url = if git_url.is_empty() {
+    let clone_url = if opts.git_url.is_empty() {
         if local_change {
             cwd().into_os_string().to_string_lossy().into_owned()
         } else {
             try!(config.delivery_git_ssh_url())
         }
     } else {
-        String::from(git_url)
+        String::from(opts.git_url)
     };
-    try!(ws.setup_repo_for_change(&clone_url, &c, &pi, shasum));
+    try!(ws.setup_repo_for_change(&clone_url, &c, &pi, opts.shasum));
     sayln("white", "Configuring the job");
     // This can be optimized out, almost certainly
     try!(utils::remove_recursive(&ws.chef.join("build_cookbook")));
@@ -678,12 +576,12 @@ fn job(stage: &str,
         organization: o.to_string(),
         project: p.to_string(),
         pipeline: pi.to_string(),
-        stage: stage.to_string(),
-        phase: phase.to_string(),
+        stage: opts.stage.to_string(),
+        phase: opts.phases.to_string(),
         git_url: clone_url.to_string(),
-        sha: shasum.to_string(),
+        sha: opts.shasum.to_string(),
         patchset_branch: c.to_string(),
-        change_id: change_id.to_string(),
+        change_id: opts.change_id.to_string(),
         patchset_number: patch.to_string()
     };
     try!(ws.setup_chef_for_job(&config, change, &ws_path));
@@ -695,7 +593,7 @@ fn job(stage: &str,
         Privilege::NoDrop
     };
 
-    if privileged_process() && !skip_default {
+    if privileged_process() && !&opts.skip_default {
         sayln("yellow", "Setting up the builder");
         try!(ws.run_job("default", &Privilege::NoDrop, &local_change));
     }
@@ -706,7 +604,7 @@ fn job(stage: &str,
         "phase"
     };
     sayln("magenta", &format!("Running {} {}", phase_msg, phases.join(", ")));
-    try!(ws.run_job(phase, &privilege_drop, &local_change));
+    try!(ws.run_job(opts.phases, &privilege_drop, &local_change));
     Ok(())
 }
 
@@ -730,22 +628,17 @@ fn with_default<'a>(val: &'a str, default: &'a str, local: &bool) -> &'a str {
     }
 }
 
-fn clap_token(matches: &ArgMatches) -> Result<(), DeliveryError> {
-    let server = value_of(&matches, "server");
-    let port = value_of(&matches, "api-port");
-    let ent = value_of(&matches, "ent");
-    let user = value_of(&matches, "user");
-    let verify = matches.is_present("verify");
+fn token(opts: &token::TokenClapOptions) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
-    config = config.set_server(server)
-        .set_api_port(port)
-        .set_enterprise(ent)
-        .set_user(user);
-    if verify {
-        try!(token::TokenStore::verify_token(&config));
+    config = config.set_server(opts.server)
+        .set_api_port(opts.port)
+        .set_enterprise(opts.ent)
+        .set_user(opts.user);
+    if opts.verify {
+        try!(TokenStore::verify_token(&config));
     } else {
-        try!(token::TokenStore::request_token(&config));
+        try!(TokenStore::request_token(&config));
     }
     Ok(())
 }
@@ -760,28 +653,18 @@ fn build_git_sha() -> String {
     format!("({})", sha)
 }
 
-fn clap_api_req(matches: &ArgMatches) -> Result<(), DeliveryError> {
-    let api_opts = api::ApiClapOptions::new(matches);
-    api_req(
-        api_opts.method, api_opts.path, api_opts.data,
-        api_opts.server, api_opts.api_port, api_opts.ent,
-        api_opts.user
-    )
-}
-
-fn api_req(method: &str, path: &str, data: &str,
-           server: &str, api_port: &str, ent: &str, user: &str) -> Result<(), DeliveryError> {
+fn api_req(opts: &api::ApiClapOptions) -> Result<(), DeliveryError> {
     let mut config = try!(Config::load_config(&cwd()));
-    config = config.set_user(user)
-        .set_server(server)
-        .set_api_port(api_port)
-        .set_enterprise(ent);
+    config = config.set_user(opts.user)
+        .set_server(opts.server)
+        .set_api_port(opts.api_port)
+        .set_enterprise(opts.ent);
     let client = try!(APIClient::from_config(&config));
-    let mut result = match method {
-        "get" => try!(client.get(path)),
-        "post" => try!(client.post(path, data)),
-        "put" => try!(client.put(path, data)),
-        "delete" => try!(client.delete(path)),
+    let mut result = match opts.method {
+        "get" => try!(client.get(opts.path)),
+        "post" => try!(client.post(opts.path, opts.data)),
+        "put" => try!(client.put(opts.path, opts.data)),
+        "delete" => try!(client.delete(opts.path)),
         _ => return Err(DeliveryError{ kind: Kind::UnsupportedHttpMethod,
                                        detail: None })
     };
@@ -803,7 +686,7 @@ fn value_of<'a>(matches: &'a ArgMatches, key: &str) -> &'a str {
 #[cfg(test)]
 mod tests {
     use cli;
-    use cli::{api, review, clone, checkout, diff, init};
+    use cli::{api, review, clone, checkout, diff, init, job, spin, token, setup};
 
     #[test]
     fn test_clap_api_options() {
@@ -891,7 +774,7 @@ mod tests {
     fn test_clap_init_options() {
         let build_version = format!("{} {}", cli::version(), cli::build_git_sha());
         let app = cli::make_app(&build_version);
-        let init_cmd = vec!["delivery", "init", "-l", "-p", "frijol", "-u", "cocha",
+        let init_cmd = vec!["delivery", "init", "-l", "-p", "frijol", "-u", "concha",
                         "-s", "cocina.central.com", "-e", "mexicana", "-o", "oaxaca",
                         "-f", "postres", "-c", "receta.json", "--generator", "/original",
                         "--github", "git-mx", "--bitbucket", "bit-mx", "-r", "antojitos",
@@ -901,7 +784,7 @@ mod tests {
         let init_matches = matches.subcommand_matches(init::SUBCOMMAND_NAME).unwrap();
         let init_opts = init::InitClapOptions::new(&init_matches);
         assert_eq!(init_opts.pipeline, "postres");
-        assert_eq!(init_opts.user, "cocha");
+        assert_eq!(init_opts.user, "concha");
         assert_eq!(init_opts.server, "cocina.central.com");
         assert_eq!(init_opts.ent, "mexicana");
         assert_eq!(init_opts.org, "oaxaca");
@@ -916,5 +799,84 @@ mod tests {
         assert_eq!(init_opts.no_open, true);
         assert_eq!(init_opts.skip_build_cookbook, true);
         assert_eq!(init_opts.local, true);
+    }
+
+    #[test]
+    fn test_clap_job_options() {
+        let build_version = format!("{} {}", cli::version(), cli::build_git_sha());
+        let app = cli::make_app(&build_version);
+        let job_cmd = vec!["delivery", "job", "anime", "ninja", "-C", "rasengan",
+                        "-u", "naruto", "-s", "manga.com", "-e", "shippuden", "-o",
+                        "akatsuki", "-f", "sharingan", "-j", "/path", "-p", "uchiha",
+                        "-P", "latest", "--change-id", "super-cool-id", "-g", "powerful-url",
+                        "-S", "SHA", "-b", "evil", "--skip-default", "-l", "--docker", "uzumaki"];
+        let matches = app.get_matches_from(job_cmd);
+        assert_eq!(Some("job"), matches.subcommand_name());
+        let job_matches = matches.subcommand_matches(job::SUBCOMMAND_NAME).unwrap();
+        let job_opts = job::JobClapOptions::new(&job_matches);
+        assert_eq!(job_opts.pipeline, "sharingan");
+        assert_eq!(job_opts.stage, "anime");
+        assert_eq!(job_opts.phases, "ninja");
+        assert_eq!(job_opts.user, "naruto");
+        assert_eq!(job_opts.server, "manga.com");
+        assert_eq!(job_opts.change, "rasengan");
+        assert_eq!(job_opts.ent, "shippuden");
+        assert_eq!(job_opts.org, "akatsuki");
+        assert_eq!(job_opts.job_root, "/path");
+        assert_eq!(job_opts.project, "uchiha");
+        assert_eq!(job_opts.patchset, "latest");
+        assert_eq!(job_opts.change_id, "super-cool-id");
+        assert_eq!(job_opts.git_url, "powerful-url");
+        assert_eq!(job_opts.shasum, "SHA");
+        assert_eq!(job_opts.branch, "evil");
+        assert_eq!(job_opts.docker_image, "uzumaki");
+        assert_eq!(job_opts.local, true);
+        assert_eq!(job_opts.skip_default, true);
+    }
+
+    #[test]
+    fn test_clap_spin_options() {
+        let build_version = format!("{} {}", cli::version(), cli::build_git_sha());
+        let app = cli::make_app(&build_version);
+        let matches = app.get_matches_from(vec!["delivery", "spin"]);
+        assert_eq!(Some("spin"), matches.subcommand_name());
+        let spin_matches = matches.subcommand_matches(spin::SUBCOMMAND_NAME).unwrap();
+        let spin_opts = spin::SpinClapOptions::new(&spin_matches);
+        assert_eq!(spin_opts.time, 5);
+    }
+
+    #[test]
+    fn test_clap_token_options() {
+        let build_version = format!("{} {}", cli::version(), cli::build_git_sha());
+        let app = cli::make_app(&build_version);
+        let matches = app.get_matches_from(vec!["delivery", "token", "-e", "fellowship",
+                                           "-u", "gandalf", "-s", "lord.of.the.rings.com",
+                                           "--api-port", "1111", "--verify"]);
+        assert_eq!(Some("token"), matches.subcommand_name());
+        let token_matches = matches.subcommand_matches(token::SUBCOMMAND_NAME).unwrap();
+        let token_opts = token::TokenClapOptions::new(&token_matches);
+        assert_eq!(token_opts.server, "lord.of.the.rings.com");
+        assert_eq!(token_opts.port, "1111");
+        assert_eq!(token_opts.ent, "fellowship");
+        assert_eq!(token_opts.user, "gandalf");
+        assert_eq!(token_opts.verify, true);
+    }
+
+    #[test]
+    fn test_clap_setup_options() {
+        let build_version = format!("{} {}", cli::version(), cli::build_git_sha());
+        let app = cli::make_app(&build_version);
+        let matches = app.get_matches_from(vec!["delivery", "setup", "-e", "e", "-u", "u",
+                                           "-s", "s", "--config-path", "/my/config/cli.toml",
+                                           "-f", "p", "-o", "good"]);
+        assert_eq!(Some("setup"), matches.subcommand_name());
+        let setup_matches = matches.subcommand_matches(setup::SUBCOMMAND_NAME).unwrap();
+        let setup_opts = setup::SetupClapOptions::new(&setup_matches);
+        assert_eq!(setup_opts.server, "s");
+        assert_eq!(setup_opts.org, "good");
+        assert_eq!(setup_opts.ent, "e");
+        assert_eq!(setup_opts.user, "u");
+        assert_eq!(setup_opts.pipeline, "p");
+        assert_eq!(setup_opts.path, "/my/config/cli.toml");
     }
 }
