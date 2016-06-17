@@ -112,21 +112,21 @@ pub fn run() {
         Some(api::SUBCOMMAND_NAME) => {
             let matches = matches.subcommand_matches(api::SUBCOMMAND_NAME).unwrap();
             handle_spinner(&matches);
-            clap_api_req(matches)
+            api_req(&api::ApiClapOptions::new(matches))
         },
         Some(checkout::SUBCOMMAND_NAME) => {
             let matches = matches.subcommand_matches(checkout::SUBCOMMAND_NAME).unwrap();
             handle_spinner(&matches);
-            clap_checkout(matches)
+            checkout(&checkout::CheckoutClapOptions::new(matches))
         },
         Some(clone::SUBCOMMAND_NAME) => {
             let matches = matches.subcommand_matches(clone::SUBCOMMAND_NAME).unwrap();
             handle_spinner(&matches);
-            clap_clone(matches)
+            clone(&clone::CloneClapOptions::new(matches))
         },
         Some(diff::SUBCOMMAND_NAME) => {
             let matches = matches.subcommand_matches(diff::SUBCOMMAND_NAME).unwrap();
-            clap_diff(matches)
+            diff(&diff::DiffClapOptions::new(&matches))
         },
         Some(init::SUBCOMMAND_NAME) => {
             let matches = matches.subcommand_matches(init::SUBCOMMAND_NAME).unwrap();
@@ -141,7 +141,9 @@ pub fn run() {
         Some(review::SUBCOMMAND_NAME) => {
             let matches = matches.subcommand_matches(review::SUBCOMMAND_NAME).unwrap();
             handle_spinner(&matches);
-            clap_review(matches)
+            let review_opts = review::ReviewClapOptions::new(matches);
+            review(review_opts.pipeline, &review_opts.auto_bump,
+                   &review_opts.no_open, &review_opts.edit)
         },
         Some(setup::SUBCOMMAND_NAME) => {
             let matches = matches.subcommand_matches(setup::SUBCOMMAND_NAME).unwrap();
@@ -151,7 +153,7 @@ pub fn run() {
         Some(token::SUBCOMMAND_NAME) => {
             let matches = matches.subcommand_matches(token::SUBCOMMAND_NAME).unwrap();
             handle_spinner(&matches);
-            clap_token(matches)
+            token(&token::TokenClapOptions::new(&matches))
         },
         Some(spin::SUBCOMMAND_NAME) => {
             let matches = matches.subcommand_matches(spin::SUBCOMMAND_NAME).unwrap();
@@ -272,12 +274,6 @@ fn clap_init(matches: &ArgMatches) -> Result<(), DeliveryError> {
     project::init(config, &init.no_open, &init.skip_build_cookbook, &init.local, scp)
 }
 
-fn clap_review(matches: &ArgMatches) -> Result<(), DeliveryError> {
-    let review_opts = review::ReviewClapOptions::new(matches);
-    review(review_opts.pipeline, &review_opts.auto_bump,
-           &review_opts.no_open, &review_opts.edit)
-}
-
 pub fn review(for_pipeline: &str, auto_bump: &bool,
           no_open: &bool, edit: &bool) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
@@ -346,22 +342,17 @@ fn handle_review_result(review: &ReviewResult,
     Ok(())
 }
 
-fn clap_checkout(matches: &ArgMatches) -> Result<(), DeliveryError> {
-    let checkout_opts = checkout::CheckoutClapOptions::new(matches);
-    checkout(checkout_opts.change, checkout_opts.patchset, checkout_opts.pipeline)
-}
-
-fn checkout(change: &str, patchset: &str, pipeline: &str) -> Result<(), DeliveryError> {
+fn checkout(opts: &checkout::CheckoutClapOptions) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
-    config = config.set_pipeline(pipeline);
+    config = config.set_pipeline(opts.pipeline);
     let target = validate!(config, pipeline);
     say("white", "Checking out ");
-    say("yellow", change);
+    say("yellow", opts.change);
     say("white", " targeted for pipeline ");
     say("magenta", &target);
 
-    let pset = match patchset {
+    let pset = match opts.patchset {
         "" | "latest" => {
             sayln("white", " tracking latest changes");
             "latest"
@@ -372,61 +363,50 @@ fn checkout(change: &str, patchset: &str, pipeline: &str) -> Result<(), Delivery
             p
         }
     };
-    try!(git::checkout_review(change, pset, &target));
+    try!(git::checkout_review(opts.change, pset, &target));
     Ok(())
 }
 
-fn clap_diff(matches: &ArgMatches) ->  Result<(), DeliveryError> {
-    let diff_opts = diff::DiffClapOptions::new(&matches);
-    diff(diff_opts.change, diff_opts.patchset, diff_opts.pipeline, &diff_opts.local)
-}
-
-fn diff(change: &str, patchset: &str, pipeline: &str, local: &bool) -> Result<(), DeliveryError> {
+fn diff(opts: &diff::DiffClapOptions) ->  Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
-    config = config.set_pipeline(pipeline);
+    config = config.set_pipeline(opts.pipeline);
     let target = validate!(config, pipeline);
     say("white", "Showing diff for ");
-    say("yellow", change);
+    say("yellow", opts.change);
     say("white", " targeted for pipeline ");
     say("magenta", &target);
 
-    if patchset == "latest" {
+    if opts.patchset == "latest" {
         sayln("white", " latest patchset");
     } else {
         say("white", " at patchset ");
-        sayln("yellow", patchset);
+        sayln("yellow", opts.patchset);
     }
-    try!(git::diff(change, patchset, &target, local));
+    try!(git::diff(opts.change, opts.patchset, &target, &opts.local));
     Ok(())
 }
 
-fn clap_clone(matches: &ArgMatches) -> Result<(), DeliveryError> {
-    let clone_opts = clone::CloneClapOptions::new(matches);
-    clone(clone_opts.project, clone_opts.user, clone_opts.server,
-          clone_opts.ent, clone_opts.org, clone_opts.git_url)
-}
-
-fn clone(project: &str, user: &str, server: &str, ent: &str, org: &str, git_url: &str) -> Result<(), DeliveryError> {
+fn clone(opts: &clone::CloneClapOptions) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
-    config = config.set_user(user)
-        .set_server(server)
-        .set_enterprise(ent)
-        .set_organization(org)
-        .set_project(project);
+    config = config.set_user(opts.user)
+        .set_server(opts.server)
+        .set_enterprise(opts.ent)
+        .set_organization(opts.org)
+        .set_project(opts.project);
     say("white", "Cloning ");
     let delivery_url = try!(config.delivery_git_ssh_url());
-    let clone_url = if git_url.is_empty() {
+    let clone_url = if opts.git_url.is_empty() {
         delivery_url.clone()
     } else {
-        String::from(git_url)
+        String::from(opts.git_url)
     };
     say("yellow", &clone_url);
     say("white", " to ");
-    sayln("magenta", &format!("{}", project));
-    try!(git::clone(project, &clone_url));
-    let project_root = cwd().join(project);
+    sayln("magenta", &format!("{}", opts.project));
+    try!(git::clone(opts.project, &clone_url));
+    let project_root = cwd().join(opts.project);
     try!(git::config_repo(&delivery_url,
                           &project_root));
     Ok(())
@@ -648,15 +628,14 @@ fn with_default<'a>(val: &'a str, default: &'a str, local: &bool) -> &'a str {
     }
 }
 
-fn clap_token(matches: &ArgMatches) -> Result<(), DeliveryError> {
-    let token_opts = token::TokenClapOptions::new(&matches);
+fn token(opts: &token::TokenClapOptions) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
-    config = config.set_server(token_opts.server)
-        .set_api_port(token_opts.port)
-        .set_enterprise(token_opts.ent)
-        .set_user(token_opts.user);
-    if token_opts.verify {
+    config = config.set_server(opts.server)
+        .set_api_port(opts.port)
+        .set_enterprise(opts.ent)
+        .set_user(opts.user);
+    if opts.verify {
         try!(TokenStore::verify_token(&config));
     } else {
         try!(TokenStore::request_token(&config));
@@ -674,28 +653,18 @@ fn build_git_sha() -> String {
     format!("({})", sha)
 }
 
-fn clap_api_req(matches: &ArgMatches) -> Result<(), DeliveryError> {
-    let api_opts = api::ApiClapOptions::new(matches);
-    api_req(
-        api_opts.method, api_opts.path, api_opts.data,
-        api_opts.server, api_opts.api_port, api_opts.ent,
-        api_opts.user
-    )
-}
-
-fn api_req(method: &str, path: &str, data: &str,
-           server: &str, api_port: &str, ent: &str, user: &str) -> Result<(), DeliveryError> {
+fn api_req(opts: &api::ApiClapOptions) -> Result<(), DeliveryError> {
     let mut config = try!(Config::load_config(&cwd()));
-    config = config.set_user(user)
-        .set_server(server)
-        .set_api_port(api_port)
-        .set_enterprise(ent);
+    config = config.set_user(opts.user)
+        .set_server(opts.server)
+        .set_api_port(opts.api_port)
+        .set_enterprise(opts.ent);
     let client = try!(APIClient::from_config(&config));
-    let mut result = match method {
-        "get" => try!(client.get(path)),
-        "post" => try!(client.post(path, data)),
-        "put" => try!(client.put(path, data)),
-        "delete" => try!(client.delete(path)),
+    let mut result = match opts.method {
+        "get" => try!(client.get(opts.path)),
+        "post" => try!(client.post(opts.path, opts.data)),
+        "put" => try!(client.put(opts.path, opts.data)),
+        "delete" => try!(client.delete(opts.path)),
         _ => return Err(DeliveryError{ kind: Kind::UnsupportedHttpMethod,
                                        detail: None })
     };
