@@ -24,6 +24,7 @@ To get started make sure you have the following installed:
 + [Ruby 2.1.5](https://github.com/rbenv/rbenv)
 + Rust 1.9.0 (`brew install rust`)
 + Openssl (`brew install openssl`)
++ [ChefDK 15.15 or later](https://downloads.chef.io/chef-dk/)
 
 Main technologies used in this project:
 + Rust (learn more [here](http://doc.rust-lang.org/book/installing-rust.html))

@@ -21,9 +21,7 @@ use job::workspace::{Workspace, Privilege};
 use utils::path_join_many::PathJoinMany;
 use http::{self, APIClient};
 use hyper::status::StatusCode;
-use clap::{Arg, App, SubCommand, ArgMatches, AppSettings};
-
-use command::lint;
+use clap::{Arg, App, ArgMatches};
 
 macro_rules! make_arg_vec {
     ( $( $x:expr ),* ) => {
@@ -51,6 +49,8 @@ macro_rules! validate {
     )
 }
 
+// Modules for setting up clap subcommand including their options and defaults,
+// as well as advanced subcommand match parsing (see local for an example).
 mod api;
 mod review;
 mod checkout;
@@ -61,6 +61,7 @@ mod job;
 mod spin;
 mod token;
 mod setup;
+mod local;
 
 fn u_e_s_o_args<'a>() -> Vec<Arg<'a, 'a>> {
     make_arg_vec![
@@ -115,7 +116,6 @@ pub fn run() {
             handle_spinner(&matches);
             api_req(&api::ApiClapOptions::new(matches))
         },
-
         (checkout::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
             checkout(&checkout::CheckoutClapOptions::new(matches))
@@ -150,43 +150,8 @@ pub fn run() {
             handle_spinner(&matches);
             token(&token::TokenClapOptions::new(&matches))
         },
-        ("local", Some(found_matches)) => {
-            match found_matches.subcommand() {
-                // Matches any `delivery local <any_subcommand>`.
-                (external, Some(sub_matches)) => {
-                    // This will get all args following <any_subcommand> from above match in an array, so:
-                    // `delivery local lint --lol fun hehe`
-                    // Would return:
-                    // ["--lol", "fun", "hehe"]
-                    // post_subcommand_args: Vec<&str>
-                    let post_subcommand_args: Vec<&str> = match sub_matches.values_of(external) {
-                        Some(values) => values.collect(),
-                        None => Vec::new()
-                    };
-
-                    // Unfortunately, if you use AppSettings::AllowExternalSubcommands,
-                    // clap does not actually capture what the original subcommand to local was.
-                    // However, it is the only way I found to allow arbitary arguments along in clap,
-                    // so we will just validate the subcommand to local directly.
-                    let args: Vec<_> = env::args().collect();
-
-                    // Match the third arg of `delivery local <any_subcommand>`.
-                    match args[2].as_ref() {
-                        "lint" => {
-                            let return_code = lint::run(&post_subcommand_args);
-                            process::exit(return_code)
-                        },
-                        unknown => {
-                            sayln("red", &format!("You passed subcommand '{}' to 'delivery local'.", unknown));
-                            sayln("red", &format!("'{}' is not a valid subcommand for 'delivery local'.", unknown));
-                            process::exit(1)
-                        }
-                    }
-                },
-                _ => {
-                    process::exit(1);
-                }
-            }
+        (local::SUBCOMMAND_NAME, Some(matches)) => {
+            local::parse_clap_matches(matches)
         },
         (spin::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
@@ -228,12 +193,7 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a> {
         .subcommand(api::clap_subcommand())
         .subcommand(token::clap_subcommand())
         .subcommand(spin::clap_subcommand())
-        // Use custome usage because gloabl flags will break parsing for this command
-        .subcommand(SubCommand::with_name("local")
-                    .template("{bin}\n{about}\n\n{usage}\n\n{flags}\nSUBCOMMANDS:\n    lint")
-                    .usage("delivery local <SUBCOMMAND> [SUBCOMMAND_FLAGS]")
-                    .about("Run Delivery phases on your local workstation.")
-                    .setting(AppSettings::AllowExternalSubcommands))
+        .subcommand(local::clap_subcommand())
 }
 
 fn handle_spinner(matches: &ArgMatches) {
