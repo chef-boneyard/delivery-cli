@@ -7,9 +7,9 @@ use std::path::PathBuf;
 use std::io::prelude::*;
 use std::time::Duration;
 use std;
-use token;
 use project;
 use cookbook;
+use token::TokenStore;
 use utils::{self, cwd, privileged_process};
 use utils::say::{self, sayln, say};
 use errors::{DeliveryError, Kind};
@@ -57,6 +57,7 @@ mod diff;
 mod init;
 mod job;
 mod spin;
+mod token;
 
 fn u_e_s_o_args<'a>() -> Vec<Arg<'a, 'a>> {
     make_arg_vec![
@@ -146,8 +147,8 @@ pub fn run() {
             handle_spinner(&matches);
             clap_setup(matches)
         },
-        Some("token") => {
-            let matches = matches.subcommand_matches("token").unwrap();
+        Some(token::SUBCOMMAND_NAME) => {
+            let matches = matches.subcommand_matches(token::SUBCOMMAND_NAME).unwrap();
             handle_spinner(&matches);
             clap_token(matches)
         },
@@ -193,15 +194,7 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a> {
                     .args(&u_e_s_o_args()))
         .subcommand(job::clap_subcommand())
         .subcommand(api::clap_subcommand())
-        .subcommand(SubCommand::with_name("token")
-                    .about("Create a local API token")
-                    .args(&make_arg_vec![
-                        "-u --user=[user] 'User name for Delivery authentication'",
-                        "-e --ent=[ent] 'The enterprise in which the project lives'",
-                        "--verify 'Verify the Token has expired'",
-                        "-s --server=[server] 'The Delivery server address'"])
-                    .args_from_usage(
-                        "--api-port=[api-port] 'Port for Delivery server'"))
+        .subcommand(token::clap_subcommand())
         .subcommand(spin::clap_subcommand())
 }
 
@@ -669,21 +662,17 @@ fn with_default<'a>(val: &'a str, default: &'a str, local: &bool) -> &'a str {
 }
 
 fn clap_token(matches: &ArgMatches) -> Result<(), DeliveryError> {
-    let server = value_of(&matches, "server");
-    let port = value_of(&matches, "api-port");
-    let ent = value_of(&matches, "ent");
-    let user = value_of(&matches, "user");
-    let verify = matches.is_present("verify");
+    let token_opts = token::TokenClapOptions::new(&matches);
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
-    config = config.set_server(server)
-        .set_api_port(port)
-        .set_enterprise(ent)
-        .set_user(user);
-    if verify {
-        try!(token::TokenStore::verify_token(&config));
+    config = config.set_server(token_opts.server)
+        .set_api_port(token_opts.port)
+        .set_enterprise(token_opts.ent)
+        .set_user(token_opts.user);
+    if token_opts.verify {
+        try!(TokenStore::verify_token(&config));
     } else {
-        try!(token::TokenStore::request_token(&config));
+        try!(TokenStore::request_token(&config));
     }
     Ok(())
 }
@@ -741,7 +730,7 @@ fn value_of<'a>(matches: &'a ArgMatches, key: &str) -> &'a str {
 #[cfg(test)]
 mod tests {
     use cli;
-    use cli::{api, review, clone, checkout, diff, init, job, spin};
+    use cli::{api, review, clone, checkout, diff, init, job, spin, token};
 
     #[test]
     fn test_clap_api_options() {
@@ -898,5 +887,22 @@ mod tests {
         let spin_matches = matches.subcommand_matches(spin::SUBCOMMAND_NAME).unwrap();
         let spin_opts = spin::SpinClapOptions::new(&spin_matches);
         assert_eq!(spin_opts.time, 5);
+    }
+
+    #[test]
+    fn test_clap_token_options() {
+        let build_version = format!("{} {}", cli::version(), cli::build_git_sha());
+        let app = cli::make_app(&build_version);
+        let matches = app.get_matches_from(vec!["delivery", "token", "-e", "fellowship",
+                                           "-u", "gandalf", "-s", "lord.of.the.rings.com",
+                                           "--api-port", "1111", "--verify"]);
+        assert_eq!(Some("token"), matches.subcommand_name());
+        let token_matches = matches.subcommand_matches(token::SUBCOMMAND_NAME).unwrap();
+        let token_opts = token::TokenClapOptions::new(&token_matches);
+        assert_eq!(token_opts.server, "lord.of.the.rings.com");
+        assert_eq!(token_opts.port, "1111");
+        assert_eq!(token_opts.ent, "fellowship");
+        assert_eq!(token_opts.user, "gandalf");
+        assert_eq!(token_opts.verify, true);
     }
 }
