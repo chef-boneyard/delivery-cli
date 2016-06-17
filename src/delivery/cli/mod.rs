@@ -56,6 +56,7 @@ mod clone;
 mod diff;
 mod init;
 mod job;
+mod spin;
 
 fn u_e_s_o_args<'a>() -> Vec<Arg<'a, 'a>> {
     make_arg_vec![
@@ -150,12 +151,12 @@ pub fn run() {
             handle_spinner(&matches);
             clap_token(matches)
         },
-        Some("spin") => {
-            let matches = matches.subcommand_matches("spin").unwrap();
+        Some(spin::SUBCOMMAND_NAME) => {
+            let matches = matches.subcommand_matches(spin::SUBCOMMAND_NAME).unwrap();
             handle_spinner(&matches);
-            let tsecs = value_of(&matches, "TIME").parse::<u64>().unwrap();
+            let spin_opts = spin::SpinClapOptions::new(&matches);
             let spinner = utils::say::Spinner::start();
-            let sleep_time = Duration::from_secs(tsecs);
+            let sleep_time = Duration::from_secs(spin_opts.time);
             std::thread::sleep(sleep_time);
             spinner.stop();
             handle_spinner(&matches);
@@ -201,9 +202,7 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a> {
                         "-s --server=[server] 'The Delivery server address'"])
                     .args_from_usage(
                         "--api-port=[api-port] 'Port for Delivery server'"))
-        .subcommand(SubCommand::with_name("spin")
-                    .about("test the spinner")
-                    .args_from_usage("-t --time=[TIME] 'How many seconds to spin'"))
+        .subcommand(spin::clap_subcommand())
 }
 
 fn handle_spinner(matches: &ArgMatches) {
@@ -742,7 +741,7 @@ fn value_of<'a>(matches: &'a ArgMatches, key: &str) -> &'a str {
 #[cfg(test)]
 mod tests {
     use cli;
-    use cli::{api, review, clone, checkout, diff, init, job};
+    use cli::{api, review, clone, checkout, diff, init, job, spin};
 
     #[test]
     fn test_clap_api_options() {
@@ -888,5 +887,16 @@ mod tests {
         assert_eq!(job_opts.docker_image, "uzumaki");
         assert_eq!(job_opts.local, true);
         assert_eq!(job_opts.skip_default, true);
+    }
+
+    #[test]
+    fn test_clap_spin_options() {
+        let build_version = format!("{} {}", cli::version(), cli::build_git_sha());
+        let app = cli::make_app(&build_version);
+        let matches = app.get_matches_from(vec!["delivery", "spin"]);
+        assert_eq!(Some("spin"), matches.subcommand_name());
+        let spin_matches = matches.subcommand_matches(spin::SUBCOMMAND_NAME).unwrap();
+        let spin_opts = spin::SpinClapOptions::new(&spin_matches);
+        assert_eq!(spin_opts.time, 5);
     }
 }
