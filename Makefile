@@ -2,7 +2,7 @@
 #
 # Author: Jon Anderson (janderson@chef.io)
 
-RUST_VERSION ?= 1.8.0
+RUST_VERSION ?= 1.9.0
 
 CARGO_OPTS ?=
 DELIV_CLI_VERSION = $(shell git describe --abbrev=0 --tags)
@@ -62,7 +62,7 @@ test:
 	$(CARGO) $(CARGO_OPTS) test
 
 
-.PHONY: all build update_deps release clean check_deps check test 
+.PHONY: all build update_deps release clean check_deps check test
 
 bin/cucumber: Gemfile
 	bundle install --binstubs=bin --path=vendor/bundle
@@ -114,4 +114,3 @@ cargo_check:
 ruby_check:
 	@which ruby >> /dev/null || \
 	(echo "Ruby is not installed. Install via your preferred method, or use rbenv if you are unsure how to get started.")
-
