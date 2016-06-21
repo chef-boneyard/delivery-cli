@@ -520,6 +520,11 @@ fn job(opts: &job::JobClapOptions) -> Result<(), DeliveryError> {
     sayln("magenta", &format!(" {}", opts.phases));
     let phases: Vec<&str> = opts.phases.split(" ").collect();
     let phase_dir = phases.join("-");
+    // Builder nodes are expected to be running this command via
+    // push-jobs-client as root and set $HOME to the workspace location.
+    // If this process is not running as root via push-jobs-client, we'll
+    // append ".delivery" to the user's $HOME location and use that as the
+    // workspace path to avoid writing our working files directly into $HOME.
     let ws_path = match env::home_dir() {
         Some(path) => if privileged_process() {
                           PathBuf::from(path)
