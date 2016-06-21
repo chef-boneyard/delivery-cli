@@ -21,6 +21,7 @@ cli_dir = File.expand_path('../../../target/release', __FILE__)
 # situation by having the tests take place in a random temporary
 # directory.
 Before do
+  @aruba_timeout_seconds = 10
 
   # Don't use 'tmp/aruba' as the current directory, since it has the
   # potential to confound tests involving delivery CLI configuration

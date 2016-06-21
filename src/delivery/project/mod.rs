@@ -27,7 +27,7 @@ use cli;
 use config::Config;
 use std::process::Output;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
     Bitbucket,
     Github
@@ -284,15 +284,55 @@ pub fn project_or_from_cwd(proj: &str) -> Result<String, DeliveryError> {
 pub fn init(config: Config, no_open: &bool, skip_build_cookbook: &bool,
             local: &bool, scp: Option<SourceCodeProvider>) -> Result<(), DeliveryError> {
     let project_path = try!(root_dir(&utils::cwd()));
-    try!(create_on_server(&config, scp.clone(), local));
-    try!(create_feature_branch(&project_path));
     try!(create_dot_delivery());
-    let build_cookbook_generated = try!(generate_build_cookbook(skip_build_cookbook, config.generator().ok()));
+    try!(create_on_server(&config, scp.clone(), local));
+
+    // If non-custom generator used, then build cookbook is already merged to master.
+    //
+    let custom_build_cookbook_generated = match try!(generate_build_cookbook(skip_build_cookbook, config.generator().ok())) {
+        Some(boolean) => {
+            match boolean {
+                // Custom build cookbook was generated
+                true => {
+                    true
+                },
+                // Custom build cookbook was not generated, but we need to push
+                // master since `chef generate build-cookbook` merged to it.
+                false => {
+                    // TODO: Update when fixing --for for the init command.
+                    try!(git::git_push_master());
+                    false
+                }
+            }
+        },
+        // No build cookbook was generated, do nothing.
+        None => false
+    };
+
     let custom_config_passed = try!(generate_custom_delivery_config(config.config_json().ok()));
-    if build_cookbook_generated {
-        try!(add_commit_build_cookbook(&custom_config_passed));
+
+    // If we need a branch for either the custom build cookbook or custom config, create it.
+    // If nothing custom was requested, then `chef generate build-cookbook` will handle the commits for us.
+    if custom_build_cookbook_generated || custom_config_passed {
+        try!(create_feature_branch_if_missing(&project_path));
+
+        if custom_build_cookbook_generated {
+            try!(add_commit_build_cookbook(&custom_config_passed));
+        }
+        // Only trigger review if there were any custom commits to review.
+        try!(trigger_review(config, scp, &no_open, &local));
+    } else {
+        if let Some(project_type) = scp {
+            if project_type.kind == Type::Github {
+                let _ = try!(check_github_remote(project_type));
+            }
+        };
+
+        sayln("white", "\nBuild cookbook generated and pushed to master in delivery.");
+        // TODO: Once we want people to use the local command, uncomment this.
+        //sayln("white", "As a first step, try running:\n");
+        //sayln("white", "delivery local lint");
     }
-    try!(trigger_review(config, scp, &no_open, &local));
     Ok(())
 }
 
@@ -329,22 +369,7 @@ fn trigger_review(config: Config, scp: Option<SourceCodeProvider>,
                     sayln("green", "\nYour project is now set up with changes in the add-delivery-config branch!");
                     sayln("green", "To finalize your project, you must submit and accept a Pull Request in github.");
 
-                    // Check to see if the origin remote is set up, and if not, output something useful.
-                    let dir = try!(root_dir(&utils::cwd()));
-                    let git_remote_result = git::git_command(&["remote"], &dir);
-                    match git_remote_result {
-                        Ok(git_result) => {
-                            if !(git_result.stdout.contains("origin")) {
-                                sayln("green", "First, you must add your remote.");
-                                sayln("green", "Run this if you want to use ssh:\n");
-                                sayln("green", &format!("git remote add origin git@github.com:{}/{}.git\n", s.organization, s.repo_name));
-                                sayln("green", "Or this for https:\n");
-                                sayln("green", &format!("git remote add origin https://github.com/{}/{}.git\n", s.organization, s.repo_name));
-                            }
-                            true
-                        },
-                        Err(_) => false
-                    };
+                    try!(check_github_remote(s));
 
                     sayln("green", "Push your project to github by running:\n");
                     sayln("green", "git push origin add-delivery-config\n");
@@ -357,12 +382,31 @@ fn trigger_review(config: Config, scp: Option<SourceCodeProvider>,
     Ok(())
 }
 
+// Check to see if the origin remote is set up, and if not, output something useful.
+fn check_github_remote(s: SourceCodeProvider) -> Result<bool, DeliveryError> {
+    let dir = try!(root_dir(&utils::cwd()));
+    let git_remote_result = git::git_command(&["remote"], &dir);
+    match git_remote_result {
+        Ok(git_result) => {
+            if !(git_result.stdout.contains("origin")) {
+                sayln("green", "First, you must add your remote.");
+                sayln("green", "Run this if you want to use ssh:\n");
+                sayln("green", &format!("git remote add origin git@github.com:{}/{}.git\n", s.organization, s.repo_name));
+                sayln("green", "Or this for https:\n");
+                sayln("green", &format!("git remote add origin https://github.com/{}/{}.git\n", s.organization, s.repo_name));
+            }
+            Ok(true)
+        },
+        Err(_) => Ok(false)
+    }
+}
+
 /// Create the feature branch `add-delivery-config`
 ///
 /// This branch is created to start modifying the project repository
 /// In the case of a failure, we could roll back fearly easy by checking
 /// out master and deleting this feature branch.
-fn create_feature_branch(project_path: &PathBuf) -> Result<(), DeliveryError> {
+fn create_feature_branch_if_missing(project_path: &PathBuf) -> Result<(), DeliveryError> {
     say("white", "Creating and checking out ");
     say("yellow", "add-delivery-config");
     say("white", " feature branch: ");
@@ -452,11 +496,11 @@ fn generator_cache_path() -> Result<PathBuf, DeliveryError> {
 /// This method could receive a custom generator, if it is not provided,
 /// we use the default build-cookbook generator from the ChefDK.
 ///
-/// Returns true if a build cookbook was generated, false if not.
+/// Returns true if a CUSTOM build cookbook was generated, false if standard, None if nothing was generated.
 fn generate_build_cookbook(skip_build_cookbook: &bool,
-                           generator: Option<String>) -> Result<bool, DeliveryError> {
+                           generator: Option<String>) -> Result<Option<bool>, DeliveryError> {
     if *skip_build_cookbook {
-        return Ok((false))
+        return Ok(None)
     }
     sayln("white", "Generating build cookbook skeleton");
     let cache_path = try!(generator_cache_path());
@@ -475,13 +519,13 @@ fn generate_build_cookbook(skip_build_cookbook: &bool,
                 sayln("red", "Please update your generator to create a valid .delivery/config.json or pass in a custom config.");
                 return Err(DeliveryError{ kind: Kind::NoDeliveryConfig, detail: None });
             }
-            return Ok(true)
+            return Ok(Some(true))
         },
         None => {
             let path = project_path.join(".delivery/build-cookbook");
             if path.exists() {
                 sayln("red", ".delivery/build-cookbook folder already exists, skipping build cookbook generation.");
-                return Ok(false);
+                return Ok(None)
             } else {
                 let mut gen = utils::make_command("chef");
                 gen.arg("generate")
@@ -491,7 +535,7 @@ fn generate_build_cookbook(skip_build_cookbook: &bool,
                 let output = try!(gen.output());
                 try!(handle_chef_generate_cookbook_cmd(output));
                 sayln("green", &format!("Build-cookbook generated: {:#?}", gen));
-                return Ok(true)
+                return Ok(Some(false))
             }
         }
     };

@@ -73,7 +73,6 @@ Scenario: When creating a github backed project
   Then a github project is created in delivery
   And a default config.json is created
   And the change has the default generated build_cookbook
-  And the output should contain "git push origin add-delivery-config"
   And the output should contain "git remote add"
   And the exit status should be 0
 
@@ -84,7 +83,6 @@ Scenario: When creating a github backed project with an initial origin remote se
   Then a github project is created in delivery
   And a default config.json is created
   And the change has the default generated build_cookbook
-  And the output should contain "git push origin add-delivery-config"
   And the output should not contain "git remote add"
   And the exit status should be 0
 
@@ -125,5 +123,6 @@ Scenario: When specifying a local build-cookbook generator with no config
 Scenario: When providing a custom config.json
   When a user creates a project with a custom config.json
   Then the output should contain "Copying configuration to"
+  And the change has the default generated build_cookbook
   And a change configuring a custom delivery is created
   And the exit status should be 0

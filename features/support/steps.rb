@@ -228,29 +228,22 @@ end
 Given(/^a delivery project is created in delivery$/) do
   step %(the output should match /Creating(.*)delivery(.*)project/)
   step %(the output should contain "Remote 'delivery' added to git config")
-  step %(the output should match /Creating and checking out (.*)add-delivery-config(.*) feature branch/)
-  step %("git push --porcelain --progress --verbose delivery add-delivery-config:_for/master/add-delivery-config" should be run)
 end
 
 Given(/^a delivery project should not be created in delivery$/) do
   step %(the output should not match /Creating(.*)delivery(.*)project/)
   step %(the output should match /Project(.*)already exists./)
   step %(the output should contain "Remote 'delivery' added to git config")
-  step %(the output should match /Creating and checking out (.*)add-delivery-config(.*) feature branch/)
-  step %("git push --porcelain --progress --verbose delivery add-delivery-config:_for/master/add-delivery-config" should be run)
 end
 
 Given(/^a bitbucket project is created in delivery$/) do
   step %(the output should match /Creating(.*)bitbucket(.*)project/)
   step %(the output should contain "Remote 'delivery' added to git config")
-  step %(the output should match /Creating and checking out (.*)add-delivery-config(.*) feature branch/)
-  step %("git push --porcelain --progress --verbose delivery add-delivery-config:_for/master/add-delivery-config" should be run)
 end
 
 Given(/^a github project is created in delivery$/) do
   step %(the output should match /Creating(.*)github(.*)project/)
   step %(the output should not contain "Remote 'delivery' added to git config")
-  step %(the output should match /Creating and checking out (.*)add-delivery-config(.*) feature branch/)
 end
 
 Given(/^a default config.json is created$/) do
@@ -276,13 +269,13 @@ end
 Given(/^a change configuring a custom delivery is created$/) do
   step %("git checkout -b add-delivery-config" should be run)
   step %("git commit -m Adds custom Delivery config" should be run)
-  step %("git commit -m Adds Delivery build cookbook" should be run)
   step %(the file ".delivery/config.json" should contain exactly:), custom_config
 end
 
 Given(/^the change has the default generated build_cookbook$/) do
-  step %("git checkout -b add-delivery-config" should be run)
-  step %("git commit -m Adds Delivery build cookbook and config" should be run)
+  step %("git push --set-upstream --porcelain --progress --verbose delivery master" should be run)
+  step %("git commit -m Add generated delivery configuration" should be run)
+  step %("git commit -m Add generated delivery build cookbook" should be run)
   step %(a directory named ".delivery/build-cookbook" should exist)
 end
 
@@ -315,6 +308,8 @@ Given(/^a custom build-cookbook is generated from "([^"]*)"$/) do |type|
   else
     pending "not implemented"
   end
+  step %(the output should match /Creating and checking out (.*)add-delivery-config(.*) feature branch/)
+  step %("git push --porcelain --progress --verbose delivery add-delivery-config:_for/master/add-delivery-config" should be run)
   step %(the file ".delivery/build-cookbook/test_file" should contain "THIS IS ONLY A TEST.")
   step %("git commit -m Adds Delivery build cookbook and config" should be run)
   step %(a directory named ".delivery/build-cookbook" should exist)

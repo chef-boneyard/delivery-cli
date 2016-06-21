@@ -2,9 +2,8 @@ Feature: lint
 
 Background:
   Given I clean up the ruby env so I can run other ruby bins like ChefDK
-  When I successfully run `which chef`
   When I successfully run `chef generate cookbook testbook`
-  Then I successfully run `cd testbook`
+  When I cd to "testbook"
 
 Scenario: When lint is run on a valid cookbook
   When I run `delivery local lint`
