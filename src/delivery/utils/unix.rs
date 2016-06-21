@@ -114,7 +114,9 @@ pub fn make_command(cmd: &str) -> Command {
     Command::new(cmd)
 }
 
-fn path_to_string<P: AsRef<Path>>(p: P) -> String {
+// Convert a path into a String. Panic if the path contains
+// non-unicode sequences.
+pub fn path_to_string<P: AsRef<Path>>(p: P) -> String {
     let path = p.as_ref();
     match path.to_str() {
         Some(s) => s.to_string(),
