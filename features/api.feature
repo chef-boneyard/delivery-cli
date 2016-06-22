@@ -28,6 +28,33 @@ Scenario: make a basic call
       "orgs": []
     """
 
+Scenario: Submitting a POST request with data
+  Given a file named ".delivery/api-tokens" with:
+    """
+    127.0.0.1:9999,bar,cukes|this_is_a_fake_token
+    """
+  And the Delivery API server on port "9999":
+    """
+    get('/api/v0/e/bar/orgs') do
+      status 200
+      { "orgs" => [] }
+    end
+
+    desc 'Create an organization.'
+    params do
+      requires :name, type: String, desc: 'Org name'
+    end
+    post '/api/v0/e/bar/orgs' do
+      if params[:name] != "dummy"
+	status 500
+      else
+	status 201
+      end
+    end
+    """
+  When I successfully run `delivery api post 'orgs' -s=127.0.0.1 --api-port=9999 -e=bar -u=cukes -d '{"name":"dummy"}'`
+  Then the exit status should be 0
+
 Scenario: Without a token and non_interactive enabled
   Given the Delivery API server:
     """

@@ -675,6 +675,9 @@ fn api_req(opts: &api::ApiClapOptions) -> Result<(), DeliveryError> {
     };
     match result.status {
         StatusCode::NoContent => {},
+        StatusCode::InternalServerError => {
+            return Err(DeliveryError{ kind: Kind::InternalServerError, detail: None})
+        },
         _ => {
             let pretty_json = try!(APIClient::extract_pretty_json(&mut result));
             println!("{}", pretty_json);
@@ -698,14 +701,15 @@ mod tests {
         let build_version = format!("{} {}", cli::version(), cli::build_git_sha());
         let app = cli::make_app(&build_version);
         let matches = app.get_matches_from(vec!["delivery", "api", "get", "endpoint",
-                                           "--data", "data", "-e", "starwars", "-u", "vader",
-                                           "-s", "death-star", "--api-port", "9999"]);
+                                           "--data", "\"name\":\"n\",\"value\":\"d\"",
+                                           "-e", "starwars", "-u", "vader", "-s",
+                                           "death-star", "--api-port", "9999"]);
         assert_eq!(Some("api"), matches.subcommand_name());
         let api_matches = matches.subcommand_matches(api::SUBCOMMAND_NAME).unwrap();
         let api_opts = api::ApiClapOptions::new(&api_matches);
         assert_eq!(api_opts.method, "get");
         assert_eq!(api_opts.path, "endpoint");
-        assert_eq!(api_opts.data, "data");
+        assert_eq!(api_opts.data, "\"name\":\"n\",\"value\":\"d\"");
         assert_eq!(api_opts.server, "death-star");
         assert_eq!(api_opts.api_port, "9999");
         assert_eq!(api_opts.ent, "starwars");

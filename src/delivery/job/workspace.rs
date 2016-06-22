@@ -522,6 +522,7 @@ impl Workspace {
 mod test {
     use super::*;
     use std::fs::File;
+    use utils;
     use utils::path_ext::{is_dir, is_file};
     use std::path::PathBuf;
 
@@ -545,6 +546,8 @@ mod test {
         assert!(is_dir(&w.chef.join("nodes")));
         assert!(is_dir(&w.cache));
         assert!(is_dir(&w.repo));
+        // Remove temp cli workspace
+        utils::remove_recursive(&root).unwrap();
     }
 
     #[test]
@@ -560,5 +563,7 @@ mod test {
         assert!(is_file(&nfile));
         assert!(w.build().is_ok());
         assert_eq!(false, is_file(&nfile));
+        // Remove temp cli workspace
+        utils::remove_recursive(&root).unwrap();
     }
 }
