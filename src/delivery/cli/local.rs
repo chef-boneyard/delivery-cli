@@ -6,6 +6,7 @@ use errors::DeliveryError;
 
 // Implemented sub-commands. Should handle everything after args have
 // been parsed, including running the command, error handling, and UI outputting.
+use command::cleanup;
 use command::deploy;
 use command::lint;
 use command::provision;
@@ -22,6 +23,7 @@ pub fn clap_subcommand<'c>() -> App<'c, 'c> {
         .template(
             // Please keep alphabetized
             "{bin}\n{about}\n\n{usage}\n\nSUBCOMMANDS: \
+             \n    cleanup \
              \n    deploy \
              \n    lint \
              \n    provision \
@@ -57,6 +59,9 @@ pub fn parse_clap_matches(global_matches: &ArgMatches) -> Result<(), DeliveryErr
 
             // Match the third arg of `delivery local <any_subcommand>`.
             match args[2].as_ref() {
+                "cleanup" => {
+                    process::exit(cleanup::run(&post_subcommand_args))
+                },
                 "deploy" => {
                     process::exit(deploy::run(&post_subcommand_args))
                 },

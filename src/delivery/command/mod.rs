@@ -1,3 +1,4 @@
+pub mod cleanup;
 pub mod deploy;
 pub mod lint;
 pub mod provision;
