@@ -8,6 +8,7 @@ use errors::DeliveryError;
 // been parsed, including running the command, error handling, and UI outputting.
 use command::lint;
 use command::syntax;
+use command::unit;
 
 // Local subcommand is for wrapping external commands and running
 // the locally.
@@ -16,9 +17,11 @@ pub const SUBCOMMAND_NAME: &'static str = "local";
 pub fn clap_subcommand<'c>() -> App<'c, 'c> {
     SubCommand::with_name(SUBCOMMAND_NAME)
         .template(
+            // Please keep alphabetized
             "{bin}\n{about}\n\n{usage}\n\nSUBCOMMANDS: \
              \n    lint \
-             \n    syntax"
+             \n    syntax \
+             \n    unit"
         )
         // Use custom usage because gloabl flags will break parsing for this command
         .usage("delivery local <SUBCOMMAND> [SUBCOMMAND_FLAGS]")
@@ -53,6 +56,9 @@ pub fn parse_clap_matches(global_matches: &ArgMatches) -> Result<(), DeliveryErr
                 },
                 "syntax" => {
                     process::exit(syntax::run(&post_subcommand_args))
+                },
+                "unit" => {
+                    process::exit(unit::run(&post_subcommand_args))
                 }
                 unknown => {
                     sayln("red", &format!("You passed subcommand '{}' to 'delivery {}'.", unknown, SUBCOMMAND_NAME));

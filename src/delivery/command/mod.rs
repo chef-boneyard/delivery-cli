@@ -1,5 +1,6 @@
 pub mod lint;
 pub mod syntax;
+pub mod unit;
 
 use utils;
 use std::process::{Stdio};
