@@ -38,6 +38,19 @@ else
 	# there are some commands we don't want to run
 	"push" )
 	    ;;
+	"branch" )
+	    # mock delete branch, since things can get wonky
+	    # with unmerged paths because push is mocked.
+	    if [ "$2" = "-d" ]
+	    then
+		echo "Mocking call to 'git branch -d'" >> /tmp/wtf
+	    elif [ "$2" = "-D" ]
+	    then
+		echo "Mocking call to 'git branch -D'" >> /tmp/wtf
+	    else
+		$DELIVERY_SYSTEM_GIT "$@"
+	    fi
+	    ;;
 	"fetch" )
 	    ;;
 	"ls-remote" )

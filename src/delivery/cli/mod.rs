@@ -49,6 +49,8 @@ macro_rules! validate {
     )
 }
 
+// Modules for setting up clap subcommand including their options and defaults,
+// as well as advanced subcommand match parsing (see local for an example).
 mod api;
 mod review;
 mod checkout;
@@ -59,6 +61,7 @@ mod job;
 mod spin;
 mod token;
 mod setup;
+mod local;
 
 fn u_e_s_o_args<'a>() -> Vec<Arg<'a, 'a>> {
     make_arg_vec![
@@ -106,57 +109,51 @@ pub fn run() {
     let build_version = format!("{} {}", version(), build_git_sha());
 
     let app = make_app(&build_version);
-    let matches = app.get_matches();
+    let app_matches = app.get_matches();
 
-    let cmd_result = match matches.subcommand_name() {
-        Some(api::SUBCOMMAND_NAME) => {
-            let matches = matches.subcommand_matches(api::SUBCOMMAND_NAME).unwrap();
+    let cmd_result = match app_matches.subcommand() {
+        (api::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
             api_req(&api::ApiClapOptions::new(matches))
         },
-        Some(checkout::SUBCOMMAND_NAME) => {
-            let matches = matches.subcommand_matches(checkout::SUBCOMMAND_NAME).unwrap();
+        (checkout::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
             checkout(&checkout::CheckoutClapOptions::new(matches))
         },
-        Some(clone::SUBCOMMAND_NAME) => {
-            let matches = matches.subcommand_matches(clone::SUBCOMMAND_NAME).unwrap();
+        (clone::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
             clone(&clone::CloneClapOptions::new(matches))
         },
-        Some(diff::SUBCOMMAND_NAME) => {
-            let matches = matches.subcommand_matches(diff::SUBCOMMAND_NAME).unwrap();
+        (diff::SUBCOMMAND_NAME, Some(matches)) => {
             diff(&diff::DiffClapOptions::new(&matches))
+
         },
-        Some(init::SUBCOMMAND_NAME) => {
-            let matches = matches.subcommand_matches(init::SUBCOMMAND_NAME).unwrap();
+        (init::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
             clap_init(matches)
         },
-        Some(job::SUBCOMMAND_NAME) => {
-            let matches = matches.subcommand_matches(job::SUBCOMMAND_NAME).unwrap();
+        (job::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
             job(&job::JobClapOptions::new(&matches))
         },
-        Some(review::SUBCOMMAND_NAME) => {
-            let matches = matches.subcommand_matches(review::SUBCOMMAND_NAME).unwrap();
+        (review::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
             let review_opts = review::ReviewClapOptions::new(matches);
             review(review_opts.pipeline, &review_opts.auto_bump,
                    &review_opts.no_open, &review_opts.edit)
         },
-        Some(setup::SUBCOMMAND_NAME) => {
-            let matches = matches.subcommand_matches(setup::SUBCOMMAND_NAME).unwrap();
+        (setup::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
             setup(&setup::SetupClapOptions::new(&matches))
         },
-        Some(token::SUBCOMMAND_NAME) => {
-            let matches = matches.subcommand_matches(token::SUBCOMMAND_NAME).unwrap();
+        (token::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
             token(&token::TokenClapOptions::new(&matches))
         },
-        Some(spin::SUBCOMMAND_NAME) => {
-            let matches = matches.subcommand_matches(spin::SUBCOMMAND_NAME).unwrap();
+        (local::SUBCOMMAND_NAME, Some(matches)) => {
+            local::parse_clap_matches(matches)
+        },
+        (spin::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
             let spin_opts = spin::SpinClapOptions::new(&matches);
             let spinner = utils::say::Spinner::start();
@@ -196,6 +193,7 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a> {
         .subcommand(api::clap_subcommand())
         .subcommand(token::clap_subcommand())
         .subcommand(spin::clap_subcommand())
+        .subcommand(local::clap_subcommand())
 }
 
 fn handle_spinner(matches: &ArgMatches) {

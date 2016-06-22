@@ -28,10 +28,9 @@ use rustc_serialize::json::DecoderError;
 
 use errors::{DeliveryError, Kind};
 use git;
-use utils::{mkdir_recursive, walk_tree_for_path, read_file, copy_recursive};
+use utils::{walk_tree_for_path, read_file, copy_recursive};
 use utils::path_join_many::PathJoinMany;
 use utils::say::{say, sayln};
-use utils::path_ext::{is_dir, is_file};
 
 #[derive(RustcEncodable, RustcDecodable, Clone)]
 pub struct DeliveryConfig {
@@ -69,29 +68,12 @@ impl Default for DeliveryConfig {
 }
 
 impl DeliveryConfig {
-    pub fn init(proj_path: &PathBuf) -> Result<(), DeliveryError> {
-        if DeliveryConfig::config_file_exists(proj_path) {
-            debug!("Delivery config file already exists, skipping");
-            return Ok(())
-        }
-
-        debug!("proj_path: {:?}\n", proj_path);
-        debug!("Creating a new config file");
-        let config = DeliveryConfig::default();
-        try!(config.write_file(proj_path));
-        DeliveryConfig::git_add_commit_config(&proj_path)
-    }
-
     /// Copy a provided `config.json` file to `.delivery/` of
     /// the project root path. Also verify that the config is
     /// valid and finally add/commit the changes.
     /// If the config already exists, skip this process.
     pub fn copy_config_file(config_f: &PathBuf,
                             proj_path: &PathBuf) -> Result<(), DeliveryError> {
-        if DeliveryConfig::config_file_exists(proj_path) {
-            debug!("Delivery config file already exists, skipping");
-            return Ok(())
-        }
         let write_path = DeliveryConfig::config_file_path(proj_path);
         say("white", "Copying configuration to ");
         sayln("yellow", &format!("{}", write_path.display()));
@@ -109,17 +91,13 @@ impl DeliveryConfig {
         let config_path_str = &config_path.to_str().unwrap();
         say("white", "Git add and commit delivery config: ");
         try!(git::git_command(&["add", &config_path_str], proj_path));
-        try!(git::git_command(&["commit", "-m", "Adds Delivery config"], proj_path));
+        try!(git::git_command(&["commit", "-m", "Adds custom Delivery config"], proj_path));
         sayln("green", "done");
         Ok(())
     }
 
     fn config_file_path(proj_path: &PathBuf) -> PathBuf {
         proj_path.join_many(&[".delivery", "config.json"])
-    }
-
-    fn config_file_exists(proj_path: &PathBuf) -> bool {
-        is_file(&DeliveryConfig::config_file_path(proj_path))
     }
 
     fn find_config_file(proj_path: &PathBuf) -> Result<PathBuf, DeliveryError> {
@@ -158,21 +136,4 @@ impl DeliveryConfig {
         Ok(boolean_result)
     }
 
-    fn write_file(&self, proj_path: &PathBuf) -> Result<(), DeliveryError> {
-        let write_dir = proj_path.join_many(&[".delivery"]);
-        if !is_dir(&write_dir) {
-            try!(mkdir_recursive(&write_dir));
-        }
-        let write_path = DeliveryConfig::config_file_path(proj_path);
-        say("white", "Writing configuration to ");
-        sayln("yellow", &format!("{}", write_path.display()));
-        let mut f = try!(File::create(&write_path));
-        let json_obj = json::as_pretty_json(&self);
-        let json_string = format!("{}", json_obj);
-        sayln("magenta", "New delivery configuration");
-        sayln("magenta", "--------------------------");
-        sayln("white", &json_string);
-        try!(f.write_all(json_string.as_bytes()));
-        Ok(())
-    }
 }

@@ -1,8 +1,4 @@
 #!/bin/bash
 
+$DELIVERY_SYSTEM_CP "$@"
 echo cp "$@" >> "$FAKE_BINS_HISTORY_FILE"
-
-# Detecting when we are trying to copy the config
-if [[ "$@" =~ "config.json" ]]; then
-  cat $3 > $4
-fi

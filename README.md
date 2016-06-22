@@ -24,6 +24,7 @@ To get started make sure you have the following installed:
 + [Ruby 2.1.5](https://github.com/rbenv/rbenv)
 + Rust 1.9.0 (`brew install rust`)
 + Openssl (`brew install openssl`)
++ [ChefDK 15.15 or later](https://downloads.chef.io/chef-dk/)
 
 Main technologies used in this project:
 + Rust (learn more [here](http://doc.rust-lang.org/book/installing-rust.html))
@@ -39,9 +40,9 @@ Make targets:
 + `make test` runs the unit and functional tests.
 + `make cucumber` will run the cucumber tests.
 + `make clean` will clean the state of the build.
-+ `make update_deps` will update the `Cargo.lock` file, this should be run periodically
-  to pull in new deps and at the very least when upgrading to a new version of Rust.
-+ `make release` builds the project clean with the `--release` flag.
++ `make update_deps` will clean the project and update the `Cargo.lock` file, 
+  this should be run periodically to pull in new deps and at the very least when upgrading to a new version of Rust.
++ `make release` builds the project with the `--release` flag.
 + `make check` builds and runs unit tests.
 
 After you `make` the project, you can execute your compiled binary

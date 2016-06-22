@@ -1,3 +1,4 @@
 #!/bin/bash
 
+$DELIVERY_SYSTEM_MV "$@"
 echo mv "$@" >> "$FAKE_BINS_HISTORY_FILE"
