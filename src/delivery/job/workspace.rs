@@ -537,7 +537,7 @@ mod test {
 
     #[test]
     fn test_workspace_build() {
-        let root = PathBuf::from("/tmp/cli-workspace");
+        let root = PathBuf::from("/tmp/cli-workspace-build");
         let w = Workspace::new(&root);
         assert!(w.build().is_ok(), "The workspace build process failed");
         assert!(is_dir(&w.root));
@@ -549,14 +549,14 @@ mod test {
 
     #[test]
     fn test_workspace_build_and_clean_chef_nodes() {
-        let root = PathBuf::from("/tmp/cli-workspace");
+        let root = PathBuf::from("/tmp/cli-workspace-clean");
         let w = Workspace::new(&root);
         assert!(w.build().is_ok(), "The workspace build process failed");
         // This is an empty workspace, lets lay down a file
         // inside chef/nodes and test it exists, then after
         // running build() again it shouldn't exist anymore.
         let nfile = w.chef.join("nodes").join("test.node");
-        File::create(nfile.clone()).unwrap();
+        let _ = File::create(nfile.clone());
         assert!(is_file(&nfile));
         assert!(w.build().is_ok());
         assert_eq!(false, is_file(&nfile));
