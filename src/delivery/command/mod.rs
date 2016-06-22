@@ -1,6 +1,7 @@
 pub mod deploy;
 pub mod lint;
 pub mod provision;
+pub mod smoke;
 pub mod syntax;
 pub mod unit;
 

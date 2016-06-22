@@ -9,6 +9,7 @@ use errors::DeliveryError;
 use command::deploy;
 use command::lint;
 use command::provision;
+use command::smoke;
 use command::syntax;
 use command::unit;
 
@@ -24,6 +25,7 @@ pub fn clap_subcommand<'c>() -> App<'c, 'c> {
              \n    deploy \
              \n    lint \
              \n    provision \
+             \n    smoke \
              \n    syntax \
              \n    unit"
         )
@@ -63,7 +65,10 @@ pub fn parse_clap_matches(global_matches: &ArgMatches) -> Result<(), DeliveryErr
                 },
                 "provision" => {
                     process::exit(provision::run(&post_subcommand_args))
-                }
+                },
+                "smoke" => {
+                    process::exit(smoke::run(&post_subcommand_args))
+                },
                 "syntax" => {
                     process::exit(syntax::run(&post_subcommand_args))
                 },
