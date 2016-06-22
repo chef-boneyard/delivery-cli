@@ -1,3 +1,4 @@
+pub mod deploy;
 pub mod lint;
 pub mod provision;
 pub mod syntax;
