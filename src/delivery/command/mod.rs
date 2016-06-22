@@ -31,3 +31,19 @@ pub fn run_chef_exec_command(exec_cmd: &str, args: &Vec<&str>) -> i32 {
     };
     return return_code
 }
+
+pub fn wrap_kitchen_command(args: &Vec<&str>, kitchen_cmd: &str, usage: &str) -> i32 {
+    if !args.is_empty() {
+        match args[0].as_ref() {
+            // kitchen subcommands don't respond to --help, so let's return something useful.
+            "--help" => {
+                // Should be string stolen from kitchen --help
+                println!("{}", usage);
+                return 0
+            },
+            _ => return run_chef_exec_command(kitchen_cmd, args)
+        }
+    } else {
+        return run_chef_exec_command(kitchen_cmd, args)
+    }
+}
