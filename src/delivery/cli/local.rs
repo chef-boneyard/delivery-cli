@@ -7,6 +7,7 @@ use errors::DeliveryError;
 // Implemented sub-commands. Should handle everything after args have
 // been parsed, including running the command, error handling, and UI outputting.
 use command::lint;
+use command::provision;
 use command::syntax;
 use command::unit;
 
@@ -20,6 +21,7 @@ pub fn clap_subcommand<'c>() -> App<'c, 'c> {
             // Please keep alphabetized
             "{bin}\n{about}\n\n{usage}\n\nSUBCOMMANDS: \
              \n    lint \
+             \n    provision \
              \n    syntax \
              \n    unit"
         )
@@ -54,6 +56,9 @@ pub fn parse_clap_matches(global_matches: &ArgMatches) -> Result<(), DeliveryErr
                 "lint" => {
                     process::exit(lint::run(&post_subcommand_args))
                 },
+                "provision" => {
+                    process::exit(provision::run(&post_subcommand_args))
+                }
                 "syntax" => {
                     process::exit(syntax::run(&post_subcommand_args))
                 },

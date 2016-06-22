@@ -1,0 +1,20 @@
+#!/bin/bash
+
+echo chef "$@" >> "$FAKE_BINS_HISTORY_FILE"
+
+command="$1"
+subcommand="$2"
+
+# Mock out `chef exec kitchen`, but only if requested to be mocked.
+if [ "$command" = "exec" ] && [ "$subcommand" = "kitchen" ] && [[ $MOCK_CHEF_EXEC_KITCHEN = true ]]
+then
+    echo "Call to 'chef exec kitchen' mocked."
+    if [[ $MOCK_CHEF_EXEC_KITCHEN_SHOULD_EXIT ]]
+    then
+	exit $MOCK_CHEF_EXEC_KITCHEN_SHOULD_EXIT
+    else
+	exit 0
+    fi
+else
+    $DELIVERY_SYSTEM_CHEF "$@"
+fi

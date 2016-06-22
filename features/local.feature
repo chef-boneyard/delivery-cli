@@ -4,6 +4,7 @@ Scenario: When local --help is run
   When I run `delivery local --help`
   Then the output should contain "SUBCOMMANDS:"
   Then the output should contain "lint"
+  Then the output should contain "provision"
   Then the output should contain "syntax"
   Then the output should contain "unit"
   And the exit status should be 0
