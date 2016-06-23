@@ -139,7 +139,7 @@ impl error::Error for DeliveryError {
             Kind::IntParseError => "Attempted to parse invalid Int",
             Kind::OpenFailed => "Open command failed",
             Kind::AuthenticationFailed => "Authentication failed",
-            Kind::InternalServerError => "There was an internal error on the server. Check the logs.",
+            Kind::InternalServerError => "There was an internal error on the server. Check the logson the Delivery server.",
             Kind::NoToken => "Missing API token. Try `delivery token` to create one",
             Kind::TokenExpired => "The API token has expired. Try `delivery token` to generate a new one",
             Kind::NoEditor => "Environment variable EDITOR not set",

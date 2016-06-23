@@ -18,6 +18,7 @@
 use std::process::Command;
 use errors::{DeliveryError, Kind};
 use libc;
+use utils::path_to_string;
 use std::path::Path;
 use std::convert::AsRef;
 use std::error;
@@ -114,16 +115,3 @@ pub fn make_command(cmd: &str) -> Command {
     Command::new(cmd)
 }
 
-// Convert a path into a String. Panic if the path contains
-// non-unicode sequences.
-pub fn path_to_string<P: AsRef<Path>>(p: P) -> String {
-    let path = p.as_ref();
-    match path.to_str() {
-        Some(s) => s.to_string(),
-        None => {
-            let s = format!("invalid path (non-unicode): {}",
-                            path.to_string_lossy());
-            panic!(s)
-        }
-    }
-}
