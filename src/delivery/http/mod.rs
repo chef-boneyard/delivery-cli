@@ -399,6 +399,7 @@ impl APIClient {
         Result<String, DeliveryError> {
             let mut body = String::new();
             try!(resp.read_to_string(&mut body));
+            debug!("Status: {:?} Body: {:?}", resp.status, body);
             let json = try!(json::Json::from_str(&body));
             Ok(format!("{}", json.pretty()))
     }

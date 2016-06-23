@@ -74,6 +74,20 @@ pub fn walk_tree_for_path(dir: &Path, target: &str) -> Option<PathBuf> {
     }
 }
 
+// Convert a path into a String. Panic if the path contains
+// non-unicode sequences.
+pub fn path_to_string<P: AsRef<Path>>(p: P) -> String {
+    let path = p.as_ref();
+    match path.to_str() {
+        Some(s) => s.to_string(),
+        None => {
+            let s = format!("invalid path (non-unicode): {}",
+                            path.to_string_lossy());
+            panic!(s)
+        }
+    }
+}
+
 /// Return the content of the provided file
 ///
 /// An easy way to read a file
