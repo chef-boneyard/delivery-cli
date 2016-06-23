@@ -6,7 +6,13 @@ use errors::DeliveryError;
 
 // Implemented sub-commands. Should handle everything after args have
 // been parsed, including running the command, error handling, and UI outputting.
+use command::cleanup;
+use command::deploy;
 use command::lint;
+use command::provision;
+use command::smoke;
+use command::syntax;
+use command::unit;
 
 // Local subcommand is for wrapping external commands and running
 // the locally.
@@ -14,7 +20,17 @@ pub const SUBCOMMAND_NAME: &'static str = "local";
 
 pub fn clap_subcommand<'c>() -> App<'c, 'c> {
     SubCommand::with_name(SUBCOMMAND_NAME)
-        .template("{bin}\n{about}\n\n{usage}\n\nSUBCOMMANDS:\n    lint")
+        .template(
+            // Please keep alphabetized
+            "{bin}\n{about}\n\n{usage}\n\nSUBCOMMANDS: \
+             \n    cleanup \
+             \n    deploy \
+             \n    lint \
+             \n    provision \
+             \n    smoke \
+             \n    syntax \
+             \n    unit"
+        )
         // Use custom usage because gloabl flags will break parsing for this command
         .usage("delivery local <SUBCOMMAND> [SUBCOMMAND_FLAGS]")
         .about("Run Delivery phases on your local workstation.")
@@ -43,10 +59,27 @@ pub fn parse_clap_matches(global_matches: &ArgMatches) -> Result<(), DeliveryErr
 
             // Match the third arg of `delivery local <any_subcommand>`.
             match args[2].as_ref() {
-                "lint" => {
-                    let return_code = lint::run(&post_subcommand_args);
-                    process::exit(return_code)
+                "cleanup" => {
+                    process::exit(cleanup::run(&post_subcommand_args))
                 },
+                "deploy" => {
+                    process::exit(deploy::run(&post_subcommand_args))
+                },
+                "lint" => {
+                    process::exit(lint::run(&post_subcommand_args))
+                },
+                "provision" => {
+                    process::exit(provision::run(&post_subcommand_args))
+                },
+                "smoke" => {
+                    process::exit(smoke::run(&post_subcommand_args))
+                },
+                "syntax" => {
+                    process::exit(syntax::run(&post_subcommand_args))
+                },
+                "unit" => {
+                    process::exit(unit::run(&post_subcommand_args))
+                }
                 unknown => {
                     sayln("red", &format!("You passed subcommand '{}' to 'delivery {}'.", unknown, SUBCOMMAND_NAME));
                     sayln("red", &format!("'{}' is not a valid subcommand for 'delivery {}'.", unknown, SUBCOMMAND_NAME));

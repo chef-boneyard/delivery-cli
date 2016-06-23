@@ -2,7 +2,14 @@ Feature: local
 
 Scenario: When local --help is run
   When I run `delivery local --help`
-  Then the output should contain "SUBCOMMANDS:\n    lint"
+  Then the output should contain "SUBCOMMANDS:"
+  Then the output should contain "cleanup"
+  Then the output should contain "deploy"
+  Then the output should contain "lint"
+  Then the output should contain "provision"
+  Then the output should contain "smoke"
+  Then the output should contain "syntax"
+  Then the output should contain "unit"
   And the exit status should be 0
 
 Scenario: When local is run with no subcommands
