@@ -243,41 +243,6 @@ fn setup(opts: &setup::SetupClapOptions) -> Result<(), DeliveryError> {
     Ok(())
 }
 
-// fn clap_init(matches: &ArgMatches) -> Result<(), DeliveryError> {
-//     let init = init::InitClapOptions::new(&matches);
-//     sayln("green", "Chef Delivery");
-//     let mut config = try!(load_config(&cwd()));
-//     let final_proj = try!(project::project_or_from_cwd(init.project));
-//     config = config.set_user(init.user)
-//         .set_server(init.server)
-//         .set_enterprise(init.ent)
-//         .set_organization(init.org)
-//         .set_project(&final_proj)
-//         .set_pipeline(init.pipeline)
-//         .set_generator(init.generator)
-//         .set_config_json(init.config_json);
-//     let branch = try!(config.pipeline());
-//     if !init.github_org_name.is_empty() && !init.bitbucket_project_key.is_empty() {
-//         return Err(DeliveryError{ kind: Kind::OptionConstraint, detail: Some(format!("Please \
-//         specify just one Source Code Provider: delivery(default), github or bitbucket.")) })
-//     }
-//     let mut scp: Option<project::SourceCodeProvider> = None;
-//     if !init.github_org_name.is_empty() {
-//         debug!("init github: GitRepo:{:?}, GitOrg:{:?}, Branch:{:?}, SSL:{:?}",
-//                init.repo_name, init.github_org_name, branch, init.no_v_ssl);
-//         scp = Some(try!(project::SourceCodeProvider::new("github", &init.repo_name,
-//                                                          &init.github_org_name, &branch,
-//                                                          init.no_v_ssl)));
-//     } else if !init.bitbucket_project_key.is_empty() {
-//         debug!("init bitbucket: BitRepo:{:?}, BitProjKey:{:?}, Branch:{:?}",
-//                init.repo_name, init.bitbucket_project_key, branch);
-//         scp = Some(try!(project::SourceCodeProvider::new("bitbucket", &init.repo_name,
-//                                                          &init.bitbucket_project_key,
-//                                                          &branch, true)));
-//     }
-//     project::init(config, &init.no_open, &init.skip_build_cookbook, &init.local, scp)
-// }
-
 pub fn review(for_pipeline: &str, auto_bump: &bool,
           no_open: &bool, edit: &bool) -> Result<(), DeliveryError> {
     sayln("green", "Chef Delivery");

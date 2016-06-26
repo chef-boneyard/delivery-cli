@@ -268,78 +268,10 @@ pub fn project_or_from_cwd(proj: &str) -> Result<String, DeliveryError> {
     }
 }
 
-/// Initialize a Delivery project
-///
-/// This method will init a Delivery project doing the following:
-/// * Create the project in Delivery. (It knows how to link the project to a
-///   Github or Bitbucket SCP)
-/// * Add the `delivery` remote (Only Delivery & Bitbucket projects)
-/// * Push local content to Delivery (Only Delivery & Bitbucket projects)
-/// * Create a Pipeline
-/// * Create a feature branch called `add-delivery-config` to:
-///     * Create a build-cookbook
-///     * Create the `.delivery/config.json`
-/// * Finally submit a cli::review (Only for Delivery & Bitbucket projects)
-///
-pub fn init(config: Config, no_open: &bool, skip_build_cookbook: &bool,
-            local: &bool, scp: Option<SourceCodeProvider>) -> Result<(), DeliveryError> {
-    let project_path = try!(root_dir(&utils::cwd()));
-    try!(create_dot_delivery());
-    try!(create_on_server(&config, scp.clone(), local));
-
-    // If non-custom generator used, then build cookbook is already merged to master.
-    //
-    let custom_build_cookbook_generated = match try!(generate_build_cookbook(skip_build_cookbook, config.generator().ok())) {
-        Some(boolean) => {
-            match boolean {
-                // Custom build cookbook was generated
-                true => {
-                    true
-                },
-                // Custom build cookbook was not generated, but we need to push
-                // master since `chef generate build-cookbook` merged to it.
-                false => {
-                    // TODO: Update when fixing --for for the init command.
-                    try!(git::git_push_master());
-                    false
-                }
-            }
-        },
-        // No build cookbook was generated, do nothing.
-        None => false
-    };
-
-    let custom_config_passed = try!(generate_custom_delivery_config(config.config_json().ok()));
-
-    // If we need a branch for either the custom build cookbook or custom config, create it.
-    // If nothing custom was requested, then `chef generate build-cookbook` will handle the commits for us.
-    if custom_build_cookbook_generated || custom_config_passed {
-        try!(create_feature_branch_if_missing(&project_path));
-
-        if custom_build_cookbook_generated {
-            try!(add_commit_build_cookbook(&custom_config_passed));
-        }
-        // Only trigger review if there were any custom commits to review.
-        try!(trigger_review(config, scp, &no_open, &local));
-    } else {
-        if let Some(project_type) = scp {
-            if project_type.kind == Type::Github {
-                let _ = try!(check_github_remote(project_type));
-            }
-        };
-
-        sayln("white", "\nBuild cookbook generated and pushed to master in delivery.");
-        // TODO: Once we want people to use the local command, uncomment this.
-        //sayln("white", "As a first step, try running:\n");
-        //sayln("white", "delivery local lint");
-    }
-    Ok(())
-}
-
 /// Handle custom delivery config generation
 ///
 /// Receives a custom config.json file that will be copy to the current project repo
-fn generate_custom_delivery_config(config_json: Option<String>) -> Result<bool, DeliveryError> {
+pub fn generate_custom_delivery_config(config_json: Option<String>) -> Result<bool, DeliveryError> {
     let project_path = try!(root_dir(&utils::cwd()));
     if let Some(json) = config_json {
         let json_path = PathBuf::from(json);
@@ -351,7 +283,7 @@ fn generate_custom_delivery_config(config_json: Option<String>) -> Result<bool, 
 }
 
 /// Triggers a delvery review
-fn trigger_review(config: Config, scp: Option<SourceCodeProvider>,
+pub fn trigger_review(config: Config, scp: Option<SourceCodeProvider>,
                  no_open: &bool, local: &bool) -> Result<(), DeliveryError> {
     if *local {
         return Ok(())
@@ -383,7 +315,7 @@ fn trigger_review(config: Config, scp: Option<SourceCodeProvider>,
 }
 
 // Check to see if the origin remote is set up, and if not, output something useful.
-fn check_github_remote(s: SourceCodeProvider) -> Result<bool, DeliveryError> {
+pub fn check_github_remote(s: SourceCodeProvider) -> Result<bool, DeliveryError> {
     let dir = try!(root_dir(&utils::cwd()));
     let git_remote_result = git::git_command(&["remote"], &dir);
     match git_remote_result {
@@ -406,7 +338,7 @@ fn check_github_remote(s: SourceCodeProvider) -> Result<bool, DeliveryError> {
 /// This branch is created to start modifying the project repository
 /// In the case of a failure, we could roll back fearly easy by checking
 /// out master and deleting this feature branch.
-fn create_feature_branch_if_missing(project_path: &PathBuf) -> Result<(), DeliveryError> {
+pub fn create_feature_branch_if_missing(project_path: &PathBuf) -> Result<(), DeliveryError> {
     say("white", "Creating and checking out ");
     say("yellow", "add-delivery-config");
     say("white", " feature branch: ");
@@ -433,7 +365,7 @@ fn create_feature_branch_if_missing(project_path: &PathBuf) -> Result<(), Delive
 }
 
 /// Add and commit the generated build-cookbook
-fn add_commit_build_cookbook(custom_config_passed: &bool) -> Result<(), DeliveryError> {
+pub fn add_commit_build_cookbook(custom_config_passed: &bool) -> Result<(), DeliveryError> {
     let project_path = try!(root_dir(&utils::cwd()));
     say("white", "Adding and commiting build-cookbook: ");
     // .delivery is probably not yet under version control, so we have to add
@@ -448,7 +380,7 @@ fn add_commit_build_cookbook(custom_config_passed: &bool) -> Result<(), Delivery
     Ok(())
 }
 
-fn create_dot_delivery() -> Result<(), DeliveryError> {
+pub fn create_dot_delivery() -> Result<(), DeliveryError> {
     let dot_delivery = Path::new(".delivery");
     try!(mkdir_recursive(dot_delivery));
     Ok(())
@@ -497,7 +429,7 @@ fn generator_cache_path() -> Result<PathBuf, DeliveryError> {
 /// we use the default build-cookbook generator from the ChefDK.
 ///
 /// Returns true if a CUSTOM build cookbook was generated, false if standard, None if nothing was generated.
-fn generate_build_cookbook(skip_build_cookbook: &bool,
+pub fn generate_build_cookbook(skip_build_cookbook: &bool,
                            generator: Option<String>) -> Result<Option<bool>, DeliveryError> {
     if *skip_build_cookbook {
         return Ok(None)
