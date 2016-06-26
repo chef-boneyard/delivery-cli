@@ -15,31 +15,8 @@
 // limitations under the License.
 //
 
-// #![feature(plugin, path_ext, convert)]
-extern crate regex;
-#[macro_use] extern crate log;
-extern crate term;
-extern crate toml;
-extern crate time;
-extern crate rustc_serialize;
-extern crate libc;
-extern crate tempdir;
-extern crate uuid;
-#[macro_use] extern crate hyper;
-extern crate mime;
-extern crate clap;
+use errors::DeliveryError;
+use std::result;
 
-pub mod errors;
-pub mod types;
-pub mod git;
-pub mod utils;
-pub mod config;
-pub mod delivery_config;
-pub mod job;
-pub mod getpass;
-pub mod token;
-pub mod http;
-pub mod project;
-pub mod cookbook;
-pub mod cli;
-pub mod command;
+pub type DeliveryResult<T> = result::Result<T, DeliveryError>;
+pub type ExitCode = i32;
