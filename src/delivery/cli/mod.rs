@@ -56,12 +56,16 @@ mod review;
 mod checkout;
 mod clone;
 mod diff;
-mod init;
+pub mod init;
 mod job;
 mod spin;
 mod token;
 mod setup;
 mod local;
+
+// Implemented sub-commands. Should handle everything after args have
+// been parsed, including running the command, error handling, and UI outputting.
+use command;
 
 fn u_e_s_o_args<'a>() -> Vec<Arg<'a, 'a>> {
     make_arg_vec![
@@ -130,7 +134,8 @@ pub fn run() {
         },
         (init::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
-            clap_init(matches)
+            let init_opts = init::InitClapOptions::new(&matches);
+            command::init::run(init_opts)
         },
         (job::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
@@ -212,7 +217,8 @@ fn exit_with(e: DeliveryError, i: isize) {
     process::exit(x)
 }
 
-fn load_config(path: &PathBuf) -> Result<Config, DeliveryError> {
+// TODO: move
+pub fn load_config(path: &PathBuf) -> Result<Config, DeliveryError> {
     say("white", "Loading configuration from ");
     let msg = format!("{}", path.display());
     sayln("yellow", &msg);
@@ -237,40 +243,40 @@ fn setup(opts: &setup::SetupClapOptions) -> Result<(), DeliveryError> {
     Ok(())
 }
 
-fn clap_init(matches: &ArgMatches) -> Result<(), DeliveryError> {
-    let init = init::InitClapOptions::new(&matches);
-    sayln("green", "Chef Delivery");
-    let mut config = try!(load_config(&cwd()));
-    let final_proj = try!(project::project_or_from_cwd(init.project));
-    config = config.set_user(init.user)
-        .set_server(init.server)
-        .set_enterprise(init.ent)
-        .set_organization(init.org)
-        .set_project(&final_proj)
-        .set_pipeline(init.pipeline)
-        .set_generator(init.generator)
-        .set_config_json(init.config_json);
-    let branch = try!(config.pipeline());
-    if !init.github_org_name.is_empty() && !init.bitbucket_project_key.is_empty() {
-        return Err(DeliveryError{ kind: Kind::OptionConstraint, detail: Some(format!("Please \
-        specify just one Source Code Provider: delivery(default), github or bitbucket.")) })
-    }
-    let mut scp: Option<project::SourceCodeProvider> = None;
-    if !init.github_org_name.is_empty() {
-        debug!("init github: GitRepo:{:?}, GitOrg:{:?}, Branch:{:?}, SSL:{:?}",
-               init.repo_name, init.github_org_name, branch, init.no_v_ssl);
-        scp = Some(try!(project::SourceCodeProvider::new("github", &init.repo_name,
-                                                         &init.github_org_name, &branch,
-                                                         init.no_v_ssl)));
-    } else if !init.bitbucket_project_key.is_empty() {
-        debug!("init bitbucket: BitRepo:{:?}, BitProjKey:{:?}, Branch:{:?}",
-               init.repo_name, init.bitbucket_project_key, branch);
-        scp = Some(try!(project::SourceCodeProvider::new("bitbucket", &init.repo_name,
-                                                         &init.bitbucket_project_key,
-                                                         &branch, true)));
-    }
-    project::init(config, &init.no_open, &init.skip_build_cookbook, &init.local, scp)
-}
+// fn clap_init(matches: &ArgMatches) -> Result<(), DeliveryError> {
+//     let init = init::InitClapOptions::new(&matches);
+//     sayln("green", "Chef Delivery");
+//     let mut config = try!(load_config(&cwd()));
+//     let final_proj = try!(project::project_or_from_cwd(init.project));
+//     config = config.set_user(init.user)
+//         .set_server(init.server)
+//         .set_enterprise(init.ent)
+//         .set_organization(init.org)
+//         .set_project(&final_proj)
+//         .set_pipeline(init.pipeline)
+//         .set_generator(init.generator)
+//         .set_config_json(init.config_json);
+//     let branch = try!(config.pipeline());
+//     if !init.github_org_name.is_empty() && !init.bitbucket_project_key.is_empty() {
+//         return Err(DeliveryError{ kind: Kind::OptionConstraint, detail: Some(format!("Please \
+//         specify just one Source Code Provider: delivery(default), github or bitbucket.")) })
+//     }
+//     let mut scp: Option<project::SourceCodeProvider> = None;
+//     if !init.github_org_name.is_empty() {
+//         debug!("init github: GitRepo:{:?}, GitOrg:{:?}, Branch:{:?}, SSL:{:?}",
+//                init.repo_name, init.github_org_name, branch, init.no_v_ssl);
+//         scp = Some(try!(project::SourceCodeProvider::new("github", &init.repo_name,
+//                                                          &init.github_org_name, &branch,
+//                                                          init.no_v_ssl)));
+//     } else if !init.bitbucket_project_key.is_empty() {
+//         debug!("init bitbucket: BitRepo:{:?}, BitProjKey:{:?}, Branch:{:?}",
+//                init.repo_name, init.bitbucket_project_key, branch);
+//         scp = Some(try!(project::SourceCodeProvider::new("bitbucket", &init.repo_name,
+//                                                          &init.bitbucket_project_key,
+//                                                          &branch, true)));
+//     }
+//     project::init(config, &init.no_open, &init.skip_build_cookbook, &init.local, scp)
+// }
 
 pub fn review(for_pipeline: &str, auto_bump: &bool,
           no_open: &bool, edit: &bool) -> Result<(), DeliveryError> {

@@ -1,5 +1,6 @@
 pub mod cleanup;
 pub mod deploy;
+pub mod init;
 pub mod lint;
 pub mod provision;
 pub mod smoke;
