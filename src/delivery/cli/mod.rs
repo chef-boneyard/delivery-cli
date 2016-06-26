@@ -135,7 +135,7 @@ pub fn run() {
         (init::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
             let init_opts = init::InitClapOptions::new(&matches);
-            command::init::run(init_opts)
+             process::exit(command::init::run(init_opts))
         },
         (job::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
