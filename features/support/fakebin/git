@@ -34,6 +34,7 @@ else
                       "default"    : ["name:delivery-builder*"]
                     }
                   }' > .delivery/config.json
+            mkdir .delivery/build_cookbook
 	    ;;
 	# there are some commands we don't want to run
 	"push" )
