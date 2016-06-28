@@ -131,7 +131,6 @@ pub fn run() {
         },
         (diff::SUBCOMMAND_NAME, Some(matches)) => {
             diff(&diff::DiffClapOptions::new(&matches))
-
         },
         (init::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);

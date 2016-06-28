@@ -238,23 +238,23 @@ Given(/^a user creates a bitbucket backed project$/) do
 end
 
 Given(/^a delivery project is created in delivery$/) do
-  step %(the output should match /Creating(.*)delivery(.*)project/)
+  step %(the output should match /Creating.*delivery.*project/)
   step %(the output should contain "Remote 'delivery' added to git config")
 end
 
 Given(/^a delivery project should not be created in delivery$/) do
-  step %(the output should not match /Creating(.*)delivery(.*)project/)
-  step %(the output should match /Project(.*)already exists./)
+  step %(the output should not match /Creating.*delivery.*project/)
+  step %(the output should match /Project.*already exists./)
   step %(the output should contain "Remote 'delivery' added to git config")
 end
 
 Given(/^a bitbucket project is created in delivery$/) do
-  step %(the output should match /Creating(.*)bitbucket(.*)project/)
+  step %(the output should match /Creating.*bitbucket.*project/)
   step %(the output should contain "Remote 'delivery' added to git config")
 end
 
 Given(/^a github project is created in delivery$/) do
-  step %(the output should match /Creating(.*)github(.*)project/)
+  step %(the output should match /Creating.*github.*project/)
   step %(the output should not contain "Remote 'delivery' added to git config")
 end
 
@@ -320,7 +320,7 @@ Given(/^a custom build-cookbook is generated from "([^"]*)"$/) do |type|
   else
     pending "not implemented"
   end
-  step %(the output should match /Creating and checking out (.*)add-delivery-config(.*) feature branch/)
+  step %(the output should match /Creating and checking out.*add-delivery-config.*feature branch/)
   step %("git push --porcelain --progress --verbose delivery add-delivery-config:_for/master/add-delivery-config" should be run)
   step %(the file ".delivery/build-cookbook/test_file" should contain "THIS IS ONLY A TEST.")
   step %("git commit -m Adds Delivery build cookbook and config" should be run)

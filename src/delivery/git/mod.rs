@@ -380,10 +380,12 @@ pub fn checkout_review(change: &str, patchset: &str, pipeline: &str) -> Result<(
     }
 }
 
-pub fn server_content() -> bool {
-    match git_command(&["ls-remote", "delivery", "refs/heads/master"], &cwd()) {
+// Verify the content of the repo:pipeline on the server
+pub fn server_content(pipeline: &str) -> bool {
+    let p_ref = &format!("refs/heads/{}", pipeline);
+    match git_command(&["ls-remote", "delivery", p_ref], &cwd()) {
         Ok(msg) => {
-            if msg.stdout.contains("refs/heads/master") {
+            if msg.stdout.contains(p_ref) {
                 say("red", &format!("{}", msg.stdout));
                 return true
             } else {
@@ -398,28 +400,29 @@ pub fn server_content() -> bool {
     }
 }
 
-// TODO: This and all its error messages needs to be reworked
-// to support pipelines that are not master when --for is passed to init.
-// Currently, the --for argument to the init command is broken.
-// Also, write a cucumber test to cover this case.
-pub fn git_push_master() -> Result<(), DeliveryError> {
-    // Check if the master branch exists and has commits.
-    // If the master branch exists and does not have commits,
+// Push pipeline content to the Server
+pub fn git_push(pipeline: &str) -> Result<(), DeliveryError> {
+    // Check if the pipeline branch exists and has commits.
+    // If the pipeline branch exists and does not have commits,
     // then `git branch` will not return it, so just checking
-    // `git branch` output will handle both cases (master does not exist
-    // and master exists but without commits).
+    // `git branch` output will handle both cases (pipeline does
+    // not exist and pipeline exists but without commits).
     match git_command(&["branch"], &cwd()) {
         Ok(msg) => {
-            if !msg.stdout.contains("master") {
-                sayln("red", "A master branch does not exist locally.");
-                sayln("red", "A master branch with commits is needed to create the master pipeline.\n");
-                sayln("red", "If your project already has git history, you should pull it into master locally.");
-                sayln("red", "For example, if your remote is named origin, and your git history is in master run:\n");
-                sayln("red", "git pull origin master\n");
+            if !msg.stdout.contains(pipeline) {
+                sayln("red", &format!("A {} branch does not exist locally.", pipeline));
+                sayln("red", &format!("A {} branch with commits is needed to create the {} \
+                                      pipeline.\n", pipeline, pipeline));
+                sayln("red", &format!("If your project already has git history, you should \
+                                      pull it into {} locally.", pipeline));
+                sayln("red", &format!("For example, if your remote is named origin, and your \
+                                      git history is in {} run:\n", pipeline));
+                sayln("red", &format!("git pull origin {}\n", pipeline));
                 sayln("red", "However, if this is a brand new project, make an initial commit by running:\n");
-                sayln("red", "git checkout -b master");
+                sayln("red", &format!("git checkout -b {}", pipeline));
                 sayln("red", "git commit --allow-empty -m 'Initial commit.'\n");
-                sayln("red", "Once you have commits on the master branch, run `delivery init` again.");
+                sayln("red", &format!("Once you have commits on the {} branch, run `delivery \
+                                      init` again.", pipeline));
                 return Err(DeliveryError{ kind: Kind::GitFailed, detail: None });
             }
             true
@@ -430,7 +433,7 @@ pub fn git_push_master() -> Result<(), DeliveryError> {
     // Master branch exists with commits on it, push it up so the master pipeline can be made.
     match git_command(&["push", "--set-upstream",
                         "--porcelain", "--progress",
-                        "--verbose", "delivery", "master"],
+                        "--verbose", "delivery", pipeline],
                       &cwd()) {
         Ok(msg) => {
             sayln("white", &format!("{}", msg.stdout));

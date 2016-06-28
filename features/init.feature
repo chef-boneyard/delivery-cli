@@ -126,3 +126,18 @@ Scenario: When providing a custom config.json
   And the change has the default generated build_cookbook
   And a change configuring a custom delivery is created
   And the exit status should be 0
+
+Scenario: When creating a delivery backed project for a pipeline
+          different than master that doesn't exist locally
+  When I set up basic delivery and git configs
+  Then I run `delivery init --for sad_panda`
+  And the output should contain "A sad_panda branch does not exist locally"
+  And the exit status should be 1
+
+Scenario: When creating a delivery backed project for a pipeline
+          different than master
+  When I set up basic delivery and git configs
+  And I successfully run `git checkout -b awesome`
+  Then I run `delivery init --for awesome`
+  And the output should match /Pushing local content to.*awesome.*pipeline on server/
+  And the exit status should be 0
