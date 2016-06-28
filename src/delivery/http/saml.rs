@@ -24,31 +24,34 @@ use config::Config;
 
 #[derive(RustcEncodable, RustcDecodable, Debug, Clone)]
 pub struct LookupResponse {
-    saml_user: bool
+    enabled: bool
 }
 
 impl LookupResponse {
-    pub fn parse_saml_user(response: &str) -> Result<bool, DeliveryError> {
+    pub fn parse_saml_enabled(response: &str) -> Result<bool, DeliveryError> {
         let lresponse: LookupResponse = try!(json::decode(response));
-        Ok(lresponse.saml_user)
+        Ok(lresponse.enabled)
     }
 }
 
-/// Lookup if user is a SAML-backed user on a Delivery server.
-pub fn is_saml(config: &Config) -> Result<bool, DeliveryError> {
+/// Lookup if Delivery server is SAML-enabled.
+pub fn is_enabled(config: &Config) -> Result<bool, DeliveryError> {
     let client = try!(APIClient::from_config_no_auth(config));
-    let user = try!(config.user());
-    let path = format!("saml/lookup-user/{}", &user);
+    let path = "saml/enabled";
     let mut result = try!(client.get(&path));
     match result.status {
         StatusCode::Ok => {
             let mut body_string = String::new();
             try!(result.read_to_string(&mut body_string));
-            let resp = try!(LookupResponse::parse_saml_user(&body_string));
+            let resp = try!(LookupResponse::parse_saml_enabled(&body_string));
             Ok(resp)
         },
+        StatusCode::NotFound => { // 404 received if API does not exist
+            debug!("endpoint 'saml/enabled' not found");
+            Ok(false)
+        },
         error_code @ _ => {
-            let msg = format!("SAML lookup request returned {}",
+            let msg = format!("lookup of SAML authentication returned {}",
                               error_code);
             let mut detail = String::new();
             let e = match result.read_to_string(&mut detail) {
@@ -67,12 +70,12 @@ mod tests {
 
     #[test]
     fn lookup_response_parse_test() {
-        let response = "{\"saml_user\":true}";
-        let saml = LookupResponse::parse_saml_user(response).unwrap();
+        let response = "{\"enabled\":true}";
+        let saml = LookupResponse::parse_saml_enabled(response).unwrap();
         assert_eq!(true, saml);
 
-        let response = "{\"saml_user\":false}";
-        let saml = LookupResponse::parse_saml_user(response).unwrap();
+        let response = "{\"enabled\":false}";
+        let saml = LookupResponse::parse_saml_enabled(response).unwrap();
         assert_eq!(false, saml);
     }
 }

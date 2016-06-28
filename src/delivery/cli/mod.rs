@@ -638,6 +638,9 @@ fn token(opts: &token::TokenClapOptions) -> Result<(), DeliveryError> {
         .set_api_port(opts.port)
         .set_enterprise(opts.ent)
         .set_user(opts.user);
+    if opts.saml.is_some() {
+        config.saml = opts.saml;
+    }
     if opts.verify {
         try!(TokenStore::verify_token(&config));
     } else {
@@ -858,7 +861,7 @@ mod tests {
         let app = cli::make_app(&build_version);
         let matches = app.get_matches_from(vec!["delivery", "token", "-e", "fellowship",
                                            "-u", "gandalf", "-s", "lord.of.the.rings.com",
-                                           "--api-port", "1111", "--verify"]);
+                                           "--api-port", "1111", "--verify", "--saml=true"]);
         assert_eq!(Some("token"), matches.subcommand_name());
         let token_matches = matches.subcommand_matches(token::SUBCOMMAND_NAME).unwrap();
         let token_opts = token::TokenClapOptions::new(&token_matches);
@@ -867,6 +870,7 @@ mod tests {
         assert_eq!(token_opts.ent, "fellowship");
         assert_eq!(token_opts.user, "gandalf");
         assert_eq!(token_opts.verify, true);
+        assert_eq!(token_opts.saml, Some(true));
     }
 
     #[test]
