@@ -1,4 +1,0 @@
-#!/bin/bash
-
-$DELIVERY_SYSTEM_CP "$@"
-echo cp "$@" >> "$FAKE_BINS_HISTORY_FILE"
