@@ -43,7 +43,8 @@ pub struct Config {
     pub generator: Option<String>,
     pub non_interactive: Option<bool>,
     pub auto_bump: Option<bool>,
-    pub config_json: Option<String>
+    pub config_json: Option<String>,
+    pub saml: Option<bool>,
 }
 
 impl Default for Config {
@@ -62,7 +63,8 @@ impl Default for Config {
             generator: None,
             non_interactive: None,
             auto_bump: None,
-            config_json: None
+            config_json: None,
+            saml: None,
         }
     }
 }
@@ -191,6 +193,7 @@ impl Config {
         config.non_interactive = boolify_or("non_interactive", &table, config.non_interactive);
         config.auto_bump = boolify_or("auto_bump", &table, config.auto_bump);
         config.config_json = stringify_or("config_json", &table, config.config_json);
+        config.saml = boolify_or("saml", &table, config.saml);
         return Ok(config);
     }
 
@@ -280,6 +283,7 @@ mod tests {
                 assert_eq!(None, config.non_interactive);
                 assert_eq!(None, config.auto_bump);
                 assert_eq!(None, config.config_json);
+                assert_eq!(None, config.saml);
             },
             Err(e) => {
                 panic!("Failed to parse: {:?}", e.detail)
@@ -300,6 +304,7 @@ mod tests {
             non_interactive = true
             auto_bump = true
             config_json = "/path/to/my/custom/config.json"
+            saml = true
 "#;
         let config_result = Config::parse_config(toml);
         match config_result {
@@ -314,6 +319,7 @@ mod tests {
                 assert_eq!(Some(true), config.auto_bump);
                 assert_eq!(Some("/path/to/my/custom/config.json".to_string()),
                           config.config_json);
+                assert_eq!(Some(true), config.saml);
             },
             Err(e) => {
                 panic!("Failed to parse: {:?}", e.detail)

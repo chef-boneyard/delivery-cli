@@ -123,8 +123,10 @@ impl TokenStore {
       let user = try!(config.user());
       let api_server = try!(config.api_host_and_port());
       let mut tstore = try!(TokenStore::from_home());
-
-      let saml = try!(http::user::is_saml(&config));
+      let saml = match config.saml {
+          Some(b) => b,
+          None => try!(http::saml::is_enabled(&config)),
+      };
       let token = if saml {
           let mut enter = String::new();
           say("red", "Press Enter to open a browser window to retrieve a new token.");

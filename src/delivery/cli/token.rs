@@ -10,6 +10,8 @@ pub struct TokenClapOptions<'n> {
     pub ent: &'n str,
     pub user: &'n str,
     pub verify: bool,
+    // if None, use what the server tells us on its /e/<ent>/saml/enabled endpoint
+    pub saml: Option<bool>,
 }
 impl<'n> Default for TokenClapOptions<'n> {
     fn default() -> Self {
@@ -19,6 +21,7 @@ impl<'n> Default for TokenClapOptions<'n> {
             ent: "",
             user: "",
             verify: false,
+            saml: None,
         }
     }
 }
@@ -31,6 +34,11 @@ impl<'n> TokenClapOptions<'n> {
             ent: value_of(&matches, "ent"),
             user: value_of(&matches, "user"),
             verify: matches.is_present("verify"),
+            saml: match value_of(&matches, "saml") {
+              "true" => Some(true),
+              "false" => Some(false),
+              _ => None,
+            },
         }
     }
 }
@@ -42,6 +50,7 @@ pub fn clap_subcommand<'c>() -> App<'c, 'c> {
             "-u --user=[user] 'User name for Delivery authentication'",
             "-e --ent=[ent] 'The enterprise in which the project lives'",
             "--verify 'Verify the Token has expired'",
+            "--saml=[true/false] 'Use SAML authentication (overrides Delivery server)'",
             "-s --server=[server] 'The Delivery server address'"])
         .args_from_usage(
             "--api-port=[api-port] 'Port for Delivery server'")
