@@ -22,19 +22,10 @@ else
             repo_dir=$3
             mkdir -p $repo_dir
             cd $repo_dir
-	    $DELIVERY_SYSTEM_GIT init
-            mkdir .delivery
-            echo '{
-                    "version": "2",
-                    "build_cookbook": {
-                      "name": "build_cookbook",
-                      "path": ".delivery/build_cookbook"
-                    },
-                      "build_nodes": {
-                      "default"    : ["name:delivery-builder*"]
-                    }
-                  }' > .delivery/config.json
-            mkdir .delivery/build_cookbook
+            cp -r "$GIT_CLONE_FIXTURE_REPOS_DIR/minimal/" .
+	          $DELIVERY_SYSTEM_GIT init
+	          $DELIVERY_SYSTEM_GIT add .
+	          $DELIVERY_SYSTEM_GIT commit -a -m "commit copied repo"
 	    ;;
 	# there are some commands we don't want to run
 	"push" )
