@@ -77,6 +77,11 @@ Given(/^a git repo "(.*?)"$/) do |repo|
   dirs.pop
 end
 
+Given(/^I commit all files with message "([^"]+)"$/) do |message|
+  step %(I successfully run `git add .`)
+  step %(I successfully run `git commit --quiet -m '#{message}'`)
+end
+
 Given(/^I make a commit with message "([^"]+)"$/) do |message|
   step %(I successfully run `git commit --quiet -m '#{message}' --allow-empty`)
 end

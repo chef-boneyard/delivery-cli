@@ -47,9 +47,6 @@ else
 	    ;;
 	"ls-remote" )
 	    ;;
-	"show" )
-	    [ "$3" = "master:metadata.rb" ] || echo "version '1.2.3'"
-	    ;;
 	* )
 	    $DELIVERY_SYSTEM_GIT "$@"
 	    ;;
