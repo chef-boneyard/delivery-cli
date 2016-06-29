@@ -50,8 +50,6 @@ Before do
 
   fixture_repos_dir = File.expand_path("../../fixtures/repos", __FILE__)
   set_env('GIT_CLONE_FIXTURE_REPOS_DIR', fixture_repos_dir)
-  puts "* " * 40
-  puts fixture_repos_dir
 end
 
 Before('@broken') do
