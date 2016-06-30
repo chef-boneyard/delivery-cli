@@ -13,6 +13,7 @@ use token::TokenStore;
 use utils::{self, cwd, privileged_process};
 use utils::say::{self, sayln, say};
 use errors::{DeliveryError, Kind};
+use types::{ExitCode};
 use config::Config;
 use delivery_config::DeliveryConfig;
 use git::{self, ReviewResult};
@@ -56,12 +57,16 @@ mod review;
 mod checkout;
 mod clone;
 mod diff;
-mod init;
+pub mod init;
 mod job;
 mod spin;
 mod token;
 mod setup;
 mod local;
+
+// Implemented sub-commands. Should handle everything after args have
+// been parsed, including running the command, error handling, and UI outputting.
+use command;
 
 fn u_e_s_o_args<'a>() -> Vec<Arg<'a, 'a>> {
     make_arg_vec![
@@ -130,7 +135,8 @@ pub fn run() {
         },
         (init::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
-            clap_init(matches)
+            let init_opts = init::InitClapOptions::new(&matches);
+            command::init::run(init_opts)
         },
         (job::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
@@ -161,7 +167,7 @@ pub fn run() {
             std::thread::sleep(sleep_time);
             spinner.stop();
             handle_spinner(&matches);
-            Ok(())
+            Ok(0)
         },
         _ => {
             // ownership issue with use of above defined app
@@ -173,7 +179,10 @@ pub fn run() {
         }
     };
     match cmd_result {
-        Ok(_) => {},
+        // You can exit with any integer, can also be used to bypass default
+        // error handling if you handled an error and returned non-zero.
+        Ok(exit_status) => process::exit(exit_status),
+        // Handles DeliveryError and exits 1.
         Err(e) => exit_with(e, 1)
     }
 }
@@ -208,11 +217,11 @@ fn exit_with(e: DeliveryError, i: isize) {
         Some(deets) => sayln("red", &deets),
         None => {}
     }
-    let x = i as i32;
+    let x = i as ExitCode;
     process::exit(x)
 }
 
-fn load_config(path: &PathBuf) -> Result<Config, DeliveryError> {
+pub fn load_config(path: &PathBuf) -> Result<Config, DeliveryError> {
     say("white", "Loading configuration from ");
     let msg = format!("{}", path.display());
     sayln("yellow", &msg);
@@ -220,7 +229,7 @@ fn load_config(path: &PathBuf) -> Result<Config, DeliveryError> {
     Ok(config)
 }
 
-fn setup(opts: &setup::SetupClapOptions) -> Result<(), DeliveryError> {
+fn setup(opts: &setup::SetupClapOptions) -> Result<ExitCode, DeliveryError> {
     sayln("green", "Chef Delivery");
     let config_path = if opts.path.is_empty() {
         cwd()
@@ -234,46 +243,11 @@ fn setup(opts: &setup::SetupClapOptions) -> Result<(), DeliveryError> {
         .set_organization(opts.org)
         .set_pipeline(opts.pipeline) ;
     try!(config.write_file(&config_path));
-    Ok(())
-}
-
-fn clap_init(matches: &ArgMatches) -> Result<(), DeliveryError> {
-    let init = init::InitClapOptions::new(&matches);
-    sayln("green", "Chef Delivery");
-    let mut config = try!(load_config(&cwd()));
-    let final_proj = try!(project::project_or_from_cwd(init.project));
-    config = config.set_user(init.user)
-        .set_server(init.server)
-        .set_enterprise(init.ent)
-        .set_organization(init.org)
-        .set_project(&final_proj)
-        .set_pipeline(init.pipeline)
-        .set_generator(init.generator)
-        .set_config_json(init.config_json);
-    let branch = try!(config.pipeline());
-    if !init.github_org_name.is_empty() && !init.bitbucket_project_key.is_empty() {
-        return Err(DeliveryError{ kind: Kind::OptionConstraint, detail: Some(format!("Please \
-        specify just one Source Code Provider: delivery(default), github or bitbucket.")) })
-    }
-    let mut scp: Option<project::SourceCodeProvider> = None;
-    if !init.github_org_name.is_empty() {
-        debug!("init github: GitRepo:{:?}, GitOrg:{:?}, Branch:{:?}, SSL:{:?}",
-               init.repo_name, init.github_org_name, branch, init.no_v_ssl);
-        scp = Some(try!(project::SourceCodeProvider::new("github", &init.repo_name,
-                                                         &init.github_org_name, &branch,
-                                                         init.no_v_ssl)));
-    } else if !init.bitbucket_project_key.is_empty() {
-        debug!("init bitbucket: BitRepo:{:?}, BitProjKey:{:?}, Branch:{:?}",
-               init.repo_name, init.bitbucket_project_key, branch);
-        scp = Some(try!(project::SourceCodeProvider::new("bitbucket", &init.repo_name,
-                                                         &init.bitbucket_project_key,
-                                                         &branch, true)));
-    }
-    project::init(config, &init.no_open, &init.skip_build_cookbook, &init.local, scp)
+    Ok(0)
 }
 
 pub fn review(for_pipeline: &str, auto_bump: &bool,
-          no_open: &bool, edit: &bool) -> Result<(), DeliveryError> {
+          no_open: &bool, edit: &bool) -> Result<ExitCode, DeliveryError> {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
     config = config.set_pipeline(for_pipeline);
@@ -324,7 +298,7 @@ fn edit_change(config: &Config,
 }
 
 fn handle_review_result(review: &ReviewResult,
-                        no_open: &bool) -> Result<(), DeliveryError> {
+                        no_open: &bool) -> Result<ExitCode, DeliveryError> {
     for line in review.messages.iter() {
         sayln("white", line);
     }
@@ -337,10 +311,10 @@ fn handle_review_result(review: &ReviewResult,
         },
         None => {}
     };
-    Ok(())
+    Ok(0)
 }
 
-fn checkout(opts: &checkout::CheckoutClapOptions) -> Result<(), DeliveryError> {
+fn checkout(opts: &checkout::CheckoutClapOptions) -> Result<ExitCode, DeliveryError> {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
     config = config.set_pipeline(opts.pipeline);
@@ -362,10 +336,10 @@ fn checkout(opts: &checkout::CheckoutClapOptions) -> Result<(), DeliveryError> {
         }
     };
     try!(git::checkout_review(opts.change, pset, &target));
-    Ok(())
+    Ok(0)
 }
 
-fn diff(opts: &diff::DiffClapOptions) ->  Result<(), DeliveryError> {
+fn diff(opts: &diff::DiffClapOptions) ->  Result<ExitCode, DeliveryError> {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
     config = config.set_pipeline(opts.pipeline);
@@ -382,10 +356,10 @@ fn diff(opts: &diff::DiffClapOptions) ->  Result<(), DeliveryError> {
         sayln("yellow", opts.patchset);
     }
     try!(git::diff(opts.change, opts.patchset, &target, &opts.local));
-    Ok(())
+    Ok(0)
 }
 
-fn clone(opts: &clone::CloneClapOptions) -> Result<(), DeliveryError> {
+fn clone(opts: &clone::CloneClapOptions) -> Result<ExitCode, DeliveryError> {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
     config = config.set_user(opts.user)
@@ -407,10 +381,10 @@ fn clone(opts: &clone::CloneClapOptions) -> Result<(), DeliveryError> {
     let project_root = cwd().join(opts.project);
     try!(git::config_repo(&delivery_url,
                           &project_root));
-    Ok(())
+    Ok(0)
 }
 
-fn job(opts: &job::JobClapOptions) -> Result<(), DeliveryError> {
+fn job(opts: &job::JobClapOptions) -> Result<ExitCode, DeliveryError> {
     sayln("green", "Chef Delivery");
     if !opts.docker_image.is_empty() {
         // The --docker flag was specified, let's do this!
@@ -491,7 +465,7 @@ fn job(opts: &job::JobClapOptions) -> Result<(), DeliveryError> {
                 }
             }
         }
-        return Ok(());
+        return Ok(0);
     }
 
     let mut config = try!(load_config(&cwd()));
@@ -608,7 +582,7 @@ fn job(opts: &job::JobClapOptions) -> Result<(), DeliveryError> {
     };
     sayln("magenta", &format!("Running {} {}", phase_msg, phases.join(", ")));
     try!(ws.run_job(opts.phases, &privilege_drop, &local_change));
-    Ok(())
+    Ok(0)
 }
 
 fn maybe_add_flag_value(cmd: &mut Command, flag: &str, value: &str) {
@@ -631,7 +605,7 @@ fn with_default<'a>(val: &'a str, default: &'a str, local: &bool) -> &'a str {
     }
 }
 
-fn token(opts: &token::TokenClapOptions) -> Result<(), DeliveryError> {
+fn token(opts: &token::TokenClapOptions) -> Result<ExitCode, DeliveryError> {
     sayln("green", "Chef Delivery");
     let mut config = try!(load_config(&cwd()));
     config = config.set_server(opts.server)
@@ -646,7 +620,7 @@ fn token(opts: &token::TokenClapOptions) -> Result<(), DeliveryError> {
     } else {
         try!(TokenStore::request_token(&config));
     }
-    Ok(())
+    Ok(0)
 }
 
 fn version() -> String {
@@ -659,7 +633,7 @@ fn build_git_sha() -> String {
     format!("({})", sha)
 }
 
-fn api_req(opts: &api::ApiClapOptions) -> Result<(), DeliveryError> {
+fn api_req(opts: &api::ApiClapOptions) -> Result<ExitCode, DeliveryError> {
     let mut config = try!(Config::load_config(&cwd()));
     config = config.set_user(opts.user)
         .set_server(opts.server)
@@ -684,7 +658,7 @@ fn api_req(opts: &api::ApiClapOptions) -> Result<(), DeliveryError> {
             println!("{}", pretty_json);
         }
     };
-    Ok(())
+    Ok(0)
 }
 
 fn value_of<'a>(matches: &'a ArgMatches, key: &str) -> &'a str {

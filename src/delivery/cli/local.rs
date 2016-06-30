@@ -1,8 +1,7 @@
 use clap::{App, SubCommand, ArgMatches, AppSettings};
 use std::env;
-use std::process;
 use utils::say::sayln;
-use errors::DeliveryError;
+use types::{DeliveryResult, ExitCode};
 
 // Implemented sub-commands. Should handle everything after args have
 // been parsed, including running the command, error handling, and UI outputting.
@@ -37,7 +36,7 @@ pub fn clap_subcommand<'c>() -> App<'c, 'c> {
         .setting(AppSettings::AllowExternalSubcommands)
 }
 
-pub fn parse_clap_matches(global_matches: &ArgMatches) -> Result<(), DeliveryError> {
+pub fn parse_clap_matches(global_matches: &ArgMatches) -> DeliveryResult<ExitCode> {
     match global_matches.subcommand() {
         // Matches any `delivery local <any_subcommand>`.
         (external, Some(sub_matches)) => {
@@ -60,39 +59,39 @@ pub fn parse_clap_matches(global_matches: &ArgMatches) -> Result<(), DeliveryErr
             // Match the third arg of `delivery local <any_subcommand>`.
             match args[2].as_ref() {
                 "cleanup" => {
-                    process::exit(cleanup::run(&post_subcommand_args))
+                    return Ok(cleanup::run(&post_subcommand_args))
                 },
                 "deploy" => {
-                    process::exit(deploy::run(&post_subcommand_args))
+                    return Ok(deploy::run(&post_subcommand_args))
                 },
                 "lint" => {
-                    process::exit(lint::run(&post_subcommand_args))
+                    return Ok(lint::run(&post_subcommand_args))
                 },
                 "provision" => {
-                    process::exit(provision::run(&post_subcommand_args))
+                    return Ok(provision::run(&post_subcommand_args))
                 },
                 "smoke" => {
-                    process::exit(smoke::run(&post_subcommand_args))
+                    return Ok(smoke::run(&post_subcommand_args))
                 },
                 "syntax" => {
-                    process::exit(syntax::run(&post_subcommand_args))
+                    return Ok(syntax::run(&post_subcommand_args))
                 },
                 "unit" => {
-                    process::exit(unit::run(&post_subcommand_args))
+                    return Ok(unit::run(&post_subcommand_args))
                 }
                 unknown => {
                     sayln("red", &format!("You passed subcommand '{}' to 'delivery {}'.", unknown, SUBCOMMAND_NAME));
                     sayln("red", &format!("'{}' is not a valid subcommand for 'delivery {}'.", unknown, SUBCOMMAND_NAME));
                     sayln("red", &format!("To see valid subcommands, please run 'delivery {} --help'.", SUBCOMMAND_NAME));
-                    process::exit(1)
+                    return Ok(1)
                 }
             }
         },
         _ => {
             sayln("red", &format!("You did not pass a subcommand to 'delivery {}'.", SUBCOMMAND_NAME));
             sayln("red", &format!("To see valid subcommands, please run 'delivery {} --help'.", SUBCOMMAND_NAME));
-            process::exit(1)
+            return Ok(1)
         }
     }
-    Ok(())
+    return Ok(0)
 }
