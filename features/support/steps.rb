@@ -120,6 +120,13 @@ Given(/^I clean up the ruby env so I can run other ruby bins like ChefDK$/) do
   })
 end
 
+Given("I have a repository with failing tests") do
+  step("I set the environment variables to:", table(%q[
+    | variable             | value          |
+    | REPO_TO_COPY         | failing_tests  |
+  ]))
+end
+
 # When in a git repository, checks out the given branch. The branch
 # must already exist
 When(/^I checkout the "(.*?)" branch$/) do |branch|
