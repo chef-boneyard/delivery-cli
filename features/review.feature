@@ -104,6 +104,7 @@ Scenario: I review a cookbook that the version hasn't been bumped
     """
     version '1.2.3'
     """
+  And I commit all files with message "existing repo has version 1.2.3"
   And I have a feature branch "cookbook" off of "master"
   And I checkout the "cookbook" branch
   When I successfully run `delivery review --auto-bump`
@@ -125,6 +126,11 @@ Scenario: I review a cookbook that the version has already been bumped
   the delivery cli will detect it and will NOT update.
 
   Given a file named "metadata.rb" with:
+    """
+    version '1.2.3'
+    """
+  And I commit all files with message "old version is 1.2.3"
+  And a file named "metadata.rb" with:
     """
     version '1.2.4'
     """
@@ -152,6 +158,7 @@ Scenario: I enable the auto_bump feature persistently in the cli.toml
     """
     version '1.2.3'
     """
+  And I commit all files with message "existing repo has version 1.2.3"
   And a file named ".delivery/cli.toml" with:
     """
     auto_bump = true

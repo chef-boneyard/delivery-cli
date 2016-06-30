@@ -47,6 +47,9 @@ Before do
   # overriden to other values when running executables
   # (notably when running chef-client in the CLI)
   set_env('FAKE_BINS_HISTORY_FILE', File.join(current_directory, '.history'))
+
+  fixture_repos_dir = File.expand_path("../../fixtures/repos", __FILE__)
+  set_env('GIT_CLONE_FIXTURE_REPOS_DIR', fixture_repos_dir)
 end
 
 Before('@broken') do

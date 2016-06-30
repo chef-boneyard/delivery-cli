@@ -77,6 +77,11 @@ Given(/^a git repo "(.*?)"$/) do |repo|
   dirs.pop
 end
 
+Given(/^I commit all files with message "([^"]+)"$/) do |message|
+  step %(I successfully run `git add .`)
+  step %(I successfully run `git commit --quiet -m '#{message}'`)
+end
+
 Given(/^I make a commit with message "([^"]+)"$/) do |message|
   step %(I successfully run `git commit --quiet -m '#{message}' --allow-empty`)
 end
@@ -113,6 +118,13 @@ Given(/^I clean up the ruby env so I can run other ruby bins like ChefDK$/) do
 	  | BUNDLE_BIN_PATH |       |
 	  | BUNDLE_GEMFILE  |       |
   })
+end
+
+Given("I have a repository with failing tests") do
+  step("I set the environment variables to:", table(%q[
+    | variable             | value          |
+    | REPO_TO_COPY         | failing_tests  |
+  ]))
 end
 
 # When in a git repository, checks out the given branch. The branch

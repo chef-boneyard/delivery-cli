@@ -22,41 +22,22 @@ else
             repo_dir=$3
             mkdir -p $repo_dir
             cd $repo_dir
-	    $DELIVERY_SYSTEM_GIT init
-            mkdir .delivery
-            echo '{
-                    "version": "2",
-                    "build_cookbook": {
-                      "name": "build_cookbook",
-                      "path": ".delivery/build_cookbook"
-                    },
-                      "build_nodes": {
-                      "default"    : ["name:delivery-builder*"]
-                    }
-                  }' > .delivery/config.json
+
+            if [ "x$REPO_TO_COPY" == "x" ]; then
+              REPO_TO_COPY="minimal"
+            fi
+
+            cp -r "$GIT_CLONE_FIXTURE_REPOS_DIR/$REPO_TO_COPY/." .
+	          $DELIVERY_SYSTEM_GIT init
+	          $DELIVERY_SYSTEM_GIT add .
+	          $DELIVERY_SYSTEM_GIT commit -a -m "commit copied repo"
 	    ;;
 	# there are some commands we don't want to run
 	"push" )
 	    ;;
-	"branch" )
-	    # mock delete branch, since things can get wonky
-	    # with unmerged paths because push is mocked.
-	    if [ "$2" = "-d" ]
-	    then
-		echo "Mocking call to 'git branch -d'" >> /tmp/wtf
-	    elif [ "$2" = "-D" ]
-	    then
-		echo "Mocking call to 'git branch -D'" >> /tmp/wtf
-	    else
-		$DELIVERY_SYSTEM_GIT "$@"
-	    fi
-	    ;;
 	"fetch" )
 	    ;;
 	"ls-remote" )
-	    ;;
-	"show" )
-	    [ "$3" = "master:metadata.rb" ] || echo "version '1.2.3'"
 	    ;;
 	* )
 	    $DELIVERY_SYSTEM_GIT "$@"

@@ -1,3 +1,0 @@
-#!/bin/bash
-
-echo chef-client "$@" >> "$FAKE_BINS_HISTORY_FILE"
