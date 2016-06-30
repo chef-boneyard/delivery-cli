@@ -21,12 +21,22 @@ Background:
 
 Scenario: With all information specified in the configuration file
   When I successfully run `delivery job verify syntax --project phoenix_project --for master --patchset 1 --change-id 822b0eee-5cfb-4b35-9331-c9bc6b49bdb2 --change username/feature/branch`
-  Then "git clone ssh://cukes@skunkworks@delivery.mycompany.com:2828/skunkworks/engineering/phoenix_project ." should be run
+  Then the exit status should be 0
+  And the output should contain:
+  """
+  Chef Client finished
+  """
+  And "git clone ssh://cukes@skunkworks@delivery.mycompany.com:2828/skunkworks/engineering/phoenix_project ." should be run
   And 'git fetch origin _reviews/master/username/feature/branch/1' should be run
 
 Scenario: Specifying the patchset branch explicitly
   When I successfully run `delivery job verify syntax --project phoenix_project --for master --change-id 822b0eee-5cfb-4b35-9331-c9bc6b49bdb2 --branch username/feature/branch`
-  Then "git clone ssh://cukes@skunkworks@delivery.mycompany.com:2828/skunkworks/engineering/phoenix_project ." should be run
+  Then the exit status should be 0
+  And the output should contain:
+  """
+  Chef Client finished
+  """
+  And "git clone ssh://cukes@skunkworks@delivery.mycompany.com:2828/skunkworks/engineering/phoenix_project ." should be run
   And 'git fetch origin username/feature/branch' should be run
 
 Scenario: A repo that has failing tests

@@ -27,7 +27,7 @@ else
               REPO_TO_COPY="minimal"
             fi
 
-            cp -r "$GIT_CLONE_FIXTURE_REPOS_DIR/$REPO_TO_COPY/" .
+            cp -r "$GIT_CLONE_FIXTURE_REPOS_DIR/$REPO_TO_COPY/." .
 	          $DELIVERY_SYSTEM_GIT init
 	          $DELIVERY_SYSTEM_GIT add .
 	          $DELIVERY_SYSTEM_GIT commit -a -m "commit copied repo"
