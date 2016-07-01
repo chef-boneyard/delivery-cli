@@ -370,15 +370,14 @@ impl APIClient {
     }
 
     pub fn create_pipeline(&self,
-                           org: &str,
-                           proj: &str,
-                           pipe: &str) -> Result<(), DeliveryError> {
+                           org: &str, proj: &str,
+                           pipe: &str, base: Option<&str>) -> Result<(), DeliveryError> {
         let path = format!("orgs/{}/projects/{}/pipelines", org, proj);
-        // FIXME: we'd like to use the native struct->json stuff, but
-        // seeing link issues.
-        let base_branch = "master";
-        let payload = format!("{{\"name\":\"{}\",\"base\":\"{}\"}}",
-                              pipe, base_branch);
+
+        // We unwrap the provided base branch, if None we default to `master`
+        let base_branch = base.unwrap_or("master");
+        let payload = format!("{{\"name\":\"{}\",\"base\":\"{}\"}}", pipe, base_branch);
+
         self.parse_response(try!(self.post(&path, &payload)))
     }
 

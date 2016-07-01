@@ -112,7 +112,7 @@ Scenario: I review a cookbook that the version hasn't been bumped
   And "git show master:metadata.rb" should be run
   And the output should contain "is a cookbook"
   And the output should contain "Validating version in metadata"
-  And the output should match /Bumping version to:(.*)1\.2\.4/
+  And the output should match /Bumping version to:.*1\.2\.4/
   And the output should contain "1.2.4"
   And the file "metadata.rb" should contain exactly:
     """
@@ -170,7 +170,7 @@ Scenario: I enable the auto_bump feature persistently in the cli.toml
   And "git show master:metadata.rb" should be run
   And the output should contain "is a cookbook"
   And the output should contain "Validating version in metadata"
-  And the output should match /Bumping version to:(.*)1\.2\.4/
+  And the output should match /Bumping version to:.*1\.2\.4/
   And the file "metadata.rb" should contain exactly:
     """
     version '1.2.4'

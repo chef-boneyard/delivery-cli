@@ -32,8 +32,10 @@ pub fn run(init_opts: InitClapOptions) -> DeliveryResult<ExitCode> {
         .set_config_json(init_opts.config_json);
     let branch = try!(config.pipeline());
 
-    if !init_opts.github_org_name.is_empty() && !init_opts.bitbucket_project_key.is_empty() {
-        sayln("red", "Please specify just one Source Code Provider: delivery(default), github or bitbucket.");
+    if !init_opts.github_org_name.is_empty()
+        && !init_opts.bitbucket_project_key.is_empty() {
+        sayln("red", "Please specify just one Source Code Provider: \
+              delivery(default), github or bitbucket.");
         return Ok(1)
     }
 
@@ -64,13 +66,15 @@ pub fn run(init_opts: InitClapOptions) -> DeliveryResult<ExitCode> {
     // Generate build cookbook, either custom or default.
     //let mut custom_build_cookbook_generated = false;
     let custom_build_cookbook_generated = if !init_opts.skip_build_cookbook {
-        match generate_build_cookbook(config.generator().ok()) {
+        match generate_build_cookbook(&config) {
             Ok(boolean) => boolean,
             // Custom error handling for missing config file.
             // Pass back 1 to avoid additional default error handling.
             Err(DeliveryError{ kind: Kind::MissingConfigFile, .. }) => {
-                sayln("red", "You used a custom build cookbook generator, but .delivery/config.json was not created.");
-                sayln("red", "Please update your generator to create a valid .delivery/config.json or pass in a custom config.");
+                sayln("red", "You used a custom build cookbook generator, but \
+                      .delivery/config.json was not created.");
+                sayln("red", "Please update your generator to create a valid \
+                      .delivery/config.json or pass in a custom config.");
                 return Ok(1)
             },
             // Unexpected error, pass back.
@@ -80,16 +84,20 @@ pub fn run(init_opts: InitClapOptions) -> DeliveryResult<ExitCode> {
         false
     };
 
-    let custom_config_passed = try!(generate_delivery_config(config.config_json().ok()));
+    let custom_config_passed = try!(
+        generate_delivery_config(config.config_json().ok())
+    );
 
-    // If we need a branch for either the custom build cookbook or custom config, create it.
-    // If nothing custom was requested, then `chef generate build-cookbook` will handle the commits for us.
+    // If nothing custom was requested, then `chef generate build-cookbook`
+    // will handle the commits for us. If we need a branch for either the
+    // custom build cookbook or custom config, create it.
     if custom_build_cookbook_generated || custom_config_passed {
         say("white", "Creating and checking out ");
         say("yellow", "add-delivery-config");
         say("white", " feature branch: ");
         if !try!(project::create_feature_branch_if_missing(&project_path)) {
-            say("white", "A branch named 'add-delivery-config' already exists, switching to it.\n");
+            say("white", "A branch named 'add-delivery-config' already exists, \
+                switching to it.\n");
         }
 
         if custom_build_cookbook_generated {
@@ -128,14 +136,14 @@ fn create_on_server(config: &Config,
                     scp: Option<project::SourceCodeProvider>) -> DeliveryResult<()> {
     let client = try!(APIClient::from_config(config));
     let git_url = try!(config.delivery_git_ssh_url());
+    let org = try!(config.organization());
+    let proj = try!(config.project());
+    let pipe = try!(config.pipeline());
     match scp {
         // If the user requested a custom scp
         Some(scp_config) => {
             // TODO: actually handle this error
             try!(scp_config.verify_server_config(&client));
-
-            let org = try!(config.organization());
-            let proj = try!(config.project());
 
             say("white", "Creating ");
             match scp_config.kind {
@@ -143,7 +151,8 @@ fn create_on_server(config: &Config,
                     say("magenta", "bitbucket");
                     say("white", " project: ");
                     say("magenta", &format!("{} ", proj));
-                    try!(create_bitbucket_project(org, proj, git_url, client, scp_config))
+                    try!(create_bitbucket_project(org, proj, pipe, git_url,
+                                                  client, scp_config))
                 },
                 project::Type::Github => {
                     say("magenta", "github");
@@ -158,10 +167,6 @@ fn create_on_server(config: &Config,
         },
         // If the user isn't using an scp, just delivery itself.
         None => {
-            let org = try!(config.organization());
-            let proj = try!(config.project());
-            let pipe = try!(config.pipeline());
-
             // Create delivery project on server unless it already exists.
             if try!(project::create_delivery_project(&client, &org, &proj)) {
                 say("white", "Creating ");
@@ -178,13 +183,14 @@ fn create_on_server(config: &Config,
             if try!(project::create_delivery_remote_if_missing(git_url)) {
                 sayln("white", "Remote 'delivery' added to git config!")
             } else {
-                sayln("white", "Remote named 'delivery' already exists and is correct - not modifying")
+                sayln("white", "Remote named 'delivery' already exists and is correct \
+                      - not modifying")
             }
 
             // Push content to master if no upstream commits.
             say("white", "Checking for content on the git remote ");
             say("magenta", "delivery: ");
-            if !try!(project::push_project_content_to_delivery()) {
+            if !try!(project::push_project_content_to_delivery(&pipe)) {
                 sayln("red", "Found commits upstream, not pushing local commits")
             }
 
@@ -204,7 +210,7 @@ fn create_on_server(config: &Config,
     Ok(())
 }
 
-fn create_bitbucket_project(org: String, proj: String,
+fn create_bitbucket_project(org: String, proj: String, pipeline: String,
                             git_url: String, client: APIClient,
                             scp_config: project::SourceCodeProvider) -> DeliveryResult<()> {
     // TODO: http code still outputs, move output here.
@@ -220,7 +226,7 @@ fn create_bitbucket_project(org: String, proj: String,
     // Push content to master if no upstream commits
     say("white", "Checking for content on the git remote ");
     say("magenta", "delivery: ");
-    if !try!(project::push_project_content_to_delivery()) {
+    if !try!(project::push_project_content_to_delivery(&pipeline)) {
         sayln("red", "Found commits upstream, not pushing local commits");
     };
     Ok(())
@@ -228,35 +234,38 @@ fn create_bitbucket_project(org: String, proj: String,
 
 // Handles the build-cookbook generation
 //
-// This method could receive a custom generator, if it is not provided,
-// we use the default build-cookbook generator from the ChefDK.
+// Use the provided custom generator, if it is not provided we use the default
+// build-cookbook generator from the ChefDK.
 //
 // Returns true if a CUSTOM build cookbook was generated, else it returns false.
-fn generate_build_cookbook(generator: Option<String>) -> DeliveryResult<bool> {
+fn generate_build_cookbook(config: &Config) -> DeliveryResult<bool> {
     sayln("white", "Generating build cookbook skeleton");
     let cache_path = try!(project::generator_cache_path());
     let project_path = project::project_path();
-    match generator {
+    match config.generator().ok() {
         Some(generator_str) => {
-            return generate_custom_build_cookbook(generator_str, cache_path, project_path)
+            generate_custom_build_cookbook(generator_str, cache_path, project_path)
         },
         // Default build cookbook
         None => {
             if project::project_path().join(".delivery/build-cookbook").exists() {
-                sayln("red", ".delivery/build-cookbook folder already exists, skipping build cookbook generation.");
-                return Ok(false)
+                sayln("red", ".delivery/build-cookbook folder already exists, skipping \
+                      build cookbook generation.");
+                Ok(false)
             } else {
                 let command = try!(project::create_default_build_cookbook());
-                // TODO: move output up to init post --for bugfix.
-                try!(git::git_push_master());
+                let pipeline = try!(config.pipeline());
+                try!(git::git_push(&pipeline));
                 sayln("green", &format!("Build-cookbook generated: {:#?}", command));
-                return Ok(false)
+                Ok(false)
             }
         }
     }
 }
 
-fn generate_custom_build_cookbook(generator_str: String, cache_path: PathBuf, project_path: PathBuf) -> DeliveryResult<bool> {
+fn generate_custom_build_cookbook(generator_str: String,
+                                  cache_path: PathBuf,
+                                  project_path: PathBuf) -> DeliveryResult<bool> {
     let gen_path = Path::new(&generator_str);
     let mut generator_path = cache_path.clone();
     generator_path.push(gen_path.file_stem().unwrap());
@@ -275,7 +284,9 @@ fn generate_custom_build_cookbook(generator_str: String, cache_path: PathBuf, pr
         }
     }
     
-    let command = try!(project::chef_generate_build_cookbook_from_generator(&generator_path, &project_path));
+    let command = try!(project::chef_generate_build_cookbook_from_generator(
+                        &generator_path, &project_path
+                    ));
     sayln("green", &format!("Build-cookbook generated: {:#?}", command));
 
     let config_path = project_path.join(".delivery/config.json");
@@ -323,8 +334,10 @@ fn trigger_review(config: Config, scp: Option<project::SourceCodeProvider>,
                 project::Type::Github => {
                     // For now, delivery review doesn't works for Github projects
                     // TODO: Make it work in github
-                    sayln("green", "\nYour project is now set up with changes in the add-delivery-config branch!");
-                    sayln("green", "To finalize your project, you must submit and accept a Pull Request in github.");
+                    sayln("green", "\nYour project is now set up with changes in the \
+                          add-delivery-config branch!");
+                    sayln("green", "To finalize your project, you must submit and \
+                          accept a Pull Request in github.");
 
                     if try!(project::missing_github_remote()) {
                         setup_github_remote_msg(&s)
@@ -332,7 +345,8 @@ fn trigger_review(config: Config, scp: Option<project::SourceCodeProvider>,
 
                     sayln("green", "Push your project to github by running:\n");
                     sayln("green", "git push origin add-delivery-config\n");
-                    sayln("green", "Then log into github via your browser, make a Pull Request, then comment `@delivery approve`.");
+                    sayln("green", "Then log into github via your browser, make a \
+                          Pull Request, then comment `@delivery approve`.");
                 }
             }
         },
@@ -344,7 +358,11 @@ fn trigger_review(config: Config, scp: Option<project::SourceCodeProvider>,
 fn setup_github_remote_msg(s: &project::SourceCodeProvider) -> () {
     sayln("green", "First, you must add your remote.");
     sayln("green", "Run this if you want to use ssh:\n");
-    sayln("green", &format!("git remote add origin git@github.com:{}/{}.git\n", s.organization, s.repo_name));
+    sayln("green", &format!(
+            "git remote add origin git@github.com:{}/{}.git\n",
+            s.organization, s.repo_name));
     sayln("green", "Or this for https:\n");
-    sayln("green", &format!("git remote add origin https://github.com/{}/{}.git\n", s.organization, s.repo_name));
+    sayln("green", &format!(
+            "git remote add origin https://github.com/{}/{}.git\n",
+            s.organization, s.repo_name));
 }

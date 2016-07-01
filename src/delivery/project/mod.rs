@@ -102,11 +102,12 @@ impl SourceCodeProvider {
 
 // Create a Delivery Pipeline.
 // Returns true if created, returns false if already exists.
-pub fn create_delivery_pipeline(client: &APIClient, org: &String, proj: &String, pipe: &String) -> DeliveryResult<bool> {
+pub fn create_delivery_pipeline(client: &APIClient, org: &String,
+                                proj: &String, pipe: &String) -> DeliveryResult<bool> {
     if client.pipeline_exists(org, proj, pipe) {
         return Ok(false)
     } else {
-        try!(client.create_pipeline(org, proj, pipe));
+        try!(client.create_pipeline(org, proj, pipe, Some(pipe)));
         return Ok(true)
     }
 }
@@ -127,18 +128,18 @@ pub fn create_delivery_project(client: &APIClient,
 
 // Push local content to the Delivery Server if no upstream commits.
 // Returns true if commits pushed, returns false if upstream commits found.
-pub fn push_project_content_to_delivery() -> DeliveryResult<bool> {
-    if git::server_content() {
-        return Ok(false)
+pub fn push_project_content_to_delivery(pipeline: &str) -> DeliveryResult<bool> {
+    if git::server_content(pipeline) {
+        Ok(false)
     } else {
-        // TODO: move output up to init post --for bugfix.
-        try!(git::git_push_master());
-        return Ok(true)
+        try!(git::git_push(pipeline));
+        Ok(true)
     }
 }
 
 // Create delivery remote if it doesn't exist. Returns true if created.
-pub fn create_delivery_remote_if_missing(delivery_git_ssh_url: String) -> DeliveryResult<bool> {
+pub fn create_delivery_remote_if_missing(
+      delivery_git_ssh_url: String) -> DeliveryResult<bool> {
     if try!(git::config_repo(&delivery_git_ssh_url, &project_path())) {
         return Ok(true)
     } else {
@@ -288,7 +289,9 @@ pub enum CustomCookbookSource {
 // 1) A local path
 // 2) Or a git repo URL
 // TODO) From Supermarket
-pub fn download_or_mv_custom_build_cookbook_generator(generator: &Path, cache_path: &Path) -> DeliveryResult<CustomCookbookSource> {
+pub fn download_or_mv_custom_build_cookbook_generator(
+        generator: &Path,
+        cache_path: &Path) -> DeliveryResult<CustomCookbookSource> {
     try!(mkdir_recursive(cache_path));
     if generator.has_root() {
         try!(utils::copy_recursive(&generator, &cache_path));
@@ -306,7 +309,8 @@ pub fn download_or_mv_custom_build_cookbook_generator(generator: &Path, cache_pa
 }
 
 // Generate the build-cookbook using ChefDK generate
-pub fn chef_generate_build_cookbook_from_generator(generator: &Path, project_path: &Path) -> DeliveryResult<Command> {
+pub fn chef_generate_build_cookbook_from_generator(
+      generator: &Path, project_path: &Path) -> DeliveryResult<Command> {
     let mut command = utils::make_command("chef");
     command.arg("generate")
         .arg("cookbook")
