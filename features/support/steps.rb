@@ -238,24 +238,24 @@ Given(/^a user creates a bitbucket backed project$/) do
 end
 
 Given(/^a delivery project is created in delivery$/) do
-  step %(the output should match /Creating.*delivery.*project/)
-  step %(the output should contain "Remote 'delivery' added to git config")
+  step %(the output should match /Delivery project named.*was created/)
+  step %(the output should contain "Remote 'delivery' added as")
 end
 
 Given(/^a delivery project should not be created in delivery$/) do
-  step %(the output should not match /Creating.*delivery.*project/)
-  step %(the output should match /Project.*already exists./)
-  step %(the output should contain "Remote 'delivery' added to git config")
+  step %(the output should not match /Delivery project named.*was created/)
+  step %(the output should match /Delivery project named .* already exists/)
+  step %(the output should contain "Remote 'delivery' added as")
 end
 
 Given(/^a bitbucket project is created in delivery$/) do
-  step %(the output should match /Creating.*bitbucket.*project/)
-  step %(the output should contain "Remote 'delivery' added to git config")
+  step %(the output should match /Bitbucket backed Delivery project named .* created./)
+  step %(the output should contain "Remote 'delivery' added as")
 end
 
 Given(/^a github project is created in delivery$/) do
   step %(the output should match /Creating.*github.*project/)
-  step %(the output should not contain "Remote 'delivery' added to git config")
+  step %(the output should not contain "Remote 'delivery' added as")
 end
 
 Given(/^a default config.json is created$/) do
@@ -314,13 +314,15 @@ end
 Given(/^a custom build_cookbook is generated from "([^"]*)"$/) do |type|
   case type
   when "local_path"
-    step %(the output should match /Copying custom build_cookbook generator to/)
+    step %(the output should match /Copying custom build cookbook generator to the cache/)
   when "git_repo"
-    step %(the output should match /Using cached copy of build_cookbook generator/)
+    step %(the output should match /Skipping: Using cached copy of custom build cookbook generator/)
   else
     pending "not implemented"
   end
-  step %(the output should match /Creating and checking out.*add-delivery-config.*feature branch/)
+  step %(the output should contain "Custom build cookbook generated at .delivery/build_cookbook.")
+  step %(the output should match /Feature branch named 'add-delivery-config' created./)
+  step %(the output should match /Custom build cookbook committed to feature branch./)
   step %("git push --porcelain --progress --verbose delivery add-delivery-config:_for/master/add-delivery-config" should be run)
   step %(the file ".delivery/build_cookbook/test_file" should contain "THIS IS ONLY A TEST.")
   step %("git commit -m Adds Delivery build cookbook and config" should be run)

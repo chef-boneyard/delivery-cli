@@ -20,6 +20,16 @@ Scenario: When creating a delivery backed project
   And I should be checked out to a feature branch named "initialize-delivery-pipeline"
   And a change should be created for branch "initialize-delivery-pipeline"
 
+Scenario: When running delivery review twice it should not fail
+  When a user creates a delivery backed project
+  Then a delivery project is created in delivery
+  And a default config.json is created
+  And the change has the default generated build_cookbook
+  And the exit status should be 0
+  And I should be checked out to a feature branch named "initialize-delivery-pipeline"
+  And a change should be created for branch "initialize-delivery-pipeline"
+  Then I successfully run `delivery review`
+
 Scenario: When creating a delivery backed project and
 	  the project already exists on the server
   When I cd to ".."
@@ -45,7 +55,7 @@ Scenario: When creating a delivery backed project that already has a .delivery/b
   Then a delivery project is created in delivery
   And a default config.json is created
   And the change does not have the default generated build_cookbook
-  And the output should contain ".delivery/build_cookbook folder already exists, skipping build cookbook generation."
+  And the output should contain "Skipping: build cookbook already exists at .delivery/build_cookbook."
   And the exit status should be 0
   And I should be checked out to a feature branch named "initialize-delivery-pipeline"
   And a change should be created for branch "initialize-delivery-pipeline"
@@ -98,7 +108,7 @@ Scenario: When creating a github backed project with an initial origin remote se
 
 Scenario: When trying to specify both github and bitbucket
   When I run `delivery init --github proj --bitbucket proj`
-  Then the output should contain "specify just one Source Code Provider: delivery(default), github or bitbucket"
+  Then the output should contain "specify just one Source Code Provider: delivery (default), github or bitbucket"
   And the exit status should be 1
 
 Scenario: When skipping the build_cookbook generator
@@ -136,7 +146,8 @@ Scenario: When specifying a local build_cookbook generator with no config
 
 Scenario: When providing a custom config.json
   When a user creates a project with a custom config.json
-  Then the output should contain "Copying configuration to"
+  Then the output should match /Custom Delivery config copied from .* to .*/
+  Then the output should contain "Custom delivery config committed to feature branch."
   And the change has the default generated build_cookbook
   And a change configuring a custom delivery is created
   And the exit status should be 0

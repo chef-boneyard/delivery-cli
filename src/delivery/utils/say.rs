@@ -88,6 +88,7 @@ fn say_term(mut t: Box<term::StdoutTerminal>, color: &str, to_say: &str) {
         "red" => term::color::BRIGHT_RED,
         "magenta" => term::color::BRIGHT_MAGENTA,
         "white" => term::color::WHITE,
+        "blue" => term::color::BLUE,
         _ => term::color::WHITE
     };
     t.fg(color_const).unwrap();

@@ -29,7 +29,7 @@ use rustc_serialize::json::DecoderError;
 use errors::{DeliveryError, Kind};
 use types::DeliveryResult;
 use git;
-use utils::{walk_tree_for_path, read_file, copy_recursive};
+use utils::{walk_tree_for_path, read_file, copy_recursive, file_needs_updated};
 use utils::path_join_many::PathJoinMany;
 
 #[derive(RustcEncodable, RustcDecodable, Clone)]
@@ -73,12 +73,19 @@ impl DeliveryConfig {
     /// valid and finally add/commit the changes.
     /// If the config already exists, skip this process.
     pub fn copy_config_file(config_f: &PathBuf,
-                            proj_path: &PathBuf) -> DeliveryResult<String> {
+                            proj_path: &PathBuf) -> DeliveryResult<Option<String>> {
         let write_path = DeliveryConfig::config_file_path(proj_path);
+
+        // If a config.json already exists, check to see if it is exactly
+        // the same as what we want to copy to it.
+        if !try!(file_needs_updated(config_f, &write_path)) {
+            return Ok(None)
+        }
+
         try!(copy_recursive(config_f, &write_path));
         try!(DeliveryConfig::validate_config_file(proj_path));
         let content = try!(read_file(&write_path));
-        Ok(content)
+        Ok(Some(content))
     }
 
     pub fn git_add_commit_config(proj_path: &PathBuf) -> DeliveryResult<()> {
@@ -100,8 +107,7 @@ impl DeliveryConfig {
                 Ok(p)
             },
             None => Err(DeliveryError{kind: Kind::MissingProjectConfig,
-                                      detail: Some(format!("current directory: {:?}",
-                                                           proj_path))})
+                                      detail: None})
         }
     }
 
