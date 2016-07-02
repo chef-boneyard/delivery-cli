@@ -7,22 +7,21 @@ use std::path::PathBuf;
 use std::io::prelude::*;
 use std::time::Duration;
 use std;
-use project;
-use cookbook;
 use token::TokenStore;
 use utils::{self, cwd, privileged_process};
 use utils::say::{self, sayln, say};
 use errors::{DeliveryError, Kind};
 use types::{ExitCode};
 use config::Config;
-use delivery_config::DeliveryConfig;
-use git::{self, ReviewResult};
+use git;
 use job::change::Change;
 use job::workspace::{Workspace, Privilege};
 use utils::path_join_many::PathJoinMany;
-use http::{self, APIClient};
+use http::APIClient;
 use hyper::status::StatusCode;
 use clap::{Arg, App, ArgMatches};
+
+#[macro_use(validate)]
 
 macro_rules! make_arg_vec {
     ( $( $x:expr ),* ) => {
@@ -44,16 +43,10 @@ macro_rules! fn_arg {
     )
 }
 
-macro_rules! validate {
-    ($config:ident, $value:ident) => (
-        try!($config.$value());
-    )
-}
-
 // Modules for setting up clap subcommand including their options and defaults,
 // as well as advanced subcommand match parsing (see local for an example).
 mod api;
-mod review;
+pub mod review;
 mod checkout;
 mod clone;
 mod diff;
@@ -144,8 +137,7 @@ pub fn run() {
         (review::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
             let review_opts = review::ReviewClapOptions::new(matches);
-            review(review_opts.pipeline, &review_opts.auto_bump,
-                   &review_opts.no_open, &review_opts.edit)
+            command::review::run(review_opts)
         },
         (setup::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
@@ -171,7 +163,7 @@ pub fn run() {
         _ => {
             // ownership issue with use of above defined app
             // so for now...
-            let a = make_app(&build_version);
+            let mut a = make_app(&build_version);
             a.print_help().ok().expect("failed to write help to stdout");
             sayln("red", "missing subcommand");
             process::exit(1);
@@ -242,74 +234,6 @@ fn setup(opts: &setup::SetupClapOptions) -> Result<ExitCode, DeliveryError> {
         .set_organization(opts.org)
         .set_pipeline(opts.pipeline) ;
     try!(config.write_file(&config_path));
-    Ok(0)
-}
-
-pub fn review(for_pipeline: &str, auto_bump: &bool,
-          no_open: &bool, edit: &bool) -> Result<ExitCode, DeliveryError> {
-    sayln("green", "Chef Delivery");
-    let mut config = try!(load_config(&cwd()));
-    config = config.set_pipeline(for_pipeline);
-    let target = validate!(config, pipeline);
-    let project_root = try!(project::root_dir(&cwd()));
-    try!(DeliveryConfig::validate_config_file(&project_root));
-    let head = try!(git::get_head());
-    if &target == &head {
-        return Err(DeliveryError{ kind: Kind::CannotReviewSameBranch, detail: None })
-    }
-    if *auto_bump {
-        config.auto_bump = Some(auto_bump.clone());
-    };
-    if let Some(should_bump) = config.auto_bump {
-        if should_bump {
-            try!(cookbook::bump_version(&project_root, &target));
-        }
-    };
-    say("white", "Review for change ");
-    say("yellow", &head);
-    say("white", " targeted for pipeline ");
-    sayln("magenta", &target);
-    let review = try!(git::git_push_review(&head, &target));
-    if *edit {
-        let project = try!(project::project_from_cwd());
-        config = config.set_pipeline(for_pipeline)
-            .set_project(&project);
-
-        try!(edit_change(&config, &review));
-    }
-    handle_review_result(&review, no_open)
-}
-
-fn edit_change(config: &Config,
-               review: &ReviewResult) -> Result<(), DeliveryError> {
-    let proj = try!(config.project());
-    match review.change_id {
-        Some(ref change_id) => {
-            let change0 = try!(http::change::get(&config, &change_id));
-            let text0 = format!("{}\n\n{}\n",
-                                change0.title, change0.description);
-            let text1 = try!(utils::open::edit_str(&proj, &text0));
-            let change1 = try!(http::change::Description::parse_text(&text1));
-            Ok(try!(http::change::set(&config, &change_id, &change1)))
-        },
-        None => Ok(())
-    }
-}
-
-fn handle_review_result(review: &ReviewResult,
-                        no_open: &bool) -> Result<ExitCode, DeliveryError> {
-    for line in review.messages.iter() {
-        sayln("white", line);
-    }
-    match review.url {
-        Some(ref url) => {
-            sayln("magenta", &url);
-            if !no_open {
-                try!(utils::open::item(&url));
-            }
-        },
-        None => {}
-    };
     Ok(0)
 }
 

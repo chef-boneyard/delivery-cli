@@ -27,6 +27,7 @@ tempdir = "*"
 hyper = "=0.9.3"
 uuid = "*"
 mime = "*"
+rust-crypto = "*"
 
 [profile.dev]
 debug = false
