@@ -38,14 +38,14 @@ Scenario: When creating a delivery backed project but
   Then the output should contain "A git remote named 'delivery' already exists in this repo, but it is different than what was contained in your config file"
   And the exit status should be 1
 
-Scenario: When creating a delivery backed project that already has a .delivery/build-cookbook directory and .delivery/config.json
+Scenario: When creating a delivery backed project that already has a .delivery/build_cookbook directory and .delivery/config.json
   When I already have a .delivery/config.json on disk
-  When I successfully run `mkdir .delivery/build-cookbook`
+  When I successfully run `mkdir .delivery/build_cookbook`
   When a user creates a delivery backed project
   Then a delivery project is created in delivery
   And a default config.json is created
   And the change does not have the default generated build_cookbook
-  And the output should contain ".delivery/build-cookbook folder already exists, skipping build cookbook generation."
+  And the output should contain ".delivery/build_cookbook folder already exists, skipping build cookbook generation."
   And the exit status should be 0
   And I should be checked out to a feature branch named "initialize-delivery-pipeline"
   And a change should be created for branch "initialize-delivery-pipeline"
@@ -101,34 +101,34 @@ Scenario: When trying to specify both github and bitbucket
   Then the output should contain "specify just one Source Code Provider: delivery(default), github or bitbucket"
   And the exit status should be 1
 
-Scenario: When skipping the build-cookbook generator
+Scenario: When skipping the build_cookbook generator
   When I already have a .delivery/config.json on disk
   When a user creates a delivery backed project with option "--skip-build-cookbook"
   Then a delivery project is created in delivery
-  And no build-cookbook is generated
+  And no build_cookbook is generated
   And the exit status should be 0
   And I should be checked out to a feature branch named "initialize-delivery-pipeline"
   And a change should be created for branch "initialize-delivery-pipeline"
 
-Scenario: When specifying a local build-cookbook generator
+Scenario: When specifying a local build_cookbook generator
   When I already have a .delivery/config.json on disk
   Given I have a custom generator cookbook
   When a user creates a delivery backed project with option "--generator /tmp/test-generator"
   Then a delivery project is created in delivery
-  And a custom build-cookbook is generated from "local_path"
+  And a custom build_cookbook is generated from "local_path"
   And the exit status should be 0
 
-Scenario: When specifying a GitRepo Url for the build-cookbook generator
+Scenario: When specifying a GitRepo Url for the build_cookbook generator
   When a custom build cookbook is already downloaded in the cache
   When I already have a .delivery/config.json on disk
   When a user creates a delivery backed project with option "--generator https://github.com/afiune/test-generator"
   Then a delivery project is created in delivery
-  And a custom build-cookbook is generated from "git_repo"
+  And a custom build_cookbook is generated from "git_repo"
   And the exit status should be 0
   And I should be checked out to a feature branch named "add-delivery-config"
   And a change should be created for branch "add-delivery-config"
 
-Scenario: When specifying a local build-cookbook generator with no config
+Scenario: When specifying a local build_cookbook generator with no config
   When I have a custom generator cookbook
   When I run `delivery init --generator /tmp/test-generator`
   Then the output should contain "You used a custom build cookbook generator, but .delivery/config.json was not created."
@@ -157,7 +157,7 @@ Scenario: When creating a delivery backed project for a pipeline
 # and also to have at least one commit. (as usual)
 #
 # Problem: ChefDK internally is taking care of the repository manipulation,
-# that is, adding the build-cookbook, delivery config.json and more. When it
+# that is, adding the build_cookbook, delivery config.json and more. When it
 # is done with the modification it also commit the changes to master and
 # push the branch to the Delivery Server. As this code is currently hard
 # codded to be always pointing to `master`

@@ -99,7 +99,7 @@ config_accessor_for!(project, set_project, "Project not set; try --project or se
 config_accessor_for!(git_port, set_git_port, "Git Port not set; please set it in your .toml config file");
 config_accessor_for!(pipeline, set_pipeline, "Pipeline not set; try --for or set it in your .toml config file");
 config_accessor_for!(token_file, set_token_file, "token_file not set; set it in your cli.toml");
-config_accessor_for!(generator, set_generator, "build-cookbook generator not set; set it in your cli.toml");
+config_accessor_for!(generator, set_generator, "build_cookbook generator not set; set it in your cli.toml");
 config_accessor_for!(config_json, set_config_json, "config_json not set; set it in your cli.toml");
 
 impl Config {

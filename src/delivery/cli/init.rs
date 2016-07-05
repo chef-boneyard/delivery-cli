@@ -75,7 +75,7 @@ pub fn clap_subcommand<'c>() -> App<'c, 'c> {
                    project_arg(), local_arg(), config_project_arg()])
         .args_from_usage(
             "--generator=[generator] 'Local path or Git repo URL to a \
-             custom ChefDK build-cookbook generator (default:github)'
+             custom ChefDK build_cookbook generator (default:github)'
             --skip-build-cookbook 'Do not create a build cookbook'")
         .args(&u_e_s_o_args())
         .args(&scp_args())
