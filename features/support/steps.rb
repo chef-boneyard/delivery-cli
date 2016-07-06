@@ -332,3 +332,13 @@ Then(/^no build\-cookbook is generated$/) do
   step %("chef generate cookbook .delivery/build-cookbook" should not be run)
   step %(a directory named ".delivery/build-cookbook" should not exist)
 end
+
+Then("I should be checked out to a feature branch named \"$name\"") do |name|
+  step %q(I successfully run `git branch --contains HEAD`)
+  step %Q(the output should contain "#{name}")
+end
+
+Then("a change should be created for branch \"$branch\"") do |branch|
+  expected_command = "git push --porcelain --progress --verbose delivery #{branch}:_for/master/#{branch}"
+  assert_command_run(expected_command)
+end

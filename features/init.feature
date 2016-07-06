@@ -17,6 +17,8 @@ Scenario: When creating a delivery backed project
   And a default config.json is created
   And the change has the default generated build_cookbook
   And the exit status should be 0
+  And I should be checked out to a feature branch named "initialize-delivery-pipeline"
+  And a change should be created for branch "initialize-delivery-pipeline"
 
 Scenario: When creating a delivery backed project and
 	  the project already exists on the server
@@ -45,6 +47,8 @@ Scenario: When creating a delivery backed project that already has a .delivery/b
   And the change does not have the default generated build_cookbook
   And the output should contain ".delivery/build-cookbook folder already exists, skipping build cookbook generation."
   And the exit status should be 0
+  And I should be checked out to a feature branch named "initialize-delivery-pipeline"
+  And a change should be created for branch "initialize-delivery-pipeline"
 
 Scenario: When creating a delivery backed project that has been git initalized but does not have a master branch
   When I successfully run `rm -rf .git`
@@ -60,6 +64,8 @@ Scenario: When creating a delivery backed project that already has a .delivery/c
   And a change to the delivery config is not comitted
   And the change has the default generated build_cookbook
   And the exit status should be 0
+  And I should be checked out to a feature branch named "initialize-delivery-pipeline"
+  And a change should be created for branch "initialize-delivery-pipeline"
 
 Scenario: When creating a bitbucket backed project
   When a user creates a bitbucket backed project
@@ -67,6 +73,8 @@ Scenario: When creating a bitbucket backed project
   And a default config.json is created
   And the change has the default generated build_cookbook
   And the exit status should be 0
+  And I should be checked out to a feature branch named "initialize-delivery-pipeline"
+  And a change should be created for branch "initialize-delivery-pipeline"
 
 Scenario: When creating a github backed project
   When a user creates a github backed project
@@ -75,6 +83,7 @@ Scenario: When creating a github backed project
   And the change has the default generated build_cookbook
   And the output should contain "git remote add"
   And the exit status should be 0
+  And I should be checked out to a feature branch named "initialize-delivery-pipeline"
 
 Scenario: When creating a github backed project with an initial origin remote set
   When I successfully run `git init`
@@ -85,6 +94,7 @@ Scenario: When creating a github backed project with an initial origin remote se
   And the change has the default generated build_cookbook
   And the output should not contain "git remote add"
   And the exit status should be 0
+  And I should be checked out to a feature branch named "initialize-delivery-pipeline"
 
 Scenario: When trying to specify both github and bitbucket
   When I run `delivery init --github proj --bitbucket proj`
@@ -97,6 +107,8 @@ Scenario: When skipping the build-cookbook generator
   Then a delivery project is created in delivery
   And no build-cookbook is generated
   And the exit status should be 0
+  And I should be checked out to a feature branch named "initialize-delivery-pipeline"
+  And a change should be created for branch "initialize-delivery-pipeline"
 
 Scenario: When specifying a local build-cookbook generator
   When I already have a .delivery/config.json on disk
@@ -113,6 +125,8 @@ Scenario: When specifying a GitRepo Url for the build-cookbook generator
   Then a delivery project is created in delivery
   And a custom build-cookbook is generated from "git_repo"
   And the exit status should be 0
+  And I should be checked out to a feature branch named "add-delivery-config"
+  And a change should be created for branch "add-delivery-config"
 
 Scenario: When specifying a local build-cookbook generator with no config
   When I have a custom generator cookbook
@@ -126,6 +140,8 @@ Scenario: When providing a custom config.json
   And the change has the default generated build_cookbook
   And a change configuring a custom delivery is created
   And the exit status should be 0
+  And I should be checked out to a feature branch named "add-delivery-config"
+  And a change should be created for branch "add-delivery-config"
 
 Scenario: When creating a delivery backed project for a pipeline
           different than master that doesn't exist locally

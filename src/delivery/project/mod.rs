@@ -24,6 +24,16 @@ use http::APIClient;
 use git::{self, ReviewResult};
 use std::process::{Output, Command};
 use std::fs;
+use std::fs::File;
+use std::io::prelude::*;
+
+// README with a brief description of delivery and how to use it. This is added
+// to a new project by `delivery init` so we have something to submit as the
+// first change.
+//
+// We load this up as bytes since that's what std::io::Write takes for
+// arguments.
+static DELIVERY_DOT_MD_CONTENT: &'static [u8] = include_bytes!("DELIVERY.md");
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
@@ -253,6 +263,34 @@ pub fn add_commit_build_cookbook(custom_config_passed: &bool) -> DeliveryResult<
     if !(*custom_config_passed) {
         commit_msg = commit_msg + " and config";
     }
+    try!(git::git_command(&["commit", "-m", &commit_msg], &project_path()));
+    Ok(())
+}
+
+// NOTE: Assumes the CWD is the project root.
+pub fn create_delivery_readme_feature_branch() -> DeliveryResult<()> {
+    try!(checkout_delivery_readme_feature_branch());
+    try!(create_delivery_readme());
+    try!(commit_delivery_readme());
+    Ok(())
+}
+
+fn checkout_delivery_readme_feature_branch() -> DeliveryResult<()> {
+    try!(git::git_command(&["checkout", "-b", "initialize-delivery-pipeline"], &project_path()));
+    Ok(())
+}
+
+fn create_delivery_readme() -> DeliveryResult<()> {
+    // NOTE: this isn't guaranteed to be in the project root; however it is only invoked via
+    // `delivery init` which makes some assumptions elsewhere that the CWD is the project root.
+    let mut f = try!(File::create("DELIVERY.md"));
+    try!(f.write_all(&DELIVERY_DOT_MD_CONTENT));
+    Ok(())
+}
+
+fn commit_delivery_readme() -> DeliveryResult<()> {
+    try!(git::git_command(&["add", "DELIVERY.md"], &project_path()));
+    let commit_msg = "New pipeline verification commit".to_string();
     try!(git::git_command(&["commit", "-m", &commit_msg], &project_path()));
     Ok(())
 }
