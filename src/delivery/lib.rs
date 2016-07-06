@@ -28,6 +28,14 @@ extern crate uuid;
 #[macro_use] extern crate hyper;
 extern crate mime;
 extern crate clap;
+extern crate crypto;
+
+#[macro_export]
+macro_rules! validate {
+    ($config:ident, $value:ident) => (
+        try!($config.$value());
+    )
+}
 
 pub mod errors;
 pub mod types;

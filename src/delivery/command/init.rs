@@ -6,7 +6,6 @@
 
 use cli::init::InitClapOptions;
 use delivery_config::DeliveryConfig;
-use cli;
 use cli::load_config;
 use config::Config;
 use std::path::{Path, PathBuf};
@@ -325,11 +324,15 @@ fn generate_delivery_config(config_json: Option<String>) -> DeliveryResult<bool>
 fn trigger_review(config: Config, scp: Option<project::SourceCodeProvider>,
                   no_open: &bool) -> DeliveryResult<()> {    
     let pipeline = try!(config.pipeline());
+    let head = try!(git::get_head());
     match scp {
         Some(s) => {
             match s.kind {
                 project::Type::Bitbucket => {
-                    try!(cli::review(&pipeline, &false, no_open, &false));
+                    let review = try!(project::review(&pipeline, &head));
+                    try!(project::handle_review_result(&review, no_open));
+                    sayln("green", "  Review submitted to Delivery \
+                                    with Bitbucket intergration enabled.");
                 },
                 project::Type::Github => {
                     // For now, delivery review doesn't works for Github projects
@@ -350,7 +353,11 @@ fn trigger_review(config: Config, scp: Option<project::SourceCodeProvider>,
                 }
             }
         },
-        None => { try!(cli::review(&pipeline, &false, no_open, &false)); }
+        None => {
+            let review = try!(project::review(&pipeline, &head));
+            try!(project::handle_review_result(&review, no_open));
+            sayln("green", "  Review submitted to Delivery.");
+        }
     }
     Ok(())
 }

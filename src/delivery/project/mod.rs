@@ -21,7 +21,7 @@ use errors::{DeliveryError, Kind};
 use types::DeliveryResult;
 use std::path::{Path, PathBuf};
 use http::APIClient;
-use git;
+use git::{self, ReviewResult};
 use std::process::{Output, Command};
 use std::fs;
 
@@ -192,8 +192,7 @@ pub fn root_dir(dir: &Path) -> DeliveryResult<PathBuf> {
            Ok(PathBuf::from(root_d))
         },
         None => Err(DeliveryError{kind: Kind::NoGitConfig,
-                                  detail: Some(format!("current directory: {:?}",
-                                                       dir))})
+                                  detail: None})
     }
 }
 
@@ -344,6 +343,27 @@ fn handle_chef_generate_cookbook_cmd(output: Output) -> DeliveryResult<()> {
         )
     }
     Ok(())
+}
+
+pub fn review(target: &String, head: &String) -> DeliveryResult<ReviewResult> {
+    if target == head {
+        Err(DeliveryError{ kind: Kind::CannotReviewSameBranch, detail: None })
+    } else {
+        Ok(try!(git::git_push_review(head, target)))
+    }
+}
+
+pub fn handle_review_result(review: &ReviewResult,
+                            no_open: &bool) -> DeliveryResult<Option<String>> {
+    match review.url {
+        Some(ref url) => {
+            if !no_open {
+                try!(utils::open::item(&url));
+            }
+            Ok(Some(url.clone()))
+        },
+        None => Ok(None)
+    }
 }
 
 #[cfg(test)]
