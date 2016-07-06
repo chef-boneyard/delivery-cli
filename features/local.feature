@@ -2,7 +2,6 @@ Feature: local
 
 Scenario: When local --help is run
   When I run `delivery local --help`
-  Then the output should contain "SUBCOMMANDS:"
   Then the output should contain "cleanup"
   Then the output should contain "deploy"
   Then the output should contain "lint"
@@ -14,10 +13,10 @@ Scenario: When local --help is run
 
 Scenario: When local is run with no subcommands
   When I run `delivery local`
-  Then the output should contain "You did not pass a subcommand to"
+  Then the output should contain "error: The following required arguments were not provided:"
   And the exit status should be 1
 
 Scenario: When local is run with an invalid subcommand
   When I run `delivery local bogus`
-  Then the output should contain "You passed subcommand 'bogus' to"
+  Then the output should contain "error: 'bogus' isn't a valid value for '<phase>'"
   And the exit status should be 1
