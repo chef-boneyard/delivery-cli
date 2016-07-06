@@ -104,13 +104,8 @@ pub fn run(init_opts: InitClapOptions) -> DeliveryResult<ExitCode> {
             try!(project::add_commit_build_cookbook(&custom_config_passed));
             sayln("green", "done");
         }
-
-        // Trigger review if there were any custom commits to review.
-        if !init_opts.local {
-            try!(trigger_review(config, scp, &init_opts.no_open))
-        }
     } else {
-        if let Some(project_type) = scp {
+        if let Some(ref project_type) = scp {
             if project_type.kind == project::Type::Github {
                 if try!(project::missing_github_remote()) {
                     setup_github_remote_msg(&project_type)
@@ -119,10 +114,18 @@ pub fn run(init_opts: InitClapOptions) -> DeliveryResult<ExitCode> {
         };
 
         sayln("white", "\nBuild cookbook generated and pushed to master in delivery.");
+
+        try!(project::create_delivery_readme_feature_branch());
+
         // TODO: Once we want people to use the local command, uncomment this.
         //sayln("white", "As a first step, try running:\n");
         //sayln("white", "delivery local lint");
     }
+
+    if !init_opts.local {
+        try!(trigger_review(config, scp, &init_opts.no_open))
+    }
+
     Ok(0)
 }
 
@@ -282,7 +285,7 @@ fn generate_custom_build_cookbook(generator_str: String,
             sayln("yellow", &format!("{:?}", &generator_str));
         }
     }
-    
+
     let command = try!(project::chef_generate_build_cookbook_from_generator(
                         &generator_path, &project_path
                     ));
@@ -322,7 +325,7 @@ fn generate_delivery_config(config_json: Option<String>) -> DeliveryResult<bool>
 
 // Triggers a delvery review.
 fn trigger_review(config: Config, scp: Option<project::SourceCodeProvider>,
-                  no_open: &bool) -> DeliveryResult<()> {    
+                  no_open: &bool) -> DeliveryResult<()> {
     let pipeline = try!(config.pipeline());
     let head = try!(git::get_head());
     match scp {
