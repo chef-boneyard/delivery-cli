@@ -46,18 +46,17 @@ pub struct LocalPhases {
     pub cleanup: String,
 }
 
-// TODO: Do we want to implement the defaults in the cli?
 impl Default for ProjectToml {
     fn default() -> Self {
         ProjectToml {
             local_phases: LocalPhases {
-                unit: String::from("rspec spec/"),
-                lint: String::from("cookstyle"),
-                syntax: String::from("foodcritic . --exclude spec -f any"),
-                provision: String::from("chef exec kitchen create"),
-                deploy: String::from("chef exec kitchen converge"),
-                smoke: String::from("chef exec kitchen verify"),
-                cleanup: String::from("chef exec kitchen destroy")
+                unit: String::from(""),
+                lint: String::from(""),
+                syntax: String::from(""),
+                provision: String::from(""),
+                deploy: String::from(""),
+                smoke: String::from(""),
+                cleanup: String::from("")
             }
         }
     }
@@ -69,6 +68,19 @@ impl ProjectToml {
         try!(ProjectToml::validate_file(&toml_path));
         let toml = try!(utils::read_file(&toml_path));
         ProjectToml::parse_config(&toml)
+    }
+
+    pub fn local_phase(&self, phase: &str) -> DeliveryResult<String> {
+        match phase {
+            "unit" => Ok(self.local_phases.unit.clone()),
+            "lint" => Ok(self.local_phases.lint.clone()),
+            "syntax" => Ok(self.local_phases.syntax.clone()),
+            "provision" => Ok(self.local_phases.provision.clone()),
+            "deploy" => Ok(self.local_phases.deploy.clone()),
+            "smoke" => Ok(self.local_phases.smoke.clone()),
+            "cleanup" => Ok(self.local_phases.cleanup.clone()),
+            _ => Err(DeliveryError{ kind: Kind::PhaseNotFound, detail: None })
+        }
     }
 
     fn toml_file_path(proj_path: PathBuf) -> PathBuf {
@@ -122,23 +134,13 @@ mod tests {
     use super::ProjectToml;
 
     #[test]
-    fn test_project_toml_with_defaults() {
-        let p_toml= ProjectToml::default();
-        assert_eq!("rspec spec/".to_string(), p_toml.local_phases.unit);
-        assert_eq!("cookstyle".to_string(), p_toml.local_phases.lint);
-        assert_eq!("foodcritic . --exclude spec -f any".to_string(), p_toml.local_phases.syntax);
-        assert_eq!("chef exec kitchen create".to_string(), p_toml.local_phases.provision);
-        assert_eq!("chef exec kitchen converge".to_string(), p_toml.local_phases.deploy);
-        assert_eq!("chef exec kitchen verify".to_string(), p_toml.local_phases.smoke);
-        assert_eq!("chef exec kitchen destroy".to_string(), p_toml.local_phases.cleanup);
-    }
-
-    #[test]
-    fn test_local_phases_with_defaults_override_unit() {
-        let mut p_toml  = ProjectToml::default();
+    fn test_project_toml_with_defaults_plus_overrides() {
+        // default is empty phases
+        let mut p_toml= ProjectToml::default();
+        assert_eq!("".to_string(), p_toml.local_phases.unit);
+        // But if we fill them in
         p_toml.local_phases.unit = "mvn test".to_string();
         assert_eq!("mvn test".to_string(), p_toml.local_phases.unit);
-        assert_eq!("cookstyle".to_string(), p_toml.local_phases.lint);
     }
 
     #[test]
@@ -189,5 +191,14 @@ syntax = "something"
                 assert_eq!(Some(msg), e.detail);
             }
         }
+    }
+
+    #[test]
+    fn test_local_phase_accessor() {
+        let p_toml= ProjectToml::default();
+        // If one works all of them does :)
+        assert_eq!(p_toml.local_phase("unit").unwrap(), p_toml.local_phases.unit);
+        // Test failure - Something not valid must throw an Err()
+        assert!(p_toml.local_phase("justdoit").is_err());
     }
 }

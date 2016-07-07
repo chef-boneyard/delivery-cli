@@ -1,42 +1,20 @@
+//
+// Copyright:: Copyright (c) 2016 Chef Software, Inc.
+// License:: Apache License, Version 2.0
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
 pub mod init;
 pub mod review;
 pub mod local;
-
-//pub fn run_chef_exec_command(exec_cmd: &str, args: &Vec<&str>) -> i32 {
-    //// Split args on whitespace, so if we pass in the exec_cmd:
-    //// "exec kitchen"
-    //// we can convert it to a &Vec<&str> and pass that to .args(),
-    //// so that ARGV properly looks like ["kitchen", "create", ..]
-    //// instead of ["kitchen create", ...]
-    //let split_cmd_arg_vec = exec_cmd.split_whitespace().collect::<Vec<&str>>();
-    //let mut gen = utils::make_command("chef");
-    //let output = gen.arg("exec")
-        //.args(&split_cmd_arg_vec)
-        //.args(args)
-        //.stdout(Stdio::inherit())
-        //.stderr(Stdio::inherit())
-        //.output()
-        //.unwrap_or_else(|e| { panic!("Unexpected error: Failed to execute process: {}", e) });
-
-    //let return_code = match output.status.code() {
-        //Some(code) => code,
-        //_ => 1
-    //};
-    //return return_code
-//}
-
-//pub fn wrap_kitchen_command(args: &Vec<&str>, kitchen_cmd: &str, usage: &str) -> i32 {
-    //if !args.is_empty() {
-        //match args[0].as_ref() {
-            //// kitchen subcommands don't respond to --help, so let's return something useful.
-            //"--help" => {
-                //// Should be string stolen from kitchen --help
-                //println!("{}", usage);
-                //return 0
-            //},
-            //_ => return run_chef_exec_command(kitchen_cmd, args)
-        //}
-    //} else {
-        //return run_chef_exec_command(kitchen_cmd, args)
-    //}
-//}

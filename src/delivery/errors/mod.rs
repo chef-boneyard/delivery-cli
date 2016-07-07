@@ -1,5 +1,5 @@
 //
-// Copyright:: Copyright (c) 2015 Chef Software, Inc.
+// Copyright:: Copyright (c) 2016 Chef Software, Inc.
 // License:: Apache License, Version 2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +27,7 @@ use hyper::error::Error as HttpError;
 #[derive(Debug)]
 pub enum Kind {
     ChangeNotFound,
+    PhaseNotFound,
     AuthenticationFailed,
     InternalServerError,
     NoMatchingCommand,
@@ -98,6 +99,7 @@ impl error::Error for DeliveryError {
     fn description(&self) -> &str {
         match self.kind {
             Kind::ChangeNotFound => "GET failed for specific change",
+            Kind::PhaseNotFound => "Phase not implemented",
             Kind::NoMatchingCommand => "No command matches your arguments - likely unimplemented feature",
             Kind::NotOnABranch => "You must be on a branch",
             Kind::CannotReviewSameBranch => "You cannot target code for review from the same branch as the review is targeted for",
