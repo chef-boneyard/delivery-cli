@@ -21,6 +21,7 @@ use std::num;
 use std::io;
 use std::fmt;
 use hyper;
+use toml;
 use hyper::error::Error as HttpError;
 
 #[derive(Debug)]
@@ -72,6 +73,7 @@ pub enum Kind {
     UnsupportedProtocol,
     ApiError(hyper::status::StatusCode, Result<String, io::Error>),
     JsonParseError,
+    TomlDecodeError,
     IntParseError,
     OpenFailed,
     NoToken,
@@ -140,6 +142,7 @@ impl error::Error for DeliveryError {
             Kind::HttpError(_) => "An HTTP Error occured",
             Kind::ApiError(_, _) => "An API Error occured",
             Kind::JsonParseError => "Attempted to parse invalid JSON",
+            Kind::TomlDecodeError => "Attempted to decode invalid TOML",
             Kind::IntParseError => "Attempted to parse invalid Int",
             Kind::OpenFailed => "Open command failed",
             Kind::AuthenticationFailed => "Authentication failed",
@@ -223,6 +226,15 @@ impl From<num::ParseIntError> for DeliveryError {
         DeliveryError{
             kind: Kind::IntParseError,
             detail: detail
+        }
+    }
+}
+
+impl From<toml::DecodeError> for DeliveryError {
+    fn from(err: toml::DecodeError) -> DeliveryError {
+        DeliveryError{
+            kind: Kind::TomlDecodeError,
+            detail: Some(format!("{}: {}", err.description().to_string(), err))
         }
     }
 }

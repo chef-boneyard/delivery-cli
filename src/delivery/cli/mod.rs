@@ -55,7 +55,7 @@ mod job;
 mod spin;
 mod token;
 mod setup;
-mod local;
+pub mod local;
 
 // Implemented sub-commands. Should handle everything after args have
 // been parsed, including running the command, error handling, and UI outputting.
@@ -148,7 +148,8 @@ pub fn run() {
             token(&token::TokenClapOptions::new(&matches))
         },
         (local::SUBCOMMAND_NAME, Some(matches)) => {
-            local::parse_clap_matches(matches)
+            let local_opts = local::LocalClapOptions::new(matches);
+            command::local::run(local_opts)
         },
         (spin::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);

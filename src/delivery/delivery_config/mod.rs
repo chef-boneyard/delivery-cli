@@ -32,6 +32,8 @@ use git;
 use utils::{walk_tree_for_path, read_file, copy_recursive};
 use utils::path_join_many::PathJoinMany;
 
+pub mod project;
+
 #[derive(RustcEncodable, RustcDecodable, Clone)]
 pub struct DeliveryConfig {
     pub version: String,
