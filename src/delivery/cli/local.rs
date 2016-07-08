@@ -1,24 +1,34 @@
 use clap::{App, SubCommand, ArgMatches, Arg};
+use delivery_config::project::Phase;
 use cli::value_of;
 
 pub const SUBCOMMAND_NAME: &'static str = "local";
 
 #[derive(Debug)]
-pub struct LocalClapOptions<'n> {
-    pub phase: &'n str
+pub struct LocalClapOptions {
+    pub phase: Option<Phase>
 }
 
-impl<'n> Default for LocalClapOptions<'n> {
+impl Default for LocalClapOptions {
     fn default() -> Self {
-        LocalClapOptions { phase: "" }
+        LocalClapOptions { phase: None }
     }
 }
 
-impl<'n> LocalClapOptions<'n> {
-    pub fn new(matches: &'n ArgMatches<'n>) -> Self {
-        LocalClapOptions {
-            phase: value_of(matches, "phase")
-        }
+impl LocalClapOptions {
+    pub fn new(matches: &ArgMatches) -> Self {
+        let phase = match value_of(matches, "phase") {
+            "unit" => Some(Phase::Unit),
+            "lint" => Some(Phase::Lint),
+            "syntax" => Some(Phase::Syntax),
+            "provision" => Some(Phase::Provision),
+            "deploy" => Some(Phase::Deploy),
+            "smoke" => Some(Phase::Smoke),
+            "cleanup" => Some(Phase::Cleanup),
+            _ => None
+        };
+
+        LocalClapOptions { phase: phase }
     }
 }
 

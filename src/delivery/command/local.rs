@@ -31,7 +31,7 @@ pub fn run(opts: LocalClapOptions) -> DeliveryResult<ExitCode> {
     );
 
     say("white", "Running ");
-    say("magenta", &format!("{}", opts.phase));
+    say("magenta", &format!("{:?}", opts.phase));
     sayln("white", " Phase");
     let phase_cmd = try!(project_toml.local_phase(opts.phase));
     debug!("Executing command: {}", phase_cmd);

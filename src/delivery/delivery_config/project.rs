@@ -46,6 +46,17 @@ pub struct LocalPhases {
     pub cleanup: String,
 }
 
+#[derive(Debug)]
+pub enum Phase {
+    Unit,
+    Lint,
+    Syntax,
+    Provision,
+    Deploy,
+    Smoke,
+    Cleanup
+}
+
 impl Default for ProjectToml {
     fn default() -> Self {
         ProjectToml {
@@ -70,17 +81,20 @@ impl ProjectToml {
         ProjectToml::parse_config(&toml)
     }
 
-    pub fn local_phase(&self, phase: &str) -> DeliveryResult<String> {
-        match phase {
-            "unit" => Ok(self.local_phases.unit.clone()),
-            "lint" => Ok(self.local_phases.lint.clone()),
-            "syntax" => Ok(self.local_phases.syntax.clone()),
-            "provision" => Ok(self.local_phases.provision.clone()),
-            "deploy" => Ok(self.local_phases.deploy.clone()),
-            "smoke" => Ok(self.local_phases.smoke.clone()),
-            "cleanup" => Ok(self.local_phases.cleanup.clone()),
-            _ => Err(DeliveryError{ kind: Kind::PhaseNotFound, detail: None })
-        }
+    pub fn local_phase(&self, phase: Option<Phase>) -> DeliveryResult<String> {
+        if let Some(p) = phase { 
+            match p {
+                Phase::Unit      => Ok(self.local_phases.unit.clone()),
+                Phase::Lint      => Ok(self.local_phases.lint.clone()),
+                Phase::Syntax    => Ok(self.local_phases.syntax.clone()),
+                Phase::Provision => Ok(self.local_phases.provision.clone()),
+                Phase::Deploy    => Ok(self.local_phases.deploy.clone()),
+                Phase::Smoke     => Ok(self.local_phases.smoke.clone()),
+                Phase::Cleanup   => Ok(self.local_phases.cleanup.clone()),
+            }
+        } else {
+            Err(DeliveryError{ kind: Kind::PhaseNotFound, detail: None })
+       }
     }
 
     fn toml_file_path(proj_path: PathBuf) -> PathBuf {
@@ -131,7 +145,7 @@ impl ProjectToml {
 
 #[cfg(test)]
 mod tests {
-    use super::ProjectToml;
+    use super::{ProjectToml, Phase};
 
     #[test]
     fn test_project_toml_with_defaults_plus_overrides() {
@@ -197,8 +211,8 @@ syntax = "something"
     fn test_local_phase_accessor() {
         let p_toml= ProjectToml::default();
         // If one works all of them does :)
-        assert_eq!(p_toml.local_phase("unit").unwrap(), p_toml.local_phases.unit);
-        // Test failure - Something not valid must throw an Err()
-        assert!(p_toml.local_phase("justdoit").is_err());
+        assert_eq!(p_toml.local_phase(Some(Phase::Unit)).unwrap(), p_toml.local_phases.unit);
+        // Test failure - When None it must throw an Err()
+        assert!(p_toml.local_phase(None).is_err());
     }
 }
