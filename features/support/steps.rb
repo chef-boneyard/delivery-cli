@@ -4,8 +4,8 @@ def custom_config
 {
   "version": "2",
   "build_cookbook": {
-    "path": ".delivery/build-cookbook",
-    "name": "build-cookbook"
+    "path": ".delivery/build_cookbook",
+    "name": "build_cookbook"
   },
   "skip_phases": [ "smoke", "security", "syntax", "uni", "quality" ],
   "build_nodes": {},
@@ -35,8 +35,8 @@ def default_delivery_config
   {
     "version": "2",
     "build_cookbook": {
-      "path": ".delivery/build-cookbook",
-      "name": "build-cookbook"
+      "path": ".delivery/build_cookbook",
+      "name": "build_cookbook"
     },
     "skip_phases": [],
     "build_nodes": {},
@@ -261,8 +261,8 @@ end
 Given(/^a default config.json is created$/) do
   step %(the file ".delivery/config.json" should contain:), %("version": "2",)
   step %(the file ".delivery/config.json" should contain:), %("build_cookbook": {)
-  step %(the file ".delivery/config.json" should contain:), %("path": ".delivery/build-cookbook")
-  step %(the file ".delivery/config.json" should contain:), %("name": "build-cookbook")
+  step %(the file ".delivery/config.json" should contain:), %("path": ".delivery/build_cookbook")
+  step %(the file ".delivery/config.json" should contain:), %("name": "build_cookbook")
   step %(the file ".delivery/config.json" should contain:), %(},)
   step %(the file ".delivery/config.json" should contain:), %("skip_phases": [],)
   step %(the file ".delivery/config.json" should contain:), %("build_nodes": {},)
@@ -288,12 +288,12 @@ Given(/^the change has the default generated build_cookbook$/) do
   step %("git push --set-upstream --porcelain --progress --verbose delivery master" should be run)
   step %("git commit -m Add generated delivery configuration" should be run)
   step %("git commit -m Add generated delivery build cookbook" should be run)
-  step %(a directory named ".delivery/build-cookbook" should exist)
+  step %(a directory named ".delivery/build_cookbook" should exist)
 end
 
 Given(/^the change does not have the default generated build_cookbook$/) do
   step %("git commit -m Adds Delivery build cookbook and config" should not be run)
-  step %("chef generate cookbook .delivery/build-cookbook" should not be run)
+  step %("chef generate cookbook .delivery/build_cookbook" should not be run)
 end
 
 Given(/^a user creates a delivery backed project with option "([^"]*)"$/) do |option|
@@ -311,26 +311,26 @@ Given(/^a custom build cookbook is already downloaded in the cache$/) do
   step %(I append to "../.delivery/cache/generator-cookbooks/test-generator/recipes/cookbook.rb" with:), additional_gen_recipe
 end
 
-Given(/^a custom build-cookbook is generated from "([^"]*)"$/) do |type|
+Given(/^a custom build_cookbook is generated from "([^"]*)"$/) do |type|
   case type
   when "local_path"
-    step %(the output should match /Copying custom build-cookbook generator to/)
+    step %(the output should match /Copying custom build_cookbook generator to/)
   when "git_repo"
-    step %(the output should match /Using cached copy of build-cookbook generator/)
+    step %(the output should match /Using cached copy of build_cookbook generator/)
   else
     pending "not implemented"
   end
   step %(the output should match /Creating and checking out.*add-delivery-config.*feature branch/)
   step %("git push --porcelain --progress --verbose delivery add-delivery-config:_for/master/add-delivery-config" should be run)
-  step %(the file ".delivery/build-cookbook/test_file" should contain "THIS IS ONLY A TEST.")
+  step %(the file ".delivery/build_cookbook/test_file" should contain "THIS IS ONLY A TEST.")
   step %("git commit -m Adds Delivery build cookbook and config" should be run)
-  step %(a directory named ".delivery/build-cookbook" should exist)
+  step %(a directory named ".delivery/build_cookbook" should exist)
 end
 
-Then(/^no build\-cookbook is generated$/) do
+Then(/^no build_cookbook is generated$/) do
   step %("git commit -m Adds Delivery build cookbook" should not be run)
-  step %("chef generate cookbook .delivery/build-cookbook" should not be run)
-  step %(a directory named ".delivery/build-cookbook" should not exist)
+  step %("chef generate cookbook .delivery/build_cookbook" should not be run)
+  step %(a directory named ".delivery/build_cookbook" should not exist)
 end
 
 Then("I should be checked out to a feature branch named \"$name\"") do |name|

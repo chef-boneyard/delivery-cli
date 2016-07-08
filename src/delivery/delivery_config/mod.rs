@@ -54,9 +54,9 @@ impl Default for DeliveryConfig {
     fn default() -> DeliveryConfig {
         let mut build_cookbook = HashMap::new();
         build_cookbook.insert("name".to_string(),
-                              "build-cookbook".to_string());
+                              "build_cookbook".to_string());
         build_cookbook.insert("path".to_string(),
-                              ".delivery/build-cookbook".to_string());
+                              ".delivery/build_cookbook".to_string());
         DeliveryConfig {
             version: "2".to_string(),
             build_cookbook: build_cookbook,

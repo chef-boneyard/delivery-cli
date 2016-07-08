@@ -87,7 +87,7 @@ pub fn run(init_opts: InitClapOptions) -> DeliveryResult<ExitCode> {
         generate_delivery_config(config.config_json().ok())
     );
 
-    // If nothing custom was requested, then `chef generate build-cookbook`
+    // If nothing custom was requested, then `chef generate build_cookbook`
     // will handle the commits for us. If we need a branch for either the
     // custom build cookbook or custom config, create it.
     if custom_build_cookbook_generated || custom_config_passed {
@@ -100,7 +100,7 @@ pub fn run(init_opts: InitClapOptions) -> DeliveryResult<ExitCode> {
         }
 
         if custom_build_cookbook_generated {
-            say("white", "Adding and commiting build-cookbook: ");
+            say("white", "Adding and commiting build_cookbook: ");
             try!(project::add_commit_build_cookbook(&custom_config_passed));
             sayln("green", "done");
         }
@@ -234,10 +234,10 @@ fn create_bitbucket_project(org: String, proj: String, pipeline: String,
     Ok(())
 }
 
-// Handles the build-cookbook generation
+// Handles the build_cookbook generation
 //
 // Use the provided custom generator, if it is not provided we use the default
-// build-cookbook generator from the ChefDK.
+// build_cookbook generator from the ChefDK.
 //
 // Returns true if a CUSTOM build cookbook was generated, else it returns false.
 fn generate_build_cookbook(config: &Config) -> DeliveryResult<bool> {
@@ -250,8 +250,8 @@ fn generate_build_cookbook(config: &Config) -> DeliveryResult<bool> {
         },
         // Default build cookbook
         None => {
-            if project::project_path().join(".delivery/build-cookbook").exists() {
-                sayln("red", ".delivery/build-cookbook folder already exists, skipping \
+            if project::project_path().join(".delivery/build_cookbook").exists() {
+                sayln("red", ".delivery/build_cookbook folder already exists, skipping \
                       build cookbook generation.");
                 Ok(false)
             } else {
@@ -273,15 +273,15 @@ fn generate_custom_build_cookbook(generator_str: String,
     generator_path.push(gen_path.file_stem().unwrap());
     match try!(project::download_or_mv_custom_build_cookbook_generator(&gen_path, &cache_path)) {
         project::CustomCookbookSource::Disk => {
-            say("white", "Copying custom build-cookbook generator to ");
+            say("white", "Copying custom build_cookbook generator to ");
             sayln("yellow", &format!("{:?}", &cache_path));
         },
         project::CustomCookbookSource::Cached => {
-            sayln("yellow", &format!("Using cached copy of build-cookbook generator {:?}",
+            sayln("yellow", &format!("Using cached copy of build_cookbook generator {:?}",
                                      &cache_path));
         },
         project::CustomCookbookSource::Git => {
-            say("white", "Downloading build-cookbook generator from ");
+            say("white", "Downloading build_cookbook generator from ");
             sayln("yellow", &format!("{:?}", &generator_str));
         }
     }

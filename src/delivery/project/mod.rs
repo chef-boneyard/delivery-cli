@@ -254,10 +254,10 @@ pub fn create_feature_branch_if_missing(project_path: &PathBuf) -> DeliveryResul
     }
 }
 
-// Add and commit the generated build-cookbook
+// Add and commit the generated build_cookbook
 pub fn add_commit_build_cookbook(custom_config_passed: &bool) -> DeliveryResult<()> {
     // .delivery is probably not yet under version control, so we have to add
-    // the whole folder instead of .delivery/build-cookbook.
+    // the whole folder instead of .delivery/build_cookbook.
     try!(git::git_command(&["add", ".delivery"], &project_path()));
     let mut commit_msg = "Adds Delivery build cookbook".to_string();
     if !(*custom_config_passed) {
@@ -306,7 +306,7 @@ pub fn create_default_build_cookbook() -> DeliveryResult<Command> {
     let mut command = utils::make_command("chef");
     command.arg("generate")
         .arg("build-cookbook")
-        .arg(".delivery/build-cookbook")
+        .arg(".delivery/build_cookbook")
         .current_dir(&project_path());
     let output = try!(command.output());
     try!(handle_chef_generate_cookbook_cmd(output));
@@ -320,7 +320,7 @@ pub enum CustomCookbookSource {
     Git
 }
 
-// Custom build-cookbook generation
+// Custom build_cookbook generation
 //
 // This method handles a custom generator which could be:
 // 1) A local path
@@ -345,13 +345,13 @@ pub fn download_or_mv_custom_build_cookbook_generator(
     }
 }
 
-// Generate the build-cookbook using ChefDK generate
+// Generate the build_cookbook using ChefDK generate
 pub fn chef_generate_build_cookbook_from_generator(
       generator: &Path, project_path: &Path) -> DeliveryResult<Command> {
     let mut command = utils::make_command("chef");
     command.arg("generate")
         .arg("cookbook")
-        .arg(".delivery/build-cookbook")
+        .arg(".delivery/build_cookbook")
         .arg("-g")
         .arg(generator)
         .current_dir(&project_path);
