@@ -25,7 +25,6 @@ use utils;
 
 pub fn run(opts: LocalClapOptions) -> DeliveryResult<ExitCode> {
     sayln("green", "Chef Delivery");
-    debug!("Parsing .delivery/project.toml file");
     let project_toml: ProjectToml = try!(
         ProjectToml::load_toml_file(project::project_path())
     );
