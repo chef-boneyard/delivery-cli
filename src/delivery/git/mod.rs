@@ -284,7 +284,6 @@ pub fn create_repo(path: &PathBuf) -> Result<(), DeliveryError> {
 }
 
 pub fn config_repo(url: &str, path: &PathBuf) -> Result<bool, DeliveryError> {
-    sayln("white", &format!("adding remote delivery: {}", &url));
     let result = git_command(&["remote", "add", "delivery", &url], path);
     match result {
         Ok(_) => return Ok(true),
@@ -381,22 +380,17 @@ pub fn checkout_review(change: &str, patchset: &str, pipeline: &str) -> Result<(
 }
 
 // Verify the content of the repo:pipeline on the server
-pub fn server_content(pipeline: &str) -> bool {
+pub fn server_content(pipeline: &str) -> Result<bool, DeliveryError> {
     let p_ref = &format!("refs/heads/{}", pipeline);
     match git_command(&["ls-remote", "delivery", p_ref], &cwd()) {
         Ok(msg) => {
             if msg.stdout.contains(p_ref) {
-                say("red", &format!("{}", msg.stdout));
-                return true
+                return Ok(true)
             } else {
-                sayln("white", "No upstream content");
-                return false
+                return Ok(false)
             }
         },
-        Err(e) => {
-            sayln("red", &format!("got error {:?}", e));
-            return false
-        }
+        Err(e) => return Err(e)
     }
 }
 
@@ -435,10 +429,7 @@ pub fn git_push(pipeline: &str) -> Result<(), DeliveryError> {
                         "--porcelain", "--progress",
                         "--verbose", "delivery", pipeline],
                       &cwd()) {
-        Ok(msg) => {
-            sayln("white", &format!("{}", msg.stdout));
-            return Ok(())
-        },
+        Ok(_) => return Ok(()),
         // Not expecting any errors at this point.
         Err(e) => return Err(e)
     }

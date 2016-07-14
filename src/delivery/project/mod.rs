@@ -139,7 +139,7 @@ pub fn create_delivery_project(client: &APIClient,
 // Push local content to the Delivery Server if no upstream commits.
 // Returns true if commits pushed, returns false if upstream commits found.
 pub fn push_project_content_to_delivery(pipeline: &str) -> DeliveryResult<bool> {
-    if git::server_content(pipeline) {
+    if try!(git::server_content(pipeline)) {
         Ok(false)
     } else {
         try!(git::git_push(pipeline));
@@ -149,8 +149,8 @@ pub fn push_project_content_to_delivery(pipeline: &str) -> DeliveryResult<bool> 
 
 // Create delivery remote if it doesn't exist. Returns true if created.
 pub fn create_delivery_remote_if_missing(
-      delivery_git_ssh_url: String) -> DeliveryResult<bool> {
-    if try!(git::config_repo(&delivery_git_ssh_url, &project_path())) {
+      delivery_git_ssh_url: &String) -> DeliveryResult<bool> {
+    if try!(git::config_repo(delivery_git_ssh_url, &project_path())) {
         return Ok(true)
     } else {
         return Ok(false)
@@ -232,16 +232,16 @@ pub fn project_or_from_cwd(proj: &str) -> DeliveryResult<String> {
 // out master and deleting this feature branch.
 //
 // If feature branch created, return true, else return false.
-pub fn create_feature_branch_if_missing(project_path: &PathBuf) -> DeliveryResult<bool> {
-    match git::git_command(&["checkout", "-b", "add-delivery-config"], project_path) {
+pub fn create_feature_branch_if_missing(project_path: &PathBuf, branch_name: &str) -> DeliveryResult<bool> {
+    match git::git_command(&["checkout", "-b", branch_name], project_path) {
         Ok(_) => {
             return Ok(true);
         },
         Err(e) => {
             match e.detail.clone() {
                 Some(msg) => {
-                    if msg.contains("A branch named 'add-delivery-config' already exists") {
-                       try!(git::git_command(&["checkout", "add-delivery-config"], project_path));
+                    if msg.contains(&format!("A branch named '{}' already exists", branch_name)) {
+                       try!(git::git_command(&["checkout", branch_name], project_path));
                         return Ok(false)
                     } else {
                         return Err(e)
@@ -267,28 +267,20 @@ pub fn add_commit_build_cookbook(custom_config_passed: &bool) -> DeliveryResult<
     Ok(())
 }
 
-// NOTE: Assumes the CWD is the project root.
-pub fn create_delivery_readme_feature_branch() -> DeliveryResult<()> {
-    try!(checkout_delivery_readme_feature_branch());
-    try!(create_delivery_readme());
-    try!(commit_delivery_readme());
-    Ok(())
-}
-
-fn checkout_delivery_readme_feature_branch() -> DeliveryResult<()> {
-    try!(git::git_command(&["checkout", "-b", "initialize-delivery-pipeline"], &project_path()));
-    Ok(())
-}
-
-fn create_delivery_readme() -> DeliveryResult<()> {
+// Create the delivery readme if it doesn't exist already.
+pub fn create_delivery_readme() -> DeliveryResult<bool> {
     // NOTE: this isn't guaranteed to be in the project root; however it is only invoked via
     // `delivery init` which makes some assumptions elsewhere that the CWD is the project root.
-    let mut f = try!(File::create("DELIVERY.md"));
-    try!(f.write_all(&DELIVERY_DOT_MD_CONTENT));
-    Ok(())
+    if !PathBuf::from("DELIVERY.md").exists() {
+        let mut f = try!(File::create("DELIVERY.md"));
+        try!(f.write_all(&DELIVERY_DOT_MD_CONTENT));
+        Ok(true)
+    } else {
+        Ok(false)
+    }
 }
 
-fn commit_delivery_readme() -> DeliveryResult<()> {
+pub fn commit_delivery_readme() -> DeliveryResult<()> {
     try!(git::git_command(&["add", "DELIVERY.md"], &project_path()));
     let commit_msg = "New pipeline verification commit".to_string();
     try!(git::git_command(&["commit", "-m", &commit_msg], &project_path()));

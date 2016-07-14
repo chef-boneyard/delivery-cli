@@ -31,6 +31,7 @@ use errors::{DeliveryError, Kind};
 use token::TokenStore;
 use utils::say::sayln;
 use config::Config;
+use types::DeliveryResult;
 
 mod headers;
 pub mod token;
@@ -44,7 +45,7 @@ enum HProto {
 }
 
 impl HProto {
-    pub fn from_str(p: &str) -> Result<HProto, DeliveryError> {
+    pub fn from_str(p: &str) -> DeliveryResult<HProto> {
         let lp = p.to_lowercase();
         match lp.as_ref() {
             "http" => Ok(HProto::HTTP),
@@ -90,7 +91,7 @@ impl APIClient {
     /// required configuration values are missing. Expects to find
     /// `server`, `api_port`, `enterprise`, and `user` in the config
     /// along with a token mapped for those values.
-    pub fn from_config(config: &Config) -> Result<APIClient, DeliveryError> {
+    pub fn from_config(config: &Config) -> DeliveryResult<APIClient> {
         APIClient::from_config_no_auth(config).and_then(|mut c| {
             let auth = try!(APIAuth::from_config(&config));
             c.set_auth(auth);
@@ -105,7 +106,7 @@ impl APIClient {
     /// `api_port`, and `enterprise` from the specified config and
     /// raise an error if any of these values are unset.
     pub fn from_config_no_auth(config: &Config)
-                               -> Result<APIClient, DeliveryError> {
+                               -> DeliveryResult<APIClient> {
         let host = try!(config.api_host_and_port());
         let ent = try!(config.enterprise());
         let proto_str = try!(config.api_protocol());
@@ -138,17 +139,17 @@ impl APIClient {
     /// Delivery sends back when hitting an endpoints. It will
     /// interprete the response by, either printing a message and
     /// returning Ok() or throwing an Err() if we don't know it
-    pub fn parse_response(&self, mut response: HyperResponse) -> Result<(), DeliveryError> {
+    pub fn parse_response(&self, mut response: HyperResponse) -> DeliveryResult<StatusCode> {
         debug!("Parsing response with status: {:?}", response.status);
         match response.status {
-            StatusCode::NoContent => Ok(()),
+            StatusCode::NoContent => Ok(response.status),
             StatusCode::Created => {
-                sayln("green", " created");
-                Ok(())
+                debug!(" created");
+                Ok(response.status)
             },
             StatusCode::Conflict => {
-                sayln("white", " already exists.");
-                Ok(())
+                debug!(" already exists.");
+                Ok(response.status)
             },
             StatusCode::Unauthorized => {
                 let detail = try!(APIClient::extract_pretty_json(&mut response));
@@ -176,7 +177,7 @@ impl APIClient {
     }
 
     pub fn get_auth_from_home(&mut self, server: &str, ent: &str,
-                              user: &str) -> Result<APIAuth, DeliveryError> {
+                              user: &str) -> DeliveryResult<APIAuth> {
         match TokenStore::from_home() {
             Ok(tstore) => {
                 APIAuth::from_token_store(tstore, server, ent, user)
@@ -248,7 +249,7 @@ impl APIClient {
     pub fn pipeline_exists(&self,
                           org: &str, proj: &str, pipe: &str) -> bool {
 
-        let path = format!("orgs/{}/projects/{}/pipeline/{}", org, proj, pipe);
+        let path = format!("orgs/{}/projects/{}/pipelines/{}", org, proj, pipe);
         match self.get(&path) {
             Ok(res) => {
                 match res.status {
@@ -291,7 +292,7 @@ impl APIClient {
     }
 
     pub fn create_delivery_project(&self, org: &str,
-                                   proj: &str) -> Result<(), DeliveryError> {
+                                   proj: &str) -> DeliveryResult<StatusCode> {
         let path = format!("orgs/{}/projects", org);
         // FIXME: we'd like to use the native struct->json stuff, but
         // seeing link issues.
@@ -301,7 +302,7 @@ impl APIClient {
 
     pub fn create_github_project(&self, org: &str, proj: &str,
                                 repo_name: &str, git_org: &str, pipe: &str,
-                                ssl: bool) -> Result<(), DeliveryError> {
+                                ssl: bool) -> DeliveryResult<StatusCode> {
         let path = format!("orgs/{}/github-projects", org);
         let payload = format!("{{\
                                 \"name\":\"{}\",\
@@ -316,7 +317,7 @@ impl APIClient {
         self.parse_response(try!(self.post(&path, &payload)))
     }
 
-    fn get_scm_server_config(&self, scm: &str) -> Result<Vec<json::Json>, DeliveryError> {
+    fn get_scm_server_config(&self, scm: &str) -> DeliveryResult<Vec<json::Json>> {
         let json = try!(APIClient::parse_json(self.get("scm-providers")));
         debug!("Endpoint[scm-providers]: {:?}", json);
         if let Some(data) = json.as_array() {
@@ -338,17 +339,17 @@ impl APIClient {
         })
     }
 
-    pub fn get_github_server_config(&self) -> Result<Vec<json::Json>, DeliveryError> {
+    pub fn get_github_server_config(&self) -> DeliveryResult<Vec<json::Json>> {
         self.get_scm_server_config("Github")
     }
 
-    pub fn get_bitbucket_server_config(&self) -> Result<Vec<json::Json>, DeliveryError> {
+    pub fn get_bitbucket_server_config(&self) -> DeliveryResult<Vec<json::Json>> {
         self.get_scm_server_config("Bitbucket")
     }
 
     pub fn create_bitbucket_project(&self, org: &str, proj: &str,
                                     repo_name: &str, project_key: &str,
-                                    pipe: &str) -> Result<(), DeliveryError> {
+                                    pipe: &str) -> DeliveryResult<StatusCode> {
         let path = format!("orgs/{}/bitbucket-projects", org);
         let payload = format!("{{\
                                 \"name\":\"{}\",\
@@ -362,16 +363,14 @@ impl APIClient {
         // Sadly the endpoint returns a Status 204 NoContent instead of 201 Created
         // therefore we need to hardcode the output of the sayln(" created)"
         //
-        try!(self.parse_response(try!(self.post(&path, &payload))));
-        sayln("green", " created");
-        Ok(())
+        self.parse_response(try!(self.post(&path, &payload)))
         // TODO: Fix the endpoint, delete this code and uncomment this line:
         //self.parse_response(try!(self.post(&path, &payload)))
     }
 
     pub fn create_pipeline(&self,
                            org: &str, proj: &str,
-                           pipe: &str, base: Option<&str>) -> Result<(), DeliveryError> {
+                           pipe: &str, base: Option<&str>) -> DeliveryResult<StatusCode> {
         let path = format!("orgs/{}/projects/{}/pipelines", org, proj);
 
         // We unwrap the provided base branch, if None we default to `master`
@@ -381,7 +380,7 @@ impl APIClient {
         self.parse_response(try!(self.post(&path, &payload)))
     }
 
-    pub fn parse_json(result: Result<HyperResponse, HttpError>) -> Result<json::Json, DeliveryError> {
+    pub fn parse_json(result: Result<HyperResponse, HttpError>) -> DeliveryResult<json::Json> {
         let body = match result {
             Ok(mut b) => {
                 let mut body_string = String::new();
@@ -395,7 +394,7 @@ impl APIClient {
     }
 
     pub fn extract_pretty_json(resp: &mut HyperResponse) ->
-        Result<String, DeliveryError> {
+        DeliveryResult<String> {
             let mut body = String::new();
             try!(resp.read_to_string(&mut body));
             debug!("Status: {:?} Body: {:?}", resp.status, body);
@@ -429,7 +428,7 @@ impl APIAuth {
     /// `enterprise`, and `user`.
     /// Reads API tokens from `$HOME/.delivery/api-tokens`.
     /// Lookup for the stored token, if it does not exist request it.
-    pub fn from_config(config: &Config) -> Result<APIAuth, DeliveryError> {
+    pub fn from_config(config: &Config) -> DeliveryResult<APIAuth> {
         if !try!(http::token::verify(&config)) {
             sayln("red", "Token expired");
             return APIAuth::from_token_request(config)
@@ -452,7 +451,7 @@ impl APIAuth {
 
     pub fn from_token_store(tstore: TokenStore,
                             server: &str, ent: &str,
-                            user: &str) -> Result<APIAuth, DeliveryError> {
+                            user: &str) -> DeliveryResult<APIAuth> {
         match tstore.lookup(server, ent, user) {
             Some(token) => {
                 debug!("Token found");
@@ -469,7 +468,7 @@ impl APIAuth {
         }
     }
 
-    pub fn from_token_request(config: &Config) -> Result<APIAuth, DeliveryError> {
+    pub fn from_token_request(config: &Config) -> DeliveryResult<APIAuth> {
         let user = try!(config.user());
         let interactive = !config.non_interactive.unwrap_or(false);
         if interactive {

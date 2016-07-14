@@ -29,6 +29,9 @@ pub mod path_join_many;
 pub mod path_ext;
 pub mod open;
 
+use crypto::digest::Digest;
+use crypto::md5::Md5;
+
 #[cfg(not(target_os = "windows"))]
 pub use self::unix::*;
 
@@ -118,6 +121,31 @@ pub fn read_file(path: &PathBuf) -> Result<String, DeliveryError> {
 // Return the current directory path
 pub fn cwd() -> PathBuf {
     env::current_dir().unwrap()
+}
+
+// Returns true if dest_f doesn't exist or has content different from source_f,
+// returns false if dest_f exist but contains the exact content as source_f.
+pub fn file_needs_updated(source_f: &PathBuf, dest_f: &PathBuf) ->Result<bool, DeliveryError> {
+    if dest_f.exists() {
+        let mut md5_source = Md5::new();            
+        let mut source_f = try!(File::open(&source_f));
+        let mut source_str = String::new();
+        try!(source_f.read_to_string(&mut source_str));
+        md5_source.input_str(&source_str);
+
+        let mut md5_dest = Md5::new();
+        let mut dest_f = try!(File::open(&dest_f));
+        let mut dest_str = String::new();
+        try!(dest_f.read_to_string(&mut dest_str));
+        md5_dest.input_str(&dest_str);
+
+        // If the md5 sun matches, return None to signify that
+        // the file was not copied because they match exactly.
+        if md5_source.result_str() == md5_dest.result_str() {
+            return Ok(false)
+        }
+    }
+    Ok(true)
 }
 
 #[cfg(test)]
