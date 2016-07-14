@@ -1,97 +1,58 @@
-use clap::{App, SubCommand, ArgMatches, AppSettings};
-use std::env;
-use utils::say::sayln;
-use types::{DeliveryResult, ExitCode};
+//
+// Copyright:: Copyright (c) 2016 Chef Software, Inc.
+// License:: Apache License, Version 2.0
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+use clap::{App, SubCommand, ArgMatches, Arg};
+use delivery_config::project::Phase;
+use cli::value_of;
 
-// Implemented sub-commands. Should handle everything after args have
-// been parsed, including running the command, error handling, and UI outputting.
-use command::cleanup;
-use command::deploy;
-use command::lint;
-use command::provision;
-use command::smoke;
-use command::syntax;
-use command::unit;
-
-// Local subcommand is for wrapping external commands and running
-// the locally.
 pub const SUBCOMMAND_NAME: &'static str = "local";
+
+#[derive(Debug)]
+pub struct LocalClapOptions {
+    pub phase: Option<Phase>
+}
+
+impl Default for LocalClapOptions {
+    fn default() -> Self {
+        LocalClapOptions { phase: None }
+    }
+}
+
+impl LocalClapOptions {
+    pub fn new(matches: &ArgMatches) -> Self {
+        let phase = match value_of(matches, "phase") {
+            "unit" => Some(Phase::Unit),
+            "lint" => Some(Phase::Lint),
+            "syntax" => Some(Phase::Syntax),
+            "provision" => Some(Phase::Provision),
+            "deploy" => Some(Phase::Deploy),
+            "smoke" => Some(Phase::Smoke),
+            "cleanup" => Some(Phase::Cleanup),
+            _ => None
+        };
+
+        LocalClapOptions { phase: phase }
+    }
+}
 
 pub fn clap_subcommand<'c>() -> App<'c, 'c> {
     SubCommand::with_name(SUBCOMMAND_NAME)
-        .template(
-            // Please keep alphabetized
-            "{bin}\n{about}\n\n{usage}\n\nSUBCOMMANDS: \
-             \n    cleanup \
-             \n    deploy \
-             \n    lint \
-             \n    provision \
-             \n    smoke \
-             \n    syntax \
-             \n    unit"
-        )
-        // Use custom usage because gloabl flags will break parsing for this command
-        .usage("delivery local <SUBCOMMAND> [SUBCOMMAND_FLAGS]")
         .about("Run Delivery phases on your local workstation.")
-        .setting(AppSettings::AllowExternalSubcommands)
-}
-
-pub fn parse_clap_matches(global_matches: &ArgMatches) -> DeliveryResult<ExitCode> {
-    match global_matches.subcommand() {
-        // Matches any `delivery local <any_subcommand>`.
-        (external, Some(sub_matches)) => {
-            // This will get all args following <any_subcommand> from above match in an array, so:
-            // `delivery local lint --lol fun hehe`
-            // Would return:
-            // ["--lol", "fun", "hehe"]
-            // post_subcommand_args: Vec<&str>
-            let post_subcommand_args: Vec<&str> = match sub_matches.values_of(external) {
-                Some(values) => values.collect(),
-                None => Vec::new()
-            };
-
-            // Unfortunately, if you use AppSettings::AllowExternalSubcommands,
-            // clap does not actually capture what the original subcommand to local was.
-            // However, it is the only way I found to allow arbitary arguments along in clap,
-            // so we will just validate the subcommand to local directly.
-            let args: Vec<_> = env::args().collect();
-
-            // Match the third arg of `delivery local <any_subcommand>`.
-            match args[2].as_ref() {
-                "cleanup" => {
-                    return Ok(cleanup::run(&post_subcommand_args))
-                },
-                "deploy" => {
-                    return Ok(deploy::run(&post_subcommand_args))
-                },
-                "lint" => {
-                    return Ok(lint::run(&post_subcommand_args))
-                },
-                "provision" => {
-                    return Ok(provision::run(&post_subcommand_args))
-                },
-                "smoke" => {
-                    return Ok(smoke::run(&post_subcommand_args))
-                },
-                "syntax" => {
-                    return Ok(syntax::run(&post_subcommand_args))
-                },
-                "unit" => {
-                    return Ok(unit::run(&post_subcommand_args))
-                }
-                unknown => {
-                    sayln("red", &format!("You passed subcommand '{}' to 'delivery {}'.", unknown, SUBCOMMAND_NAME));
-                    sayln("red", &format!("'{}' is not a valid subcommand for 'delivery {}'.", unknown, SUBCOMMAND_NAME));
-                    sayln("red", &format!("To see valid subcommands, please run 'delivery {} --help'.", SUBCOMMAND_NAME));
-                    return Ok(1)
-                }
-            }
-        },
-        _ => {
-            sayln("red", &format!("You did not pass a subcommand to 'delivery {}'.", SUBCOMMAND_NAME));
-            sayln("red", &format!("To see valid subcommands, please run 'delivery {} --help'.", SUBCOMMAND_NAME));
-            return Ok(1)
-        }
-    }
-    return Ok(0)
+        .arg(Arg::from_usage("<phase> 'Delivery phase to execute'")
+             .takes_value(false)
+             .possible_values(&["unit", "lint", "syntax", "provision",
+                                "deploy", "smoke", "cleanup"]))
 }

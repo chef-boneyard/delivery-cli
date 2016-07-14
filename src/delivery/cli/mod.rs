@@ -1,3 +1,20 @@
+//
+// Copyright:: Copyright (c) 2016 Chef Software, Inc.
+// License:: Apache License, Version 2.0
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
 use std::env;
 use std::process;
 use std::process::Command;
@@ -55,7 +72,7 @@ mod job;
 mod spin;
 mod token;
 mod setup;
-mod local;
+pub mod local;
 
 // Implemented sub-commands. Should handle everything after args have
 // been parsed, including running the command, error handling, and UI outputting.
@@ -148,7 +165,8 @@ pub fn run() {
             token(&token::TokenClapOptions::new(&matches))
         },
         (local::SUBCOMMAND_NAME, Some(matches)) => {
-            local::parse_clap_matches(matches)
+            let local_opts = local::LocalClapOptions::new(matches);
+            command::local::run(local_opts)
         },
         (spin::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
