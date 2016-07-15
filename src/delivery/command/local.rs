@@ -28,11 +28,10 @@ pub fn run(opts: LocalClapOptions) -> DeliveryResult<ExitCode> {
     let project_toml: ProjectToml = try!(
         ProjectToml::load_toml_file(project::project_path())
     );
-
+    let phase_cmd = try!(project_toml.local_phase(opts.phase.clone()));
     say("white", "Running ");
-    say("magenta", &format!("{:?}", opts.phase));
+    say("magenta", &format!("{:?}", opts.phase.unwrap()));
     sayln("white", " Phase");
-    let phase_cmd = try!(project_toml.local_phase(opts.phase));
     debug!("Executing command: {}", phase_cmd);
     Ok(exec_command(&phase_cmd))
 }

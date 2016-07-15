@@ -46,7 +46,7 @@ pub struct LocalPhases {
     pub cleanup: String,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Phase {
     Unit,
     Lint,
