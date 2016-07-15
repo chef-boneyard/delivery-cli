@@ -242,13 +242,12 @@ impl APIClient {
         if payload.is_empty() {
             req.send()
         } else {
-             req.body(payload).send()
+            req.body(payload).send()
         }
     }
 
     pub fn pipeline_exists(&self,
                           org: &str, proj: &str, pipe: &str) -> bool {
-
         let path = format!("orgs/{}/projects/{}/pipelines/{}", org, proj, pipe);
         match self.get(&path) {
             Ok(res) => {
