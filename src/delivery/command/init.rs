@@ -97,7 +97,7 @@ pub fn run(init_opts: InitClapOptions) -> DeliveryResult<ExitCode> {
     if custom_build_cookbook_generated || custom_config_passed {
         branch_name = "add-delivery-config";
         review_needed = true;
-        sayln("blue", "Committing unmerged Delivery content and submitting for review...");
+        sayln("cyan", "Committing unmerged Delivery content and submitting for review...");
         if !try!(project::create_feature_branch_if_missing(&project_path, branch_name)) {
             sayln("white", &format!("  Skipping: A branch named '{}' already exists, \
                                      switching to it.", branch_name))
@@ -119,7 +119,7 @@ pub fn run(init_opts: InitClapOptions) -> DeliveryResult<ExitCode> {
     } else {
         branch_name = "initialize-delivery-pipeline";
         // Create a commit to send to review.
-        sayln("blue", "Creating and committing DELIVERY.md readme...");
+        sayln("cyan", "Creating and committing DELIVERY.md readme...");
         if !try!(project::create_feature_branch_if_missing(&project_path, branch_name)) {
             sayln("white", &format!("  Skipping: A branch named '{}' already exists, \
                                      switching to it.", branch_name))
@@ -142,7 +142,7 @@ pub fn run(init_opts: InitClapOptions) -> DeliveryResult<ExitCode> {
     // Trigger review if there were any custom commits to review.
     if !init_opts.local {
         if review_needed {
-            sayln("blue", &format!("Submitting feature branch '{}' for review...", branch_name));
+            sayln("cyan", &format!("Submitting feature branch '{}' for review...", branch_name));
             try!(trigger_review(config, branch_name, scp, &init_opts.no_open));
         } else {
             sayln("white", "  Skipping: All changes have already be submitted for review, skipping.");
@@ -180,7 +180,7 @@ fn create_on_server(config: &Config,
                                                   client, scp_config))
                 },
                 project::Type::Github => {
-                    sayln("blue", "Creating Github backed Delivery project...");
+                    sayln("cyan", "Creating Github backed Delivery project...");
                     match try!(client.create_github_project(&org, &proj, &scp_config.repo_name,
                                                             &scp_config.organization,
                                                             &scp_config.branch,
@@ -201,7 +201,7 @@ fn create_on_server(config: &Config,
         // If the user isn't using an scp, just delivery itself.
         None => {
             // Create delivery project on server unless it already exists.
-            sayln("blue", "Creating Delivery project...");
+            sayln("cyan", "Creating Delivery project...");
             if try!(project::create_delivery_project(&client, &org, &proj)) {
                 sayln("green", &format!("  Delivery project named {} was created.", proj));
             } else {
@@ -210,7 +210,7 @@ fn create_on_server(config: &Config,
             }
 
             // Setup delivery remote
-            sayln("blue", "Creating Delivery git remote...");
+            sayln("cyan", "Creating Delivery git remote...");
             if try!(project::create_delivery_remote_if_missing(&git_url)) {
                 sayln("green", &format!("  Remote 'delivery' added as {}.", git_url))
             } else {
@@ -219,7 +219,7 @@ fn create_on_server(config: &Config,
             }
 
             // Push content to master if no upstream commits.
-            sayln("blue", "Pushing initial git history...");
+            sayln("cyan", "Pushing initial git history...");
             if !try!(project::push_project_content_to_delivery(&pipe)) {
                 sayln("white", &format!("  Skipping: Found commits on remote for pipeline {}, \
                                          not pushing local commits.", pipe))
@@ -229,7 +229,7 @@ fn create_on_server(config: &Config,
             }
 
             // Create delivery pipeline unless it already exists.
-            sayln("blue", "Creating pipline on delivery server...");
+            sayln("cyan", "Creating pipline on delivery server...");
             if try!(project::create_delivery_pipeline(&client, &org, &proj, &pipe)) {
                 sayln("green", &format!("  Created Delivery pipeline {} for project {}.",
                                       pipe, proj))
@@ -245,7 +245,7 @@ fn create_on_server(config: &Config,
 fn create_bitbucket_project(org: String, proj: String, pipeline: String,
                             git_url: String, client: APIClient,
                             scp_config: project::SourceCodeProvider) -> DeliveryResult<()> {
-    sayln("blue", "Creating Bitbucket backed Delivery project...");
+    sayln("cyan", "Creating Bitbucket backed Delivery project...");
     match try!(client.create_bitbucket_project(&org, &proj, &scp_config.repo_name,
                                                &scp_config.organization,
                                                &scp_config.branch)) {
@@ -261,7 +261,7 @@ fn create_bitbucket_project(org: String, proj: String, pipeline: String,
     }
 
     // Setup delivery remote
-    sayln("blue", "Creating Delivery git remote...");
+    sayln("cyan", "Creating Delivery git remote...");
     if try!(project::create_delivery_remote_if_missing(&git_url)) {
         sayln("green", &format!("  Remote 'delivery' added as {}", git_url))
     } else {
@@ -270,7 +270,7 @@ fn create_bitbucket_project(org: String, proj: String, pipeline: String,
     }
 
     // Push content to master if no upstream commits.
-    sayln("blue", "Pushing initial git history...");
+    sayln("cyan", "Pushing initial git history...");
     if !try!(project::push_project_content_to_delivery(&pipeline)) {
         sayln("white", &format!("  Skipping: Found commits on remote for pipeline {}, \
                                  not pushing local commits.", pipeline))
@@ -292,12 +292,12 @@ fn generate_build_cookbook(config: &Config) -> DeliveryResult<bool> {
     let project_path = project::project_path();
     match config.generator().ok() {
         Some(generator_str) => {
-            sayln("blue", "Generating custom build cookbook...");
+            sayln("cyan", "Generating custom build cookbook...");
             generate_custom_build_cookbook(generator_str, cache_path, project_path)
         },
         // Default build cookbook
         None => {
-            sayln("blue", "Generating default build cookbook...");
+            sayln("cyan", "Generating default build cookbook...");
             if project::project_path().join(".delivery/build_cookbook").exists() {
                 sayln("white", "  Skipping: build cookbook already exists at \
                                 .delivery/build_cookbook.");
@@ -346,7 +346,7 @@ fn generate_custom_build_cookbook(generator_str: String,
 
 fn generate_delivery_config(config_json: Option<String>) -> DeliveryResult<bool> {
     if let Some(json) = config_json {
-        sayln("blue", "Copying custom Delivery config...");
+        sayln("cyan", "Copying custom Delivery config...");
         let proj_path = project::project_path();
         let json_path = PathBuf::from(&json);
 
@@ -358,7 +358,8 @@ fn generate_delivery_config(config_json: Option<String>) -> DeliveryResult<bool>
                 Ok(true)
             },
             None => {
-                sayln("white", &format!("  Skipped: Content of custom config passed from {} exactly matches existing .delivery/config.json.", &json));
+                sayln("white", &format!("  Skipped: Content of custom config passed from {} exactly matches \
+                                         existing .delivery/config.json.", &json));
                 Ok(false)
             }
         }
