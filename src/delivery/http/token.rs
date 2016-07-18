@@ -57,7 +57,11 @@ impl TokenResponse {
     }
 }
 
-/// Verify an API token for a user from a Delivery server.
+// Verify an API token for a user against a Delivery Server
+//
+// This method verifies that a user has an existing Token on disk,
+// that it is valid and has not yet expired. Otherwise it will return
+// false saying that a token needs to be regenerated
 pub fn verify(config: &Config) -> Result<bool, DeliveryError> {
     let api_server = try!(config.api_host_and_port());
     let ent = try!(config.enterprise());
@@ -76,7 +80,8 @@ pub fn verify(config: &Config) -> Result<bool, DeliveryError> {
         StatusCode::Ok => Ok(true),
         StatusCode::Unauthorized => {
             let content = try!(APIClient::extract_pretty_json(&mut response));
-            Ok(TokenResponse::parse_token_expired(&content))
+            // Send verify(false) if the token has expired
+            Ok(!TokenResponse::parse_token_expired(&content))
         },
         _ => {
             let pretty_json = try!(APIClient::extract_pretty_json(&mut response));

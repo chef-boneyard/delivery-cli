@@ -219,3 +219,37 @@ Scenario: SAML enabled in Automate but overridden in config
   # These are secrets, and nobody else should be able to read 'em!
   # Also, this totally doesn't work now
   And the mode of filesystem object ".delivery/api-tokens" should match "600"
+
+@broken
+Scenario: Token expired should trigger an automatic token request
+
+  Given a file named ".delivery/cli.toml" with:
+    """
+    enterprise = "token"
+    git_port = "8989"
+    pipeline = "master"
+    server = "127.0.0.1"
+    api_port = "8080"
+    user = "petrashka"
+    non_interactive = false
+    """
+  And the Delivery API server:
+    """
+      get('/api/v0/e/token/orgs') do
+        status 401
+        {
+          "error"=> "token_expired"
+        }
+      end
+    """
+  And a file named ".delivery/api-tokens" with:
+    """
+    127.0.0.1:8080,Foobar,alice|SUPER_FAKE_TOKEN
+    """
+  When I run `delivery api get users` interactively
+  And I type "my_secret_password"
+  Then the exit status should not be 0
+  And the output should contain:
+  """
+  Requesting Token
+  """
