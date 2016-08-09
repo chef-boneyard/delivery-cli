@@ -326,11 +326,13 @@ pub fn download_or_mv_custom_build_cookbook_generator(
         try!(utils::copy_recursive(&generator, &cache_path));
         return Ok(CustomCookbookSource::Disk)
     } else {
-        let cache_path_str = &cache_path.to_string_lossy();
-        let generator_str = &generator.to_string_lossy();
-        if is_dir(&cache_path) {
+        let mut cache_generator_path: PathBuf = cache_path.to_path_buf();
+        cache_generator_path.push(generator.file_name().unwrap());
+        if is_dir(&cache_generator_path) {
             return Ok(CustomCookbookSource::Cached)
         } else {
+            let cache_path_str = &cache_generator_path.to_string_lossy();
+            let generator_str  = &generator.to_string_lossy();
             try!(git::clone(&cache_path_str, &generator_str));
             return Ok(CustomCookbookSource::Git)
         }
