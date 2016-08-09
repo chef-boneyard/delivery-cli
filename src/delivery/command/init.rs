@@ -63,8 +63,12 @@ pub fn run(init_opts: InitClapOptions) -> DeliveryResult<ExitCode> {
         try!(create_on_server(&config, scp.clone()))
     }
 
+    // Generate delivery config if passed
+    let custom_config_passed = try!(
+        generate_delivery_config(config.config_json().ok())
+    );
+
     // Generate build cookbook, either custom or default.
-    //let mut custom_build_cookbook_generated = false;
     let custom_build_cookbook_generated = if !init_opts.skip_build_cookbook {
         match generate_build_cookbook(&config) {
             Ok(boolean) => boolean,
@@ -83,10 +87,6 @@ pub fn run(init_opts: InitClapOptions) -> DeliveryResult<ExitCode> {
     } else {
         false
     };
-
-    let custom_config_passed = try!(
-        generate_delivery_config(config.config_json().ok())
-    );
 
     // If nothing custom was requested, then `chef generate build_cookbook`
     // will put the commits in the initialize-delivery-pipeline branch, otherwise,
