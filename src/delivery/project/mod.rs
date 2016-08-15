@@ -344,8 +344,8 @@ pub fn chef_generate_build_cookbook_from_generator(
       generator: &Path, project_path: &Path) -> DeliveryResult<Command> {
     let mut command = utils::make_command("chef");
     command.arg("generate")
-        .arg("cookbook")
-        .arg(".delivery/build_cookbook")
+        .arg("build-cookbook")
+        .arg(".")
         .arg("-g")
         .arg(generator)
         .current_dir(&project_path);
