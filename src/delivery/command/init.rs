@@ -63,30 +63,39 @@ pub fn run(init_opts: InitClapOptions) -> DeliveryResult<ExitCode> {
         try!(create_on_server(&config, scp.clone()))
     }
 
+
+    // Generate build cookbook, either custom or default.
+    let custom_build_cookbook_generated = if !init_opts.skip_build_cookbook {
+        try!(generate_build_cookbook(&config))
+    } else {
+        false
+    };
+
     // Generate delivery config if passed
     let custom_config_passed = try!(
         generate_delivery_config(config.config_json().ok())
     );
 
-    // Generate build cookbook, either custom or default.
-    let custom_build_cookbook_generated = if !init_opts.skip_build_cookbook {
-        match generate_build_cookbook(&config) {
-            Ok(boolean) => boolean,
-            // Custom error handling for missing config file.
-            // Pass back 1 to avoid additional default error handling.
-            Err(DeliveryError{ kind: Kind::MissingConfigFile, .. }) => {
-                sayln("red", "\nYou used a custom build cookbook generator, but \
-                      .delivery/config.json was not created.");
-                sayln("red", "Please update your generator to create a valid \
-                      .delivery/config.json or pass in a custom config.");
-                return Ok(1)
-            },
-            // Unexpected error, pass back.
-            Err(e) => return Err(e)
+    // Verify that the project has a config file
+    let config_path = project_path.join(".delivery/config.json");
+    if !config_path.exists() {
+        // Custom error handling for missing config file.
+        if custom_build_cookbook_generated && !custom_config_passed {
+            sayln("red", "\nYou used a custom build cookbook generator, but \
+                  .delivery/config.json was not created.");
+            sayln("red", "Please update your generator to create a valid \
+                  .delivery/config.json or pass in a custom config.");
+            return Ok(1)
+        } else {
+            let msg = "Missing .delivery/config.json file.\nPlease use a \
+                       custom build cookbook generator that creates this \
+                       file or pass in a custom config.".to_string();
+            return Err(DeliveryError{
+                kind: Kind::MissingConfigFile,
+                detail: Some(msg)
+            });
         }
-    } else {
-        false
-    };
+    }
 
     // If nothing custom was requested, then `chef generate build_cookbook`
     // will put the commits in the initialize-delivery-pipeline branch, otherwise,
@@ -106,15 +115,21 @@ pub fn run(init_opts: InitClapOptions) -> DeliveryResult<ExitCode> {
         }
 
         if custom_build_cookbook_generated {
-            try!(project::add_commit_build_cookbook(&custom_config_passed));
-            sayln("green", "  Custom build cookbook committed to feature branch.")
+            if try!(project::add_commit_build_cookbook(&custom_config_passed)) {
+              sayln("green", "  Custom build cookbook committed to feature branch.")
+            } else {
+              sayln("white", "  Skipping: Build cookbook was not modified, no need to commit.");
+            }
         }
 
         // project::add_commit_build_cookbook will commit the custom config for us,
         // so if a custom build cookbook was passed, the delivery config was already commited.
         if custom_config_passed && !custom_build_cookbook_generated {
-            try!(DeliveryConfig::git_add_commit_config(&project_path));
-            sayln("green", "  Custom delivery config committed to feature branch.")
+            if try!(DeliveryConfig::git_add_commit_config(&project_path)) {
+              sayln("green", "  Custom delivery config committed to feature branch.")
+            } else {
+              sayln("white", "  Skipping: Delivery config was not modified, no need to commit.");
+            }
         }
     } else {
         branch_name = "initialize-delivery-pipeline";
@@ -229,7 +244,7 @@ fn create_on_server(config: &Config,
             }
 
             // Create delivery pipeline unless it already exists.
-            sayln("cyan", "Creating pipline on delivery server...");
+            sayln("cyan", "Creating pipeline on delivery server...");
             if try!(project::create_delivery_pipeline(&client, &org, &proj, &pipe)) {
                 sayln("green", &format!("  Created Delivery pipeline {} for project {}.",
                                       pipe, proj))
@@ -336,11 +351,6 @@ fn generate_custom_build_cookbook(generator_str: String,
     try!(project::chef_generate_build_cookbook_from_generator(&generator_path,
                                                               &project_path));
     sayln("green", "  Custom build cookbook generated at .delivery/build_cookbook.");
-
-    let config_path = project_path.join(".delivery/config.json");
-    if !config_path.exists() {
-        return Err(DeliveryError{ kind: Kind::MissingConfigFile, detail: None });
-    }
     return Ok(true)
 }
 

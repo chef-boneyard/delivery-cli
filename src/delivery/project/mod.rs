@@ -255,16 +255,23 @@ pub fn create_feature_branch_if_missing(project_path: &PathBuf, branch_name: &st
 }
 
 // Add and commit the generated build_cookbook
-pub fn add_commit_build_cookbook(custom_config_passed: &bool) -> DeliveryResult<()> {
+pub fn add_commit_build_cookbook(custom_config_passed: &bool) -> DeliveryResult<bool> {
     // .delivery is probably not yet under version control, so we have to add
     // the whole folder instead of .delivery/build_cookbook.
     try!(git::git_command(&["add", ".delivery"], &project_path()));
+
     let mut commit_msg = "Adds Delivery build cookbook".to_string();
-    if !(*custom_config_passed) {
+    if *custom_config_passed {
         commit_msg = commit_msg + " and config";
     }
-    try!(git::git_command(&["commit", "-m", &commit_msg], &project_path()));
-    Ok(())
+
+    // Commit the changes made in .delivery but detect if nothing has changed,
+    // if that is the case, we are Ok() to continue
+    match git::git_commit(&commit_msg) {
+      Ok(_) => Ok(true),
+      Err(DeliveryError{ kind: Kind::EmptyGitCommit, .. }) => Ok(false),
+      Err(e) => Err(e)
+    }
 }
 
 // Create the delivery readme if it doesn't exist already.

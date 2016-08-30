@@ -90,12 +90,18 @@ impl DeliveryConfig {
         Ok(Some(content))
     }
 
-    pub fn git_add_commit_config(proj_path: &PathBuf) -> DeliveryResult<()> {
+    pub fn git_add_commit_config(proj_path: &PathBuf) -> DeliveryResult<bool> {
         let config_path = DeliveryConfig::config_file_path(proj_path);
         let config_path_str = &config_path.to_str().unwrap();
         try!(git::git_command(&["add", &config_path_str], proj_path));
-        try!(git::git_command(&["commit", "-m", "Adds custom Delivery config"], proj_path));
-        Ok(())
+
+        // Commit the changes made in .delivery but detect if nothing has changed,
+        // if that is the case, we are Ok() to continue
+        match git::git_commit("Adds custom Delivery config") {
+          Ok(_) => Ok(true),
+          Err(DeliveryError{ kind: Kind::EmptyGitCommit, .. }) => Ok(false),
+          Err(e) => Err(e)
+        }
     }
 
     pub fn config_file_path(proj_path: &PathBuf) -> PathBuf {

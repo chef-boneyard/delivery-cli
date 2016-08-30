@@ -26,6 +26,7 @@ use std::path::{Path, PathBuf};
 use std::convert::AsRef;
 use std::error;
 use regex::Regex;
+use project::project_path;
 
 fn cwd() -> PathBuf {
     env::current_dir().unwrap()
@@ -432,6 +433,25 @@ pub fn git_push(pipeline: &str) -> Result<(), DeliveryError> {
         Ok(_) => return Ok(()),
         // Not expecting any errors at this point.
         Err(e) => return Err(e)
+    }
+}
+
+// Commit content to local repo
+//
+// This fun will commit the changes you have loaded in the current repo,
+// it will also detect if the commit failed and transform the error to a
+// more specific one. (Ex. If we try to commit when nothing has changed)
+pub fn git_commit(message: &str) -> Result<(), DeliveryError> {
+    match git_command(&["commit", "-m", message], &project_path()) {
+        Err(DeliveryError{ kind, detail: Some(output) }) => {
+            if output.contains("nothing to commit") {
+              return Err(DeliveryError{ kind: Kind::EmptyGitCommit, detail: None });
+            }
+
+            Err(DeliveryError{kind: kind, detail: Some(output)})
+        },
+        Err(e) => Err(e),
+        Ok(_) => Ok(())
     }
 }
 
