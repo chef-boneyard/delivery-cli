@@ -118,35 +118,6 @@ pub fn git_push_review(branch: &str,
     parse_git_push_output(&gitr.stdout, &gitr.stderr)
 }
 
-/// Output via `sayln` results of a git push.
-pub fn say_push_results(results: Vec<PushResult>) {
-    for result in results.iter() {
-        if result.flag == PushResultFlag::UpToDate {
-            sayln("yellow", &format!("Nothing added to the existing change"))
-        } else {
-            let color = match result.flag {
-              PushResultFlag::SuccessfulDeletedRef => "red",
-              PushResultFlag::Rejected => "red",
-              _ => "green"
-            };
-            let descr = match result.flag {
-                PushResultFlag::SuccessfulFastForward => "Updated",
-                PushResultFlag::SuccessfulForcedUpdate => "Force updated",
-                PushResultFlag::SuccessfulDeletedRef => "Deleted",
-                PushResultFlag::SuccessfulPushedNewRef => "Created",
-                PushResultFlag::Rejected => "Rejected",
-                // Can we do without this? Compiler warns about non-exhaustive patterns
-                _ => "Unknown"
-            };
-            let output = match result.reason {
-                Some(ref reason) => format!("{} change: {} ({})", descr, result.summary, reason),
-                None => format!("{} updated change: {}", descr, result.summary),
-            };
-            sayln(color, &output)
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum PushResultFlag {
     SuccessfulFastForward,
