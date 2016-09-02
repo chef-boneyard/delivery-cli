@@ -19,6 +19,37 @@ def custom_config
 EOF
 end
 
+# Mock a build_cookbook.rb that doesn't generate a config.json
+def build_cookbook_rb
+<<EOF
+context = ChefDK::Generator.context
+delivery_project_dir = context.delivery_project_dir
+dot_delivery_dir = File.join(delivery_project_dir, ".delivery")
+directory dot_delivery_dir
+build_cookbook_dir = File.join(dot_delivery_dir, "build_cookbook")
+directory build_cookbook_dir
+template "\#{build_cookbook_dir}/metadata.rb" do
+  source "build_cookbook/metadata.rb.erb"
+  helpers(ChefDK::Generator::TemplateHelper)
+  action :create_if_missing
+end
+template "\#{build_cookbook_dir}/Berksfile" do
+  source "build_cookbook/Berksfile.erb"
+  helpers(ChefDK::Generator::TemplateHelper)
+  action :create_if_missing
+end
+directory "\#{build_cookbook_dir}/recipes"
+%w(default deploy functional lint provision publish quality security smoke syntax unit).each do |phase|
+  template "\#{build_cookbook_dir}/recipes/\#{phase}.rb" do
+    source 'build_cookbook/recipe.rb.erb'
+    helpers(ChefDK::Generator::TemplateHelper)
+    variables phase: phase
+    action :create_if_missing
+  end
+end
+EOF
+end
+
 def basic_delivery_config
 <<EOF
 git_port = "8080"
@@ -53,18 +84,22 @@ end
 
 def additional_gen_recipe
 <<EOF
-file "\#{cookbook_dir}/test_file" do
+file "\#{build_cookbook_dir}/test_file" do
   content 'THIS IS ONLY A TEST.'
 end
 EOF
 end
 
+Given(/^I have a custom generator cookbook with no config generator$/) do
+  step %(I have a custom generator cookbook)
+  step %(a file named "/tmp/test-generator/recipes/build_cookbook.rb" with:), build_cookbook_rb
+end
 
 Given(/^I have a custom generator cookbook$/) do
   step %(I successfully run `rm -rf /tmp/test-generator`)
   step %(I successfully run `chef generate generator /tmp/test-generator`)
   # throw a file into the custom generator we can check for later
-  step %(I append to "/tmp/test-generator/recipes/cookbook.rb" with:), additional_gen_recipe
+  step %(I append to "/tmp/test-generator/recipes/build_cookbook.rb" with:), additional_gen_recipe
 end
 
 # Creates a new directory, "git init"s it and creates an empty commit
@@ -274,8 +309,18 @@ Given(/^a change to the delivery config is not comitted$/) do
 end
 
 Given(/^a user creates a project with a custom config\.json$/) do
-  step %(a file named "../my_custom_config.json" with:), custom_config
+  step %(a custom config)
   step %(I successfully run `delivery init -c ../my_custom_config.json`)
+end
+
+Given(/^a user creates a project with both a custom generator and custom config$/) do
+  step %(I have a custom generator cookbook)
+  step %(a custom config)
+  step %(I successfully run `delivery init -c ../my_custom_config.json --generator /tmp/test-generator`)
+end
+
+Given(/^a custom config$/) do
+  step %(a file named "../my_custom_config.json" with:), custom_config
 end
 
 Given(/^a change configuring a custom delivery is created$/) do
@@ -308,7 +353,13 @@ end
 
 Given(/^a custom build cookbook is already downloaded in the cache$/) do
   step %(I successfully run `chef generate generator ../.delivery/cache/generator-cookbooks/test-generator`)
-  step %(I append to "../.delivery/cache/generator-cookbooks/test-generator/recipes/cookbook.rb" with:), additional_gen_recipe
+  step %(I append to "../.delivery/cache/generator-cookbooks/test-generator/recipes/build_cookbook.rb" with:), additional_gen_recipe
+end
+
+Given(/^a custom config is generated$/) do
+  step %(the output should match /Custom Delivery config copied from .* to .*/)
+  step %(the output should contain "Custom delivery config committed to feature branch.")
+  step %("git commit -m Adds custom Delivery config" should be run)
 end
 
 Given(/^a custom build_cookbook is generated from "([^"]*)"$/) do |type|
@@ -325,7 +376,19 @@ Given(/^a custom build_cookbook is generated from "([^"]*)"$/) do |type|
   step %(the output should match /Custom build cookbook committed to feature branch./)
   step %("git push --porcelain --progress --verbose delivery add-delivery-config:_for/master/add-delivery-config" should be run)
   step %(the file ".delivery/build_cookbook/test_file" should contain "THIS IS ONLY A TEST.")
+  step %("git commit -m Adds Delivery build cookbook" should be run)
+  step %(a directory named ".delivery/build_cookbook" should exist)
+end
+
+Given(/^both a custom build_cookbook and custom config is generated$/) do
+  step %(the output should match /Custom Delivery config copied from .* to .*/)
   step %("git commit -m Adds Delivery build cookbook and config" should be run)
+  step %(the output should match /Copying custom build cookbook generator to the cache/)
+  step %(the output should contain "Custom build cookbook generated at .delivery/build_cookbook.")
+  step %(the output should match /Feature branch named 'add-delivery-config' created./)
+  step %(the output should match /Custom build cookbook committed to feature branch./)
+  step %("git push --porcelain --progress --verbose delivery add-delivery-config:_for/master/add-delivery-config" should be run)
+  step %(the file ".delivery/build_cookbook/test_file" should contain "THIS IS ONLY A TEST.")
   step %(a directory named ".delivery/build_cookbook" should exist)
 end
 

@@ -139,17 +139,35 @@ Scenario: When specifying a GitRepo Url for the build_cookbook generator
   And a change should be created for branch "add-delivery-config"
 
 Scenario: When specifying a local build_cookbook generator with no config
-  When I have a custom generator cookbook
+  When I have a custom generator cookbook with no config generator
   When I run `delivery init --generator /tmp/test-generator`
-  Then the output should contain "You used a custom build cookbook generator, but .delivery/config.json was not created."
+  Then the output should contain "You used a custom build cookbook generator, but .delivery/config.json was not created"
   And the exit status should be 1
+
+Scenario: When specifying a local build_cookbook generator with no config
+          and passing a custom config
+  When I have a custom generator cookbook with no config generator
+  When a custom config
+  Then I successfully run `delivery init -c ../my_custom_config.json --generator /tmp/test-generator`
+  And the output should contain "Your new Delivery project is ready"
+  And the exit status should be 0
 
 Scenario: When providing a custom config.json
   When a user creates a project with a custom config.json
-  Then the output should match /Custom Delivery config copied from .* to .*/
-  Then the output should contain "Custom delivery config committed to feature branch."
+  Then a custom config is generated
   And the change has the default generated build_cookbook
   And a change configuring a custom delivery is created
+  And the exit status should be 0
+  And I should be checked out to a feature branch named "add-delivery-config"
+  And a change should be created for branch "add-delivery-config"
+
+Scenario: When specifying both, generator and custom config we will expect
+          the custom generator to write both, the cookbook and the config,
+          and then the custom config provided would be overwritten
+  When a user creates a project with both a custom generator and custom config
+  Then a delivery project is created in delivery
+  And both a custom build_cookbook and custom config is generated
+  And the change has the default generated build_cookbook
   And the exit status should be 0
   And I should be checked out to a feature branch named "add-delivery-config"
   And a change should be created for branch "add-delivery-config"

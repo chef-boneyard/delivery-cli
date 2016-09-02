@@ -255,16 +255,23 @@ pub fn create_feature_branch_if_missing(project_path: &PathBuf, branch_name: &st
 }
 
 // Add and commit the generated build_cookbook
-pub fn add_commit_build_cookbook(custom_config_passed: &bool) -> DeliveryResult<()> {
+pub fn add_commit_build_cookbook(custom_config_passed: &bool) -> DeliveryResult<bool> {
     // .delivery is probably not yet under version control, so we have to add
     // the whole folder instead of .delivery/build_cookbook.
     try!(git::git_command(&["add", ".delivery"], &project_path()));
+
     let mut commit_msg = "Adds Delivery build cookbook".to_string();
-    if !(*custom_config_passed) {
+    if *custom_config_passed {
         commit_msg = commit_msg + " and config";
     }
-    try!(git::git_command(&["commit", "-m", &commit_msg], &project_path()));
-    Ok(())
+
+    // Commit the changes made in .delivery but detect if nothing has changed,
+    // if that is the case, we are Ok() to continue
+    match git::git_commit(&commit_msg) {
+      Ok(_) => Ok(true),
+      Err(DeliveryError{ kind: Kind::EmptyGitCommit, .. }) => Ok(false),
+      Err(e) => Err(e)
+    }
 }
 
 // Create the delivery readme if it doesn't exist already.
@@ -326,11 +333,13 @@ pub fn download_or_mv_custom_build_cookbook_generator(
         try!(utils::copy_recursive(&generator, &cache_path));
         return Ok(CustomCookbookSource::Disk)
     } else {
-        let cache_path_str = &cache_path.to_string_lossy();
-        let generator_str = &generator.to_string_lossy();
-        if is_dir(&cache_path) {
+        let mut cache_generator_path: PathBuf = cache_path.to_path_buf();
+        cache_generator_path.push(generator.file_name().unwrap());
+        if is_dir(&cache_generator_path) {
             return Ok(CustomCookbookSource::Cached)
         } else {
+            let cache_path_str = &cache_generator_path.to_string_lossy();
+            let generator_str  = &generator.to_string_lossy();
             try!(git::clone(&cache_path_str, &generator_str));
             return Ok(CustomCookbookSource::Git)
         }
@@ -342,8 +351,8 @@ pub fn chef_generate_build_cookbook_from_generator(
       generator: &Path, project_path: &Path) -> DeliveryResult<Command> {
     let mut command = utils::make_command("chef");
     command.arg("generate")
-        .arg("cookbook")
-        .arg(".delivery/build_cookbook")
+        .arg("build-cookbook")
+        .arg(".")
         .arg("-g")
         .arg(generator)
         .current_dir(&project_path);
