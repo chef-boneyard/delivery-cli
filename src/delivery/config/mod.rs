@@ -20,7 +20,6 @@ use errors::{DeliveryError, Kind};
 use std::fs::File;
 use std::default::Default;
 use utils::say::{say, sayln};
-use rustc_serialize::Encodable;
 use std::path::PathBuf;
 use toml;
 use utils::mkdir_recursive;

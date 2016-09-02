@@ -118,29 +118,7 @@ pub fn git_push_review(branch: &str,
     parse_git_push_output(&gitr.stdout, &gitr.stderr)
 }
 
-/// Output via `sayln` results of a git push.
-pub fn say_push_results(results: Vec<PushResult>) {
-    for result in results.iter() {
-        match result.flag {
-            PushResultFlag::SuccessfulFastForward =>
-                sayln("green", &format!("Updated change: {}", result.reason)),
-            PushResultFlag::SuccessfulForcedUpdate =>
-                sayln("green",
-                      &format!("Force updated change: {}", result.reason)),
-            PushResultFlag::SuccessfulDeletedRef =>
-                sayln("red", &format!("Deleted change: {}", result.reason)),
-            PushResultFlag::SuccessfulPushedNewRef =>
-                sayln("green", &format!("Created change: {}", result.reason)),
-            PushResultFlag::Rejected =>
-                sayln("red", &format!("Rejected change: {}", result.reason)),
-            PushResultFlag::UpToDate =>
-                sayln("yellow",
-                      &format!("Nothing added to the existing change")),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum PushResultFlag {
     SuccessfulFastForward,
     SuccessfulForcedUpdate,
@@ -159,7 +137,7 @@ impl Copy for PushResultFlag { }
 /// on the command line prefixed with `remote: $LINE`. The `url` field
 /// will contain the last line that looks like a URL returned as
 /// remote data.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct ReviewResult {
     pub push_results: Vec<PushResult>,
     pub messages: Vec<String>,
@@ -176,10 +154,11 @@ impl Default for ReviewResult {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct PushResult {
     flag: PushResultFlag,
-    reason: String
+    summary: String,
+    reason: Option<String>
 }
 
 pub fn parse_git_push_output(push_output: &str,
@@ -196,7 +175,7 @@ pub fn parse_git_push_output(push_output: &str,
         if line.starts_with("To") ||  line.starts_with("Done") {
             continue;
         }
-        let r = Regex::new(r"(.)\t(.+):(.+)\t\[(.+)\]").unwrap();
+        let r = Regex::new(r"^(.)\t(.*):(.+)\t(?:\[(.+)\]|([^ ]+))(?: \((.+)\))?$").unwrap();
         let caps_result = r.captures(line);
         let caps = match caps_result {
             Some(caps) => caps,
@@ -219,10 +198,22 @@ pub fn parse_git_push_output(push_output: &str,
                     detail: Some(format!("Unknown result flag"))})
             }
         };
+        // if it contains a space, it's in [...] (capture #4),
+        // if not (e.g. "oldref..newref"), it's not in [...] (capture #5)
+        let summary = match (caps.at(4), caps.at(5)) {
+            (Some(str), _) => String::from(str),
+            (_, Some(str)) => String::from(str),
+            (None, None) => "".to_string()
+        };
+        let reason = match caps.at(6) {
+            None => None,
+            Some(str) => Some(String::from(str))
+        };
         review_result.push_results.push(
             PushResult{
                 flag: result_flag,
-                reason: String::from(caps.at(4).unwrap())
+                summary: summary,
+                reason: reason
             })
     }
     Ok(review_result)
@@ -437,7 +428,7 @@ pub fn git_push(pipeline: &str) -> Result<(), DeliveryError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{ReviewResult, parse_line_from_remote, check_repo_init};
+    use super::{ReviewResult, PushResult, PushResultFlag, parse_git_push_output, parse_line_from_remote, check_repo_init};
     use std::path::PathBuf;
     use std::fs::DirBuilder;
 
@@ -489,5 +480,109 @@ mod tests {
         parse_line_from_remote(&line2, &mut review_result);
         assert_eq!(change_url, review_result.url.unwrap());
         assert_eq!(change_id, review_result.change_id.unwrap());
+    }
+
+    #[test]
+    fn test_parse_git_push_output_when_fast_forward() {
+        // the strange line break position is because we need the leading space + tab
+        let stdout = "To ssh://tester@cd@localhost:8989/cd/test/test_proj17914\n \t\
+                      refs/heads/baz:refs/heads/_for/master/baz\t6f7b537..228c615\n\
+                      Done\n";
+        let ffwd = PushResult{flag: PushResultFlag::SuccessfulFastForward,
+                              summary: "6f7b537..228c615".to_string(),
+                              reason: None};
+        test_parse_git_push_output(stdout, ffwd);
+    }
+
+    #[test]
+    fn test_parse_git_push_output_when_forced_update() {
+        let stdout = "To git@github.com:chef/delivery-cli\n\
+                      +\trefs/heads/foo:refs/heads/foo\td3a8697...3d42f51 (forced update)\n\
+                      Done\n";
+        let force_pushed = PushResult{flag: PushResultFlag::SuccessfulForcedUpdate,
+                                      summary: "d3a8697...3d42f51".to_string(),
+                                      reason: Some("forced update".to_string())};
+        test_parse_git_push_output(stdout, force_pushed);
+    }
+
+    #[test]
+    fn test_parse_git_push_output_when_new_branch() {
+        let stdout = "To ssh://tester@cd@localhost:8989/cd/test/test_proj17914\n\
+                      *\trefs/heads/baz:refs/heads/_for/master/baz\t[new branch]\n\
+                      Done\n";
+        let new_branch = PushResult{flag: PushResultFlag::SuccessfulPushedNewRef,
+                                    summary: "new branch".to_string(),
+                                    reason: None};
+        test_parse_git_push_output(stdout, new_branch);
+    }
+
+    #[test]
+    fn test_parse_git_push_output_when_deleted_ref() {
+        let stdout = "To git@github.com:srenatus/delivery-cli\n\
+                      -\t:refs/heads/deleteme\t[deleted]\n\
+                      Done\n";
+        let deleted_refs = PushResult{flag: PushResultFlag::SuccessfulDeletedRef,
+                                      summary: "deleted".to_string(),
+                                      reason: None};
+        test_parse_git_push_output(stdout, deleted_refs);
+    }
+
+    #[test]
+    fn test_parse_git_push_output_when_up_to_date() {
+        let stdout = "To git@github.com:chef/delivery-cli\n\
+                      =\trefs/heads/foo:refs/heads/foo\t[up to date]\n\
+                      Done\n";
+        let up_to_date = PushResult{flag: PushResultFlag::UpToDate,
+                                    summary: "up to date".to_string(),
+                                    reason: None};
+        test_parse_git_push_output(stdout, up_to_date);
+    }
+
+    #[test]
+    fn test_parse_git_push_output_when_rejected() {
+        let stdout = "To git@github.com:chef/delivery-cli\n\
+                      !\trefs/heads/foo:refs/heads/foo\t[rejected] (non-fast-forward)\n\
+                      Done\n";
+        let rejected = PushResult{flag: PushResultFlag::Rejected,
+                                  summary: "rejected".to_string(),
+                                  reason: Some("non-fast-forward".to_string())};
+        test_parse_git_push_output(stdout, rejected);
+    }
+
+    #[test]
+    fn test_parse_git_push_output_when_more_than_one_thing_happened() {
+        let stdout = "To git@github.com:chef/delivery-cli\n\
+                      *\trefs/heads/baz:refs/heads/_for/master/baz\t[new branch]\n\
+                      !\trefs/heads/foo:refs/heads/foo\t[rejected] (non-fast-forward)\n\
+                      =\trefs/heads/bar:refs/heads/bar\t[up to date]\n\
+                      Done\n";
+        let new_branch = PushResult{flag: PushResultFlag::SuccessfulPushedNewRef,
+                                    summary: "new branch".to_string(),
+                                    reason: None};
+        let rejected = PushResult{flag: PushResultFlag::Rejected,
+                                  summary: "rejected".to_string(),
+                                  reason: Some("non-fast-forward".to_string())};
+        let up_to_date = PushResult{flag: PushResultFlag::UpToDate,
+                                    summary: "up to date".to_string(),
+                                    reason: None};
+        let mut expected = ReviewResult::default();
+        expected.push_results.push(new_branch);
+        expected.push_results.push(rejected);
+        expected.push_results.push(up_to_date);
+
+        match parse_git_push_output(&stdout, "") {
+            Err(_) => assert!(false),
+            Ok(result) => assert_eq!(expected, result)
+        }
+    }
+
+    fn test_parse_git_push_output(stdout: &str,
+                                  push_result: PushResult) {
+        let mut expected = ReviewResult::default();
+        expected.push_results.push(push_result);
+        match parse_git_push_output(&stdout, "") {
+            Err(_) => assert!(false),
+            Ok(result) => assert_eq!(expected, result)
+        }
     }
 }
