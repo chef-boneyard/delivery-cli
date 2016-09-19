@@ -13,8 +13,22 @@ use http;
 
 pub fn run(review_opts: ReviewClapOptions) -> DeliveryResult<ExitCode> {
     sayln("green", "Chef Delivery");
+    if !review_opts.for_pipeline.is_empty() && !review_opts.pipeline.is_empty() {
+        sayln("red", "\n--for and --pipeline are aliases for the same option used to set \
+                      a pipeline other than master. Please just pass one or the other.");
+        return Ok(1)
+    };
+
+    let pipeline = if !review_opts.for_pipeline.is_empty() {
+        review_opts.for_pipeline.to_string()
+    } else if !review_opts.pipeline.is_empty() {
+        review_opts.pipeline.to_string()
+    } else {
+        "master".to_string()
+    };
+
     let mut config = try!(load_config(&utils::cwd()));
-    config = config.set_pipeline(review_opts.pipeline);
+    config = config.set_pipeline(&pipeline);
     let target = validate!(config, pipeline);
     let project_root = try!(project::root_dir(&utils::cwd()));
     try!(DeliveryConfig::validate_config_file(&project_root));
@@ -38,7 +52,7 @@ pub fn run(review_opts: ReviewClapOptions) -> DeliveryResult<ExitCode> {
 
     if review_opts.edit {
         let project = try!(project::project_from_cwd());
-        config = config.set_pipeline(review_opts.pipeline)
+        config = config.set_pipeline(&pipeline)
             .set_project(&project);
         try!(edit_change(&config, &review));
     }

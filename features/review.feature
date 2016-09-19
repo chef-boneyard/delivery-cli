@@ -28,13 +28,37 @@ Scenario: The Happy Path
   When I have a feature branch "foo" off of "master"
   And I checkout the "foo" branch
   And I successfully run `delivery review`
-  # Really want this output comparison, but I'm running into issues with ANSI color codes at the moment:
-  #   Then the output should contain "Review for change foo targeted for pipeline master"
   Then the output should contain "Review for change "
-  # This is the default behavior for the `auto_bump` feature. (to be disabled)
   And the output should not contain "is a cookbook"
   And "git push --porcelain --progress --verbose delivery foo:_for/master/foo" should be run
-#  And "open XXX" should be run
+
+
+Scenario: I want to target a different branch than the pipeline default using
+          the --for flag.
+
+  When I have a feature branch "foo" off of "master"
+  And I checkout the "foo" branch
+  And I successfully run `delivery review --for staging`
+  Then the output should contain "Review for change "
+  And the output should not contain "is a cookbook"
+  And "git push --porcelain --progress --verbose delivery foo:_for/staging/foo" should be run
+
+Scenario: I want to target a different branch than the pipeline default using
+          the --pipeline flag.
+
+  When I have a feature branch "foo" off of "master"
+  And I checkout the "foo" branch
+  And I successfully run `delivery review --pipeline staging`
+  Then the output should contain "Review for change "
+  And the output should not contain "is a cookbook"
+  And "git push --porcelain --progress --verbose delivery foo:_for/staging/foo" should be run
+
+Scenario: I use the --pipeline and the --for flag to set pipeline values
+
+  When I have a feature branch "foo" off of "master"
+  And I checkout the "foo" branch
+  And I run `delivery review --pipeline staging --for test`
+  Then the exit status should be 1
 
 # Scenario: I'm on a different branch than my pipeline target, but there are no additional commits!
 
@@ -57,6 +81,17 @@ Scenario: I'm on the target branch I'm trying to push for review on
   Then the exit status should be 1
   And the output should contain "You cannot target code for review from the same branch as the review is targeted for"
   And "git push" should not be run
+
+  Scenario: I'm on the target branch I'm trying to push for review on using --pipeline
+
+    If I am on the same branch that my review pipeline is
+    targeting, I should not be allowed to create a review.
+
+    When I checkout the "master" branch
+    And I run `delivery review --pipeline=master`
+    Then the exit status should be 1
+    And the output should contain "You cannot target code for review from the same branch as the review is targeted for"
+    And "git push" should not be run
 
 Scenario: I don't want to open a browser
 

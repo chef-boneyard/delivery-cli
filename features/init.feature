@@ -12,7 +12,7 @@ Background:
   And I set up basic delivery and git configs
 
 Scenario: When specifying a local build_cookbook generator with no config
-  When I have a custom generator cookbook with no config generator
+  Given I have a custom generator cookbook with no config generator
   And a user tries to create a delivery backed project with a custom generator
   Then the output should contain "You used a custom build cookbook generator, but .delivery/config.json was not created"
   And the exit status should be 1
@@ -179,30 +179,28 @@ Scenario: When creating a delivery backed project for a pipeline
   And the output should contain "A sad_panda branch does not exist locally"
   And the exit status should be 1
 
-# This test is currently broken
-#
-# When we run `delivery init` for a different pipeline that is not master
-# we would expect the repository to be already inside the pipeline-branch
-# and also to have at least one commit. (as usual)
-#
-# Problem: ChefDK internally is taking care of the repository manipulation,
-# that is, adding the build_cookbook, delivery config.json and more. When it
-# is done with the modification it also commit the changes to master and
-# push the branch to the Delivery Server. As this code is currently hard
-# codded to be always pointing to `master`
-# => https://github.com/chef/chef-dk/blob/master/lib/chef-dk/skeletons/code_generator/recipes/build_cookbook.rb#L146
-# 
-# We have two options to fix this:
-# 1) Pass an option to chefdk generate with the branch-pipeline name 
-# 2) Remove the git commands from chefdk and let the delivery-cli handle them
-#
-# TODO: Uncomment this like once we fix this problem
-@broken
 Scenario: When creating a delivery backed project for a pipeline
 	  different than master, we would expect to have at least
 	  one commit into the pipeline branch locally
   When I set up basic delivery and git configs
   And I successfully run `git checkout -b awesome`
   Then I run `delivery init --for awesome`
-  And the output should match /Pushing local content to.*awesome.*pipeline on server/
+  And the output should match /pushing local commits from branch awesome/
   And the exit status should be 0
+
+Scenario: When creating a delivery backed project for a pipeline using --pipeline
+	  different than master, we would expect to have at least
+	  one commit into the pipeline branch locally
+  When I set up basic delivery and git configs
+  And I successfully run `git checkout -b awesome`
+  Then I run `delivery init --pipeline awesome`
+  And the output should match /pushing local commits from branch awesome/
+  And the exit status should be 0
+
+Scenario: When creating a delivery backed project for a pipeline using --pipeline
+  	  and --for, we would expect to have at least
+  	  one commit into the pipeline branch locally
+    When I set up basic delivery and git configs
+    And I successfully run `git checkout -b awesome`
+    Then I run `delivery init --pipeline awesome --for also_awesome`
+    And the exit status should be 1
