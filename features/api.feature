@@ -3,7 +3,7 @@ Feature: api
 Scenario: make a basic call
   Given a file named ".delivery/api-tokens" with:
     """
-    127.0.0.1:9999,bar,cukes|this_is_a_fake_token
+    localhost:9999,bar,cukes|this_is_a_fake_token
     """
   And the Delivery API server on port "9999":
     """
@@ -22,7 +22,7 @@ Scenario: make a basic call
       }
     end
     """
-  When I successfully run `delivery api get 'orgs' --server=127.0.0.1 --api-port=9999 --ent=bar --user=cukes`
+  When I successfully run `delivery api get 'orgs' --server=localhost --api-port=9999 --ent=bar --user=cukes`
   Then the output should contain:
     """
       "orgs": []
@@ -30,9 +30,9 @@ Scenario: make a basic call
 
 Scenario: Submitting a POST request with data
   Given a file named ".delivery/api-tokens" with:
-    """
-    127.0.0.1:9999,bar,cukes|this_is_a_fake_token
-    """
+  """
+  localhost:9999,bar,cukes|this_is_a_fake_token
+  """
   And the Delivery API server on port "9999":
     """
     get('/api/v0/e/bar/orgs') do
@@ -52,7 +52,7 @@ Scenario: Submitting a POST request with data
       end
     end
     """
-  When I successfully run `delivery api post 'orgs' -s=127.0.0.1 --api-port=9999 -e=bar -u=cukes -d '{"name":"dummy"}'`
+  When I successfully run `delivery api post 'orgs' -s=localhost --api-port=9999 -e=bar -u=cukes -d '{"name":"dummy"}'`
   Then the exit status should be 0
 
 Scenario: Without a token and non_interactive enabled
@@ -73,16 +73,16 @@ Scenario: Without a token and non_interactive enabled
       }
     end
     """
-  And a file named ".delivery/cli.toml" with:
+  Then a file named ".delivery/cli.toml" with:
     """
       non_interactive = true
     """
-  When I run `delivery api get 'orgs' --server=127.0.0.1 --ent=bar --user=cukes`
+  When I run `delivery api get 'orgs' --server=localhost --ent=bar --user=cukes`
   Then the exit status should be 1
   And the output should contain "Missing API token"
     # """
     # Missing API token. Try `delivery token` to create one
-    # server: 127.0.0.1, ent: bar, user: cukes
+    # server: localhost, ent: bar, user: cukes
     # """
 
 @broken
@@ -120,7 +120,7 @@ Scenario: Without a token will first request one
       }
     end
     """
-  When I run `delivery api get 'orgs' --server=127.0.0.1 --ent=bar --user=cukes` interactively
+  When I run `delivery api get 'orgs' --server=localhost --ent=bar --user=cukes` interactively
   And I type "my_secret_password"
   Then the exit status should be 0
   Then the output should contain:

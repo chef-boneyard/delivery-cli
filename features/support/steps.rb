@@ -50,6 +50,7 @@ end
 EOF
 end
 
+# Mock a cli.toml config
 def basic_delivery_config
 <<EOF
 git_port = "8080"
@@ -61,6 +62,7 @@ organization = "dummy"
 EOF
 end
 
+# Mock default delivery config.json
 def default_delivery_config
 <<EOF
   {
@@ -76,6 +78,7 @@ def default_delivery_config
 EOF
 end
 
+# Mock basic git config
 def basic_git_config
 <<EOF
 [config]
@@ -90,26 +93,37 @@ end
 EOF
 end
 
+# Relative path of a temporal directory
+def tmp_relative_path
+  @tmp_relative_dir ||= '../tmp'
+  step %(a directory named "#{@tmp_relative_dir}")
+  @tmp_relative_dir
+end
+
+# Absolute  path of a temporal directory
+def tmp_expanded_path
+  @tmp_expanded_dir ||= expand_path('../tmp')
+end
+
 Given(/^I have a custom generator cookbook with no config generator$/) do
   step %(I have a custom generator cookbook)
-  step %(a file named "/tmp/test-generator/recipes/build_cookbook.rb" with:), build_cookbook_rb
+  step %(a file named "#{tmp_relative_path}/test-generator/recipes/build_cookbook.rb" with:), build_cookbook_rb
 end
 
 Given(/^I have a custom generator cookbook$/) do
-  step %(I successfully run `rm -rf /tmp/test-generator`)
-  step %(I successfully run `chef generate generator /tmp/test-generator`)
+  step %(I successfully run `rm -rf #{tmp_relative_path}/test-generator`)
+  step %(I successfully run `chef generate generator #{tmp_relative_path}/test-generator`)
   # throw a file into the custom generator we can check for later
-  step %(I append to "/tmp/test-generator/recipes/build_cookbook.rb" with:), additional_gen_recipe
+  step %(I append to "#{tmp_relative_path}/test-generator/recipes/build_cookbook.rb" with:), additional_gen_recipe
 end
 
 # Creates a new directory, "git init"s it and creates an empty commit
 # so we can have a branch
 Given(/^a git repo "(.*?)"$/) do |repo|
   step %(a directory named "#{repo}")
-  dirs.push(repo)
+  step %(I cd to "#{repo}")
   step %(I successfully run `git init --quiet`)
   step %(I make a commit with message "Initial commit")
-  dirs.pop
 end
 
 Given(/^I commit all files with message "([^"]+)"$/) do |message|
@@ -123,7 +137,6 @@ end
 
 Given(/^I am in the "([^"]*)" git repo$/) do |repo|
   step %(a git repo "#{repo}")
-  step %(I cd to "#{repo}")
 end
 
 Given(/^I have a feature branch "(.*)" off of "(.*)"$/) do |branch, base|
@@ -149,9 +162,9 @@ Given(/^I clean up the ruby env so I can run other ruby bins like ChefDK$/) do
   step "I set the environment variables to:", table(%{
           | variable        | value |
           | RUBYOPT         |       |
-	  | BUNDLE_PATH     |       |
-	  | BUNDLE_BIN_PATH |       |
-	  | BUNDLE_GEMFILE  |       |
+          | BUNDLE_PATH     |       |
+          | BUNDLE_BIN_PATH |       |
+          | BUNDLE_GEMFILE  |       |
   })
 end
 
@@ -193,71 +206,8 @@ Given(/^the Delivery API server on port "(\d+)":$/) do |port, endpoints|
   end
 end
 
-Given(/^a dummy Delivery API server/) do
-  endpoints = %(
-    get('/api/v0/e/dummy/scm-providers') do
-      status 200
-      [
-        {
-          "name" => "Github",
-          "projectCreateUri" => "/github-projects",
-          "scmSetupConfigs" => [
-            true
-          ],
-          "type" => "github",
-          "verify_ssl" => true
-        },
-        {
-          "name" => "Bitbucket",
-          "projectCreateUri" => "/bitbucket-projects",
-          "scmSetupConfigs" => [
-            {
-              "_links" => {
-                "self" => {
-                  "href" => "https://127.0.0.1/api/v0/e/skinkworks/bitbucket-servers/dummy.bitbucket.com"
-                }
-              },
-              "root_api_url" => "https://dummy.bitbucket.com",
-              "user_id" => "dummy"
-            }
-          ],
-          "type" => "bitbucket"
-        }
-      ]
-    end
-    get('/api/v0/e/dummy/orgs') do
-      status 200
-      { "orgs" => ["dummy"] }
-    end
-    get('/api/v0/e/dummy/orgs/dummy/projects/already-created') do
-      status 200
-    end
-    post('/api/v0/e/dummy/orgs/dummy/projects/already-created/pipelines') do
-      status 201
-      { "pipeline" => "master" }
-    end
-    get('/api/v0/e/dummy/orgs/dummy/projects/delivery-cli-init') do
-      status 201
-      { "error" => "not_found" }
-    end
-    post('/api/v0/e/dummy/orgs/dummy/projects') do
-      status 201
-      { "project" => "delivery-cli-init" }
-    end
-    post('/api/v0/e/dummy/orgs/dummy/projects/delivery-cli-init/pipelines') do
-      status 201
-      { "pipeline" => "master" }
-    end
-    post('/api/v0/e/dummy/orgs/dummy/bitbucket-projects') do
-      status 201
-      { "project" => "delivery-cli-init" }
-    end
-    post('/api/v0/e/dummy/orgs/dummy/github-projects') do
-      status 201
-      { "project" => "delivery-cli-init" }
-    end
-  )
-  step %(the Delivery API server on port "8080":), endpoints
+When(/^I wait for (\d+) seconds?$/) do |n|
+    sleep(n.to_i)
 end
 
 Given(/^a user creates a delivery backed project$/) do
@@ -270,6 +220,14 @@ end
 
 Given(/^a user creates a bitbucket backed project$/) do
   step %(I successfully run `delivery init --bitbucket chef --repo-name delivery-cli-init`)
+end
+
+Given(/^a user tries to create a delivery backed project with a custom generator$/) do
+  step %(I run `delivery init --generator #{tmp_expanded_path}/test-generator`)
+end
+
+Given(/^a user tries to create a delivery backed project with a custom config and custom generator$/) do
+  step %(I run `delivery init -c ../my_custom_config.json --generator #{tmp_expanded_path}/test-generator`)
 end
 
 Given(/^a delivery project is created in delivery$/) do
@@ -316,7 +274,7 @@ end
 Given(/^a user creates a project with both a custom generator and custom config$/) do
   step %(I have a custom generator cookbook)
   step %(a custom config)
-  step %(I successfully run `delivery init -c ../my_custom_config.json --generator /tmp/test-generator`)
+  step %(I successfully run `delivery init -c ../my_custom_config.json --generator #{tmp_expanded_path}/test-generator`)
 end
 
 Given(/^a custom config$/) do
@@ -406,4 +364,71 @@ end
 Then("a change should be created for branch \"$branch\"") do |branch|
   expected_command = "git push --porcelain --progress --verbose delivery #{branch}:_for/master/#{branch}"
   assert_command_run(expected_command)
+end
+
+Given(/^a dummy Delivery API server/) do
+  endpoints = %(
+    get('/api/v0/e/dummy/scm-providers') do
+      status 200
+      [
+        {
+          "name" => "Github",
+          "projectCreateUri" => "/github-projects",
+          "scmSetupConfigs" => [
+            true
+          ],
+          "type" => "github",
+          "verify_ssl" => true
+        },
+        {
+          "name" => "Bitbucket",
+          "projectCreateUri" => "/bitbucket-projects",
+          "scmSetupConfigs" => [
+            {
+              "_links" => {
+                "self" => {
+                  "href" => "https://127.0.0.1/api/v0/e/skinkworks/bitbucket-servers/dummy.bitbucket.com"
+                }
+              },
+              "root_api_url" => "https://dummy.bitbucket.com",
+              "user_id" => "dummy"
+            }
+          ],
+          "type" => "bitbucket"
+        }
+      ]
+    end
+    get('/api/v0/e/dummy/orgs') do
+      status 200
+      { "orgs" => ["dummy"] }
+    end
+    get('/api/v0/e/dummy/orgs/dummy/projects/already-created') do
+      status 200
+    end
+    post('/api/v0/e/dummy/orgs/dummy/projects/already-created/pipelines') do
+      status 201
+      { "pipeline" => "master" }
+    end
+    get('/api/v0/e/dummy/orgs/dummy/projects/delivery-cli-init') do
+      status 201
+      { "error" => "not_found" }
+    end
+    post('/api/v0/e/dummy/orgs/dummy/projects') do
+      status 201
+      { "project" => "delivery-cli-init" }
+    end
+    post('/api/v0/e/dummy/orgs/dummy/projects/delivery-cli-init/pipelines') do
+      status 201
+      { "pipeline" => "master" }
+    end
+    post('/api/v0/e/dummy/orgs/dummy/bitbucket-projects') do
+      status 201
+      { "project" => "delivery-cli-init" }
+    end
+    post('/api/v0/e/dummy/orgs/dummy/github-projects') do
+      status 201
+      { "project" => "delivery-cli-init" }
+    end
+  )
+  step %(the Delivery API server on port "8080":), endpoints
 end

@@ -11,6 +11,20 @@ Background:
   And I am in the "delivery-cli-init" git repo
   And I set up basic delivery and git configs
 
+Scenario: When specifying a local build_cookbook generator with no config
+  When I have a custom generator cookbook with no config generator
+  And a user tries to create a delivery backed project with a custom generator
+  Then the output should contain "You used a custom build cookbook generator, but .delivery/config.json was not created"
+  And the exit status should be 1
+
+Scenario: When specifying a local build_cookbook generator
+  Given I have a custom generator cookbook
+  When I already have a .delivery/config.json on disk
+  And a user tries to create a delivery backed project with a custom generator
+  Then a delivery project is created in delivery
+  And a custom build_cookbook is generated from "local_path"
+  And the exit status should be 0
+
 Scenario: When creating a delivery backed project
   When a user creates a delivery backed project
   Then a delivery project is created in delivery
@@ -120,14 +134,6 @@ Scenario: When skipping the build_cookbook generator
   And I should be checked out to a feature branch named "initialize-delivery-pipeline"
   And a change should be created for branch "initialize-delivery-pipeline"
 
-Scenario: When specifying a local build_cookbook generator
-  When I already have a .delivery/config.json on disk
-  Given I have a custom generator cookbook
-  When a user creates a delivery backed project with option "--generator /tmp/test-generator"
-  Then a delivery project is created in delivery
-  And a custom build_cookbook is generated from "local_path"
-  And the exit status should be 0
-
 Scenario: When specifying a GitRepo Url for the build_cookbook generator
   When a custom build cookbook is already downloaded in the cache
   When I already have a .delivery/config.json on disk
@@ -139,16 +145,10 @@ Scenario: When specifying a GitRepo Url for the build_cookbook generator
   And a change should be created for branch "add-delivery-config"
 
 Scenario: When specifying a local build_cookbook generator with no config
-  When I have a custom generator cookbook with no config generator
-  When I run `delivery init --generator /tmp/test-generator`
-  Then the output should contain "You used a custom build cookbook generator, but .delivery/config.json was not created"
-  And the exit status should be 1
-
-Scenario: When specifying a local build_cookbook generator with no config
           and passing a custom config
   When I have a custom generator cookbook with no config generator
   When a custom config
-  Then I successfully run `delivery init -c ../my_custom_config.json --generator /tmp/test-generator`
+  Then a user tries to create a delivery backed project with a custom config and custom generator
   And the output should contain "Your new Delivery project is ready"
   And the exit status should be 0
 
