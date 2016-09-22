@@ -85,12 +85,7 @@ Scenario: Without a token and non_interactive enabled
     # server: localhost, ent: bar, user: cukes
     # """
 
-@broken
-Scenario: Without a token will first request one
-
-  NOTE: As we are now quickly prompting for a token when it does not
-  exist, this test has the same problem as the `token` one where the CLI
-  is asking for a `password` and it doesn't accept it
+Scenario: Without a token will first request one.
 
   Given the Delivery API server:
     """
@@ -105,7 +100,7 @@ Scenario: Without a token will first request one
             "templated" => true
           }
         },
-        "orgs" => []
+        "orgs" => [ "cool_organization" ]
       }
     end
     post('/api/v0/e/bar/users/cukes/get-token') do
@@ -120,12 +115,16 @@ Scenario: Without a token will first request one
       }
     end
     """
-  When I run `delivery api get 'orgs' --server=localhost --ent=bar --user=cukes` interactively
-  And I type "my_secret_password"
-  Then the exit status should be 0
-  Then the output should contain:
-  """
-    Requesting Token
-    Delivery password:
-    "orgs": []
-  """
+  When I invoke a pseudo tty with command "delivery api get orgs -s=localhost:8080 -e=bar -u=cukes"
+  And I expect for "Automate password" then type "my_secret_password"
+  And I run my ptty command
+  Then the ptty exit status should be 0
+  Then the ptty output should contain "Requesting Token"
+  And the ptty output should contain "saved API token to"
+  And the ptty output should contain "cool_organization"
+  And the ptty output should contain "saved API token to"
+  And the file ".delivery/api-tokens" should contain:
+    """
+    localhost:8080,bar,cukes|xOsqI8qiBrUCGGRttfFy768R8ZAMJ24RC+0UGyX9/II=
+    """
+    

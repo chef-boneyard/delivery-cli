@@ -138,7 +138,7 @@ impl TokenStore {
           try!(io::stdin().read_line(&mut token));
           token.trim().to_string()
       } else {
-          let pass = try!(rpassword::prompt_password_stdout("Delivery password: "));
+          let pass = try!(rpassword::prompt_password_stdout("Automate password: "));
           try!(http::token::request(&config, &pass))
       };
       sayln("magenta", &format!("token: {}", &token));
