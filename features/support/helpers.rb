@@ -23,6 +23,28 @@ def custom_config
 EOF
 end
 
+# Mock a project.toml that has missing phases
+def incomplete_project_toml
+<<EOF
+[local_phases]
+lint = "echo 'This file is wrong, we have missing phases'"
+EOF
+end
+
+# Mock a project.toml
+def project_toml
+<<EOF
+[local_phases]
+unit = "echo 'This is a cool unit test'"
+lint = "cookstyle"
+syntax = "foodcritic ."
+provision = "chef exec kitchen create"
+deploy = "chef exec kitchen converge"
+smoke = "chef exec kitchen verify"
+cleanup = "chef exec kitchen destroy"
+EOF
+end
+
 # Mock a build_cookbook.rb that doesn't generate a config.json
 def build_cookbook_rb
 <<EOF
