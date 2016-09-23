@@ -86,10 +86,10 @@ PLATFORMS
   x86-mingw32
 
 DEPENDENCIES
-  aruba (~> 0.14.2)
-  cucumber (~> 2.4.0)
-  grape (~> 0.17.0)
-  rack (~> 1.6.0)
+  aruba
+  cucumber
+  grape
+  rack
   rake
 
 BUNDLED WITH

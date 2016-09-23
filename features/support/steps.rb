@@ -1,108 +1,36 @@
-# Mock a custom config.json
-def custom_config
-<<EOF
-{
-  "version": "2",
-  "build_cookbook": {
-    "path": ".delivery/build_cookbook",
-    "name": "build_cookbook"
-  },
-  "skip_phases": [ "smoke", "security", "syntax", "uni", "quality" ],
-  "build_nodes": {},
-  "delivery-truck": {
-    "publish": {
-      "chef_server": true
-    }
-  },
-  "dependencies": []
-}
-EOF
+require_relative 'pty_spawn'
+require_relative 'helpers'
+
+Given(/^I invoke a pseudo tty with command "(.*)"$/) do |command|
+  @current_pty = Delivery::PtySpawn.new(command, {
+                  "pwd" => aruba.config.home_directory,
+                  "environment" => aruba.config.command_runtime_environment
+                 })
 end
 
-# Mock a build_cookbook.rb that doesn't generate a config.json
-def build_cookbook_rb
-<<EOF
-context = ChefDK::Generator.context
-delivery_project_dir = context.delivery_project_dir
-dot_delivery_dir = File.join(delivery_project_dir, ".delivery")
-directory dot_delivery_dir
-build_cookbook_dir = File.join(dot_delivery_dir, "build_cookbook")
-directory build_cookbook_dir
-template "\#{build_cookbook_dir}/metadata.rb" do
-  source "build_cookbook/metadata.rb.erb"
-  helpers(ChefDK::Generator::TemplateHelper)
-  action :create_if_missing
+Given(/^I expect for "(.*)" then type "(.*)"$/) do |exp, txt|
+  @current_pty.expect_and_type(exp, txt)
 end
-template "\#{build_cookbook_dir}/Berksfile" do
-  source "build_cookbook/Berksfile.erb"
-  helpers(ChefDK::Generator::TemplateHelper)
-  action :create_if_missing
+
+Given(/^I run my ptty command$/) do
+  @current_pty.run
 end
-directory "\#{build_cookbook_dir}/recipes"
-%w(default deploy functional lint provision publish quality security smoke syntax unit).each do |phase|
-  template "\#{build_cookbook_dir}/recipes/\#{phase}.rb" do
-    source 'build_cookbook/recipe.rb.erb'
-    helpers(ChefDK::Generator::TemplateHelper)
-    variables phase: phase
-    action :create_if_missing
+
+Given(/^the ptty output should contain "(.*)"$/) do |string|
+  unless @current_pty.output_str.match(/#{string}/)
+    raise "The output of the pseudo tty command didn't match with #{string}"
   end
 end
-EOF
+
+Given(/^the ptty exit status should be (.*)$/) do |exitstatus|
+  unless @current_pty.exitstatus == exitstatus.to_i
+    raise "The exit status of the pseudo tty command didn't match: " +
+          "#{@current_pty.exitstatus} != #{exitstatus}"
+  end
 end
 
-# Mock a cli.toml config
-def basic_delivery_config
-<<EOF
-git_port = "8080"
-pipeline = "master"
-user = "dummy"
-server = "127.0.0.1:8080"
-enterprise = "dummy"
-organization = "dummy"
-EOF
-end
-
-# Mock default delivery config.json
-def default_delivery_config
-<<EOF
-  {
-    "version": "2",
-    "build_cookbook": {
-      "path": ".delivery/build_cookbook",
-      "name": "build_cookbook"
-    },
-    "skip_phases": [],
-    "build_nodes": {},
-    "dependencies": []
-  }
-EOF
-end
-
-# Mock basic git config
-def basic_git_config
-<<EOF
-[config]
-EOF
-end
-
-def additional_gen_recipe
-<<EOF
-file "\#{build_cookbook_dir}/test_file" do
-  content 'THIS IS ONLY A TEST.'
-end
-EOF
-end
-
-# Relative path of a temporal directory
-def tmp_relative_path
-  @tmp_relative_dir ||= '../tmp'
-  step %(a directory named "#{@tmp_relative_dir}")
-  @tmp_relative_dir
-end
-
-# Absolute  path of a temporal directory
-def tmp_expanded_path
-  @tmp_expanded_dir ||= expand_path('../tmp')
+Given(/^I want to debug the pseudo tty command$/) do
+  @current_pty.debug = true
 end
 
 Given(/^I have a custom generator cookbook with no config generator$/) do

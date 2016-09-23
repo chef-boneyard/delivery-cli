@@ -37,7 +37,7 @@ use utils::path_join_many::PathJoinMany;
 use config::Config;
 use http;
 use utils::say::{sayln,say};
-use getpass;
+use rpassword;
 
 #[derive(Debug)]
 pub struct TokenStore {
@@ -138,7 +138,7 @@ impl TokenStore {
           try!(io::stdin().read_line(&mut token));
           token.trim().to_string()
       } else {
-          let pass = getpass::read("Delivery password: ");
+          let pass = try!(rpassword::prompt_password_stdout("Automate password: "));
           try!(http::token::request(&config, &pass))
       };
       sayln("magenta", &format!("token: {}", &token));

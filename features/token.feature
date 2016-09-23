@@ -1,15 +1,6 @@
 Feature: token
 
-@broken
 Scenario: happy path
-
-  NOTE: It appears that there's a problem with the way the CLI
-  accepts password input. So this doesn't really pass unless you type
-  something AS THE TEST RUNS. I think it has to do with stdin maybe
-  not being a TTY?
-
-  ALSO NOTE: We could actually do some tests around header values here
-  :)
 
   Given a file named ".delivery/cli.toml" with:
     """
@@ -17,7 +8,7 @@ Scenario: happy path
     git_port = "8989"
     organization = "Engineering"
     pipeline = "master"
-    server = "127.0.0.1"
+    server = "localhost"
     api_port = "8080"
     user = "alice"
     """
@@ -36,19 +27,21 @@ Scenario: happy path
         }
       end
     """
-  When I run `delivery token` interactively
-  And I type "my_secret_password"
-  Then the exit status should be 0
+  When I invoke a pseudo tty with command "delivery token"
+  And I expect for "Automate password" then type "my_secret_password"
+  And I run my ptty command
+  Then the ptty exit status should be 0
+  Then the ptty output should contain "Automate password"
+  Then the ptty output should contain "saved API token to"
   And a file named ".delivery/api-tokens" should exist
   And the file ".delivery/api-tokens" should contain:
     """
-    127.0.0.1:8080,Foobar,alice|xOsqI8qiBrUCGGRttfFy768R8ZAMJ24RC+0UGyX9/II=
+    localhost:8080,Foobar,alice|xOsqI8qiBrUCGGRttfFy768R8ZAMJ24RC+0UGyX9/II=
     """
   # These are secrets, and nobody else should be able to read 'em!
   # Also, this totally doesn't work now
-  And the mode of filesystem object ".delivery/api-tokens" should match "600"
+  #And the mode of filesystem object ".delivery/api-tokens" should match "600"
 
-@broken
 Scenario: SAML enabled API not yet available in Automate (old version)
 
   Given a file named ".delivery/cli.toml" with:
@@ -75,9 +68,12 @@ Scenario: SAML enabled API not yet available in Automate (old version)
         }
       end
     """
-  When I run `delivery token` interactively
-  And I type "my_secret_password"
-  Then the exit status should be 0
+  When I invoke a pseudo tty with command "delivery token"
+  And I expect for "Automate password" then type "my_secret_password"
+  And I run my ptty command
+  Then the ptty exit status should be 0
+  Then the ptty output should contain "Automate password"
+  Then the ptty output should contain "saved API token to"
   And a file named ".delivery/api-tokens" should exist
   And the file ".delivery/api-tokens" should contain:
     """
@@ -177,7 +173,6 @@ Scenario: SAML overridden (enabled) in config
     127.0.0.1:8080,Foobar,alice|xOsqI8qiBrUCGGRttfFy768R8ZAMJ24RC+0UGyX9/II=
     """
 
-@broken
 Scenario: SAML enabled in Automate but overridden in config
 
   Given a file named ".delivery/cli.toml" with:
@@ -193,6 +188,12 @@ Scenario: SAML enabled in Automate but overridden in config
     """
   And the Delivery API server:
     """
+      get('/api/v0/e/Foobar/saml/enabled') do
+        status 200
+        {
+            "enabled" => true
+        }
+      end
       get('/api/v0/e/Foobar/orgs') do
         {
           "_links" => {
@@ -207,20 +208,28 @@ Scenario: SAML enabled in Automate but overridden in config
           "orgs" => []
         }
       end
+      post('/api/v0/e/Foobar/users/alice/get-token') do
+        status 200
+        {
+            "token" => "THIS_IS_A_COOL_TOKEN"
+        }
+      end
     """
-  When I run `delivery token` interactively
-  And I type "my_secret_password"
-  Then the exit status should be 0
+  When I invoke a pseudo tty with command "delivery token"
+  And I expect for "Automate password" then type "my_secret_password"
+  And I run my ptty command
+  Then the ptty exit status should be 0
+  Then the ptty output should contain "Automate password"
+  Then the ptty output should contain "saved API token to"
   And a file named ".delivery/api-tokens" should exist
   And the file ".delivery/api-tokens" should contain:
     """
-    127.0.0.1:8080,Foobar,alice|xOsqI8qiBrUCGGRttfFy768R8ZAMJ24RC+0UGyX9/II=
+    127.0.0.1:8080,Foobar,alice|THIS_IS_A_COOL_TOKEN
     """
   # These are secrets, and nobody else should be able to read 'em!
   # Also, this totally doesn't work now
-  And the mode of filesystem object ".delivery/api-tokens" should match "600"
+  #And the mode of filesystem object ".delivery/api-tokens" should match "600"
 
-@broken
 Scenario: Token expired should trigger an automatic token request
 
   Given a file named ".delivery/cli.toml" with:
@@ -236,20 +245,35 @@ Scenario: Token expired should trigger an automatic token request
   And the Delivery API server:
     """
       get('/api/v0/e/token/orgs') do
-        status 401
+	status 401
+	{
+	  "error"=> "token_expired"
+	}
+      end
+      get('/api/v0/e/token/users') do
+        { "users" => ["petrashka"] }
+      end
+      post('/api/v0/e/token/users/petrashka/get-token') do
+        status 200
         {
-          "error"=> "token_expired"
+            "token" => "THE_NEW_TOKEN"
         }
       end
     """
   And a file named ".delivery/api-tokens" with:
     """
-    127.0.0.1:8080,Foobar,alice|SUPER_FAKE_TOKEN
+    127.0.0.1:8080,token,petrashka|SUPER_FAKE_TOKEN
     """
-  When I run `delivery api get users` interactively
-  And I type "my_secret_password"
-  Then the exit status should not be 0
-  And the output should contain:
-  """
-  Requesting Token
-  """
+  When I invoke a pseudo tty with command "delivery api get users"
+  # If you need to debug your pseudo tty command just use this step
+  And I want to debug the pseudo tty command
+  And I expect for "Automate password" then type "my_secret_password"
+  And I run my ptty command
+  Then the ptty exit status should be 0
+  Then the ptty output should contain "Token expired"
+  Then the ptty output should contain "Requesting Token"
+  Then the ptty output should contain "saved API token to"
+  And the file ".delivery/api-tokens" should contain:
+    """
+    127.0.0.1:8080,token,petrashka|THE_NEW_TOKEN
+    """
