@@ -100,6 +100,9 @@ fn_arg!(config_project_arg,
 fn_arg!(for_arg,
        "-f --for=[pipeline] 'Target pipeline for change (default: master)'");
 
+fn_arg!(pipeline_arg,
+      "--pipeline=[pipeline] 'Target pipeline for change (default: master)'");
+
 fn_arg!(patchset_arg,
        "-P --patchset=[patchset] 'A patchset number (default: latest)'");
 
@@ -641,7 +644,7 @@ mod tests {
         assert_eq!(Some("review"), matches.subcommand_name());
         let review_matches = matches.subcommand_matches(review::SUBCOMMAND_NAME).unwrap();
         let review_opts = review::ReviewClapOptions::new(&review_matches);
-        assert_eq!(review_opts.pipeline, "custom-pipe");
+        assert_eq!(review_opts.for_pipeline, "custom-pipe");
         assert_eq!(review_opts.no_open, true);
         assert_eq!(review_opts.auto_bump, true);
         assert_eq!(review_opts.edit, true);
@@ -708,7 +711,7 @@ mod tests {
         assert_eq!(Some("init"), matches.subcommand_name());
         let init_matches = matches.subcommand_matches(init::SUBCOMMAND_NAME).unwrap();
         let init_opts = init::InitClapOptions::new(&init_matches);
-        assert_eq!(init_opts.pipeline, "postres");
+        assert_eq!(init_opts.for_pipeline, "postres");
         assert_eq!(init_opts.user, "concha");
         assert_eq!(init_opts.server, "cocina.central.com");
         assert_eq!(init_opts.ent, "mexicana");
@@ -719,7 +722,6 @@ mod tests {
         assert_eq!(init_opts.github_org_name, "git-mx");
         assert_eq!(init_opts.bitbucket_project_key, "bit-mx");
         assert_eq!(init_opts.repo_name, "antojitos");
-        assert_eq!(init_opts.pipeline, "postres");
         assert_eq!(init_opts.no_v_ssl, true);
         assert_eq!(init_opts.no_open, true);
         assert_eq!(init_opts.skip_build_cookbook, true);

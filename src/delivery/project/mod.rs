@@ -301,11 +301,13 @@ pub fn create_dot_delivery() -> &'static Path {
     dot_delivery
 }
 
-pub fn create_default_build_cookbook() -> DeliveryResult<Command> {
-    let mut command = utils::make_command("chef");
-    command.arg("generate")
+pub fn create_default_build_cookbook(pipeline: &str) -> DeliveryResult<Command> {
+     let mut command = utils::make_command("chef");
+     command.arg("generate")
         .arg("build-cookbook")
         .arg(".delivery/build_cookbook")
+        .arg("--pipeline")
+        .arg(pipeline)
         .current_dir(&project_path());
     let output = try!(command.output());
     try!(handle_chef_generate_cookbook_cmd(output));
