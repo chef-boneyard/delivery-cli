@@ -8,7 +8,8 @@ gem 'aruba'
 
 # This group of gems are required to be able to run
 # chefdk commands like `rspec` within cucumber/aruba
-group :test do
+group :chefdk_deps do
   gem 'rspec'
+  gem 'berkshelf'
   gem 'chefspec'
 end
