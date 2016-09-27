@@ -78,6 +78,52 @@ pub mod local;
 // been parsed, including running the command, error handling, and UI outputting.
 use command;
 
+// ClapAlias trait
+//
+// This trait will handle the clap arguments and aliases, with this new
+// implementations you can pass multiple arguments that you wanna search for
+//
+// Examples:
+// 1) Read a simple argument
+//   value_of(matches, "project")
+//
+// 2) Read one argument and its aliases
+//   value_of(matches, vec!["for", "pipeline"])
+//
+trait ClapAlias {
+    fn keys(&self) -> Vec<&str>;
+}
+
+impl<'s> ClapAlias for &'s str {
+    fn keys(&self) -> Vec<&str> { vec![self] }
+}
+
+impl<'s> ClapAlias for Vec<&'s str> {
+    fn keys(&self) -> Vec<&str> { self.to_vec() }
+}
+
+fn value_of<'a, T: ClapAlias>(matches: &'a ArgMatches, alias: T) -> &'a str {
+    let mut value = "";
+
+    for key in &alias.keys() {
+        if let Some(v) = matches.value_of(key) {
+            // If we already have a value means the user provided multiple
+            // arguments that are aliases, lets exit and notify
+            if value != "" {
+                let err = DeliveryError {
+                    kind: Kind::ClapArgAliasOverlap,
+                    detail: Some(format!("The arguments {:?} are aliases, \
+                                         please just pass one.", alias.keys()))
+                };
+                exit_with(err, 1)
+            } else {
+                value = v;
+            }
+        }
+    }
+    return value
+}
+
 fn u_e_s_o_args<'a>() -> Vec<Arg<'a, 'a>> {
     make_arg_vec![
         "-u --user=[user] 'User name for Delivery authentication'",
@@ -94,14 +140,14 @@ fn scp_args<'a>() -> Vec<Arg<'a, 'a>> {
         "--no-verify-ssl 'Do not use SSL verification. [Github]'"]
 }
 
+fn pipeline_arg<'a>() -> Vec<Arg<'a, 'a>> {
+    make_arg_vec![
+      "--pipeline=[pipeline] 'Target pipeline for change (default: master)'",
+      "-f --for=[pipeline] '(alias) Target pipeline for change (default: master)'"]
+}
+
 fn_arg!(config_project_arg,
        "-c --config-json=[config-json] 'Path of a custom config.json file'");
-
-fn_arg!(for_arg,
-       "-f --for=[pipeline] 'Target pipeline for change (default: master)'");
-
-fn_arg!(pipeline_arg,
-      "--pipeline=[pipeline] 'Target pipeline for change (default: master)'");
 
 fn_arg!(patchset_arg,
        "-P --patchset=[patchset] 'A patchset number (default: latest)'");
@@ -605,15 +651,38 @@ fn api_req(opts: &api::ApiClapOptions) -> Result<ExitCode, DeliveryError> {
     Ok(0)
 }
 
-fn value_of<'a>(matches: &'a ArgMatches, key: &str) -> &'a str {
-    matches.value_of(key).unwrap_or("")
-}
-
-
 #[cfg(test)]
 mod tests {
     use cli;
     use cli::{api, review, clone, checkout, diff, init, job, spin, token, setup};
+    use super::value_of;
+
+    #[test]
+    fn test_value_of_trait() {
+        let build_version = format!("{} {}", cli::version(), cli::build_git_sha());
+
+        let matches = cli::make_app(&build_version).get_matches_from(
+            vec!["delivery", "checkout", "branch", "--for", "griffindor"]
+        );
+        let cmd_matches = matches.subcommand_matches(checkout::SUBCOMMAND_NAME).unwrap();
+        // A simple argument
+        assert_eq!("griffindor", value_of(&cmd_matches, "for"));
+        assert_eq!("", value_of(&cmd_matches, "not_for"));
+        // An argument with multiple aliases
+        assert_eq!("griffindor", value_of(&cmd_matches, vec!["for", "pipeline"]));
+        assert_eq!("", value_of(&cmd_matches, vec!["not_for", "not_pipeline"]));
+
+        let matches = cli::make_app(&build_version).get_matches_from(
+            vec!["delivery", "checkout", "branch", "--pipeline", "hufflepuff"]
+        );
+        let cmd_matches = matches.subcommand_matches(checkout::SUBCOMMAND_NAME).unwrap();
+        // A simple argument
+        assert_eq!("hufflepuff", value_of(&cmd_matches, "pipeline"));
+        assert_eq!("", value_of(&cmd_matches, "not_pipeline"));
+        // An argument with multiple aliases
+        assert_eq!("hufflepuff", value_of(&cmd_matches, vec!["for", "pipeline", "somethingelse"]));
+        assert_eq!("", value_of(&cmd_matches, vec!["not_for", "not_pipeline", "not_somethingelse"]));
+    }
 
     #[test]
     fn test_clap_api_options() {
@@ -644,7 +713,7 @@ mod tests {
         assert_eq!(Some("review"), matches.subcommand_name());
         let review_matches = matches.subcommand_matches(review::SUBCOMMAND_NAME).unwrap();
         let review_opts = review::ReviewClapOptions::new(&review_matches);
-        assert_eq!(review_opts.for_pipeline, "custom-pipe");
+        assert_eq!(review_opts.pipeline, "custom-pipe");
         assert_eq!(review_opts.no_open, true);
         assert_eq!(review_opts.auto_bump, true);
         assert_eq!(review_opts.edit, true);
@@ -711,7 +780,7 @@ mod tests {
         assert_eq!(Some("init"), matches.subcommand_name());
         let init_matches = matches.subcommand_matches(init::SUBCOMMAND_NAME).unwrap();
         let init_opts = init::InitClapOptions::new(&init_matches);
-        assert_eq!(init_opts.for_pipeline, "postres");
+        assert_eq!(init_opts.pipeline, "postres");
         assert_eq!(init_opts.user, "concha");
         assert_eq!(init_opts.server, "cocina.central.com");
         assert_eq!(init_opts.ent, "mexicana");
