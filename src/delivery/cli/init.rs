@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-use cli::{pipeline_arg, config_path_arg, no_open_arg, project_arg,
+use cli::arguments::{pipeline_arg, config_path_arg, no_open_arg, project_arg,
           local_arg, config_project_arg, u_e_s_o_args, scp_args,
           value_of};
 use clap::{App, SubCommand, ArgMatches};

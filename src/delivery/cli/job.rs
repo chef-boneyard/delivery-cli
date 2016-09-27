@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-use cli::{pipeline_arg, project_arg, local_arg, patchset_arg, u_e_s_o_args, value_of};
+use cli::arguments::{pipeline_arg, project_arg, local_arg, patchset_arg, u_e_s_o_args, value_of};
 use clap::{Arg, App, SubCommand, ArgMatches};
 
 pub const SUBCOMMAND_NAME: &'static str = "job";

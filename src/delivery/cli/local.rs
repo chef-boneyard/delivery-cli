@@ -16,7 +16,7 @@
 //
 use clap::{App, SubCommand, ArgMatches, Arg};
 use delivery_config::project::Phase;
-use cli::value_of;
+use cli::arguments::value_of;
 
 pub const SUBCOMMAND_NAME: &'static str = "local";
 

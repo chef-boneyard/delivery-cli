@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-use cli::{pipeline_arg, patchset_arg, value_of};
+use cli::arguments::{pipeline_arg, patchset_arg, value_of};
 use clap::{App, SubCommand, ArgMatches};
 
 pub const SUBCOMMAND_NAME: &'static str = "diff";

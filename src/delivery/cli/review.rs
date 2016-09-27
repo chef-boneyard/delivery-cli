@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-use cli::{pipeline_arg, no_open_arg, value_of, auto_bump};
+use cli::arguments::{pipeline_arg, no_open_arg, value_of, auto_bump};
 use clap::{App, SubCommand, ArgMatches};
 
 pub const SUBCOMMAND_NAME: &'static str = "review";
