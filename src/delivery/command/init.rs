@@ -23,26 +23,12 @@ pub fn run(init_opts: InitClapOptions) -> DeliveryResult<ExitCode> {
     let mut config = try!(load_config(&utils::cwd()));
     let final_proj = try!(project::project_or_from_cwd(init_opts.project));
 
-    if !init_opts.for_pipeline.is_empty() && !init_opts.pipeline.is_empty() {
-        sayln("red", "\n--for and --pipeline are aliases for the same option used to set \
-                      a pipeline other than master. Please just pass one or the other.");
-        return Ok(1)
-    };
-
-    let pipeline = if !init_opts.for_pipeline.is_empty() {
-        init_opts.for_pipeline.to_string()
-    } else if !init_opts.pipeline.is_empty() {
-        init_opts.pipeline.to_string()
-    } else {
-        "master".to_string()
-    };
-
     config = config.set_user(init_opts.user)
         .set_server(init_opts.server)
         .set_enterprise(init_opts.ent)
         .set_organization(init_opts.org)
         .set_project(&final_proj)
-        .set_pipeline(&pipeline)
+        .set_pipeline(init_opts.pipeline)
         .set_generator(init_opts.generator)
         .set_config_json(init_opts.config_json);
     let branch = try!(config.pipeline());

@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-use cli::{for_arg, project_arg, local_arg, patchset_arg, u_e_s_o_args, value_of};
+use cli::{pipeline_arg, project_arg, local_arg, patchset_arg, u_e_s_o_args, value_of};
 use clap::{Arg, App, SubCommand, ArgMatches};
 
 pub const SUBCOMMAND_NAME: &'static str = "job";
@@ -72,7 +72,7 @@ impl<'n> JobClapOptions<'n> {
             stage: value_of(&matches, "stage"),
             phases: value_of(matches, "phases"),
             change: value_of(&matches, "change"),
-            pipeline: value_of(&matches, "for"),
+            pipeline: value_of(&matches, vec!["for", "pipeline"]),
             job_root: value_of(&matches, "job-root"),
             project: value_of(&matches, "project"),
             user: value_of(&matches, "user"),
@@ -94,7 +94,7 @@ impl<'n> JobClapOptions<'n> {
 pub fn clap_subcommand<'c>() -> App<'c, 'c> {
     SubCommand::with_name(SUBCOMMAND_NAME)
         .about("Run one or more phase jobs")
-        .args(&vec![patchset_arg(), project_arg(), for_arg(), local_arg()])
+        .args(&vec![patchset_arg(), project_arg(), local_arg()])
         .args(&make_arg_vec![
             "-j --job-root=[root] 'Path to the job root'",
             "-g --git-url=[url] 'Git URL (-u -s -e -o ignored if used)'",
@@ -107,4 +107,5 @@ pub fn clap_subcommand<'c>() -> App<'c, 'c> {
         .args_from_usage("<stage> 'Stage for the run'
                           <phases> 'One or more phases'")
         .args(&u_e_s_o_args())
+        .args(&pipeline_arg())
 }

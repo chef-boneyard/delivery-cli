@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-use cli::{for_arg, patchset_arg, value_of};
+use cli::{pipeline_arg, patchset_arg, value_of};
 use clap::{App, SubCommand, ArgMatches};
 
 pub const SUBCOMMAND_NAME: &'static str = "checkout";
@@ -38,7 +38,7 @@ impl<'n> Default for CheckoutClapOptions<'n> {
 impl<'n> CheckoutClapOptions<'n> {
     pub fn new(matches: &'n ArgMatches<'n>) -> Self {
         CheckoutClapOptions {
-            pipeline: value_of(&matches, "for"),
+            pipeline: value_of(&matches, vec!["for", "pipeline"]),
             change: value_of(&matches, "change"),
             patchset: value_of(&matches, "patchset"),
         }
@@ -48,6 +48,7 @@ impl<'n> CheckoutClapOptions<'n> {
 pub fn clap_subcommand<'c>() -> App<'c, 'c> {
     SubCommand::with_name(SUBCOMMAND_NAME)
         .about("Create a local branch tracking an in-progress change")
-        .args(&vec![for_arg(), patchset_arg()])
+        .args(&vec![patchset_arg()])
+        .args(&pipeline_arg())
         .args_from_usage("<change> 'Name of the feature branch to checkout'")
 }

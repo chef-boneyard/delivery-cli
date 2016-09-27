@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-use cli::{for_arg, pipeline_arg, config_path_arg, no_open_arg, project_arg,
+use cli::{pipeline_arg, config_path_arg, no_open_arg, project_arg,
           local_arg, config_project_arg, u_e_s_o_args, scp_args,
           value_of};
 use clap::{App, SubCommand, ArgMatches};
@@ -29,7 +29,6 @@ pub struct InitClapOptions<'n> {
     pub org: &'n str,
     pub project: &'n str,
     pub pipeline: &'n str,
-    pub for_pipeline: &'n str,
     pub config_json: &'n str,
     pub generator: &'n str,
     pub github_org_name: &'n str,
@@ -48,8 +47,7 @@ impl<'n> Default for InitClapOptions<'n> {
             ent: "",
             org: "",
             project: "",
-            pipeline: "",
-            for_pipeline: "",
+            pipeline: "master",
             config_json: "",
             generator: "",
             github_org_name: "",
@@ -71,8 +69,7 @@ impl<'n> InitClapOptions<'n> {
             ent: value_of(&matches, "ent"),
             org: value_of(&matches, "org"),
             project: value_of(&matches, "project"),
-            for_pipeline: value_of(&matches, "for"),
-            pipeline: value_of(&matches, "pipeline"),
+            pipeline: value_of(&matches, vec!["for", "pipeline"]),
             config_json: value_of(&matches, "config-json"),
             generator: value_of(&matches, "generator"),
             github_org_name: value_of(&matches, "github"),
@@ -90,12 +87,13 @@ pub fn clap_subcommand<'c>() -> App<'c, 'c> {
     SubCommand::with_name(SUBCOMMAND_NAME)
         .about("Initialize a Delivery project \
                 (and lots more!)")
-        .args(&vec![for_arg(), pipeline_arg(), config_path_arg(), no_open_arg(),
-                   project_arg(), local_arg(), config_project_arg()])
+        .args(&vec![config_path_arg(), no_open_arg(), project_arg(),
+                local_arg(), config_project_arg()])
         .args_from_usage(
             "--generator=[generator] 'Local path or Git repo URL to a \
              custom ChefDK build_cookbook generator (default:github)'
             --skip-build-cookbook 'Do not create a build cookbook'")
         .args(&u_e_s_o_args())
         .args(&scp_args())
+        .args(&pipeline_arg())
 }
