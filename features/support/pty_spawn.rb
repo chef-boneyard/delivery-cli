@@ -76,6 +76,11 @@ module Delivery
       @input["#{expect}"] = type
     end
 
+    # Cd into a directory
+    def cd(dir)
+      @pwd = File.join(@pwd, dir)
+    end
+
     # Convert the output to String
     def output_str
       @output.join('')

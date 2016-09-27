@@ -1,4 +1,4 @@
-default['delivery_rust']['ruby_version'] = '2.1.5'
+default['delivery_rust']['ruby_version'] = '2.3.0'
 
 rust_version = '1.9.0'
 time = Time.now.utc.strftime("+%Y-%m-%dT%H:%M:%SZ")

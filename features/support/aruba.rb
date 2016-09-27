@@ -35,7 +35,7 @@ Aruba.configure do |config|
   config.root_directory     = Dir.mktmpdir
   config.working_directory  = "delivery-cli/"
   config.home_directory     = File.join(config.root_directory, config.working_directory)
-    
+
   @fake_bins_history_file = File.join(config.home_directory, '.history')
 
   # We will set the Environment Variable to Aruba.config.home_directory

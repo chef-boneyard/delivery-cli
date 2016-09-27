@@ -12,13 +12,18 @@ Given(/^I expect for "(.*)" then type "(.*)"$/) do |exp, txt|
   @current_pty.expect_and_type(exp, txt)
 end
 
+Given(/^I cd inside my ptty to "(.*)"$/) do |dir|
+  @current_pty.cd(dir)
+end
+
 Given(/^I run my ptty command$/) do
   @current_pty.run
 end
 
 Given(/^the ptty output should contain "(.*)"$/) do |string|
   unless @current_pty.output_str.match(/#{string}/)
-    raise "The output of the pseudo tty command didn't match with #{string}"
+    raise "The output of the pseudo tty command didn't match with #{string}" +
+          "\nOutput: #{@current_pty.output_str}"
   end
 end
 
@@ -31,6 +36,19 @@ end
 
 Given(/^I want to debug the pseudo tty command$/) do
   @current_pty.debug = true
+end
+
+Given(/^I am in a chefdk generated cookbook called "(.*)"$/) do |cb_name|
+  step %(I successfully run `chef generate cookbook #{cb_name}`)
+  step %(I cd to "#{cb_name}")
+end
+
+Given(/^I have an incomplete project.toml file$/) do
+  step %(a file named ".delivery/project.toml" with:), incomplete_project_toml
+end
+
+Given(/^I have a custom project.toml file$/) do
+  step %(a file named ".delivery/project.toml" with:), project_toml
 end
 
 Given(/^I have a custom generator cookbook with no config generator$/) do
