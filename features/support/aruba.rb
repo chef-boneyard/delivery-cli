@@ -9,9 +9,6 @@ fake_bin = File.expand_path('../fakebin', __FILE__)
 
 # Be able to call original binary in mocks.
 system_git = `which git 2>/dev/null`.chomp
-system_cp = `which cp 2>/dev/null`.chomp
-system_mv = `which mv 2>/dev/null`.chomp
-system_chef = `which chef 2>/dev/null`.chomp
 
 # Ensure that the delivery binary we just built is the one that we're
 # using.
@@ -46,9 +43,6 @@ Aruba.configure do |config|
     'FAKE_BINS_HISTORY_FILE' => @fake_bins_history_file,
     'EMAIL' => 'cukes@mycompany.com',
     'DELIVERY_SYSTEM_GIT' => system_git,
-    'DELIVERY_SYSTEM_CP' => system_cp,
-    'DELIVERY_SYSTEM_MV' => system_mv,
-    'DELIVERY_SYSTEM_CHEF' => system_chef,
     'GIT_CLONE_FIXTURE_REPOS_DIR' => fixture_repos_dir,
     'PATH' => "#{cli_dir}#{File::PATH_SEPARATOR}#{fake_bin}#{File::PATH_SEPARATOR}#{ENV['PATH']}"
   } 
