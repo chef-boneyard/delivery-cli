@@ -33,8 +33,6 @@ use git;
 use job::change::Change;
 use job::workspace::{Workspace, Privilege};
 use utils::path_join_many::PathJoinMany;
-use http::APIClient;
-use hyper::status::StatusCode;
 use clap::{App, ArgMatches};
 
 // Clap Arguments
@@ -47,7 +45,7 @@ use cli::arguments::{non_interactive_arg, no_spinner_arg};
 
 // Modules for setting up clap subcommand including their options and defaults,
 // as well as advanced subcommand match parsing (see local for an example).
-mod api;
+pub mod api;
 pub mod review;
 pub mod checkout;
 pub mod clone;
@@ -72,7 +70,8 @@ pub fn run() {
     let cmd_result = match app_matches.subcommand() {
         (api::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
-            api_req(&api::ApiClapOptions::new(matches))
+            let api_opts = api::ApiClapOptions::new(&matches);
+            command::api::run(api_opts)
         },
         (checkout::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
@@ -415,34 +414,6 @@ fn version() -> String {
 fn build_git_sha() -> String {
     let sha = option_env!("DELIV_CLI_GIT_SHA").unwrap_or("0000");
     format!("({})", sha)
-}
-
-fn api_req(opts: &api::ApiClapOptions) -> Result<ExitCode, DeliveryError> {
-    let mut config = try!(Config::load_config(&cwd()));
-    config = config.set_user(opts.user)
-        .set_server(opts.server)
-        .set_api_port(opts.api_port)
-        .set_enterprise(opts.ent);
-    let client = try!(APIClient::from_config(&config));
-    let mut result = match opts.method {
-        "get" => try!(client.get(opts.path)),
-        "post" => try!(client.post(opts.path, opts.data)),
-        "put" => try!(client.put(opts.path, opts.data)),
-        "delete" => try!(client.delete(opts.path)),
-        _ => return Err(DeliveryError{ kind: Kind::UnsupportedHttpMethod,
-                                       detail: None })
-    };
-    match result.status {
-        StatusCode::NoContent => {},
-        StatusCode::InternalServerError => {
-            return Err(DeliveryError{ kind: Kind::InternalServerError, detail: None})
-        },
-        _ => {
-            let pretty_json = try!(APIClient::extract_pretty_json(&mut result));
-            println!("{}", pretty_json);
-        }
-    };
-    Ok(0)
 }
 
 #[cfg(test)]
