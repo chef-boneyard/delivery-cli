@@ -46,4 +46,3 @@ pub fn run(opts: CheckoutClapOptions) -> DeliveryResult<ExitCode> {
     try!(git::checkout_review(opts.change, pset, &target));
     Ok(0)
 }
-

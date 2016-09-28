@@ -51,7 +51,7 @@ mod api;
 pub mod review;
 pub mod checkout;
 mod clone;
-mod diff;
+pub mod diff;
 pub mod init;
 mod job;
 mod spin;
@@ -84,7 +84,8 @@ pub fn run() {
             clone(&clone::CloneClapOptions::new(matches))
         },
         (diff::SUBCOMMAND_NAME, Some(matches)) => {
-            diff(&diff::DiffClapOptions::new(&matches))
+            let diff_opts = diff::DiffClapOptions::new(&matches);
+            command::diff::run(diff_opts)
         },
         (init::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
@@ -182,26 +183,6 @@ pub fn load_config(path: &PathBuf) -> Result<Config, DeliveryError> {
     sayln("yellow", &msg);
     let config = try!(Config::load_config(&cwd()));
     Ok(config)
-}
-
-fn diff(opts: &diff::DiffClapOptions) ->  Result<ExitCode, DeliveryError> {
-    sayln("green", "Chef Delivery");
-    let mut config = try!(load_config(&cwd()));
-    config = config.set_pipeline(opts.pipeline);
-    let target = validate!(config, pipeline);
-    say("white", "Showing diff for ");
-    say("yellow", opts.change);
-    say("white", " targeted for pipeline ");
-    say("magenta", &target);
-
-    if opts.patchset == "latest" {
-        sayln("white", " latest patchset");
-    } else {
-        say("white", " at patchset ");
-        sayln("yellow", opts.patchset);
-    }
-    try!(git::diff(opts.change, opts.patchset, &target, &opts.local));
-    Ok(0)
 }
 
 fn clone(opts: &clone::CloneClapOptions) -> Result<ExitCode, DeliveryError> {

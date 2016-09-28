@@ -16,26 +16,28 @@
 //
 
 use cli;
-use cli::token::TokenClapOptions;
+use git;
+use cli::diff::DiffClapOptions;
 use types::{DeliveryResult, ExitCode};
-use utils::say::sayln;
+use utils::say::{say, sayln};
 use utils::cwd;
-use token::TokenStore;
 
-pub fn run(opts: TokenClapOptions) -> DeliveryResult<ExitCode> {
+pub fn run(opts: DiffClapOptions) -> DeliveryResult<ExitCode> {
     sayln("green", "Chef Delivery");
     let mut config = try!(cli::load_config(&cwd()));
-    config = config.set_server(opts.server)
-        .set_api_port(opts.port)
-        .set_enterprise(opts.ent)
-        .set_user(opts.user);
-    if opts.saml.is_some() {
-        config.saml = opts.saml;
-    }
-    if opts.verify {
-        try!(TokenStore::verify_token(&config));
+    config = config.set_pipeline(opts.pipeline);
+    let target = validate!(config, pipeline);
+    say("white", "Showing diff for ");
+    say("yellow", opts.change);
+    say("white", " targeted for pipeline ");
+    say("magenta", &target);
+
+    if opts.patchset == "latest" {
+        sayln("white", " latest patchset");
     } else {
-        try!(TokenStore::request_token(&config));
+        say("white", " at patchset ");
+        sayln("yellow", opts.patchset);
     }
+    try!(git::diff(opts.change, opts.patchset, &target, &opts.local));
     Ok(0)
 }
