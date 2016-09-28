@@ -50,7 +50,7 @@ use cli::arguments::{non_interactive_arg, no_spinner_arg};
 mod api;
 pub mod review;
 pub mod checkout;
-mod clone;
+pub mod clone;
 pub mod diff;
 pub mod init;
 mod job;
@@ -81,7 +81,8 @@ pub fn run() {
         },
         (clone::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
-            clone(&clone::CloneClapOptions::new(matches))
+            let clone_opts = clone::CloneClapOptions::new(&matches);
+            command::clone::run(clone_opts)
         },
         (diff::SUBCOMMAND_NAME, Some(matches)) => {
             let diff_opts = diff::DiffClapOptions::new(&matches);
@@ -183,31 +184,6 @@ pub fn load_config(path: &PathBuf) -> Result<Config, DeliveryError> {
     sayln("yellow", &msg);
     let config = try!(Config::load_config(&cwd()));
     Ok(config)
-}
-
-fn clone(opts: &clone::CloneClapOptions) -> Result<ExitCode, DeliveryError> {
-    sayln("green", "Chef Delivery");
-    let mut config = try!(load_config(&cwd()));
-    config = config.set_user(opts.user)
-        .set_server(opts.server)
-        .set_enterprise(opts.ent)
-        .set_organization(opts.org)
-        .set_project(opts.project);
-    say("white", "Cloning ");
-    let delivery_url = try!(config.delivery_git_ssh_url());
-    let clone_url = if opts.git_url.is_empty() {
-        delivery_url.clone()
-    } else {
-        String::from(opts.git_url)
-    };
-    say("yellow", &clone_url);
-    say("white", " to ");
-    sayln("magenta", &format!("{}", opts.project));
-    try!(git::clone(opts.project, &clone_url));
-    let project_root = cwd().join(opts.project);
-    try!(git::config_repo(&delivery_url,
-                          &project_root));
-    Ok(0)
 }
 
 fn job(opts: &job::JobClapOptions) -> Result<ExitCode, DeliveryError> {
