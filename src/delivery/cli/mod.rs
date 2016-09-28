@@ -57,7 +57,7 @@ pub mod init;
 mod job;
 mod spin;
 mod token;
-mod setup;
+pub mod setup;
 pub mod local;
 
 // Implemented sub-commands. Should handle everything after args have
@@ -102,7 +102,8 @@ pub fn run() {
         },
         (setup::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
-            setup(&setup::SetupClapOptions::new(&matches))
+            let setup_opts = setup::SetupClapOptions::new(matches);
+            command::setup::run(setup_opts)
         },
         (token::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
@@ -180,23 +181,6 @@ pub fn load_config(path: &PathBuf) -> Result<Config, DeliveryError> {
     sayln("yellow", &msg);
     let config = try!(Config::load_config(&cwd()));
     Ok(config)
-}
-
-fn setup(opts: &setup::SetupClapOptions) -> Result<ExitCode, DeliveryError> {
-    sayln("green", "Chef Delivery");
-    let config_path = if opts.path.is_empty() {
-        cwd()
-    } else {
-        PathBuf::from(opts.path)
-    };
-    let mut config = try!(load_config(&config_path));
-    config = config.set_server(opts.server)
-        .set_user(opts.user)
-        .set_enterprise(opts.ent)
-        .set_organization(opts.org)
-        .set_pipeline(opts.pipeline) ;
-    try!(config.write_file(&config_path));
-    Ok(0)
 }
 
 fn checkout(opts: &checkout::CheckoutClapOptions) -> Result<ExitCode, DeliveryError> {
