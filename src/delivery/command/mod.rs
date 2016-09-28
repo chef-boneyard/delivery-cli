@@ -20,3 +20,4 @@ pub mod review;
 pub mod local;
 pub mod setup;
 pub mod token;
+pub mod checkout;

@@ -49,7 +49,7 @@ use cli::arguments::{non_interactive_arg, no_spinner_arg};
 // as well as advanced subcommand match parsing (see local for an example).
 mod api;
 pub mod review;
-mod checkout;
+pub mod checkout;
 mod clone;
 mod diff;
 pub mod init;
@@ -76,7 +76,8 @@ pub fn run() {
         },
         (checkout::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
-            checkout(&checkout::CheckoutClapOptions::new(matches))
+            let checkout_opts = checkout::CheckoutClapOptions::new(&matches);
+            command::checkout::run(checkout_opts)
         },
         (clone::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
@@ -181,31 +182,6 @@ pub fn load_config(path: &PathBuf) -> Result<Config, DeliveryError> {
     sayln("yellow", &msg);
     let config = try!(Config::load_config(&cwd()));
     Ok(config)
-}
-
-fn checkout(opts: &checkout::CheckoutClapOptions) -> Result<ExitCode, DeliveryError> {
-    sayln("green", "Chef Delivery");
-    let mut config = try!(load_config(&cwd()));
-    config = config.set_pipeline(opts.pipeline);
-    let target = validate!(config, pipeline);
-    say("white", "Checking out ");
-    say("yellow", opts.change);
-    say("white", " targeted for pipeline ");
-    say("magenta", &target);
-
-    let pset = match opts.patchset {
-        "" | "latest" => {
-            sayln("white", " tracking latest changes");
-            "latest"
-        },
-        p @ _ => {
-            say("white", " at patchset ");
-            sayln("yellow", p);
-            p
-        }
-    };
-    try!(git::checkout_review(opts.change, pset, &target));
-    Ok(0)
 }
 
 fn diff(opts: &diff::DiffClapOptions) ->  Result<ExitCode, DeliveryError> {
