@@ -24,7 +24,6 @@ use std::path::PathBuf;
 use std::io::prelude::*;
 use std::time::Duration;
 use std;
-use token::TokenStore;
 use utils::{self, cwd, privileged_process};
 use utils::say::{self, sayln, say};
 use errors::{DeliveryError, Kind};
@@ -56,7 +55,7 @@ mod diff;
 pub mod init;
 mod job;
 mod spin;
-mod token;
+pub mod token;
 pub mod setup;
 pub mod local;
 
@@ -107,7 +106,8 @@ pub fn run() {
         },
         (token::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
-            token(&token::TokenClapOptions::new(&matches))
+            let token_opts = token::TokenClapOptions::new(matches);
+            command::token::run(token_opts)
         },
         (local::SUBCOMMAND_NAME, Some(matches)) => {
             let local_opts = local::LocalClapOptions::new(matches);
@@ -472,24 +472,6 @@ fn with_default<'a>(val: &'a str, default: &'a str, local: &bool) -> &'a str {
     } else {
         default
     }
-}
-
-fn token(opts: &token::TokenClapOptions) -> Result<ExitCode, DeliveryError> {
-    sayln("green", "Chef Delivery");
-    let mut config = try!(load_config(&cwd()));
-    config = config.set_server(opts.server)
-        .set_api_port(opts.port)
-        .set_enterprise(opts.ent)
-        .set_user(opts.user);
-    if opts.saml.is_some() {
-        config.saml = opts.saml;
-    }
-    if opts.verify {
-        try!(TokenStore::verify_token(&config));
-    } else {
-        try!(TokenStore::request_token(&config));
-    }
-    Ok(0)
 }
 
 fn version() -> String {
