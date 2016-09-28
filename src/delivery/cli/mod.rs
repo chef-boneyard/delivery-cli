@@ -36,29 +36,15 @@ use job::workspace::{Workspace, Privilege};
 use utils::path_join_many::PathJoinMany;
 use http::APIClient;
 use hyper::status::StatusCode;
-use clap::{Arg, App, ArgMatches};
+use clap::{App, ArgMatches};
 
-#[macro_use(validate)]
-
-macro_rules! make_arg_vec {
-    ( $( $x:expr ),* ) => {
-        {
-            let mut temp_vec = Vec::new();
-            $(
-                temp_vec.push(Arg::from_usage($x));
-            )*
-            temp_vec
-        }
-    };
-}
-
-macro_rules! fn_arg {
-    ( $fn_name:ident, $usage:expr ) => (
-        fn $fn_name<'a>() -> Arg<'a, 'a> {
-            Arg::from_usage($usage)
-        }
-    )
-}
+// Clap Arguments
+//
+// Encapsulated ClapArguments that will be share across commands including
+// the ClapAlias trait for arguments that we might depricate in the future
+#[macro_use]
+pub mod arguments;
+use cli::arguments::{non_interactive_arg, no_spinner_arg};
 
 // Modules for setting up clap subcommand including their options and defaults,
 // as well as advanced subcommand match parsing (see local for an example).
@@ -77,51 +63,6 @@ pub mod local;
 // Implemented sub-commands. Should handle everything after args have
 // been parsed, including running the command, error handling, and UI outputting.
 use command;
-
-fn u_e_s_o_args<'a>() -> Vec<Arg<'a, 'a>> {
-    make_arg_vec![
-        "-u --user=[user] 'User name for Delivery authentication'",
-        "-e --ent=[ent] 'The enterprise in which the project lives'",
-        "-o --org=[org] 'The organization in which the project lives'",
-        "-s --server=[server] 'The Delivery server address'"]
-}
-
-fn scp_args<'a>() -> Vec<Arg<'a, 'a>> {
-    make_arg_vec![
-        "--bitbucket=[project-key] 'Use a Bitbucket repository for Code Review with the provided Project Key'",
-        "--github=[org-name] 'Use a Github repository for Code Review with the provided Organization'",
-        "-r --repo-name=[repo-name] 'Source code provider repository name'",
-        "--no-verify-ssl 'Do not use SSL verification. [Github]'"]
-}
-
-fn_arg!(config_project_arg,
-       "-c --config-json=[config-json] 'Path of a custom config.json file'");
-
-fn_arg!(for_arg,
-       "-f --for=[pipeline] 'Target pipeline for change (default: master)'");
-
-fn_arg!(pipeline_arg,
-      "--pipeline=[pipeline] 'Target pipeline for change (default: master)'");
-
-fn_arg!(patchset_arg,
-       "-P --patchset=[patchset] 'A patchset number (default: latest)'");
-
-fn_arg!(project_arg,
-       "-p --project=[project] 'The project name'");
-
-fn_arg!(config_path_arg,
-        "--config-path=[dir] 'Directory to read/write your config file \
-         (cli.toml) from'");
-
-fn_arg!(local_arg, "-l --local 'Operate without a Delivery server'");
-
-fn_arg!(no_open_arg, "-n --no-open 'Do not open the change in a browser'");
-
-fn_arg!(auto_bump, "-a --auto-bump 'Automatic cookbook version bump'");
-
-fn_arg!(no_spinner_arg, "--no-spinner 'Disable the spinner'");
-
-fn_arg!(non_interactive_arg, "--non-interactive 'Disable cli interactions'");
 
 pub fn run() {
     let build_version = format!("{} {}", version(), build_git_sha());
@@ -605,11 +546,6 @@ fn api_req(opts: &api::ApiClapOptions) -> Result<ExitCode, DeliveryError> {
     Ok(0)
 }
 
-fn value_of<'a>(matches: &'a ArgMatches, key: &str) -> &'a str {
-    matches.value_of(key).unwrap_or("")
-}
-
-
 #[cfg(test)]
 mod tests {
     use cli;
@@ -644,7 +580,7 @@ mod tests {
         assert_eq!(Some("review"), matches.subcommand_name());
         let review_matches = matches.subcommand_matches(review::SUBCOMMAND_NAME).unwrap();
         let review_opts = review::ReviewClapOptions::new(&review_matches);
-        assert_eq!(review_opts.for_pipeline, "custom-pipe");
+        assert_eq!(review_opts.pipeline, "custom-pipe");
         assert_eq!(review_opts.no_open, true);
         assert_eq!(review_opts.auto_bump, true);
         assert_eq!(review_opts.edit, true);
@@ -711,7 +647,7 @@ mod tests {
         assert_eq!(Some("init"), matches.subcommand_name());
         let init_matches = matches.subcommand_matches(init::SUBCOMMAND_NAME).unwrap();
         let init_opts = init::InitClapOptions::new(&init_matches);
-        assert_eq!(init_opts.for_pipeline, "postres");
+        assert_eq!(init_opts.pipeline, "postres");
         assert_eq!(init_opts.user, "concha");
         assert_eq!(init_opts.server, "cocina.central.com");
         assert_eq!(init_opts.ent, "mexicana");

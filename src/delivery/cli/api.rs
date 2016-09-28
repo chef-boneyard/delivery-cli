@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-use cli::{config_path_arg, value_of, u_e_s_o_args};
+use cli::arguments::{config_path_arg, value_of, u_e_s_o_args};
 use clap::{Arg, App, SubCommand, ArgMatches};
 
 pub const SUBCOMMAND_NAME: &'static str = "api";

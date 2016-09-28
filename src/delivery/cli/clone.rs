@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-use cli::{u_e_s_o_args, value_of};
+use cli::arguments::{u_e_s_o_args, value_of};
 use clap::{App, SubCommand, ArgMatches};
 
 pub const SUBCOMMAND_NAME: &'static str = "clone";

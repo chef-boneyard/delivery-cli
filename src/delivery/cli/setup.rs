@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-use cli::{for_arg, config_path_arg, u_e_s_o_args, value_of};
+use cli::arguments::{pipeline_arg, config_path_arg, u_e_s_o_args, value_of};
 use clap::{App, SubCommand, ArgMatches};
 
 pub const SUBCOMMAND_NAME: &'static str = "setup";
@@ -50,7 +50,7 @@ impl<'n> SetupClapOptions<'n> {
             ent: value_of(&matches, "ent"),
             org: value_of(&matches, "org"),
             path: value_of(&matches, "config-path"),
-            pipeline: value_of(&matches, "for"),
+            pipeline: value_of(&matches, vec!["for", "pipeline"]),
         }
     }
 }
@@ -58,6 +58,7 @@ impl<'n> SetupClapOptions<'n> {
 pub fn clap_subcommand<'c>() -> App<'c, 'c> {
     SubCommand::with_name(SUBCOMMAND_NAME)
         .about("Write a config file capturing specified options")
-        .args(&vec![for_arg(), config_path_arg()])
+        .args(&vec![config_path_arg()])
+        .args(&pipeline_arg())
         .args(&u_e_s_o_args())
 }
