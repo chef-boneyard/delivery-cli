@@ -24,3 +24,4 @@ pub mod checkout;
 pub mod diff;
 pub mod clone;
 pub mod api;
+pub mod job;
