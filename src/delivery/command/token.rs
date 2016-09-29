@@ -15,13 +15,27 @@
 // limitations under the License.
 //
 
-pub mod init;
-pub mod review;
-pub mod local;
-pub mod setup;
-pub mod token;
-pub mod checkout;
-pub mod diff;
-pub mod clone;
-pub mod api;
-pub mod job;
+use cli;
+use cli::token::TokenClapOptions;
+use types::{DeliveryResult, ExitCode};
+use utils::say::sayln;
+use utils::cwd;
+use token::TokenStore;
+
+pub fn run(opts: TokenClapOptions) -> DeliveryResult<ExitCode> {
+    sayln("green", "Chef Delivery");
+    let mut config = try!(cli::load_config(&cwd()));
+    config = config.set_server(opts.server)
+        .set_api_port(opts.port)
+        .set_enterprise(opts.ent)
+        .set_user(opts.user);
+    if opts.saml.is_some() {
+        config.saml = opts.saml;
+    }
+    if opts.verify {
+        try!(TokenStore::verify_token(&config));
+    } else {
+        try!(TokenStore::request_token(&config));
+    }
+    Ok(0)
+}
