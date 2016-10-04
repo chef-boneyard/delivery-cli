@@ -140,7 +140,7 @@ pub fn run(init_opts: InitClapOptions) -> DeliveryResult<ExitCode> {
         }
 
         // project::add_commit_build_cookbook will commit the custom config for us,
-        // so if a custom build cookbook was passed, the delivery config was already commited.
+        // so if a custom build cookbook was passed, the delivery config was already committed.
         if custom_config_passed && !custom_build_cookbook_generated {
             if try!(DeliveryConfig::git_add_commit_config(&project_path)) {
               sayln("green", "  Custom delivery config committed to feature branch.")
@@ -164,7 +164,7 @@ pub fn run(init_opts: InitClapOptions) -> DeliveryResult<ExitCode> {
             review_needed = true;
             sayln("green", "  DELIVERY.md created.");
             try!(project::commit_delivery_readme());
-            sayln("green", &format!("  DELIVERY.md commited in branch '{}'.", branch_name))
+            sayln("green", &format!("  DELIVERY.md committed in branch '{}'.", branch_name))
         } else {
             sayln("white", "  Skipping: DELIVERY.md already exists, no need to create or commit.");
         }
@@ -340,7 +340,7 @@ fn generate_build_cookbook(config: &Config) -> DeliveryResult<bool> {
                 sayln("green", "  Build cookbook generated at .delivery/build_cookbook.");
                 try!(git::git_push(&pipeline));
                 sayln("green",
-                      &format!("  Build cookbook commited to git and pushed to pipeline named {}.", pipeline));
+                      &format!("  Build cookbook committed to git and pushed to pipeline named {}.", pipeline));
                 Ok(false)
             }
         }
