@@ -16,53 +16,9 @@
 //
 
 use clap::{Arg, ArgMatches};
-use errors::{DeliveryError, Kind};
-use cli::exit_with;
 
-// ClapAlias trait
-//
-// This trait will handle the clap arguments and aliases, with this new
-// implementations you can pass multiple arguments that you wanna search for
-//
-// Examples:
-// 1) Read a simple argument
-//   value_of(matches, "project")
-//
-// 2) Read one argument and its aliases
-//   value_of(matches, vec!["for", "pipeline"])
-//
-pub trait ClapAlias {
-    fn keys(&self) -> Vec<&str>;
-}
-
-impl<'s> ClapAlias for &'s str {
-    fn keys(&self) -> Vec<&str> { vec![self] }
-}
-
-impl<'s> ClapAlias for Vec<&'s str> {
-    fn keys(&self) -> Vec<&str> { self.to_vec() }
-}
-
-pub fn value_of<'a, T: ClapAlias>(matches: &'a ArgMatches, alias: T) -> &'a str {
-    let mut value = "";
-
-    for key in &alias.keys() {
-        if let Some(v) = matches.value_of(key) {
-            // If we already have a value means the user provided multiple
-            // arguments that are aliases, lets exit and notify
-            if !value.is_empty() {
-                let err = DeliveryError {
-                    kind: Kind::ClapArgAliasOverlap,
-                    detail: Some(format!("The arguments {:?} are aliases, \
-                                         please just pass one.", alias.keys()))
-                };
-                exit_with(err, 1)
-            } else {
-                value = v;
-            }
-        }
-    }
-    return value
+pub fn value_of<'a>(matches: &'a ArgMatches, key: &str) -> &'a str {
+    matches.value_of(key).unwrap_or("")
 }
 
 macro_rules! make_arg_vec {
@@ -102,9 +58,9 @@ pub fn scp_args<'a>() -> Vec<Arg<'a, 'a>> {
 }
 
 pub fn pipeline_arg<'a>() -> Vec<Arg<'a, 'a>> {
-    make_arg_vec![
-      "--pipeline=[pipeline] 'Target pipeline for change (default: master)'",
-      "-f --for=[pipeline] '(alias) Target pipeline for change (default: master)'"]
+    vec![Arg::from_usage(
+            "-f --pipeline=[pipeline] 'Target pipeline for change (default: master)'"
+        ).visible_alias("for")]
 }
 
 fn_arg!(config_project_arg,
@@ -144,11 +100,8 @@ mod tests {
         );
         let cmd_matches = matches.subcommand_matches(cli::checkout::SUBCOMMAND_NAME).unwrap();
         // A simple argument
-        assert_eq!("griffindor", value_of(&cmd_matches, "for"));
+        assert_eq!("griffindor", value_of(&cmd_matches, "pipeline"));
         assert_eq!("", value_of(&cmd_matches, "not_for"));
-        // An argument with multiple aliases
-        assert_eq!("griffindor", value_of(&cmd_matches, vec!["for", "pipeline"]));
-        assert_eq!("", value_of(&cmd_matches, vec!["not_for", "not_pipeline"]));
 
         let matches = cli::make_app(&build_version).get_matches_from(
             vec!["delivery", "checkout", "branch", "--pipeline", "hufflepuff"]
@@ -157,8 +110,5 @@ mod tests {
         // A simple argument
         assert_eq!("hufflepuff", value_of(&cmd_matches, "pipeline"));
         assert_eq!("", value_of(&cmd_matches, "not_pipeline"));
-        // An argument with multiple aliases
-        assert_eq!("hufflepuff", value_of(&cmd_matches, vec!["for", "pipeline", "somethingelse"]));
-        assert_eq!("", value_of(&cmd_matches, vec!["not_for", "not_pipeline", "not_somethingelse"]));
     }
 }

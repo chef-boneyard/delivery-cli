@@ -69,7 +69,7 @@ impl<'n> InitClapOptions<'n> {
             ent: value_of(&matches, "ent"),
             org: value_of(&matches, "org"),
             project: value_of(&matches, "project"),
-            pipeline: value_of(&matches, vec!["for", "pipeline"]),
+            pipeline: value_of(&matches, "pipeline"),
             config_json: value_of(&matches, "config-json"),
             generator: value_of(&matches, "generator"),
             github_org_name: value_of(&matches, "github"),

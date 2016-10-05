@@ -50,7 +50,7 @@ impl<'n> SetupClapOptions<'n> {
             ent: value_of(&matches, "ent"),
             org: value_of(&matches, "org"),
             path: value_of(&matches, "config-path"),
-            pipeline: value_of(&matches, vec!["for", "pipeline"]),
+            pipeline: value_of(&matches, "pipeline"),
         }
     }
 }

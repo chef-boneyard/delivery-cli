@@ -42,7 +42,7 @@ impl<'n> DiffClapOptions<'n> {
         DiffClapOptions {
             change: value_of(&matches, "change"),
             patchset: value_of(&matches, "patchset"),
-            pipeline: value_of(&matches, vec!["for", "pipeline"]),
+            pipeline: value_of(&matches, "pipeline"),
             local: matches.is_present("local"),
         }
     }

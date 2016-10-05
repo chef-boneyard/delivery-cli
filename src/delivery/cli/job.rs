@@ -72,7 +72,7 @@ impl<'n> JobClapOptions<'n> {
             stage: value_of(&matches, "stage"),
             phases: value_of(matches, "phases"),
             change: value_of(&matches, "change"),
-            pipeline: value_of(&matches, vec!["for", "pipeline"]),
+            pipeline: value_of(&matches, "pipeline"),
             job_root: value_of(&matches, "job-root"),
             project: value_of(&matches, "project"),
             user: value_of(&matches, "user"),

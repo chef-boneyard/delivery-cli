@@ -38,7 +38,7 @@ impl<'n> Default for CheckoutClapOptions<'n> {
 impl<'n> CheckoutClapOptions<'n> {
     pub fn new(matches: &'n ArgMatches<'n>) -> Self {
         CheckoutClapOptions {
-            pipeline: value_of(&matches, vec!["for", "pipeline"]),
+            pipeline: value_of(&matches, "pipeline"),
             change: value_of(&matches, "change"),
             patchset: value_of(&matches, "patchset"),
         }
