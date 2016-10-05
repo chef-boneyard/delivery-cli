@@ -40,7 +40,7 @@ impl<'n> Default for ReviewClapOptions<'n> {
 impl<'n> ReviewClapOptions<'n> {
     pub fn new(matches: &'n ArgMatches<'n>) -> Self {
         ReviewClapOptions {
-            pipeline: value_of(&matches, vec!["pipeline", "for"]),
+            pipeline: value_of(&matches, "pipeline"),
             no_open: matches.is_present("no-open"),
             auto_bump: matches.is_present("auto-bump"),
             edit: matches.is_present("edit"),
