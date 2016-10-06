@@ -26,7 +26,7 @@ end
 
 Given(/^the ptty output should not contain "(.*)"$/) do |string|
   if @current_pty.output_str.match(/#{string}/)
-    raise "The output of the pseudo tty command didn't match with #{string}" +
+    raise "The output of the pseudo tty command did match with #{string}" +
           "\nOutput: #{@current_pty.output_str}"
   end
 end

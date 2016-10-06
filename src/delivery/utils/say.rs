@@ -25,6 +25,7 @@ use std::time::Duration;
 
 /// Because sometimes, you just want a global variable.
 static mut show_spinner: bool = true;
+static mut show_output:  bool = true;
 
 pub struct Spinner {
     tx: Sender<isize>,
@@ -75,6 +76,18 @@ impl Spinner {
     }
 }
 
+pub fn turn_off_output() {
+    unsafe {
+        show_output = false;
+    }
+}
+
+pub fn turn_on_output() {
+    unsafe {
+        show_output = true;
+    }
+}
+
 pub fn turn_off_spinner() {
     unsafe {
         show_spinner = false;
@@ -99,7 +112,15 @@ fn say_term(mut t: Box<term::StdoutTerminal>, color: &str, to_say: &str) {
 
 pub fn say(color: &str, to_say: &str) {
     match term::stdout() {
-        Some(t) => say_term(t, color, to_say),
+        Some(t) => {
+            unsafe {
+                if show_output {
+                    say_term(t, color, to_say)
+                } else {
+                    debug!("{}", to_say)
+                }
+            }
+        },
         None => {
             print!("{}", to_say);
             io::stdout().flush().ok().expect("Could not flush stdout");
