@@ -8,7 +8,10 @@ rust_execute 'cargo test' do
   cwd node['delivery_builder']['repo']
   environment(
     'RUST_TEST_TASKS' => "1",
-    'RUST_BACKTRACE'  => "1"
+    'RUST_BACKTRACE'  => "1",
+    'GIT_COMMITTER_NAME' => "dbuild@test.com",
+    'GIT_AUTHOR_NAME' => "dbuild@test.com",
+    'EMAIL' => "dbuild@test.com"
   )
 end
 
@@ -21,5 +24,10 @@ end
 ruby_execute 'bundle install --binstubs=bin --path=vendor/bundle && bin/cucumber 2>/dev/null && rm -rf features/tmp' do
   version node['delivery_rust']['ruby_version']
   cwd node['delivery_builder']['repo']
+  environment(
+    'GIT_COMMITTER_NAME' => "dbuild@test.com",
+    'GIT_AUTHOR_NAME' => "dbuild@test.com",
+    'EMAIL' => "dbuild@test.com"
+  )
 end
 

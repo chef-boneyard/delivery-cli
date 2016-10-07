@@ -1,34 +1,47 @@
 {
-    "version": "2",
-    "build_cookbook": {
-        "name": "delivery_rust",
-        "path": "cookbooks/delivery_rust"
-    },
-    "skip_phases": [
-      "lint",
-      "security",
-      "smoke",
-      "deploy",
-      "publish",
-      "quality",
-      "provision"
-    ],
-    "build_nodes": {
-        "default"    : ["name:builder*.shd.chef.co"],
-        "unit"       : [
-          "name:builder*.shd.chef.co AND platform_family:debian AND platform_version:12.04",
-          "name:builder*.shd.chef.co AND platform_family:debian AND platform_version:14.04",
-          "name:builder*.shd.chef.co AND platform_family:rhel"
-        ],
-        "syntax"     : [
-          "name:builder*.shd.chef.co AND platform_family:debian AND platform_version:12.04",
-          "name:builder*.shd.chef.co AND platform_family:debian AND platform_version:14.04",
-          "name:builder*.shd.chef.co AND platform_family:rhel"
-        ],
-        "publish"    : [
-          "name:builder*.shd.chef.co AND platform_family:debian AND platform_version:12.04",
-          "name:builder*.shd.chef.co AND platform_family:debian AND platform_version:14.04",
-          "name:builder*.shd.chef.co AND platform_family:rhel"
-        ]
+  "version": "2",
+  "build_cookbook": {
+    "name": "delivery_rust",
+    "path": "cookbooks/delivery_rust"
+  },
+  "job_dispatch": {
+    "version": "v2",
+    "filters": {
+      "unit": [
+        {
+          "platform_family": ["debian"],
+          "platform_version": ["12.04"]
+        },
+        {
+          "platform_family": ["debian"],
+          "platform_version": ["14.04"]
+        },
+        {
+          "platform_family": ["rhel"]
+        }
+      ],
+      "syntax": [
+        {
+          "platform_family": ["debian"],
+          "platform_version": ["12.04"]
+        },
+        {
+          "platform_family": ["debian"],
+          "platform_version": ["14.04"]
+        },
+        {
+          "platform_family": ["rhel"]
+        }
+      ]
     }
+  },
+  "skip_phases": [
+    "lint",
+    "security",
+    "smoke",
+    "deploy",
+    "publish",
+    "quality",
+    "provision"
+  ]
 }
