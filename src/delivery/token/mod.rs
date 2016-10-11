@@ -30,13 +30,14 @@ use std::io::BufReader;
 use std::path::PathBuf;
 use std::fs::{File, OpenOptions};
 use std::collections::BTreeMap;
-use std::env;
-use errors::{DeliveryError, Kind};
+use errors::DeliveryError;
+use types::DeliveryResult;
 use utils;
 use utils::path_join_many::PathJoinMany;
 use config::Config;
 use http;
 use utils::say::{sayln,say};
+use utils::{home_dir, env_variable};
 use rpassword;
 
 #[derive(Debug)]
@@ -46,16 +47,9 @@ pub struct TokenStore {
 }
 
 impl TokenStore {
-    pub fn from_home() -> Result<TokenStore, DeliveryError> {
-        let home_dot_delivery = match env::home_dir() {
-            Some(home) => home.join_many(&[".delivery"]),
-            None => {
-                let msg = "unable to find home dir".to_string();
-                return Err(DeliveryError{ kind: Kind::NoHomedir,
-                                          detail: Some(msg) })
-            }
-        };
-        try!(utils::mkdir_recursive(&home_dot_delivery));
+    pub fn from_home() -> DeliveryResult<TokenStore> {
+        let home_dot_delivery = try!(home_dir(&[".delivery"]));
+        try!(utils::mkdir_recursive(home_dot_delivery.as_path()));
         let token_path = home_dot_delivery.join_many(&["api-tokens"]);
         TokenStore::from_file(&token_path)
     }
@@ -89,7 +83,7 @@ impl TokenStore {
         }
     }
 
-    pub fn verify_token(config: &Config) -> Result<String, DeliveryError>  {
+    pub fn verify_token(config: &Config) -> DeliveryResult<String>  {
       let server = try!(config.api_host_and_port());
       let ent = try!(config.enterprise());
       let user = try!(config.user());
@@ -117,37 +111,45 @@ impl TokenStore {
       TokenStore::request_token(&config)
     }
 
-    pub fn request_token(config: &Config) -> Result<String, DeliveryError>  {
-      sayln("yellow", "Requesting Token");
-      let ent = try!(config.enterprise());
-      let user = try!(config.user());
-      let api_server = try!(config.api_host_and_port());
-      let mut tstore = try!(TokenStore::from_home());
-      let saml = match config.saml {
-          Some(b) => b,
-          None => try!(http::saml::is_enabled(&config)),
-      };
-      let token = if saml {
-          let mut enter = String::new();
-          say("red", "Press Enter to open a browser window to retrieve a new token.");
-          try!(io::stdin().read_line(&mut enter));
-          sayln("white", "Launching browser..");
-          try!(TokenStore::initate_saml_auth(&config));
-          let mut token = String::new();
-          say("white", "Enter token: ");
-          try!(io::stdin().read_line(&mut token));
-          token.trim().to_string()
-      } else {
-          let pass = try!(rpassword::prompt_password_stdout("Automate password: "));
-          try!(http::token::request(&config, &pass))
-      };
-      sayln("magenta", &format!("token: {}", &token));
-      try!(tstore.write_token(&api_server, &ent, &user, &token));
-      sayln("green", &format!("saved API token to: {}", tstore.path().display()));
-      if saml {
-          try!(TokenStore::verify_token(&config));
-      };
-      Ok(token)
+    pub fn request_token(config: &Config) -> DeliveryResult<String> {
+        sayln("yellow", "Requesting Token");
+        let ent = try!(config.enterprise());
+        let user = try!(config.user());
+        let api_server = try!(config.api_host_and_port());
+        let mut tstore = try!(TokenStore::from_home());
+
+        let saml = match config.saml {
+            Some(b) => b,
+            None => try!(http::saml::is_enabled(&config)),
+        };
+        let token = if saml {
+            let mut enter = String::new();
+            say("red", "Press Enter to open a browser window to retrieve a new token.");
+            try!(io::stdin().read_line(&mut enter));
+            sayln("white", "Launching browser..");
+            try!(TokenStore::initate_saml_auth(&config));
+            let mut token = String::new();
+            say("white", "Enter token: ");
+            try!(io::stdin().read_line(&mut token));
+            token.trim().to_string()
+        } else {
+            // For automation purposes if the end-user provides the environment
+            // variable `AUTOMATE_PASSWORD` we will consume it instead of prompting
+            // to write the password in the terminal, but if the variable is not set
+            // we will still ask for it
+            let pass: String = match env_variable("AUTOMATE_PASSWORD") {
+                Some(p) => p,
+                None => try!(rpassword::prompt_password_stdout("Automate password: "))
+            };
+            try!(http::token::request(&config, &pass))
+        };
+        sayln("magenta", &format!("token: {}", &token));
+        try!(tstore.write_token(&api_server, &ent, &user, &token));
+        sayln("green", &format!("saved API token to: {}", tstore.path().display()));
+        if saml {
+            try!(TokenStore::verify_token(&config));
+        };
+        Ok(token)
     }
 
     fn web_token_url(config: &Config) -> Result<String, DeliveryError> {

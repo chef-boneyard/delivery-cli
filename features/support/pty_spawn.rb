@@ -76,6 +76,15 @@ module Delivery
       @input["#{expect}"] = type
     end
 
+    # Add an environment variable to the ptty
+    #
+    # @param name  [String] Then name of the environment variable to add
+    # @param value [String] The value of the environment variable to add
+    def add_env_variable(name, value)
+      puts "Adding env_variable: { '#{name}' => '#{value}' }" if @debug
+      @environment["#{name}"] = value
+    end
+
     # Cd into a directory
     def cd(dir)
       @pwd = File.join(@pwd, dir)

@@ -44,6 +44,11 @@ mod unix;
 #[cfg(target_os = "windows")]
 mod windows;
 
+// Extract the Environment Variable of the provided `key`
+pub fn env_variable(key: &str) -> Option<String> {
+    env::var(key).ok()
+}
+
 pub fn mkdir_recursive<P: ?Sized>(path: &P) -> Result<(), DeliveryError> where P: AsRef<Path> {
     try!(fs::create_dir_all(path.as_ref()));
     Ok(())

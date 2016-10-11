@@ -18,24 +18,38 @@
 use cli;
 use cli::token::TokenClapOptions;
 use types::{DeliveryResult, ExitCode};
-use utils::say::sayln;
+use utils::say::{turn_on_output, turn_off_output, sayln};
 use utils::cwd;
 use token::TokenStore;
 
 pub fn run(opts: TokenClapOptions) -> DeliveryResult<ExitCode> {
+    // If we want the raw token, we wont print any output
+    // during the token request so we will disable it
+    if opts.raw {
+        turn_off_output();
+    }
+
     sayln("green", "Chef Delivery");
     let mut config = try!(cli::load_config(&cwd()));
     config = config.set_server(opts.server)
         .set_api_port(opts.port)
         .set_enterprise(opts.ent)
         .set_user(opts.user);
+
     if opts.saml.is_some() {
         config.saml = opts.saml;
     }
-    if opts.verify {
-        try!(TokenStore::verify_token(&config));
+
+    let token: String = if opts.verify {
+        try!(TokenStore::verify_token(&config))
     } else {
-        try!(TokenStore::request_token(&config));
+        try!(TokenStore::request_token(&config))
+    };
+
+    if opts.raw {
+        turn_on_output();
+        sayln("white", &format!("{}", &token));
     }
+
     Ok(0)
 }

@@ -12,12 +12,23 @@ Given(/^I expect for "(.*)" then type "(.*)"$/) do |exp, txt|
   @current_pty.expect_and_type(exp, txt)
 end
 
+Given(/^I set inside my ptty the env variable "(.*)" to "(.*)"$/) do |name, value|
+  @current_pty.add_env_variable(name, value)
+end
+
 Given(/^I cd inside my ptty to "(.*)"$/) do |dir|
   @current_pty.cd(dir)
 end
 
 Given(/^I run my ptty command$/) do
   @current_pty.run
+end
+
+Given(/^the ptty output should not contain "(.*)"$/) do |string|
+  if @current_pty.output_str.match(/#{string}/)
+    raise "The output of the pseudo tty command did match with #{string}" +
+          "\nOutput: #{@current_pty.output_str}"
+  end
 end
 
 Given(/^the ptty output should contain "(.*)"$/) do |string|

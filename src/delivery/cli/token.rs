@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-use cli::arguments::value_of;
+use cli::arguments::{value_of, u_e_s_o_args};
 use clap::{Arg, App, SubCommand, ArgMatches};
 
 pub const SUBCOMMAND_NAME: &'static str = "token";
@@ -26,6 +26,7 @@ pub struct TokenClapOptions<'n> {
     pub ent: &'n str,
     pub user: &'n str,
     pub verify: bool,
+    pub raw: bool,
     // if None, use what the server tells us on its /e/<ent>/saml/enabled endpoint
     pub saml: Option<bool>,
 }
@@ -37,6 +38,7 @@ impl<'n> Default for TokenClapOptions<'n> {
             ent: "",
             user: "",
             verify: false,
+            raw: false,
             saml: None,
         }
     }
@@ -50,6 +52,7 @@ impl<'n> TokenClapOptions<'n> {
             ent: value_of(&matches, "ent"),
             user: value_of(&matches, "user"),
             verify: matches.is_present("verify"),
+            raw: matches.is_present("raw"),
             saml: match value_of(&matches, "saml") {
               "true" => Some(true),
               "false" => Some(false),
@@ -62,12 +65,10 @@ impl<'n> TokenClapOptions<'n> {
 pub fn clap_subcommand<'c>() -> App<'c, 'c> {
     SubCommand::with_name(SUBCOMMAND_NAME)
         .about("Create a local API token")
+        .args(&u_e_s_o_args())
         .args(&make_arg_vec![
-            "-u --user=[user] 'User name for Delivery authentication'",
-            "-e --ent=[ent] 'The enterprise in which the project lives'",
+            "--raw 'Output only the raw token string'",
             "--verify 'Verify the Token has expired'",
-            "--saml=[true/false] 'Use SAML authentication (overrides Delivery server)'",
-            "-s --server=[server] 'The Delivery server address'"])
-        .args_from_usage(
-            "--api-port=[api-port] 'Port for Delivery server'")
+            "--api-port=[api-port] 'Port for Delivery server'",
+            "--saml=[true/false] 'Use SAML authentication (overrides Delivery server)'"])
 }

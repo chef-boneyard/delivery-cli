@@ -245,10 +245,10 @@ Scenario: Token expired should trigger an automatic token request
   And the Delivery API server:
     """
       get('/api/v0/e/token/orgs') do
-	status 401
-	{
-	  "error"=> "token_expired"
-	}
+        status 401
+        {
+          "error"=> "token_expired"
+        }
       end
       get('/api/v0/e/token/users') do
         { "users" => ["petrashka"] }
@@ -277,3 +277,30 @@ Scenario: Token expired should trigger an automatic token request
     """
     127.0.0.1:8080,token,petrashka|THE_NEW_TOKEN
     """
+
+Scenario: For automation purposes I should be able to request a token
+	  on a single command-line without human interaction and display
+	  the raw token in the output
+
+  Given the Delivery API server:
+    """
+      get('/api/v0/e/automation/saml/enabled') do
+        status 200
+        {
+            "enabled" => false
+        }
+      end
+      post('/api/v0/e/automation/users/token/get-token') do
+        status 200
+        {
+            "token" => "MY_SUPER_DUPER_TOKEN"
+        }
+      end
+    """
+  When I invoke a pseudo tty with command "delivery token --server localhost:8080 --ent automation --user token --raw"
+  And I set inside my ptty the env variable "AUTOMATE_PASSWORD" to "something"
+  And I run my ptty command
+  Then the ptty exit status should be 0
+  And the ptty output should contain "MY_SUPER_DUPER_TOKEN"
+  And the ptty output should not contain "Requesting Token"
+  And the ptty output should not contain "saved API token to"
