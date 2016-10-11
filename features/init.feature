@@ -125,6 +125,17 @@ Scenario: When trying to specify both github and bitbucket
   Then the output should contain "specify just one Source Code Provider: delivery (default), github or bitbucket"
   And the exit status should be 1
 
+Scenario: When the directory name does not match the repo-name we will display a WARNING message
+  When I run `delivery init --github chef --repo-name not-ther-right-repo` interactively
+  And I type "Enter"
+  Then a github project is created in delivery
+  And a default config.json is created
+  And the change has the default generated build_cookbook
+  And the output should contain "WARN: The project within the Automate UI will be named 'delivery-cli-init'."
+  And the output should contain "Press Enter to confirm that this is what you want or Ctr+C to abort."
+  And I should be checked out to a feature branch named "initialize-delivery-pipeline"
+  And the exit status should be 0
+
 Scenario: When skipping the build_cookbook generator
   When I already have a .delivery/config.json on disk
   When a user creates a delivery backed project with option "--skip-build-cookbook"
