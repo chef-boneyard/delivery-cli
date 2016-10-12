@@ -329,7 +329,7 @@ Given(/^a dummy Delivery API server/) do
       status 200
       [
         {
-          "name" => "Github",
+          "name" => "GitHub",
           "projectCreateUri" => "/github-projects",
           "scmSetupConfigs" => [
             true

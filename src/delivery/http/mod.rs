@@ -339,7 +339,7 @@ impl APIClient {
     }
 
     pub fn get_github_server_config(&self) -> DeliveryResult<Vec<json::Json>> {
-        self.get_scm_server_config("Github")
+        self.get_scm_server_config("GitHub")
     }
 
     pub fn get_bitbucket_server_config(&self) -> DeliveryResult<Vec<json::Json>> {
