@@ -28,7 +28,8 @@ use std::path::{Path, PathBuf};
 use project;
 use git;
 use utils;
-use utils::say::sayln;
+use utils::say::{say, sayln};
+use std::io;
 use http::APIClient;
 use errors::{Kind, DeliveryError};
 use types::{DeliveryResult, ExitCode};
@@ -205,6 +206,7 @@ fn create_on_server(config: &Config,
         Some(scp_config) => {
             // TODO: actually handle this error
             try!(scp_config.verify_server_config(&client));
+            try!(compare_directory_name(&scp_config.repo_name));
 
             match scp_config.kind {
                 project::Type::Bitbucket => {
@@ -447,4 +449,19 @@ fn setup_github_remote_msg(s: &project::SourceCodeProvider) -> () {
     sayln("green", &format!(
             "git remote add origin https://github.com/{}/{}.git\n",
             s.organization, s.repo_name));
+}
+
+// Compare that the directory name is the same as the repo-name
+// provided by the user, if not show a WARN message
+fn compare_directory_name(repo_name: &str) -> DeliveryResult<()> {
+    let c_dir = utils::cwd();
+    if !c_dir.ends_with(repo_name) {
+        let mut enter = String::new();
+        let project_name = try!(project::project_from_cwd());
+        sayln("yellow", &format!("WARN: The project within the Automate UI will be named '{}'.",
+                                project_name));
+        say("red", "Press Enter to confirm that this is what you want or Ctr+C to abort.");
+        try!(io::stdin().read_line(&mut enter));
+    }
+    Ok(())
 }
