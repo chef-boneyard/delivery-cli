@@ -456,12 +456,24 @@ fn setup_github_remote_msg(s: &project::SourceCodeProvider) -> () {
 fn compare_directory_name(repo_name: &str) -> DeliveryResult<()> {
     let c_dir = utils::cwd();
     if !c_dir.ends_with(repo_name) {
-        let mut enter = String::new();
+        let mut answer = String::new();
         let project_name = try!(project::project_from_cwd());
-        sayln("yellow", &format!("WARN: The project within the Automate UI will be named '{}'.",
-                                project_name));
-        say("red", "Press Enter to confirm that this is what you want or Ctr+C to abort.");
-        try!(io::stdin().read_line(&mut enter));
+        sayln("yellow", &format!(
+                "WARN: This project will be named '{}', but the repository name is '{}'.",
+                project_name, repo_name));
+        say("yellow", "Are you sure this is what you want? y/n: ");
+        try!(io::stdin().read_line(&mut answer));
+        debug!("You answered '{}'", answer.trim());
+        if answer.trim() != "y" {
+            let msg = "\nTo match the project and the repository name you can:\n  1) \
+                      Create a directory with the same name as the repository.\n  2) \
+                      Clone or download the content of the repository inside.\n  3) \
+                      Run the 'delivery init' command within the new directory.".to_string();
+            return Err(DeliveryError{
+                kind: Kind::ProjectSCPNameMismatch,
+                detail: Some(msg)
+            });
+        }
     }
     Ok(())
 }
