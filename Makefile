@@ -23,7 +23,7 @@ ifeq ($(USE_CHEFDK_LIBS), true)
 else ifeq ($(UNAME),Darwin)
 	OPENSSL_PREFIX ?= /usr/local/opt/openssl
 	CARGO_ENV += OPENSSL_INCLUDE_DIR=$(OPENSSL_PREFIX)/include
-	CARGO_ENV += OPENSSL_LIB_DIR=$(OPENSSL_PREFIX)
+	CARGO_ENV += OPENSSL_LIB_DIR=$(OPENSSL_PREFIX)/lib
 else ifeq ($(UNAME),Linux)
 	OPENSSL_PREFIX ?= /usr/lib/x86_64-linux-gnu
         CARGO_ENV += OPENSSL_INCLUDE_DIR=$(OPENSSL_PREFIX)/include
