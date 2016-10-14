@@ -125,6 +125,29 @@ Scenario: When trying to specify both github and bitbucket
   Then the output should contain "specify just one Source Code Provider: delivery (default), github or bitbucket"
   And the exit status should be 1
 
+Scenario: When the directory name does not match the repo-name and I abort
+  When I run `delivery init --bitbucket chef --repo-name not-the-right-repo` interactively
+  And I type "n"
+  Then the output should contain "WARN: This project will be named 'delivery-cli-init', but the repository name is 'not-the-right-repo'."
+  And the output should contain "Are you sure this is what you want? y/n:"
+  And the output should contain "To match the project and the repository name you can:"
+  And the output should contain "1) Create a directory with the same name as the repository."
+  And the output should contain "2) Clone or download the content of the repository inside."
+  And the output should contain "3) Run the 'delivery init' command within the new directory."
+  And the exit status should be 1
+
+Scenario: When the directory name does not match the repo-name but I still want to proceed
+          we should at least display a WARNING message
+  When I run `delivery init --github chef --repo-name not-the-right-repo` interactively
+  And I type "y"
+  Then a github project is created in delivery
+  And a default config.json is created
+  And the change has the default generated build_cookbook
+  And the output should contain "WARN: This project will be named 'delivery-cli-init', but the repository name is 'not-the-right-repo'."
+  And the output should contain "Are you sure this is what you want? y/n:"
+  And I should be checked out to a feature branch named "initialize-delivery-pipeline"
+  And the exit status should be 0
+
 Scenario: When skipping the build_cookbook generator
   When I already have a .delivery/config.json on disk
   When a user creates a delivery backed project with option "--skip-build-cookbook"

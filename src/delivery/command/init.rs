@@ -28,7 +28,8 @@ use std::path::{Path, PathBuf};
 use project;
 use git;
 use utils;
-use utils::say::sayln;
+use utils::say::{say, sayln};
+use std::io;
 use http::APIClient;
 use errors::{Kind, DeliveryError};
 use types::{DeliveryResult, ExitCode};
@@ -205,6 +206,7 @@ fn create_on_server(config: &Config,
         Some(scp_config) => {
             // TODO: actually handle this error
             try!(scp_config.verify_server_config(&client));
+            try!(compare_directory_name(&scp_config.repo_name));
 
             match scp_config.kind {
                 project::Type::Bitbucket => {
@@ -447,4 +449,31 @@ fn setup_github_remote_msg(s: &project::SourceCodeProvider) -> () {
     sayln("green", &format!(
             "git remote add origin https://github.com/{}/{}.git\n",
             s.organization, s.repo_name));
+}
+
+// Compare that the directory name is the same as the repo-name
+// provided by the user, if not show a WARN message
+fn compare_directory_name(repo_name: &str) -> DeliveryResult<()> {
+    let c_dir = utils::cwd();
+    if !c_dir.ends_with(repo_name) {
+        let mut answer = String::new();
+        let project_name = try!(project::project_from_cwd());
+        sayln("yellow", &format!(
+                "WARN: This project will be named '{}', but the repository name is '{}'.",
+                project_name, repo_name));
+        say("yellow", "Are you sure this is what you want? y/n: ");
+        try!(io::stdin().read_line(&mut answer));
+        debug!("You answered '{}'", answer.trim());
+        if answer.trim() != "y" {
+            let msg = "\nTo match the project and the repository name you can:\n  1) \
+                      Create a directory with the same name as the repository.\n  2) \
+                      Clone or download the content of the repository inside.\n  3) \
+                      Run the 'delivery init' command within the new directory.".to_string();
+            return Err(DeliveryError{
+                kind: Kind::ProjectSCPNameMismatch,
+                detail: Some(msg)
+            });
+        }
+    }
+    Ok(())
 }
