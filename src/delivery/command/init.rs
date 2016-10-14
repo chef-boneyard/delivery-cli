@@ -176,7 +176,7 @@ pub fn run(init_opts: InitClapOptions) -> DeliveryResult<ExitCode> {
     if !init_opts.local {
         if review_needed {
             sayln("cyan", &format!("Submitting feature branch '{}' for review...", branch_name));
-            try!(trigger_review(config, branch_name, scp, &init_opts.no_open));
+            try!(trigger_review(config, scp, &init_opts.no_open));
         } else {
             sayln("white", "  Skipping: All changes have already be submitted for review, skipping.");
         }
@@ -207,30 +207,36 @@ fn create_on_server(config: &Config,
             // TODO: actually handle this error
             try!(scp_config.verify_server_config(&client));
             try!(compare_directory_name(&scp_config.repo_name));
+            let fancy_kind = try!(scp_config.kind_to_fancy_str());
+            let response: StatusCode;
 
+            sayln("cyan", &format!("Creating {} backed Delivery project...", fancy_kind));
             match scp_config.kind {
                 project::Type::Bitbucket => {
-                    try!(create_bitbucket_project(org, proj, pipe, git_url,
-                                                  client, scp_config))
+                    response = try!(client.create_bitbucket_project(
+                                            &org, &proj, &scp_config.repo_name,
+                                            &scp_config.organization, &scp_config.branch));
                 },
                 project::Type::Github => {
-                    sayln("cyan", "Creating Github backed Delivery project...");
-                    match try!(client.create_github_project(&org, &proj, &scp_config.repo_name,
-                                                            &scp_config.organization,
-                                                            &scp_config.branch,
-                                                            scp_config.verify_ssl)) {
-                        StatusCode::Conflict => {
-                            sayln("white", &format!("  Skipping: Github backed Delivery project \
-                                                     named {} already exists.", proj));
-
-                        },
-                        _ => {
-                            sayln("green", &format!("  Github backed Delivery project \
-                                                     named {} created.", proj));
-                        }
-                    }
+                    response = try!(client.create_github_project(&org, &proj, &scp_config.repo_name,
+                                            &scp_config.organization, &scp_config.branch,
+                                            scp_config.verify_ssl));
                 }
             }
+
+            match response {
+                StatusCode::Conflict => {
+                    sayln("white", &format!("  Skipping: {} backed Delivery project named {} \
+                                             already exists.", fancy_kind, proj));
+
+                },
+                _ => {
+                    sayln("green", &format!("  {} backed Delivery project named {} \
+                                             created.", fancy_kind, proj));
+                }
+            }
+            try!(setup_delivery_remote(&git_url));
+            try!(push_project_content_to_delivery(&pipe));
         },
         // If the user isn't using an scp, just delivery itself.
         None => {
@@ -242,68 +248,27 @@ fn create_on_server(config: &Config,
                 sayln("white",
                       &format!("  Skipping: Delivery project named {} already exists.", proj));
             }
-
-            // Setup delivery remote
-            sayln("cyan", "Creating Delivery git remote...");
-            if try!(project::create_delivery_remote_if_missing(&git_url)) {
-                sayln("green", &format!("  Remote 'delivery' added as {}.", git_url))
-            } else {
-                sayln("white",
-                      "  Skipping: Remote named 'delivery' already exists and is correct.")
-            }
-
-            // Push content to master if no upstream commits.
-            sayln("cyan", "Pushing initial git history...");
-            if !try!(project::push_project_content_to_delivery(&pipe)) {
-                sayln("white", &format!("  Skipping: Found commits on remote for pipeline {}, \
-                                         not pushing local commits.", pipe))
-            } else {
-                sayln("green", &format!("  No git history found for pipeline {}, \
-                                         pushing local commits from branch {}.", pipe, pipe))
-            }
-
-            // Create delivery pipeline unless it already exists.
-            sayln("cyan", "Creating pipeline on delivery server...");
-            if try!(project::create_delivery_pipeline(&client, &org, &proj, &pipe)) {
-                sayln("green", &format!("  Created Delivery pipeline {} for project {}.",
-                                      pipe, proj))
-            } else {
-                sayln("white", &format!("  Skipping: Delivery pipeline \
-                                         named {} already exists for project {}.", pipe, proj))
-            }
+            try!(setup_delivery_remote(&git_url));
+            try!(push_project_content_to_delivery(&pipe));
+            try!(create_delivery_pipeline(&client, &org, &proj, &pipe));
         }
     }
     Ok(())
 }
 
-fn create_bitbucket_project(org: String, proj: String, pipeline: String,
-                            git_url: String, client: APIClient,
-                            scp_config: project::SourceCodeProvider) -> DeliveryResult<()> {
-    sayln("cyan", "Creating Bitbucket backed Delivery project...");
-    match try!(client.create_bitbucket_project(&org, &proj, &scp_config.repo_name,
-                                               &scp_config.organization,
-                                               &scp_config.branch)) {
-        StatusCode::Conflict => {
-            sayln("white", &format!("  Skipping: Bitbucket backed Delivery project \
-                                     named {} already exists.", proj));
-
-        },
-        _ => {
-            sayln("green", &format!("  Bitbucket backed Delivery project \
-                                     named {} created.", proj));
-        }
-    }
-
-    // Setup delivery remote
+// Setup delivery remote
+fn setup_delivery_remote(git_url: &str) -> DeliveryResult<()> {
     sayln("cyan", "Creating Delivery git remote...");
     if try!(project::create_delivery_remote_if_missing(&git_url)) {
-        sayln("green", &format!("  Remote 'delivery' added as {}", git_url))
+        sayln("green", &format!("  Remote 'delivery' added as {}.", git_url))
     } else {
-        sayln("white",
-              "  Skipping: Remote named 'delivery' already exists and is correct.")
+        sayln("white", "  Skipping: Remote named 'delivery' already exists and is correct.")
     }
+    Ok(())
+}
 
-    // Push content to master if no upstream commits.
+// Push content to Delivery if no upstream commits.
+fn push_project_content_to_delivery(pipeline: &str) -> DeliveryResult<()> {
     sayln("cyan", "Pushing initial git history...");
     if !try!(project::push_project_content_to_delivery(&pipeline)) {
         sayln("white", &format!("  Skipping: Found commits on remote for pipeline {}, \
@@ -311,6 +276,20 @@ fn create_bitbucket_project(org: String, proj: String, pipeline: String,
     } else {
         sayln("green", &format!("  No git history found for pipeline {}, \
                                  pushing local commits from branch {}.", pipeline, pipeline))
+    }
+    Ok(())
+}
+
+// Create Delivery pipeline unless it already exists.
+fn create_delivery_pipeline(client: &APIClient, org: &str,
+                            proj: &str, pipe: &str) -> DeliveryResult<()> {
+    sayln("cyan", "Creating pipeline on Delivery server...");
+    if try!(project::create_delivery_pipeline(client, org, proj, pipe)) {
+        sayln("green", &format!("  Created Delivery pipeline {} for project {}.",
+                              pipe, proj))
+    } else {
+        sayln("white", &format!("  Skipping: Delivery pipeline \
+                            named {} already exists for project {}.", pipe, proj))
     }
     Ok(())
 }
@@ -367,8 +346,7 @@ fn generate_custom_build_cookbook(generator_str: String,
         }
     }
 
-    try!(project::chef_generate_build_cookbook_from_generator(&generator_path,
-                                                              &project_path));
+    try!(project::chef_generate_build_cookbook_from_generator(&generator_path, &project_path));
     sayln("green", "  Custom build cookbook generated at .delivery/build_cookbook.");
     return Ok(true)
 }
@@ -387,8 +365,8 @@ fn generate_delivery_config(config_json: Option<String>) -> DeliveryResult<bool>
                 Ok(true)
             },
             None => {
-                sayln("white", &format!("  Skipped: Content of custom config passed from {} exactly matches \
-                                         existing .delivery/config.json.", &json));
+                sayln("white", &format!("  Skipped: Content of custom config passed from {} exactly \
+                                         matches existing .delivery/config.json.", &json));
                 Ok(false)
             }
         }
@@ -397,58 +375,21 @@ fn generate_delivery_config(config_json: Option<String>) -> DeliveryResult<bool>
     }
 }
 
-// Triggers a delvery review.
-fn trigger_review(config: Config, branch_name: &str, scp: Option<project::SourceCodeProvider>,
+// Triggers an delivery review.
+fn trigger_review(config: Config, scp: Option<project::SourceCodeProvider>,
                   no_open: &bool) -> DeliveryResult<()> {
     let pipeline = try!(config.pipeline());
     let head = try!(git::get_head());
+
+    // We now trigger a review for every single project type
+    let review = try!(project::review(&pipeline, &head));
+    try!(project::handle_review_result(&review, no_open));
     match scp {
-        Some(s) => {
-            match s.kind {
-                project::Type::Bitbucket => {
-                    let review = try!(project::review(&pipeline, &head));
-                    try!(project::handle_review_result(&review, no_open));
-                    sayln("green", "  Review submitted to Delivery \
-                                    with Bitbucket intergration enabled.");
-                },
-                project::Type::Github => {
-                    // For now, delivery review doesn't works for Github projects
-                    // TODO: Make it work in github
-                    sayln("green", &format!("\nYour project is now set up with changes in the \
-                                             '{}' branch!", branch_name));
-                    sayln("green", "To finalize your project, you must submit and \
-                                    accept a Pull Request in github.");
-
-                    if try!(project::missing_github_remote()) {
-                        setup_github_remote_msg(&s)
-                    }
-
-                    sayln("green", "Push your project to github by running:\n");
-                    sayln("green", &format!("git push origin {}\n", branch_name));
-                    sayln("green", "Then log into github via your browser, make a \
-                                    Pull Request, then comment `@delivery approve`.");
-                }
-            }
-        },
-        None => {
-            let review = try!(project::review(&pipeline, &head));
-            try!(project::handle_review_result(&review, no_open));
-            sayln("green", "  Review submitted to Delivery.");
-        }
+        Some(s) => sayln("green", &format!("  Review submitted to Delivery with {} \
+                                           intergration enabled.", try!(s.kind_to_fancy_str()))),
+        None => sayln("green", "  Review submitted to Delivery.")
     }
     Ok(())
-}
-
-fn setup_github_remote_msg(s: &project::SourceCodeProvider) -> () {
-    sayln("green", "First, you must add your remote.");
-    sayln("green", "Run this if you want to use ssh:\n");
-    sayln("green", &format!(
-            "git remote add origin git@github.com:{}/{}.git\n",
-            s.organization, s.repo_name));
-    sayln("green", "Or this for https:\n");
-    sayln("green", &format!(
-            "git remote add origin https://github.com/{}/{}.git\n",
-            s.organization, s.repo_name));
 }
 
 // Compare that the directory name is the same as the repo-name
