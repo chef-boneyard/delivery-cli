@@ -90,6 +90,14 @@ impl SourceCodeProvider {
         })
     }
 
+    // Transform the kind Type to str
+    pub fn kind_to_fancy_str(&self) -> DeliveryResult<&str> {
+        match self.kind {
+            Type::Github => Ok("GitHub"),
+            Type::Bitbucket => Ok("Bitbucket")
+        }
+    }
+
     // Verify if the SCP is configured on the Delivery Server
     pub fn verify_server_config(&self, client: &APIClient) -> DeliveryResult<()> {
         match self.kind {
@@ -112,8 +120,8 @@ impl SourceCodeProvider {
 
 // Create a Delivery Pipeline.
 // Returns true if created, returns false if already exists.
-pub fn create_delivery_pipeline(client: &APIClient, org: &String,
-                                proj: &String, pipe: &String) -> DeliveryResult<bool> {
+pub fn create_delivery_pipeline(client: &APIClient, org: &str,
+                                proj: &str, pipe: &str) -> DeliveryResult<bool> {
     if client.pipeline_exists(org, proj, pipe) {
         return Ok(false)
     } else {
@@ -125,9 +133,8 @@ pub fn create_delivery_pipeline(client: &APIClient, org: &String,
 // Create a Delivery Project with Delivery as SCP (default).
 // If the project is created, return true.
 // If the project already exists, return false
-pub fn create_delivery_project(client: &APIClient,
-                               org: &String,
-                               proj: &String) -> DeliveryResult<bool> {
+pub fn create_delivery_project(client: &APIClient, org: &str,
+                               proj: &str) -> DeliveryResult<bool> {
     if client.project_exists(org, proj) {
         return Ok(false)
     } else {
@@ -149,7 +156,7 @@ pub fn push_project_content_to_delivery(pipeline: &str) -> DeliveryResult<bool> 
 
 // Create delivery remote if it doesn't exist. Returns true if created.
 pub fn create_delivery_remote_if_missing(
-      delivery_git_ssh_url: &String) -> DeliveryResult<bool> {
+      delivery_git_ssh_url: &str) -> DeliveryResult<bool> {
     if try!(git::config_repo(delivery_git_ssh_url, &project_path())) {
         return Ok(true)
     } else {
@@ -386,7 +393,7 @@ fn handle_chef_generate_cookbook_cmd(output: Output) -> DeliveryResult<()> {
     Ok(())
 }
 
-pub fn review(target: &String, head: &String) -> DeliveryResult<ReviewResult> {
+pub fn review(target: &str, head: &str) -> DeliveryResult<ReviewResult> {
     if target == head {
         Err(DeliveryError{ kind: Kind::CannotReviewSameBranch, detail: None })
     } else {
