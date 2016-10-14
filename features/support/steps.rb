@@ -204,8 +204,8 @@ Given(/^a bitbucket project is created in delivery$/) do
 end
 
 Given(/^a github project is created in delivery$/) do
-  step %(the output should match /Creating.*github.*project/)
-  step %(the output should not contain "Remote 'delivery' added as")
+  step %(the output should match /GitHub backed Delivery project named .* created./)
+  step %(the output should contain "Remote 'delivery' added as")
 end
 
 Given(/^a default config.json is created$/) do

@@ -105,9 +105,9 @@ Scenario: When creating a github backed project
   Then a github project is created in delivery
   And a default config.json is created
   And the change has the default generated build_cookbook
-  And the output should contain "git remote add"
   And the exit status should be 0
   And I should be checked out to a feature branch named "initialize-delivery-pipeline"
+  And a change should be created for branch "initialize-delivery-pipeline"
 
 Scenario: When creating a github backed project with an initial origin remote set
   When I successfully run `git init`
@@ -116,9 +116,9 @@ Scenario: When creating a github backed project with an initial origin remote se
   Then a github project is created in delivery
   And a default config.json is created
   And the change has the default generated build_cookbook
-  And the output should not contain "git remote add"
   And the exit status should be 0
   And I should be checked out to a feature branch named "initialize-delivery-pipeline"
+  And a change should be created for branch "initialize-delivery-pipeline"
 
 Scenario: When trying to specify both github and bitbucket
   When I run `delivery init --github proj --bitbucket proj`
@@ -143,9 +143,10 @@ Scenario: When the directory name does not match the repo-name but I still want 
   Then a github project is created in delivery
   And a default config.json is created
   And the change has the default generated build_cookbook
+  And I should be checked out to a feature branch named "initialize-delivery-pipeline"
+  And a change should be created for branch "initialize-delivery-pipeline"
   And the output should contain "WARN: This project will be named 'delivery-cli-init', but the repository name is 'not-the-right-repo'."
   And the output should contain "Are you sure this is what you want? y/n:"
-  And I should be checked out to a feature branch named "initialize-delivery-pipeline"
   And the exit status should be 0
 
 Scenario: When skipping the build_cookbook generator
