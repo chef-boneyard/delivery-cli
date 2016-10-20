@@ -231,6 +231,9 @@ this particular job execution.
 The contents of your `.delivery/config.json` file are made available to you in the
 `node['delivery']['config']` namespace.
 
+## Note for Git Bash + MinTTY Users
+If you're running `delivery token` on Windows in Git Bash with MintTTY you must include `winpty` before `delivery token` to avoid errors.
+
 ## License & Authors
 
 - Author:: Adam Jacob (<adam@chef.io>)
