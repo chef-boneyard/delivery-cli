@@ -5,5 +5,3 @@ license          'All Rights Reserved'
 description      'Installs/Configures delivery_test'
 long_description 'Installs/Configures delivery_test'
 version          '0.1.0'
-
-depends 'build-essential'
