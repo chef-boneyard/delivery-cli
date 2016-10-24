@@ -16,6 +16,7 @@ In particular, you will want to be familar with:
 + [Your First Delivery Project](https://docs.chef.io/delivery_truck.html#validate-the-installation)
 + [The Delivery Setup Command](https://docs.chef.io/ctl_delivery.html#delivery-setup)
 + [Delivery config.json](https://docs.chef.io/config_json_delivery.html)
++ [Project Initialization](https://github.com/chef/delivery-cli/blob/master/docs/PROJECT_INITIALIZATION.md)
 
 ## Development
 

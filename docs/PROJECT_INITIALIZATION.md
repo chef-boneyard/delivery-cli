@@ -1,6 +1,6 @@
 # Project Initialization
-This document will show you how to initialize projects in Chef Automate, it includes simple examples
-as well as complex that will teach you how to customize your own initialization process within your
+This document will show you how to initialize projects in Chef Automate. It includes both simple and
+complex examples that will teach you how to customize your own initialization process within your
 organization.
 
 ## Prerequisites
