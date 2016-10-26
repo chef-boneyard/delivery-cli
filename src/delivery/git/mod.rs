@@ -20,6 +20,7 @@ pub use errors;
 use std::process::Command;
 use utils::say::{say, sayln, Spinner};
 use utils::path_ext::{is_dir};
+use utils::{find_command};
 use errors::{DeliveryError, Kind};
 use std::env;
 use std::path::{Path, PathBuf};
@@ -88,7 +89,11 @@ pub struct GitResult {
 pub fn git_command<P: ?Sized>(args: &[&str], c: &P) -> Result<GitResult, DeliveryError> where P: AsRef<Path> {
     let cwd = c.as_ref();
     let spinner = Spinner::start();
-    let mut command = Command::new("git");
+    let command_path = match find_command("git") {
+        Some(path) => path,
+        None => return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some("git executable not found".to_owned())}),
+    };
+    let mut command = Command::new(command_path);
     command.args(args);
     command.current_dir(cwd);
     debug!("Git command: {:?}", command);
