@@ -16,10 +16,11 @@
 //
 
 use std::process::Command;
+use std::env;
 use errors::{DeliveryError, Kind};
 use libc;
 use utils::path_to_string;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::convert::AsRef;
 use std::error;
 
@@ -115,3 +116,26 @@ pub fn make_command(cmd: &str) -> Command {
     Command::new(cmd)
 }
 
+/// Returns the absolute path for a given command, if it exists, by searching the `PATH`
+/// environment variable.
+///
+/// If the command represents an absolute path, then the `PATH` seaching will not be performed.
+/// If no absolute path can be found for the command, then `None` is returned.
+pub fn find_command(command: &str) -> Option<PathBuf> {
+    // If the command path is absolute and a file exists, then use that.
+    let candidate = PathBuf::from(command);
+    if candidate.is_absolute() && candidate.is_file() {
+        return Some(candidate);
+    }
+    // Find the command by checking each entry in `PATH`. If we still can't find it,
+    // give up and return `None`.
+    if let Some(paths) = env::var_os("PATH") {
+        for path in env::split_paths(&paths) {
+            let candidate = PathBuf::from(&path).join(command);
+            if candidate.is_file() {
+                return Some(candidate);
+            }
+        }
+    }
+    None
+}

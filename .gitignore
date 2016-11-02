@@ -4,15 +4,13 @@
 .kitchen.local.yml
 .bundle
 bin/
+!tests/fixtures/bin/
 vendor/
 /omnibus/local/
 nodes/
 local-mode-cache
 
 # Cucumber Stuff
-vendor/
-.bundle/
-bin/
 tmp/
 /cookbooks/delivery_rust/cookbooks/
 /cookbooks/delivery_rust/nodes/

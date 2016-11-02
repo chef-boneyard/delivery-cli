@@ -175,3 +175,181 @@ mod tests {
         assert!(result.is_none());
     }
 }
+
+#[cfg(test)]
+mod test_find_command {
+    pub use super::find_command;
+    use std::env;
+    use std::fs;
+
+    fn setup_empty_pathext() {
+        if env::var("PATHEXT").is_ok() {
+            env::remove_var("PATHEXT")
+        }
+    }
+
+    fn setup_path() {
+        let path_env = env::var_os("PATH").unwrap();
+        let mut path_vec = env::split_paths(&path_env).collect::<Vec<_>>();
+        let second_path = fs::canonicalize("./tests/fixtures/bin").unwrap();
+        path_vec.push(second_path);
+        let test_paths = env::join_paths(path_vec).unwrap();
+        env::set_var("PATH", &test_paths);
+    }
+
+    mod without_pathext_set {
+        use super::{setup_path, setup_empty_pathext};
+        pub use super::find_command;
+
+        fn setup_environment() {
+            setup_path();
+            setup_empty_pathext();
+        }
+
+        mod argument_without_extension {
+            use super::{setup_environment, find_command};
+
+            #[test]
+            fn command_exists() {
+                setup_environment();
+                let result = find_command("bin_with_no_extension");
+                assert_eq!(result.is_some(), true);
+            }
+
+            #[test]
+            fn command_does_not_exist() {
+                setup_environment();
+                let result = find_command("missing");
+                assert_eq!(result.is_some(), false);
+            }
+
+            #[test]
+            fn command_exists_with_extension() {
+                setup_environment();
+                let result = find_command("win95_dominator");
+                assert_eq!(result.is_some(), false);
+            }
+        }
+
+        mod argument_with_extension {
+            use std::fs::canonicalize;
+            use super::{setup_environment, find_command};
+
+            #[test]
+            fn command_exists() {
+                setup_environment();
+                let result = find_command("bin_with_extension.exe");
+                assert_eq!(result.is_some(), true);
+            }
+
+            #[test]
+            fn command_does_not_exist() {
+                setup_environment();
+                let result = find_command("missing.com");
+                assert_eq!(result.is_some(), false);
+            }
+
+            #[test]
+            fn command_different_extension_does_exist() {
+                setup_environment();
+                let result = find_command("bin_with_extension.com");
+                assert_eq!(result.is_some(), false);
+            }
+
+            #[test]
+            fn first_command_on_path_found() {
+                setup_environment();
+                let target_path = canonicalize("./tests/fixtures/bin/plan.sh").unwrap();
+                let result = find_command("plan.sh");
+                let found_path = result.unwrap();
+                assert_eq!(found_path, target_path);
+            }
+        }
+    }
+
+    #[cfg(target_os="windows")]
+    mod with_pathext_set {
+        use std::env;
+        use std::path::PathBuf;
+        use super::{setup_path};
+        pub use super::find_command;
+
+        fn setup_pathext() {
+            let path_bufs = vec![PathBuf::from(".COM"), PathBuf::from(".EXE")];
+            let new_path = env::join_paths(path_bufs).unwrap();
+            env::set_var("PATHEXT", &new_path);
+        }
+
+        fn setup_environment() {
+            setup_path();
+            setup_pathext();
+        }
+
+        mod argument_without_extension {
+            use super::{setup_environment, find_command};
+
+            #[test]
+            fn command_exists() {
+                setup_environment();
+                let result = find_command("bin_with_no_extension");
+                assert_eq!(result.is_some(), true);
+            }
+
+            #[test]
+            fn command_does_not_exist() {
+                setup_environment();
+                let result = find_command("missing");
+                assert_eq!(result.is_some(), false);
+            }
+
+            #[test]
+            fn command_exists_with_extension_in_pathext() {
+                setup_environment();
+                let result = find_command("bin_with_extension");
+                assert_eq!(result.is_some(), true);
+            }
+
+            #[test]
+            fn command_exists_with_extension_not_in_pathext() {
+                setup_environment();
+                let result = find_command("win95_dominator");
+                assert_eq!(result.is_some(), false);
+            }
+        }
+
+        mod argument_with_extension {
+            use std::fs::canonicalize;
+            use super::{setup_environment, find_command};
+
+            #[test]
+            fn command_exists() {
+                setup_environment();
+                let result = find_command("bin_with_extension.exe");
+                assert_eq!(result.is_some(), true);
+            }
+
+            #[test]
+            fn command_does_not_exist() {
+                setup_environment();
+                let result = find_command("missing.com");
+                assert_eq!(result.is_some(), false);
+            }
+
+            #[test]
+            fn command_different_extension_does_exist() {
+                setup_environment();
+                let result = find_command("bin_with_extension.com");
+                assert_eq!(result.is_some(), false);
+            }
+
+            #[test]
+            fn first_command_on_path_found() {
+                setup_environment();
+                let target_path = canonicalize("./tests/fixtures/bin/plan.sh").unwrap();
+                let result = find_command("plan.sh");
+                let found_path = result.unwrap();
+                assert_eq!(found_path, target_path);
+            }
+        }
+    }
+}
