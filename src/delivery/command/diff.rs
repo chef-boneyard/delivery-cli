@@ -20,12 +20,10 @@ use git;
 use cli::diff::DiffClapOptions;
 use types::{DeliveryResult, ExitCode};
 use utils::say::{say, sayln};
-use utils::cwd;
 
 pub fn run(opts: DiffClapOptions) -> DeliveryResult<ExitCode> {
     sayln("green", "Chef Delivery");
-    let mut config = try!(cli::load_config(&cwd()));
-    config = config.set_pipeline(opts.pipeline);
+    let config = try!(cli::init_command(&opts));
     let target = validate!(config, pipeline);
     say("white", "Showing diff for ");
     say("yellow", opts.change);

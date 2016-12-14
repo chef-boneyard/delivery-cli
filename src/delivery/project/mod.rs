@@ -154,16 +154,6 @@ pub fn push_project_content_to_delivery(pipeline: &str) -> DeliveryResult<bool> 
     }
 }
 
-// Create delivery remote if it doesn't exist. Returns true if created.
-pub fn create_delivery_remote_if_missing(
-      delivery_git_ssh_url: &str) -> DeliveryResult<bool> {
-    if try!(git::config_repo(delivery_git_ssh_url, &project_path())) {
-        return Ok(true)
-    } else {
-        return Ok(false)
-    }
-}
-
 // Check to see if the origin remote is set up.
 pub fn missing_github_remote() -> DeliveryResult<bool> {
     let git_remote_result = git::git_command(&["remote"], &project_path());

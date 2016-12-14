@@ -15,20 +15,16 @@
 // limitations under the License.
 //
 
+use cli;
 use cli::api::ApiClapOptions;
 use types::{DeliveryResult, ExitCode};
 use errors::{DeliveryError, Kind};
-use config::Config;
-use utils::cwd;
 use http::APIClient;
 use hyper::status::StatusCode;
 
 pub fn run(opts: ApiClapOptions) -> DeliveryResult<ExitCode> {
-    let mut config = try!(Config::load_config(&cwd()));
-    config = config.set_user(opts.user)
-        .set_server(opts.server)
-        .set_api_port(opts.api_port)
-        .set_enterprise(opts.ent);
+    let config = try!(cli::init_command(&opts));
+
     let client = try!(APIClient::from_config(&config));
     let mut result = match opts.method {
         "get" => try!(client.get(opts.path)),

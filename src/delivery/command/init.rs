@@ -22,7 +22,7 @@
 
 use cli::init::InitClapOptions;
 use delivery_config::DeliveryConfig;
-use cli::load_config;
+use cli;
 use config::Config;
 use std::path::{Path, PathBuf};
 use project;
@@ -35,38 +35,29 @@ use errors::{Kind, DeliveryError};
 use types::{DeliveryResult, ExitCode};
 use hyper::status::StatusCode;
 
-pub fn run(init_opts: InitClapOptions) -> DeliveryResult<ExitCode> {
+pub fn run(opts: InitClapOptions) -> DeliveryResult<ExitCode> {
     sayln("green", "Chef Delivery");
-    let mut config = try!(load_config(&utils::cwd()));
-    let final_proj = try!(project::project_or_from_cwd(init_opts.project));
+    let config = try!(cli::init_command(&opts));
 
-    config = config.set_user(init_opts.user)
-        .set_server(init_opts.server)
-        .set_enterprise(init_opts.ent)
-        .set_organization(init_opts.org)
-        .set_project(&final_proj)
-        .set_pipeline(init_opts.pipeline)
-        .set_generator(init_opts.generator)
-        .set_config_json(init_opts.config_json);
     let branch = try!(config.pipeline());
 
-    if !init_opts.github_org_name.is_empty()
-        && !init_opts.bitbucket_project_key.is_empty() {
+    if !opts.github_org_name.is_empty()
+        && !opts.bitbucket_project_key.is_empty() {
         sayln("red", "\nPlease specify just one Source Code Provider: \
               delivery (default), github or bitbucket.");
         return Ok(1)
     }
 
-    let scp = if !init_opts.github_org_name.is_empty() {
+    let scp = if !opts.github_org_name.is_empty() {
         Some(
-            try!(project::SourceCodeProvider::new("github", &init_opts.repo_name,
-                                                  &init_opts.github_org_name, &branch,
-                                                  init_opts.no_v_ssl))
+            try!(project::SourceCodeProvider::new("github", &opts.repo_name,
+                                                  &opts.github_org_name, &branch,
+                                                  opts.no_v_ssl))
         )
-    } else if !init_opts.bitbucket_project_key.is_empty() {
+    } else if !opts.bitbucket_project_key.is_empty() {
         Some(
-            try!(project::SourceCodeProvider::new("bitbucket", &init_opts.repo_name,
-                                                  &init_opts.bitbucket_project_key,
+            try!(project::SourceCodeProvider::new("bitbucket", &opts.repo_name,
+                                                  &opts.bitbucket_project_key,
                                                   &branch, true))
         )
     } else {
@@ -77,13 +68,13 @@ pub fn run(init_opts: InitClapOptions) -> DeliveryResult<ExitCode> {
     let project_path = project::project_path();
     project::create_dot_delivery();
 
-    if !init_opts.local {
+    if !opts.local {
         try!(create_on_server(&config, scp.clone()))
     }
 
 
     // Generate build cookbook, either custom or default.
-    let custom_build_cookbook_generated = if !init_opts.skip_build_cookbook {
+    let custom_build_cookbook_generated = if !opts.skip_build_cookbook {
         try!(generate_build_cookbook(&config))
     } else {
         false
@@ -173,10 +164,10 @@ pub fn run(init_opts: InitClapOptions) -> DeliveryResult<ExitCode> {
     }
 
     // Trigger review if there were any custom commits to review.
-    if !init_opts.local {
+    if !opts.local {
         if review_needed {
             sayln("cyan", &format!("Submitting feature branch '{}' for review...", branch_name));
-            try!(trigger_review(config, scp, &init_opts.no_open));
+            try!(trigger_review(config, scp, &opts.no_open));
         } else {
             sayln("white", "  Skipping: All changes have already be submitted for review, skipping.");
         }
@@ -196,7 +187,6 @@ pub fn run(init_opts: InitClapOptions) -> DeliveryResult<ExitCode> {
 fn create_on_server(config: &Config,
                     scp: Option<project::SourceCodeProvider>) -> DeliveryResult<()> {
     let client = try!(APIClient::from_config(config));
-    let git_url = try!(config.delivery_git_ssh_url());
     let org = try!(config.organization());
     let proj = try!(config.project());
     let pipe = try!(config.pipeline());
@@ -235,7 +225,6 @@ fn create_on_server(config: &Config,
                                              created.", fancy_kind, proj));
                 }
             }
-            try!(setup_delivery_remote(&git_url));
             try!(push_project_content_to_delivery(&pipe));
         },
         // If the user isn't using an scp, just delivery itself.
@@ -248,21 +237,9 @@ fn create_on_server(config: &Config,
                 sayln("white",
                       &format!("  Skipping: Delivery project named {} already exists.", proj));
             }
-            try!(setup_delivery_remote(&git_url));
             try!(push_project_content_to_delivery(&pipe));
             try!(create_delivery_pipeline(&client, &org, &proj, &pipe));
         }
-    }
-    Ok(())
-}
-
-// Setup delivery remote
-fn setup_delivery_remote(git_url: &str) -> DeliveryResult<()> {
-    sayln("cyan", "Creating Delivery git remote...");
-    if try!(project::create_delivery_remote_if_missing(&git_url)) {
-        sayln("green", &format!("  Remote 'delivery' added as {}.", git_url))
-    } else {
-        sayln("white", "  Skipping: Remote named 'delivery' already exists and is correct.")
     }
     Ok(())
 }

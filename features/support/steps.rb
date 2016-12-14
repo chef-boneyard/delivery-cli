@@ -62,6 +62,14 @@ Given(/^I have a custom project.toml file$/) do
   step %(a file named ".delivery/project.toml" with:), project_toml
 end
 
+Given(/^I have a valid cli.toml file$/) do
+  step %(a file named ".delivery/cli.toml" with:), valid_cli_toml
+end
+
+Given(/^I have a valid cli\.toml file with with "([^"]*)":$/) do |append_str|
+  step %(a file named ".delivery/cli.toml" with:), valid_cli_toml + "\n" + append_str
+end
+
 Given(/^I have a custom generator cookbook with no config generator$/) do
   step %(I have a custom generator cookbook)
   step %(a file named "#{tmp_relative_path}/test-generator/recipes/build_cookbook.rb" with:), build_cookbook_rb
@@ -189,23 +197,19 @@ end
 
 Given(/^a delivery project is created in delivery$/) do
   step %(the output should match /Delivery project named.*was created/)
-  step %(the output should contain "Remote 'delivery' added as")
 end
 
 Given(/^a delivery project should not be created in delivery$/) do
   step %(the output should not match /Delivery project named.*was created/)
   step %(the output should match /Delivery project named .* already exists/)
-  step %(the output should contain "Remote 'delivery' added as")
 end
 
 Given(/^a bitbucket project is created in delivery$/) do
   step %(the output should match /Bitbucket backed Delivery project named .* created./)
-  step %(the output should contain "Remote 'delivery' added as")
 end
 
 Given(/^a github project is created in delivery$/) do
   step %(the output should match /GitHub backed Delivery project named .* created./)
-  step %(the output should contain "Remote 'delivery' added as")
 end
 
 Given(/^a default config.json is created$/) do

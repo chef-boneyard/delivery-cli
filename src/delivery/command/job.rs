@@ -37,19 +37,8 @@ pub fn run(opts: JobClapOptions) -> DeliveryResult<ExitCode> {
         return run_docker_job(opts)
     }
 
-    let mut config = try!(cli::load_config(&cwd()));
-    config = if opts.project.is_empty() {
-        let filename = String::from(cwd().file_name().unwrap().to_str().unwrap());
-        config.set_project(&filename)
-    } else {
-        config.set_project(opts.project)
-    };
+    let config = try!(cli::init_command(&opts));
 
-    config = config.set_pipeline(opts.pipeline)
-        .set_user(with_default(opts.user, "you", &opts.local))
-        .set_server(with_default(opts.server, "localhost", &opts.local))
-        .set_enterprise(with_default(opts.ent, "local", &opts.local))
-        .set_organization(with_default(opts.org, "workstation", &opts.local));
     let p = try!(config.project());
     let s = try!(config.server());
     let e = try!(config.enterprise());
@@ -251,10 +240,3 @@ fn maybe_add_flag(cmd: &mut Command, flag: &str, value: &bool) {
     }
 }
 
-fn with_default<'a>(val: &'a str, default: &'a str, local: &bool) -> &'a str {
-    if !local || !val.is_empty() {
-        val
-    } else {
-        default
-    }
-}

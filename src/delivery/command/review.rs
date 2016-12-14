@@ -15,9 +15,8 @@
 // limitations under the License.
 //
 
+use cli;
 use cli::review::ReviewClapOptions;
-use delivery_config::DeliveryConfig;
-use cli::load_config;
 use config::Config;
 use project;
 use utils;
@@ -27,11 +26,11 @@ use types::{DeliveryResult, ExitCode};
 use cookbook;
 use git::{self, ReviewResult};
 use http;
+use delivery_config::DeliveryConfig;
 
 pub fn run(review_opts: ReviewClapOptions) -> DeliveryResult<ExitCode> {
     sayln("green", "Chef Delivery");
-    let mut config = try!(load_config(&utils::cwd()));
-    config = config.set_pipeline(review_opts.pipeline);
+    let mut config = try!(cli::init_command(&review_opts));
     let target = validate!(config, pipeline);
     let project_root = try!(project::root_dir(&utils::cwd()));
     try!(DeliveryConfig::validate_config_file(&project_root));

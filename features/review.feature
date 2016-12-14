@@ -7,6 +7,7 @@ Feature: review
 
 Background:
   Given I am in the "project" git repo
+  Given I have a valid cli.toml file
   And a file named ".git/config" with:
     """
     [config]
@@ -14,8 +15,17 @@ Background:
   And a file named ".delivery/config.json" with:
     """
     {
-     "version": "1",
-     "build_cookbook": "delivery-truck"
+      "version": "2",
+      "build_cookbook": {
+        "name": "delivery_test",
+        "path": "cookbooks/delivery_test"
+      },
+      "build_nodes": {
+        "default"    : ["name:delivery-builder*"]
+      },
+      "dependencies": [
+        "projectA"
+      ]
     }
     """
 
@@ -194,10 +204,7 @@ Scenario: I enable the auto_bump feature persistently in the cli.toml
     version '1.2.3'
     """
   And I commit all files with message "existing repo has version 1.2.3"
-  And a file named ".delivery/cli.toml" with:
-    """
-    auto_bump = true
-    """
+  And I have a valid cli.toml file with with "auto_bump = true":
   And I have a feature branch "cookbook" off of "master"
   And I checkout the "cookbook" branch
   When I successfully run `delivery review`
@@ -210,3 +217,33 @@ Scenario: I enable the auto_bump feature persistently in the cli.toml
     """
     version '1.2.4'
     """
+
+Scenario: Review from child dir
+
+  When I have a feature branch "foo" off of "master"
+  And I checkout the "foo" branch
+  And I successfully run `mkdir tmp`
+  And I cd to "tmp/"
+  And I successfully run `delivery review`
+  Then the output should contain "Review for change "
+  And the output should not contain "is a cookbook"
+  And "git push --porcelain --progress --verbose delivery foo:_for/master/foo" should be run
+
+Scenario: Review with a V1 config
+
+  When I have a feature branch "foo" off of "master"
+  And I checkout the "foo" branch
+  And a file named ".delivery/config.json" with:
+    """
+    {
+      "version": "1",
+      "build_cookbook": "./.delivery/build_cookbook",
+      "build_nodes": {
+        "default": ["name:delivery-builder*"]
+      }
+    }
+    """
+  And I successfully run `delivery review`
+  Then the output should contain "Review for change "
+  And the output should not contain "is a cookbook"
+  And "git push --porcelain --progress --verbose delivery foo:_for/master/foo" should be run

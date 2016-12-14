@@ -16,6 +16,9 @@
 //
 use cli::arguments::{pipeline_arg, no_open_arg, value_of, auto_bump};
 use clap::{App, SubCommand, ArgMatches};
+use config::Config;
+use cli::InitCommand;
+use project;
 
 pub const SUBCOMMAND_NAME: &'static str = "review";
 
@@ -45,6 +48,15 @@ impl<'n> ReviewClapOptions<'n> {
             auto_bump: matches.is_present("auto-bump"),
             edit: matches.is_present("edit"),
         }
+    }
+}
+
+impl<'n> InitCommand for ReviewClapOptions<'n> {
+    fn merge_options_and_config(&self, config: Config) -> Config {
+        let project = project::project_from_cwd().unwrap();
+        let new_config = config.set_pipeline(&self.pipeline)
+            .set_project(&project);
+        return new_config;
     }
 }
 

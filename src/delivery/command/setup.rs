@@ -29,12 +29,7 @@ pub fn run(opts: SetupClapOptions) -> DeliveryResult<ExitCode> {
     } else {
         PathBuf::from(opts.path)
     };
-    let mut config = try!(cli::load_config(&config_path));
-    config = config.set_server(opts.server)
-        .set_user(opts.user)
-        .set_enterprise(opts.ent)
-        .set_organization(opts.org)
-        .set_pipeline(opts.pipeline) ;
+    let config = try!(cli::init_command(&opts));
     try!(config.write_file(&config_path));
     Ok(0)
 }
