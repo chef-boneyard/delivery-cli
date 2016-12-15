@@ -18,14 +18,15 @@
 use std;
 use std::process;
 use std::error::Error;
-use std::path::PathBuf;
 use std::time::Duration;
-use utils::{self, cwd};
-use utils::say::{self, sayln, say};
+use utils::{self};
+use utils::say::{self, sayln};
 use errors::DeliveryError;
 use types::{ExitCode};
 use config::Config;
 use clap::{App, ArgMatches};
+use project;
+use git;
 
 // Clap Arguments
 //
@@ -52,6 +53,26 @@ mod spin;
 // Implemented sub-commands. Should handle everything after args have
 // been parsed, including running the command, error handling, and UI outputting.
 use command;
+
+pub trait InitCommand {
+    fn merge_options_and_config(&self, config: Config) -> Config;
+
+    // Default implementation for project specific commands.
+    // Most project specific commands need to populate the project config entry
+    // if it hasn't been already as well as make sure the git remote is up to date.
+    // Can override to fix the initialization needs of your command (for example,
+    // simply return the config in a non-project specific command like api).
+    fn initialize_command_state(&self, mut config: Config) -> Config {
+        if config.project.is_none() {
+            let project = project::project_from_cwd().unwrap();
+            config.project = Some(project); 
+        }
+
+        let git_url = config.delivery_git_ssh_url().unwrap();
+        git::create_or_update_delivery_remote(&git_url, &project::project_path()).unwrap();
+        return config
+    }
+}
 
 pub fn run() {
     let build_version = format!("{} {}", version(), build_git_sha());
@@ -170,12 +191,14 @@ fn exit_with(e: DeliveryError, i: isize) {
     process::exit(x)
 }
 
-pub fn load_config(path: &PathBuf) -> Result<Config, DeliveryError> {
-    say("white", "Loading configuration from ");
-    let msg = format!("{}", path.display());
-    sayln("yellow", &msg);
-    let config = try!(Config::load_config(&cwd()));
-    Ok(config)
+pub fn init_command<T: InitCommand>(opts: &T) -> Result<Config, DeliveryError> {
+    let mut config = try!(Config::load_config(&utils::cwd()));
+
+    config = opts.merge_options_and_config(config);
+
+    config = opts.initialize_command_state(config);
+
+    return Ok(config)
 }
 
 fn version() -> String {

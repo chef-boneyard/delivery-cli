@@ -3,7 +3,7 @@ use delivery::utils::copy_recursive;
 use delivery::utils::say;
 use std::io::prelude::*;
 use tempdir::TempDir;
-use std::fs::{self, File};
+use std::fs::File;
 use std::path::Path;
 use support::paths::fixture_file;
 use std::process::{Command, Output};
@@ -44,15 +44,13 @@ fn setup_build_cookbook_project(tmpdir: &Path) {
 }
 
 /// Clones a mock delivery git project to a local copy, as if it was
-/// on a workstation. Also creates a mock delivery remote pointing at
-/// the on-disk mocked delivery project.
+/// on a workstation.
 fn setup_local_project_clone(delivery_project_git: &Path) -> TempDir {
     let tmpdir = TempDir::new("local-project").unwrap();
     panic_on_error!(git_command(&["clone",
                                   delivery_project_git.to_str().unwrap(),
                                   tmpdir.path().to_str().unwrap()
                                  ], tmpdir.path()));
-    panic_on_error!(git_command(&["remote", "add", "delivery", delivery_project_git.to_str().unwrap()], tmpdir.path()));
     let mut command = delivery_cmd();
     command.arg("setup")
            .arg("--user").arg("cavalera")
@@ -79,11 +77,6 @@ fn setup_change(tmpdir: &Path, branch: &str, filename: &str) {
     }
     panic_on_error!(git_command(&["add", filename], tmpdir));
     panic_on_error!(git_command(&["commit", "-a", "-m", filename], tmpdir));
-}
-
-/// Checks out the named branch
-fn setup_checkout_branch(tmpdir: &Path, branch: &str) {
-    panic_on_error!(git_command(&["checkout", branch], tmpdir));
 }
 
 /// Runs the `Command` in `Dir`, and makes sure it exists with 0
@@ -128,18 +121,6 @@ fn delivery_verify_command(job_root: &Path) -> Command {
     command
 }
 
-/// Calls delivery review, and creates the two stub branches that the
-/// api would create (`_reviews/PIPELINE/BRANCH/1` and `_reviews/PIPELINE/BRANCH/latest`)
-fn delivery_review(local: &Path, remote: &Path, branch: &str, pipeline: &str) {
-    panic_on_error!(git_command(&["checkout", branch], local));
-    let mut command = delivery_review_command(pipeline);
-    assert_command_successful(&mut command, local);
-
-    // Stub out the behavior of the delivery-api
-    panic_on_error!(git_command(&["branch", &format!("_reviews/{}/{}/1", pipeline, branch)], remote));
-    panic_on_error!(git_command(&["branch", &format!("_reviews/{}/{}/latest", pipeline, branch)], remote));
-}
-
 /// Returns a Command set to the delivery binary created when you
 /// ran `cargo test`.
 fn delivery_cmd() -> Command {
@@ -159,45 +140,6 @@ fn debug_sleep(tmpdir: &TempDir) {
 }
 
 // ** Actual tests **
-
-// Tests `delivery review`. Fails if the command fails, or if we fail to create
-// the remote branch _for/master/rust/test, which is what we need to push to
-// the API server.
-test!(review {
-    let delivery_project_git = setup_mock_delivery_project_git("path_config.json");
-    let local_project = setup_local_project_clone(&delivery_project_git.path());
-    setup_change(&local_project.path(), "rust/test", "freaky");
-    delivery_review(&local_project.path(), &delivery_project_git.path(), "rust/test", "master");
-    setup_checkout_branch(&delivery_project_git.path(), "_for/master/rust/test");
-});
-
-test!(review_from_child_dir {
-    let delivery_project_git = setup_mock_delivery_project_git("path_config.json");
-    let local_project = setup_local_project_clone(&delivery_project_git.path());
-    setup_change(&local_project.path(), "rust/test", "freaky");
-    let child_dir = local_project.path().join("fuzz-bucket");
-    panic_on_error!(fs::create_dir_all(&child_dir));
-    delivery_review(&child_dir, &delivery_project_git.path(), "rust/test", "master");
-    setup_checkout_branch(&delivery_project_git.path(), "_for/master/rust/test");
-});
-
-test!(review_with_a_v1_config {
-    let delivery_project_git = setup_mock_delivery_project_git("v1_config.json");
-    let local_project = setup_local_project_clone(&delivery_project_git.path());
-    setup_change(&local_project.path(), "rust/test", "freaky");
-    delivery_review(&local_project.path(), &delivery_project_git.path(), "rust/test", "master");
-    setup_checkout_branch(&delivery_project_git.path(), "_for/master/rust/test");
-});
-
-test!(review_without_dependencies {
-    let delivery_project_git = setup_mock_delivery_project_git("no_deps_config.json");
-    let local_project = setup_local_project_clone(&delivery_project_git.path());
-    setup_change(&local_project.path(), "rust/test", "freaky");
-    delivery_review(&local_project.path(), &delivery_project_git.path(), "rust/test", "master");
-    setup_checkout_branch(&delivery_project_git.path(), "_for/master/rust/test");
-});
-
-
 
 test!(review_with_an_invalid_config {
     let delivery_project_git = setup_mock_delivery_project_git("invalid_config.json");

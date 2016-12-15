@@ -16,6 +16,8 @@
 //
 use cli::arguments::{config_path_arg, value_of, u_e_s_o_args};
 use clap::{Arg, App, SubCommand, ArgMatches};
+use cli::InitCommand;
+use config::Config;
 
 pub const SUBCOMMAND_NAME: &'static str = "api";
 
@@ -54,6 +56,20 @@ impl<'n> ApiClapOptions<'n> {
             ent: value_of(&matches, "ent"),
             user: value_of(&matches, "user")
         }
+    }
+}
+
+impl<'n> InitCommand for ApiClapOptions<'n> {
+    fn merge_options_and_config(&self, config: Config) -> Config {
+        let new_config = config.set_user(&self.user)
+            .set_server(&self.server)
+            .set_api_port(&self.api_port)
+            .set_enterprise(&self.ent);
+        return new_config;
+    }
+
+    fn initialize_command_state(&self, config: Config) -> Config {
+        return config;
     }
 }
 

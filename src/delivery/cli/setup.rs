@@ -16,6 +16,8 @@
 //
 use cli::arguments::{pipeline_arg, config_path_arg, u_e_s_o_args, value_of};
 use clap::{App, SubCommand, ArgMatches};
+use cli::InitCommand;
+use config::Config;
 
 pub const SUBCOMMAND_NAME: &'static str = "setup";
 
@@ -52,6 +54,21 @@ impl<'n> SetupClapOptions<'n> {
             path: value_of(&matches, "config-path"),
             pipeline: value_of(&matches, "pipeline"),
         }
+    }
+}
+
+impl<'n> InitCommand for SetupClapOptions<'n> {
+    fn merge_options_and_config(&self, config: Config) -> Config {
+        let new_config = config.set_server(&self.server)
+            .set_user(&self.user)
+            .set_enterprise(&self.ent)
+            .set_organization(&self.org)
+            .set_pipeline(&self.pipeline);
+        return new_config;
+    }
+
+    fn initialize_command_state(&self, config: Config) -> Config {
+        return config;
     }
 }
 

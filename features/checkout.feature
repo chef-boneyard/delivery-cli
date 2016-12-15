@@ -7,6 +7,7 @@ Feature: checkout
 
 Background:
   Given I am in the "project" git repo
+  Given I have a valid cli.toml file
   Given I set the environment variables to:
     | variable           | value      |
     | MOCK_ALL_BASH      | true       |

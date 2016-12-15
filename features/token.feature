@@ -30,9 +30,9 @@ Scenario: happy path
   When I invoke a pseudo tty with command "delivery token"
   And I expect for "Automate password" then type "my_secret_password"
   And I run my ptty command
-  Then the ptty exit status should be 0
   Then the ptty output should contain "Automate password"
   Then the ptty output should contain "saved API token to"
+  Then the ptty exit status should be 0
   And a file named ".delivery/api-tokens" should exist
   And the file ".delivery/api-tokens" should contain:
     """

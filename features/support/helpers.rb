@@ -45,6 +45,18 @@ cleanup = "chef exec kitchen destroy"
 EOF
 end
 
+def valid_cli_toml
+<<EOF
+api_protocol = "https"
+enterprise = "ent"
+git_port = "8989"
+organization = "org"
+pipeline = "master"
+server = "server.test"
+user = "user"
+EOF
+end
+
 # Mock a build_cookbook.rb that doesn't generate a config.json
 def build_cookbook_rb
 <<EOF
@@ -77,6 +89,8 @@ EOF
 end
 
 # Mock a cli.toml config
+# Starts a server on 8080 so the git port is also 8080,
+# so don't be surprised to see addresses like 127.0.0.1:8080:8080
 def basic_delivery_config
 <<EOF
 git_port = "8080"

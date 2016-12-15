@@ -38,6 +38,7 @@ Scenario: When running delivery review twice it should not fail
   When a user creates a delivery backed project
   Then a delivery project is created in delivery
   And a default config.json is created
+  And I set up basic delivery and git configs
   And the change has the default generated build_cookbook
   And the exit status should be 0
   And I should be checked out to a feature branch named "initialize-delivery-pipeline"
@@ -57,10 +58,13 @@ Scenario: When creating a delivery backed project and
 
 Scenario: When creating a delivery backed project but
 	  the delivery remote is different.
+  When I set up basic delivery and git configs
   When I successfully run `git remote add delivery fake`
-  Then I run `delivery init`
-  Then the output should contain "A git remote named 'delivery' already exists in this repo, but it is different than what was contained in your config file"
-  And the exit status should be 1
+  When I successfully run `delivery init`
+  When I successfully run `git remote -v`
+  # The address is 127.0.0.1:8080:8080 because the server is running on localhost:8080
+  # and the git port is 8080. Not what you'd ever see irl.
+  Then the output should contain "ssh://dummy@dummy@127.0.0.1:8080:8080/dummy/dummy/delivery-cli-init (fetch)"
 
 Scenario: When creating a delivery backed project that already has a .delivery/build_cookbook directory and .delivery/config.json
   When I already have a .delivery/config.json on disk

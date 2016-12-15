@@ -20,12 +20,10 @@ use git;
 use cli::checkout::CheckoutClapOptions;
 use types::{DeliveryResult, ExitCode};
 use utils::say::{sayln, say};
-use utils::cwd;
 
 pub fn run(opts: CheckoutClapOptions) -> DeliveryResult<ExitCode> {
     sayln("green", "Chef Delivery");
-    let mut config = try!(cli::load_config(&cwd()));
-    config = config.set_pipeline(opts.pipeline);
+    let config = try!(cli::init_command(&opts));
     let target = validate!(config, pipeline);
     say("white", "Checking out ");
     say("yellow", opts.change);
