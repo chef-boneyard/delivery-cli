@@ -53,9 +53,16 @@ impl<'n> ReviewClapOptions<'n> {
 
 impl<'n> InitCommand for ReviewClapOptions<'n> {
     fn merge_options_and_config(&self, config: Config) -> Config {
-        let project = project::project_from_cwd().unwrap();
-        let new_config = config.set_pipeline(&self.pipeline)
-            .set_project(&project);
+        let mut new_config = config.set_pipeline(&self.pipeline);
+
+        if new_config.auto_bump.is_none() {
+            new_config.auto_bump = Some(self.auto_bump);
+        }
+
+        if new_config.project.is_none() {
+            new_config.project = project::project_from_cwd().ok();
+        }
+
         return new_config;
     }
 }
