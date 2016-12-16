@@ -23,7 +23,6 @@ use utils::{self, read_file};
 use utils::say::{say, sayln};
 use utils::path_ext::is_file;
 use git;
-use project;
 use regex::Regex;
 use regex::Captures;
 
@@ -59,9 +58,9 @@ impl MetadataVersion {
 // @param p_root [&PathBuf] The project root path
 // @param pipeline [&str] Pipeline the change is targeting to
 // @return () if success
-pub fn bump_version(p_root: &PathBuf, pipeline: &str) -> Result<(), DeliveryError> {
+pub fn bump_version(p_root: &PathBuf, pipeline: &str,
+                    project: &str) -> Result<(), DeliveryError> {
     if is_cookbook(&p_root) {
-        let project = try!(project::project_from_cwd());
         say("white", "Project ");
         say("yellow", &project);
         sayln("white", " is a cookbook");
