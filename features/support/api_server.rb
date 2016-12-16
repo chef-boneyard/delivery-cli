@@ -40,6 +40,7 @@ module Delivery
       # Create a new anonymous subclass of the Grape API,
       # pre-configuring it to be a pure JSON API
       klass = Class.new(Grape::API) do
+        content_type :txt, 'text/plain'
         content_type :json, 'application/json'
         format :json
         default_format :json

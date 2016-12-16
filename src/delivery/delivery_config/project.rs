@@ -21,17 +21,21 @@
 /// that is currently a prototype for local phases executioin. This file can
 /// be configurable and it doesn't conflict with the existing config.json
 
-use std::default::Default;
-use std::path::PathBuf;
-use utils::path_join_many::PathJoinMany;
 use errors::{DeliveryError, Kind};
-use types::DeliveryResult;
+use hyper::Client as HyperClient;
+use project;
 use rustc_serialize::Decodable;
-use utils;
+use std::default::Default;
+use std::io::Read;
+use std::path::PathBuf;
 use toml;
+use types::DeliveryResult;
+use utils;
+use utils::path_join_many::PathJoinMany;
 
 #[derive(RustcEncodable, RustcDecodable, Clone, Debug)]
 pub struct ProjectToml {
+    pub remote_file: Option<String>,
     pub local_phases: LocalPhases
 }
 
@@ -60,6 +64,7 @@ pub enum Phase {
 impl Default for ProjectToml {
     fn default() -> Self {
         ProjectToml {
+            remote_file: None,
             local_phases: LocalPhases {
                 unit: String::from(""),
                 lint: String::from(""),
@@ -74,11 +79,44 @@ impl Default for ProjectToml {
 }
 
 impl ProjectToml {
-    pub fn load_toml_file(proj_path: PathBuf) -> DeliveryResult<ProjectToml> {
-        let toml_path = ProjectToml::toml_file_path(proj_path);
+    pub fn load_toml(remote_toml: &str) -> DeliveryResult<ProjectToml> {
+        if ! remote_toml.is_empty() {
+            let url = remote_toml.clone();
+            return ProjectToml::load_toml_remote(url)
+        }
+
+        let path = ProjectToml::toml_file_path(project::project_path());
+        let project_toml = try!(ProjectToml::load_toml_file(path));
+
+        match project_toml.remote_file {
+            Some(url) => ProjectToml::load_toml_remote(&url),
+            None => Ok(project_toml)
+        }
+    }
+
+    fn load_toml_file(toml_path: PathBuf) -> DeliveryResult<ProjectToml> {
+        debug!("Loading local project.toml from {:?}", toml_path);
         try!(ProjectToml::validate_file(&toml_path));
         let toml = try!(utils::read_file(&toml_path));
         ProjectToml::parse_config(&toml)
+    }
+
+    fn load_toml_remote(toml_url: &str) -> DeliveryResult<ProjectToml> {
+        debug!("Loading remote project.toml from {:?}", toml_url);
+        let client = HyperClient::new();
+        match client.get(toml_url).send() {
+            Ok(mut resp) => {
+                let mut toml = String::new();
+                try!(resp.read_to_string(&mut toml));
+                ProjectToml::parse_config(&toml)
+            },
+            Err(e) => {
+                Err(DeliveryError{
+                    kind: Kind::HttpError(e),
+                    detail: None
+                })
+            }
+        }
     }
 
     pub fn local_phase(&self, phase: Option<Phase>) -> DeliveryResult<String> {
@@ -118,7 +156,6 @@ impl ProjectToml {
             }
         }
     }
-    
 
     fn validate_file(toml_path: &PathBuf) -> DeliveryResult<()> {
         if toml_path.exists() {
@@ -145,7 +182,7 @@ impl ProjectToml {
 
 #[cfg(test)]
 mod tests {
-    use super::{ProjectToml, Phase};
+    pub use super::{ProjectToml, Phase};
 
     #[test]
     fn test_project_toml_with_defaults_plus_overrides() {
@@ -214,5 +251,75 @@ syntax = "something"
         assert_eq!(p_toml.local_phase(Some(Phase::Unit)).unwrap(), p_toml.local_phases.unit);
         // Test failure - When None it must throw an Err()
         assert!(p_toml.local_phase(None).is_err());
+    }
+
+    mod toml_file_path {
+        pub use super::{ProjectToml};
+        use std::path::{PathBuf};
+
+        #[test]
+        fn returns_path_to_toml() {
+            let project_path = PathBuf::from("/tmp");
+            let expected = PathBuf::from("/tmp/.delivery/project.toml");
+            let actual = ProjectToml::toml_file_path(project_path);
+            assert_eq!(expected, actual);
+        }
+    }
+
+    mod load_toml_file {
+        pub use super::{ProjectToml};
+        use std::path::{PathBuf};
+        use std::fs::File;
+        use std::io::Write;
+
+        #[test]
+        fn returns_toml_from_path() {
+            let path = PathBuf::from("/tmp/local.toml");
+            let toml = r#"
+[local_phases]
+unit = "echo local-unit"
+lint = "echo local-lint"
+syntax = "echo local-syntax"
+provision = "echo local-provision"
+deploy = "echo local-deploy"
+smoke = "echo local-smoke"
+cleanup = "echo local-cleanup"
+"#;
+
+            let mut file = File::create(&path).expect("Unable to create local toml file");
+            file.write_all(toml.as_bytes()).expect("Unable to write local toml file");
+
+            let local_toml = ProjectToml::load_toml_file(path).unwrap();
+            assert_eq!("echo local-unit".to_string(), local_toml.local_phases.unit);
+        }
+    }
+
+    mod load_toml_remote {
+        pub use super::{ProjectToml};
+        use mockito::mock;
+
+        #[test]
+        fn returns_toml_from_url() {
+            let url = "http://0.0.0.0:1234/toml-url";
+            let toml = r#"
+[local_phases]
+unit = "echo remote-unit"
+lint = "echo remote-lint"
+syntax = "echo remote-syntax"
+provision = "echo remote-provision"
+deploy = "echo remote-deploy"
+smoke = "echo remote-smoke"
+cleanup = "echo remote-cleanup"
+"#;
+
+            mock("GET", "/toml-url")
+                .with_status(200)
+                .with_header("content-type", "text/plain")
+                .with_body(toml)
+                .create();
+
+            let remote_toml = ProjectToml::load_toml_remote(url).unwrap();
+            assert_eq!("echo remote-unit".to_string(), remote_toml.local_phases.unit);
+        }
     }
 }

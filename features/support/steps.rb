@@ -1,5 +1,6 @@
 require_relative 'pty_spawn'
 require_relative 'helpers'
+require 'uri'
 
 Given(/^I invoke a pseudo tty with command "(.*)"$/) do |command|
   @current_pty = Delivery::PtySpawn.new(command, {
@@ -68,6 +69,10 @@ end
 
 Given(/^I have a valid cli\.toml file with with "([^"]*)":$/) do |append_str|
   step %(a file named ".delivery/cli.toml" with:), valid_cli_toml + "\n" + append_str
+end
+
+Given(/^I have a project.toml with remote_file pointed at "([^"]*)"$/) do |url|
+  step %(a file named ".delivery/project.toml" with:), project_toml_with_remote_file(url)
 end
 
 Given(/^I have a custom generator cookbook with no config generator$/) do
@@ -168,6 +173,17 @@ end
 Given(/^the Delivery API server on port "(\d+)":$/) do |port, endpoints|
   @server = Delivery::StubAPI.start_server(port) do
     eval(endpoints, binding)
+  end
+end
+
+Given(/^I have a remote toml file located at "([^"]*)"$/) do |url|
+  uri = URI(url)
+  @server = Delivery::StubAPI.start_server(uri.port) do
+    get(uri.path) do
+      status 200
+      content_type 'text/plain'
+      remote_project_toml
+    end
   end
 end
 
