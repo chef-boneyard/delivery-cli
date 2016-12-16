@@ -14,7 +14,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-use cli::arguments::{pipeline_arg, config_path_arg, u_e_s_o_args, value_of};
+use cli::arguments::{pipeline_arg, config_path_arg, u_e_s_o_args,
+            project_arg, value_of};
 use clap::{App, SubCommand, ArgMatches};
 use cli::InitCommand;
 use config::Config;
@@ -29,6 +30,7 @@ pub struct SetupClapOptions<'n> {
     pub org: &'n str,
     pub path: &'n str,
     pub pipeline: &'n str,
+    pub project: &'n str,
 }
 
 impl<'n> Default for SetupClapOptions<'n> {
@@ -40,6 +42,7 @@ impl<'n> Default for SetupClapOptions<'n> {
             org: "",
             path: "",
             pipeline: "master",
+            project: "",
         }
     }
 }
@@ -53,6 +56,7 @@ impl<'n> SetupClapOptions<'n> {
             org: value_of(&matches, "org"),
             path: value_of(&matches, "config-path"),
             pipeline: value_of(&matches, "pipeline"),
+            project: value_of(&matches, "project"),
         }
     }
 }
@@ -63,7 +67,8 @@ impl<'n> InitCommand for SetupClapOptions<'n> {
             .set_user(&self.user)
             .set_enterprise(&self.ent)
             .set_organization(&self.org)
-            .set_pipeline(&self.pipeline);
+            .set_pipeline(&self.pipeline)
+            .set_project(&self.project);
         return new_config;
     }
 
@@ -75,7 +80,7 @@ impl<'n> InitCommand for SetupClapOptions<'n> {
 pub fn clap_subcommand<'c>() -> App<'c, 'c> {
     SubCommand::with_name(SUBCOMMAND_NAME)
         .about("Write a config file capturing specified options")
-        .args(&vec![config_path_arg()])
+        .args(&vec![config_path_arg(), project_arg()])
         .args(&pipeline_arg())
         .args(&u_e_s_o_args())
 }
