@@ -91,8 +91,21 @@ Scenario: setup with server
 
     """
 
+Scenario: setup with project
+  When I successfully run `delivery setup --project=coffee_lover`
+  Then a directory named ".delivery" should exist
+  And a file named ".delivery/cli.toml" should exist
+  And the file ".delivery/cli.toml" should contain exactly:
+    """
+    api_protocol = "https"
+    git_port = "8989"
+    pipeline = "master"
+    project = "coffee_lover"
+
+    """
+
 Scenario: setup with all the args
-  When I successfully run `delivery setup --ent=Foobar --org=Engineering --for=legacy --server=delivery.mycompany.com --user=alice`
+  When I successfully run `delivery setup --ent=Foobar --org=Engineering --for=legacy --server=delivery.mycompany.com --user=alice --project=makeitwork`
   Then a directory named ".delivery" should exist
   And a file named ".delivery/cli.toml" should exist
   And the file ".delivery/cli.toml" should contain exactly:
@@ -102,6 +115,7 @@ Scenario: setup with all the args
     git_port = "8989"
     organization = "Engineering"
     pipeline = "legacy"
+    project = "makeitwork"
     server = "delivery.mycompany.com"
     user = "alice"
 

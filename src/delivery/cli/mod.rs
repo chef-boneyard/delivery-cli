@@ -64,8 +64,7 @@ pub trait InitCommand {
     // simply return the config in a non-project specific command like api).
     fn initialize_command_state(&self, mut config: Config) -> Config {
         if config.project.is_none() {
-            let project = project::project_from_cwd().unwrap();
-            config.project = Some(project); 
+            config.project = project::project_from_cwd().ok();
         }
 
         let git_url = config.delivery_git_ssh_url().unwrap();
@@ -195,7 +194,6 @@ pub fn init_command<T: InitCommand>(opts: &T) -> Result<Config, DeliveryError> {
     let mut config = try!(Config::load_config(&utils::cwd()));
 
     config = opts.merge_options_and_config(config);
-
     config = opts.initialize_command_state(config);
 
     return Ok(config)

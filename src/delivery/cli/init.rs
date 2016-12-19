@@ -88,13 +88,13 @@ impl<'n> InitClapOptions<'n> {
 
 impl<'n> InitCommand for InitClapOptions<'n> {
     fn merge_options_and_config(&self, config: Config) -> Config {
-        let final_proj = project::project_or_from_cwd(&self.project).unwrap();
+        let project = project::project_or_from_cwd(&self.project).unwrap();
 
         let new_config = config.set_user(&self.user)
             .set_server(&self.server)
             .set_enterprise(&self.ent)
             .set_organization(&self.org)
-            .set_project(&final_proj)
+            .set_project(&project)
             .set_pipeline(&self.pipeline)
             .set_generator(&self.generator)
             .set_config_json(&self.config_json);

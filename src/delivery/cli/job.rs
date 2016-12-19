@@ -18,7 +18,7 @@ use cli::arguments::{pipeline_arg, project_arg, local_arg, patchset_arg, u_e_s_o
 use clap::{Arg, App, SubCommand, ArgMatches};
 use cli::InitCommand;
 use config::Config;
-use utils;
+use project;
 
 pub const SUBCOMMAND_NAME: &'static str = "job";
 
@@ -96,18 +96,14 @@ impl<'n> JobClapOptions<'n> {
 
 impl<'n> InitCommand for JobClapOptions<'n> {
     fn merge_options_and_config(&self, config: Config) -> Config {
-        let config = if self.project.is_empty() {
-            let filename = String::from(utils::cwd().file_name().unwrap().to_str().unwrap());
-            config.set_project(&filename)
-        } else {
-            config.set_project(&self.project)
-        };
+        let project = project::project_or_from_cwd(&self.project).unwrap();
 
         let new_config = config.set_pipeline(&self.pipeline)
             .set_user(with_default(&self.user, "you", &&self.local))
             .set_server(with_default(&self.server, "localhost", &&self.local))
             .set_enterprise(with_default(&self.ent, "local", &&self.local))
-            .set_organization(with_default(&self.org, "workstation", &&self.local));
+            .set_organization(with_default(&self.org, "workstation", &&self.local))
+            .set_project(&project);
         
         return new_config;
     }

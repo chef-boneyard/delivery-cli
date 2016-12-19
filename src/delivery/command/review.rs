@@ -28,20 +28,16 @@ use git::{self, ReviewResult};
 use http;
 use delivery_config::DeliveryConfig;
 
-pub fn run(review_opts: ReviewClapOptions) -> DeliveryResult<ExitCode> {
+pub fn run(opts: ReviewClapOptions) -> DeliveryResult<ExitCode> {
     sayln("green", "Chef Delivery");
-    let mut config = try!(cli::init_command(&review_opts));
+    let config = try!(cli::init_command(&opts));
     let target = validate!(config, pipeline);
-    let project_root = try!(project::root_dir(&utils::cwd()));
-    try!(DeliveryConfig::validate_config_file(&project_root));
-
-    if review_opts.auto_bump {
-        config.auto_bump = Some(review_opts.auto_bump.clone())
-    }
-
     if let Some(should_bump) = config.auto_bump {
         if should_bump {
-            try!(cookbook::bump_version(&project_root, &target))
+            let project = validate!(config, project);
+            let project_root = try!(project::root_dir(&utils::cwd()));
+            try!(DeliveryConfig::validate_config_file(&project_root));
+            try!(cookbook::bump_version(&project_root, &target, &project))
         }
     }
 
@@ -52,10 +48,7 @@ pub fn run(review_opts: ReviewClapOptions) -> DeliveryResult<ExitCode> {
     sayln("magenta", &target);
     let review = try!(project::review(&target, &head));
 
-    if review_opts.edit {
-        let project = try!(project::project_from_cwd());
-        config = config.set_pipeline(review_opts.pipeline)
-            .set_project(&project);
+    if opts.edit {
         try!(edit_change(&config, &review));
     }
 
@@ -63,7 +56,7 @@ pub fn run(review_opts: ReviewClapOptions) -> DeliveryResult<ExitCode> {
         sayln("white", line);
     }
 
-    match try!(project::handle_review_result(&review, &review_opts.no_open)) {
+    match try!(project::handle_review_result(&review, &opts.no_open)) {
         Some(url) => {sayln("magenta", &url)},
         None => {}
     }
