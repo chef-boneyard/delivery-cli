@@ -44,6 +44,8 @@ pub struct Config {
     pub auto_bump: Option<bool>,
     pub config_json: Option<String>,
     pub saml: Option<bool>,
+    pub fips: Option<bool>,
+    pub fips_git_port: Option<String>,
 }
 
 impl Default for Config {
@@ -64,6 +66,8 @@ impl Default for Config {
             auto_bump: None,
             config_json: None,
             saml: None,
+            fips: None,
+            fips_git_port: None,
         }
     }
 }
@@ -100,9 +104,9 @@ config_accessor_for!(pipeline, set_pipeline, "Pipeline not set; try --for or set
 config_accessor_for!(token_file, set_token_file, "token_file not set; set it in your cli.toml");
 config_accessor_for!(generator, set_generator, "build_cookbook generator not set; set it in your cli.toml");
 config_accessor_for!(config_json, set_config_json, "config_json not set; set it in your cli.toml");
+config_accessor_for!(fips_git_port, set_fips_git_port, "fips_git_port not set. set it in your cli.toml");
 
 impl Config {
-
     /// Return the host and port at which we can access the Delivery
     /// API. By default, we assume the use of HTTPS on the standard
     /// port `443`. Unless a port is specified in the configuration,
@@ -118,11 +122,28 @@ impl Config {
 
     /// Returns the SSH URL to talk to Delivery's Git
     pub fn delivery_git_ssh_url(&self) -> Result<String, DeliveryError> {
+        if self.fips.unwrap_or(false) {
+            self.delivery_git_fips_enabled_url()
+        } else {
+            self.delivery_git_ssh_standard_url()
+        }
+    }
+
+    fn delivery_git_ssh_standard_url(&self) -> Result<String, DeliveryError> {
         let s = try!(self.server());
         let host_and_port = match self.git_port {
             Some(ref p) => format!("{}:{}", s, p),
             None    => s // TODO: Currently we *always* have a git port
         };
+        let u = try!(self.user());
+        let e = try!(self.enterprise());
+        let o = try!(self.organization());
+        let p = try!(self.project());
+        Ok(format!("ssh://{}@{}@{}/{}/{}/{}", u, e, host_and_port, e, o, p))
+    }
+
+    fn delivery_git_fips_enabled_url(&self) -> Result<String, DeliveryError> {
+        let host_and_port = format!("{}:{}", "localhost", try!(self.fips_git_port()));
         let u = try!(self.user());
         let e = try!(self.enterprise());
         let o = try!(self.organization());
@@ -193,6 +214,8 @@ impl Config {
         config.auto_bump = boolify_or("auto_bump", &table, config.auto_bump);
         config.config_json = stringify_or("config_json", &table, config.config_json);
         config.saml = boolify_or("saml", &table, config.saml);
+        config.fips = boolify_or("fips", &table, config.fips);
+        config.fips_git_port = stringify_or("fips_git_port", &table, config.fips_git_port);
         return Ok(config);
     }
 
@@ -283,6 +306,8 @@ mod tests {
                 assert_eq!(None, config.auto_bump);
                 assert_eq!(None, config.config_json);
                 assert_eq!(None, config.saml);
+                assert_eq!(None, config.fips);
+                assert_eq!(None, config.fips_git_port);
             },
             Err(e) => {
                 panic!("Failed to parse: {:?}", e.detail)
@@ -304,6 +329,8 @@ mod tests {
             auto_bump = true
             config_json = "/path/to/my/custom/config.json"
             saml = true
+            fips = true
+            fips_git_port = "55555"
 "#;
         let config_result = Config::parse_config(toml);
         match config_result {
@@ -319,6 +346,8 @@ mod tests {
                 assert_eq!(Some("/path/to/my/custom/config.json".to_string()),
                           config.config_json);
                 assert_eq!(Some(true), config.saml);
+                assert_eq!(Some(true), config.fips);
+                assert_eq!(Some("55555".to_string()), config.fips_git_port);
             },
             Err(e) => {
                 panic!("Failed to parse: {:?}", e.detail)
