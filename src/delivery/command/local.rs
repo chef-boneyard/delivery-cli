@@ -25,9 +25,7 @@ use utils;
 
 pub fn run(opts: LocalClapOptions) -> DeliveryResult<ExitCode> {
     sayln("green", "Chef Delivery");
-    let project_toml: ProjectToml = try!(
-        ProjectToml::load_toml_file(project::project_path())
-    );
+    let project_toml = try!(ProjectToml::load_toml(opts.remote_toml));
     let phase_cmd = try!(project_toml.local_phase(opts.phase.clone()));
     say("white", "Running ");
     say("magenta", &format!("{:?}", opts.phase.unwrap()));

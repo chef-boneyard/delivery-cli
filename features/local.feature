@@ -69,7 +69,7 @@ Scenario: When the project has an invalid `.delivery/project.toml`
 
 Scenario: When `.delivery/project.toml` file is missing fail and
           show a helpful message about how to recover, additionally
-	  run the command to prove it will actually fix it
+          run the command to prove it will actually fix it
   When I successfully run `rm -rf .delivery/project.toml`
   And I run `delivery local lint`
   Then the exit status should be 1
@@ -85,3 +85,19 @@ Scenario: When `.delivery/project.toml` file is missing fail and
   And the exit status should be 0
   And the output should match /Running.*Lint.*Phase/
   And the output should contain "no offenses detected"
+
+Scenario: When local is run with a local project.toml that points to a remote project.toml
+  Given I have a remote toml file located at "https://localhost:9999/remote-toml"
+  And I have a project.toml with remote_file pointed at "https://localhost:9999/remote-toml"
+  When I successfully run `delivery local lint`
+  Then the output should contain "REMOTE-LINT"
+
+Scenario: When local is run with a remote toml flag
+  Given I have a remote toml file located at "https://localhost:9999/remote-toml"
+  When I successfully run `delivery local -r https://localhost:9999/remote-toml lint`
+  Then the output should contain "REMOTE-LINT"
+
+Scenario: When local is run with a remote toml flag with erroneous url
+  When I run `delivery local -r http://dont-exist lint`
+  Then the output should contain "An HTTP Error occured"
+  And the exit status should be 1

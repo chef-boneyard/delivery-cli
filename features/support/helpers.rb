@@ -57,6 +57,33 @@ user = "user"
 EOF
 end
 
+def remote_project_toml
+<<EOF
+[local_phases]
+unit = "echo REMOTE-UNIT"
+lint = "echo REMOTE-LINT"
+syntax = "echo REMOTE-SYNTAX"
+provision = "echo REMOTE-PROVISION"
+deploy = "echo REMOTE-DEPLOY"
+smoke = "echo REMOTE-SMOKE"
+cleanup = "echo REMOTE-CLEANUP"
+EOF
+end
+
+def project_toml_with_remote_file(url)
+<<EOF
+remote_file = "#{url}"
+[local_phases]
+unit = ""
+lint = ""
+syntax = ""
+provision = ""
+deploy = ""
+smoke = ""
+cleanup = ""
+EOF
+end
+
 # Mock a build_cookbook.rb that doesn't generate a config.json
 def build_cookbook_rb
 <<EOF

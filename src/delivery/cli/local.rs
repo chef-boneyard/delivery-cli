@@ -21,18 +21,22 @@ use cli::arguments::value_of;
 pub const SUBCOMMAND_NAME: &'static str = "local";
 
 #[derive(Debug)]
-pub struct LocalClapOptions {
-    pub phase: Option<Phase>
+pub struct LocalClapOptions<'n> {
+    pub phase: Option<Phase>,
+    pub remote_toml: &'n str
 }
 
-impl Default for LocalClapOptions {
+impl<'n> Default for LocalClapOptions<'n> {
     fn default() -> Self {
-        LocalClapOptions { phase: None }
+        LocalClapOptions {
+            phase: None,
+            remote_toml: ""
+        }
     }
 }
 
-impl LocalClapOptions {
-    pub fn new(matches: &ArgMatches) -> Self {
+impl<'n> LocalClapOptions<'n> {
+    pub fn new(matches: &'n ArgMatches<'n>) -> Self {
         let phase = match value_of(matches, "phase") {
             "unit" => Some(Phase::Unit),
             "lint" => Some(Phase::Lint),
@@ -44,7 +48,10 @@ impl LocalClapOptions {
             _ => None
         };
 
-        LocalClapOptions { phase: phase }
+        LocalClapOptions {
+            phase: phase,
+            remote_toml: value_of(&matches, "remote-project-toml")
+        }
     }
 }
 
@@ -55,4 +62,5 @@ pub fn clap_subcommand<'c>() -> App<'c, 'c> {
              .takes_value(false)
              .possible_values(&["unit", "lint", "syntax", "provision",
                                 "deploy", "smoke", "cleanup"]))
+        .args_from_usage("-r --remote-project-toml=[remote-url] 'URL for remote project.toml'")
 }

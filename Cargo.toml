@@ -30,6 +30,9 @@ mime = "*"
 rust-crypto = "*"
 rpassword = "*"
 
+[dev-dependencies]
+mockito = "*"
+
 [profile.dev]
 debug = false
 

@@ -30,6 +30,7 @@ extern crate uuid;
 extern crate mime;
 extern crate clap;
 extern crate crypto;
+#[cfg(test)] extern crate mockito;
 
 #[macro_export]
 macro_rules! validate {
