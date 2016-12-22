@@ -56,9 +56,18 @@ pub fn run(opts: ReviewClapOptions) -> DeliveryResult<ExitCode> {
         sayln("white", line);
     }
 
-    match try!(project::handle_review_result(&review, &opts.no_open)) {
-        Some(url) => {sayln("magenta", &url)},
-        None => {}
+    match project::handle_review_result(&review, &opts.no_open) {
+        Ok(result) => {
+            match result {
+                Some(url) => {sayln("magenta", &url)},
+                None => {}
+            }
+        },
+        Err(_) => {
+            sayln("yellow", "We could not open the review in the browser for you.");
+            sayln("yellow", "Make sure there is a program that can open HTML files in your path \
+                             or pass --no-open to bypass attempting to open this review in a browser.");
+        }
     }
     Ok(0)
 }
