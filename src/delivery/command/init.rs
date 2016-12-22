@@ -360,7 +360,14 @@ fn trigger_review(config: Config, scp: Option<project::SourceCodeProvider>,
 
     // We now trigger a review for every single project type
     let review = try!(project::review(&pipeline, &head));
-    try!(project::handle_review_result(&review, no_open));
+    match project::handle_review_result(&review, no_open) {
+        Ok(_) => (),
+        Err(_) => {
+            sayln("yellow", "  We could not open the review in the browser for you.");
+            sayln("yellow", "  Make sure there is a program that can open HTML files in your path \
+                          or pass --no-open to bypass attempting to open this review in a browser.");
+        }
+    }
     match scp {
         Some(s) => sayln("green", &format!("  Review submitted to Delivery with {} \
                                            intergration enabled.", try!(s.kind_to_fancy_str()))),
