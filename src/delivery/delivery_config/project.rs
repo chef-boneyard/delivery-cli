@@ -47,6 +47,7 @@ pub struct LocalPhases {
     pub provision: String,
     pub deploy: String,
     pub smoke: String,
+    pub functional: String,
     pub cleanup: String,
 }
 
@@ -58,6 +59,7 @@ pub enum Phase {
     Provision,
     Deploy,
     Smoke,
+    Functional,
     Cleanup
 }
 
@@ -72,6 +74,7 @@ impl Default for ProjectToml {
                 provision: String::from(""),
                 deploy: String::from(""),
                 smoke: String::from(""),
+                functional: String::from(""),
                 cleanup: String::from("")
             }
         }
@@ -122,13 +125,14 @@ impl ProjectToml {
     pub fn local_phase(&self, phase: Option<Phase>) -> DeliveryResult<String> {
         if let Some(p) = phase { 
             match p {
-                Phase::Unit      => Ok(self.local_phases.unit.clone()),
-                Phase::Lint      => Ok(self.local_phases.lint.clone()),
-                Phase::Syntax    => Ok(self.local_phases.syntax.clone()),
-                Phase::Provision => Ok(self.local_phases.provision.clone()),
-                Phase::Deploy    => Ok(self.local_phases.deploy.clone()),
-                Phase::Smoke     => Ok(self.local_phases.smoke.clone()),
-                Phase::Cleanup   => Ok(self.local_phases.cleanup.clone()),
+                Phase::Unit       => Ok(self.local_phases.unit.clone()),
+                Phase::Lint       => Ok(self.local_phases.lint.clone()),
+                Phase::Syntax     => Ok(self.local_phases.syntax.clone()),
+                Phase::Provision  => Ok(self.local_phases.provision.clone()),
+                Phase::Deploy     => Ok(self.local_phases.deploy.clone()),
+                Phase::Smoke      => Ok(self.local_phases.smoke.clone()),
+                Phase::Functional => Ok(self.local_phases.functional.clone()),
+                Phase::Cleanup    => Ok(self.local_phases.cleanup.clone()),
             }
         } else {
             Err(DeliveryError{ kind: Kind::PhaseNotFound, detail: None })
@@ -205,6 +209,7 @@ syntax = "foodcritic . --exclude spec -f any"
 provision = "chef exec kitchen create"
 deploy = "chef exec kitchen converge"
 smoke = "chef exec kitchen verify"
+functional = ""
 cleanup = "chef exec kitchen destroy"
 "#;
         let project_toml = ProjectToml::parse_config(toml);
@@ -216,6 +221,7 @@ cleanup = "chef exec kitchen destroy"
                 assert_eq!("chef exec kitchen create".to_string(), p_toml.local_phases.provision);
                 assert_eq!("chef exec kitchen converge".to_string(), p_toml.local_phases.deploy);
                 assert_eq!("chef exec kitchen verify".to_string(), p_toml.local_phases.smoke);
+                assert_eq!("".to_string(), p_toml.local_phases.functional);
                 assert_eq!("chef exec kitchen destroy".to_string(), p_toml.local_phases.cleanup);
             },
             Err(e) => {
@@ -283,6 +289,7 @@ syntax = "echo local-syntax"
 provision = "echo local-provision"
 deploy = "echo local-deploy"
 smoke = "echo local-smoke"
+functional = "echo local-functional"
 cleanup = "echo local-cleanup"
 "#;
 
@@ -309,6 +316,7 @@ syntax = "echo remote-syntax"
 provision = "echo remote-provision"
 deploy = "echo remote-deploy"
 smoke = "echo remote-smoke"
+functional = "echo remote-functional"
 cleanup = "echo remote-cleanup"
 "#;
 

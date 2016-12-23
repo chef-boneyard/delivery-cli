@@ -16,6 +16,7 @@ Scenario: When local --help is run
   Then the output should contain "lint"
   Then the output should contain "provision"
   Then the output should contain "smoke"
+  Then the output should contain "functional"
   Then the output should contain "syntax"
   Then the output should contain "unit"
   And the exit status should be 0

@@ -44,6 +44,7 @@ impl<'n> LocalClapOptions<'n> {
             "provision" => Some(Phase::Provision),
             "deploy" => Some(Phase::Deploy),
             "smoke" => Some(Phase::Smoke),
+            "functional" => Some(Phase::Functional),
             "cleanup" => Some(Phase::Cleanup),
             _ => None
         };
@@ -61,6 +62,6 @@ pub fn clap_subcommand<'c>() -> App<'c, 'c> {
         .arg(Arg::from_usage("<phase> 'Delivery phase to execute'")
              .takes_value(false)
              .possible_values(&["unit", "lint", "syntax", "provision",
-                                "deploy", "smoke", "cleanup"]))
+                                "deploy", "smoke", "functional", "cleanup"]))
         .args_from_usage("-r --remote-project-toml=[remote-url] 'URL for remote project.toml'")
 }
