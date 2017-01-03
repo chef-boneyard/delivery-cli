@@ -26,12 +26,20 @@ use utils;
 pub fn run(opts: LocalClapOptions) -> DeliveryResult<ExitCode> {
     sayln("green", "Chef Delivery");
     let project_toml = try!(ProjectToml::load_toml(opts.remote_toml));
-    let phase_cmd = try!(project_toml.local_phase(opts.phase.clone()));
-    say("white", "Running ");
-    say("magenta", &format!("{:?}", opts.phase.unwrap()));
-    sayln("white", " Phase");
-    debug!("Executing command: {}", phase_cmd);
-    Ok(exec_command(&phase_cmd))
+    if let Some(phase_cmd) = try!(project_toml.local_phase(opts.phase.clone())) {
+        say("white", "Running ");
+        say("magenta", &format!("{:?}", opts.phase.unwrap()));
+        sayln("white", " Phase");
+        debug!("Executing command: {}", phase_cmd);
+        Ok(exec_command(&phase_cmd))
+    } else {
+        let phase = opts.phase.unwrap();
+        sayln("red", &format!("Unable to execute an empty phase.\nPlease verify that your \
+                              project.toml has the {:?} phase configured.\n\nHere an example:
+                              \n[local_phases]\n{:?} = \"echo 'insert script here'\"",
+                              phase, phase));
+        Ok(1)
+    }
 }
 
 pub fn exec_command(cmd: &str) -> ExitCode {

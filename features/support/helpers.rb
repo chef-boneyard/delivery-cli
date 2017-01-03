@@ -28,8 +28,17 @@ end
 # Mock a project.toml that has missing phases
 def incomplete_project_toml
 <<EOF
-[local_phases]
+# Missing an 's' in phases
+[local_phase]
 lint = "echo 'This file is wrong, we have missing phases'"
+EOF
+end
+
+# Mock a project.toml that is partially config
+def partial_project_toml
+<<EOF
+[local_phases]
+lint = "echo 'This file is valid'"
 EOF
 end
 

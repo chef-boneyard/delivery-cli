@@ -59,6 +59,10 @@ Given(/^I have an incomplete project.toml file$/) do
   step %(a file named ".delivery/project.toml" with:), incomplete_project_toml
 end
 
+Given(/^I have a partially config project.toml file$/) do
+  step %(a file named ".delivery/project.toml" with:), partial_project_toml
+end
+
 Given(/^I have a custom project.toml file$/) do
   step %(a file named ".delivery/project.toml" with:), project_toml
 end
