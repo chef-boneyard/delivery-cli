@@ -16,7 +16,6 @@
 //
 
 extern crate regex;
-#[no_link] extern crate regex_macros;
 extern crate clap;
 #[macro_use] extern crate log;
 extern crate env_logger;
