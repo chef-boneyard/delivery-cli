@@ -23,14 +23,14 @@ pub const SUBCOMMAND_NAME: &'static str = "local";
 #[derive(Debug)]
 pub struct LocalClapOptions<'n> {
     pub phase: Option<Phase>,
-    pub remote_toml: &'n str
+    pub remote_toml: Option<&'n str>
 }
 
 impl<'n> Default for LocalClapOptions<'n> {
     fn default() -> Self {
         LocalClapOptions {
             phase: None,
-            remote_toml: ""
+            remote_toml: None
         }
     }
 }
@@ -48,10 +48,14 @@ impl<'n> LocalClapOptions<'n> {
             "cleanup" => Some(Phase::Cleanup),
             _ => None
         };
+        let url = match value_of(&matches, "remote-project-toml") {
+            "" => None,
+            u => Some(u)
+        };
 
         LocalClapOptions {
             phase: phase,
-            remote_toml: value_of(&matches, "remote-project-toml")
+            remote_toml: url
         }
     }
 }

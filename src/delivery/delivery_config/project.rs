@@ -82,9 +82,9 @@ impl Default for ProjectToml {
 }
 
 impl ProjectToml {
-    pub fn load_toml(remote_toml: &str) -> DeliveryResult<ProjectToml> {
-        if ! remote_toml.is_empty() {
-            let url = remote_toml.clone();
+    pub fn load_toml(remote_toml: Option<&str>) -> DeliveryResult<ProjectToml> {
+        if remote_toml.is_some() {
+            let url = remote_toml.unwrap().clone();
             return ProjectToml::load_toml_remote(url)
         }
 
@@ -111,6 +111,7 @@ impl ProjectToml {
             Ok(mut resp) => {
                 let mut toml = String::new();
                 try!(resp.read_to_string(&mut toml));
+                debug!("Content Remote project.toml: {:?}", toml);
                 ProjectToml::parse_config(&toml)
             },
             Err(e) => {

@@ -120,6 +120,8 @@ Scenario: When local is run with a remote toml flag
   Then the output should contain "REMOTE-LINT"
 
 Scenario: When local is run with a remote toml flag with erroneous url
-  When I run `delivery local -r http://dont-exist lint`
-  Then the output should contain "An HTTP Error occured"
-  And the exit status should be 1
+  When I invoke a pseudo tty with command "RUST_LOG=debug delivery local -r dont-exist.example.com lint"
+  And I want to debug the pseudo tty command
+  And I run my ptty command
+  Then the ptty exit status should be 1
+  And the ptty output should contain "An HTTP Error occured"
