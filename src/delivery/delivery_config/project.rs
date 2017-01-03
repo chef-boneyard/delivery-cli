@@ -28,6 +28,7 @@ use rustc_serialize::Decodable;
 use std::default::Default;
 use std::io::Read;
 use std::path::PathBuf;
+use std::fmt::{Display, Formatter, Error};
 use toml;
 use types::DeliveryResult;
 use utils;
@@ -61,6 +62,23 @@ pub enum Phase {
     Smoke,
     Functional,
     Cleanup
+}
+
+// Modify how we display this enum so we can print the phases
+// with lowercases instead of capital letter, see command/local.rs
+impl Display for Phase {
+    fn fmt(&self, f:&mut Formatter) -> Result<(), Error> {
+        match *self {
+            Phase::Unit => write!(f, "unit"),
+            Phase::Lint => write!(f, "lint"),
+            Phase::Syntax => write!(f, "syntax"),
+            Phase::Provision => write!(f, "provision"),
+            Phase::Deploy => write!(f, "deploy"),
+            Phase::Smoke => write!(f, "smoke"),
+            Phase::Functional => write!(f, "funtional"),
+            Phase::Cleanup => write!(f, "cleanup")
+        }
+    }
 }
 
 impl Default for ProjectToml {

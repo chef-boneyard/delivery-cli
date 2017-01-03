@@ -34,9 +34,9 @@ pub fn run(opts: LocalClapOptions) -> DeliveryResult<ExitCode> {
         Ok(exec_command(&phase_cmd))
     } else {
         let phase = opts.phase.unwrap();
-        sayln("red", &format!("Unable to execute an empty phase.\nPlease verify that your \
-                              project.toml has the {:?} phase configured.\n\nHere an example:
-                              \n[local_phases]\n{:?} = \"echo 'insert script here'\"",
+        sayln("red", &format!("Unable to execute an empty phase.\nPlease verify that \
+                              your project.toml has a {} phase configured as follows:
+                              \n[local_phases]\n{} = \"insert script here\"",
                               phase, phase));
         Ok(1)
     }
