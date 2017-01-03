@@ -67,7 +67,7 @@ Scenario: When the project has an invalid `.delivery/project.toml`
   And I cd inside my ptty to "local"
   And I run my ptty command
   Then the ptty exit status should be 1
-  And the ptty output should contain "Attempted to decode invalid TOML"
+  And the ptty output should contain "LocalPhases tag not found"
 
 Scenario: When the project has a partial `.delivery/project.toml`
 	  it should not fail to execute the configured phase

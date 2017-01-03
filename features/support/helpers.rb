@@ -84,14 +84,6 @@ end
 def project_toml_with_remote_file(url)
 <<EOF
 remote_file = "#{url}"
-[local_phases]
-unit = ""
-lint = ""
-syntax = ""
-provision = ""
-deploy = ""
-smoke = ""
-cleanup = ""
 EOF
 end
 
