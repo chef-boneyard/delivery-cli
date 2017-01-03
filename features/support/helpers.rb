@@ -12,7 +12,9 @@ def custom_config
     "name": "build_cookbook"
   },
   "skip_phases": [ "smoke", "security", "syntax", "unit", "quality" ],
-  "build_nodes": {},
+  "job_dispatch": {
+    "version": "v2"
+  },
   "delivery-truck": {
     "publish": {
       "chef_server": true
@@ -139,7 +141,9 @@ def default_delivery_config
       "name": "build_cookbook"
     },
     "skip_phases": [],
-    "build_nodes": {},
+    "job_dispatch": {
+      "version": "v2"
+    },
     "dependencies": []
   }
 EOF

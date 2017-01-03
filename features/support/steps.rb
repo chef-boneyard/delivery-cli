@@ -235,7 +235,8 @@ Given(/^a default config.json is created$/) do
   step %(the file ".delivery/config.json" should contain:), %("name": "build_cookbook")
   step %(the file ".delivery/config.json" should contain:), %(},)
   step %(the file ".delivery/config.json" should contain:), %("skip_phases": [],)
-  step %(the file ".delivery/config.json" should contain:), %("build_nodes": {},)
+  step %(the file ".delivery/config.json" should contain:), %("job_dispatch": {)
+  step %(the file ".delivery/config.json" should contain:), %("version": "v2")
   step %(the file ".delivery/config.json" should contain:), %("dependencies": [])
 end
 
