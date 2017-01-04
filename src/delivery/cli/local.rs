@@ -23,14 +23,14 @@ pub const SUBCOMMAND_NAME: &'static str = "local";
 #[derive(Debug)]
 pub struct LocalClapOptions<'n> {
     pub phase: Option<Phase>,
-    pub remote_toml: &'n str
+    pub remote_toml: Option<&'n str>
 }
 
 impl<'n> Default for LocalClapOptions<'n> {
     fn default() -> Self {
         LocalClapOptions {
             phase: None,
-            remote_toml: ""
+            remote_toml: None
         }
     }
 }
@@ -44,13 +44,18 @@ impl<'n> LocalClapOptions<'n> {
             "provision" => Some(Phase::Provision),
             "deploy" => Some(Phase::Deploy),
             "smoke" => Some(Phase::Smoke),
+            "functional" => Some(Phase::Functional),
             "cleanup" => Some(Phase::Cleanup),
             _ => None
+        };
+        let url = match value_of(&matches, "remote-project-toml") {
+            "" => None,
+            u => Some(u)
         };
 
         LocalClapOptions {
             phase: phase,
-            remote_toml: value_of(&matches, "remote-project-toml")
+            remote_toml: url
         }
     }
 }
@@ -61,6 +66,6 @@ pub fn clap_subcommand<'c>() -> App<'c, 'c> {
         .arg(Arg::from_usage("<phase> 'Delivery phase to execute'")
              .takes_value(false)
              .possible_values(&["unit", "lint", "syntax", "provision",
-                                "deploy", "smoke", "cleanup"]))
+                                "deploy", "smoke", "functional", "cleanup"]))
         .args_from_usage("-r --remote-project-toml=[remote-url] 'URL for remote project.toml'")
 }

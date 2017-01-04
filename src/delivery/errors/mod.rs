@@ -28,6 +28,7 @@ use hyper::error::Error as HttpError;
 pub enum Kind {
     ChangeNotFound,
     PhaseNotFound,
+    LocalPhasesNotFound,
     AuthenticationFailed,
     InternalServerError,
     NoMatchingCommand,
@@ -103,6 +104,7 @@ impl error::Error for DeliveryError {
         match self.kind {
             Kind::ChangeNotFound => "GET failed for specific change",
             Kind::PhaseNotFound => "Phase not implemented",
+            Kind::LocalPhasesNotFound => "LocalPhases tag not found",
             Kind::NoMatchingCommand => "No command matches your arguments - likely unimplemented feature",
             Kind::ClapArgAliasOverlap => "There was an argument/alias overlap.",
             Kind::NotOnABranch => "You must be on a branch",

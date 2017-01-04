@@ -16,6 +16,7 @@ Scenario: When local --help is run
   Then the output should contain "lint"
   Then the output should contain "provision"
   Then the output should contain "smoke"
+  Then the output should contain "functional"
   Then the output should contain "syntax"
   Then the output should contain "unit"
   And the exit status should be 0
@@ -62,10 +63,31 @@ Scenario: Verify that when we modify the `.delivery/project.toml`
 Scenario: When the project has an invalid `.delivery/project.toml`
   When I have an incomplete project.toml file
   And I invoke a pseudo tty with command "delivery local lint"
+  And I want to debug the pseudo tty command
   And I cd inside my ptty to "local"
   And I run my ptty command
   Then the ptty exit status should be 1
-  And the ptty output should contain "Attempted to decode invalid TOML"
+  And the ptty output should contain "LocalPhases tag not found"
+
+Scenario: When the project has a partial `.delivery/project.toml`
+	  it should not fail to execute the configured phase
+  When I have a partially config project.toml file
+  And I invoke a pseudo tty with command "delivery local lint"
+  And I want to debug the pseudo tty command
+  And I cd inside my ptty to "local"
+  And I run my ptty command
+  Then the ptty exit status should be 0
+  And the ptty output should contain "This file is valid"
+
+Scenario: When the project has a partial `.delivery/project.toml`
+	  it should fail to execute the NOT configured phase
+  When I have a partially config project.toml file
+  And I invoke a pseudo tty with command "delivery local unit"
+  And I want to debug the pseudo tty command
+  And I cd inside my ptty to "local"
+  And I run my ptty command
+  Then the ptty exit status should be 1
+  And the ptty output should contain "Unable to execute an empty phase"
 
 Scenario: When `.delivery/project.toml` file is missing fail and
           show a helpful message about how to recover, additionally
@@ -98,6 +120,8 @@ Scenario: When local is run with a remote toml flag
   Then the output should contain "REMOTE-LINT"
 
 Scenario: When local is run with a remote toml flag with erroneous url
-  When I run `delivery local -r http://dont-exist lint`
-  Then the output should contain "An HTTP Error occured"
-  And the exit status should be 1
+  When I invoke a pseudo tty with command "RUST_LOG=debug delivery local -r dont-exist.example.com lint"
+  And I want to debug the pseudo tty command
+  And I run my ptty command
+  Then the ptty exit status should be 1
+  And the ptty output should contain "An HTTP Error occured"

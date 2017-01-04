@@ -28,6 +28,7 @@ use rustc_serialize::Decodable;
 use std::default::Default;
 use std::io::Read;
 use std::path::PathBuf;
+use std::fmt::{Display, Formatter, Error};
 use toml;
 use types::DeliveryResult;
 use utils;
@@ -36,18 +37,19 @@ use utils::path_join_many::PathJoinMany;
 #[derive(RustcEncodable, RustcDecodable, Clone, Debug)]
 pub struct ProjectToml {
     pub remote_file: Option<String>,
-    pub local_phases: LocalPhases
+    pub local_phases: Option<LocalPhases>
 }
 
 #[derive(RustcEncodable, RustcDecodable, Clone, Debug)]
 pub struct LocalPhases {
-    pub unit: String,
-    pub lint: String,
-    pub syntax: String,
-    pub provision: String,
-    pub deploy: String,
-    pub smoke: String,
-    pub cleanup: String,
+    pub unit: Option<String>,
+    pub lint: Option<String>,
+    pub syntax: Option<String>,
+    pub provision: Option<String>,
+    pub deploy: Option<String>,
+    pub smoke: Option<String>,
+    pub functional: Option<String>,
+    pub cleanup: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -58,30 +60,49 @@ pub enum Phase {
     Provision,
     Deploy,
     Smoke,
+    Functional,
     Cleanup
+}
+
+// Modify how we display this enum so we can print the phases
+// with lowercases instead of capital letter, see command/local.rs
+impl Display for Phase {
+    fn fmt(&self, f:&mut Formatter) -> Result<(), Error> {
+        match *self {
+            Phase::Unit => write!(f, "unit"),
+            Phase::Lint => write!(f, "lint"),
+            Phase::Syntax => write!(f, "syntax"),
+            Phase::Provision => write!(f, "provision"),
+            Phase::Deploy => write!(f, "deploy"),
+            Phase::Smoke => write!(f, "smoke"),
+            Phase::Functional => write!(f, "funtional"),
+            Phase::Cleanup => write!(f, "cleanup")
+        }
+    }
 }
 
 impl Default for ProjectToml {
     fn default() -> Self {
         ProjectToml {
             remote_file: None,
-            local_phases: LocalPhases {
-                unit: String::from(""),
-                lint: String::from(""),
-                syntax: String::from(""),
-                provision: String::from(""),
-                deploy: String::from(""),
-                smoke: String::from(""),
-                cleanup: String::from("")
-            }
+            local_phases: Some(LocalPhases {
+                unit: None,
+                lint: None,
+                syntax: None,
+                provision: None,
+                deploy: None,
+                smoke: None,
+                functional: None,
+                cleanup: None
+            })
         }
     }
 }
 
 impl ProjectToml {
-    pub fn load_toml(remote_toml: &str) -> DeliveryResult<ProjectToml> {
-        if ! remote_toml.is_empty() {
-            let url = remote_toml.clone();
+    pub fn load_toml(remote_toml: Option<&str>) -> DeliveryResult<ProjectToml> {
+        if remote_toml.is_some() {
+            let url = remote_toml.unwrap().clone();
             return ProjectToml::load_toml_remote(url)
         }
 
@@ -108,6 +129,7 @@ impl ProjectToml {
             Ok(mut resp) => {
                 let mut toml = String::new();
                 try!(resp.read_to_string(&mut toml));
+                debug!("Content Remote project.toml: {:?}", toml);
                 ProjectToml::parse_config(&toml)
             },
             Err(e) => {
@@ -119,16 +141,22 @@ impl ProjectToml {
         }
     }
 
-    pub fn local_phase(&self, phase: Option<Phase>) -> DeliveryResult<String> {
+    pub fn local_phase(&self, phase: Option<Phase>) -> DeliveryResult<Option<String>> {
         if let Some(p) = phase { 
-            match p {
-                Phase::Unit      => Ok(self.local_phases.unit.clone()),
-                Phase::Lint      => Ok(self.local_phases.lint.clone()),
-                Phase::Syntax    => Ok(self.local_phases.syntax.clone()),
-                Phase::Provision => Ok(self.local_phases.provision.clone()),
-                Phase::Deploy    => Ok(self.local_phases.deploy.clone()),
-                Phase::Smoke     => Ok(self.local_phases.smoke.clone()),
-                Phase::Cleanup   => Ok(self.local_phases.cleanup.clone()),
+            match self.local_phases {
+                Some(ref phases) => {
+                    match p {
+                        Phase::Unit       => Ok(phases.unit.clone()),
+                        Phase::Lint       => Ok(phases.lint.clone()),
+                        Phase::Syntax     => Ok(phases.syntax.clone()),
+                        Phase::Provision  => Ok(phases.provision.clone()),
+                        Phase::Deploy     => Ok(phases.deploy.clone()),
+                        Phase::Smoke      => Ok(phases.smoke.clone()),
+                        Phase::Functional => Ok(phases.functional.clone()),
+                        Phase::Cleanup    => Ok(phases.cleanup.clone()),
+                    }
+                },
+                None => Err(DeliveryError{ kind: Kind::LocalPhasesNotFound, detail: None })
             }
         } else {
             Err(DeliveryError{ kind: Kind::PhaseNotFound, detail: None })
@@ -186,71 +214,144 @@ mod tests {
 
     #[test]
     fn test_project_toml_with_defaults_plus_overrides() {
-        // default is empty phases
-        let mut p_toml= ProjectToml::default();
-        assert_eq!("".to_string(), p_toml.local_phases.unit);
-        // But if we fill them in
-        p_toml.local_phases.unit = "mvn test".to_string();
-        assert_eq!("mvn test".to_string(), p_toml.local_phases.unit);
+        let p_toml= ProjectToml::default();
+        let unit = "mvn test".to_string();
+        p_toml.local_phases.map(|mut phases| {
+            // default is empty phases
+            assert_eq!(None, phases.unit);
+            // But if we fill them in
+            phases.unit = Some(unit.clone());
+            assert_eq!(unit, phases.unit.unwrap());
+        });
     }
 
     #[test]
-    fn test_parse_project_config() {
+    fn test_parse_config_that_could_be_empty() {
         let  toml = r#"
-# This file is coming from chefdk (chef generate build-cookbook)
-[local_phases]
-unit = "rspec spec/"
-lint = "cookstyle"
-syntax = "foodcritic . --exclude spec -f any"
-provision = "chef exec kitchen create"
-deploy = "chef exec kitchen converge"
-smoke = "chef exec kitchen verify"
-cleanup = "chef exec kitchen destroy"
+# Now everything is optional so we can have an empty file
 "#;
         let project_toml = ProjectToml::parse_config(toml);
-        match project_toml {
-            Ok(p_toml) => {
-                assert_eq!("rspec spec/".to_string(), p_toml.local_phases.unit);
-                assert_eq!("cookstyle".to_string(), p_toml.local_phases.lint);
-                assert_eq!("foodcritic . --exclude spec -f any".to_string(), p_toml.local_phases.syntax);
-                assert_eq!("chef exec kitchen create".to_string(), p_toml.local_phases.provision);
-                assert_eq!("chef exec kitchen converge".to_string(), p_toml.local_phases.deploy);
-                assert_eq!("chef exec kitchen verify".to_string(), p_toml.local_phases.smoke);
-                assert_eq!("chef exec kitchen destroy".to_string(), p_toml.local_phases.cleanup);
-            },
-            Err(e) => {
-                panic!("Failed to parse: {:?}", e.detail)
-            }
-        }
-    }
-
-    #[test]
-    fn test_parse_config_error_when_toml_file_is_misconfigured() {
-        let  toml = r#"
-# Here it is missing the key [local_phases]
-lint = "cookstyle"
-syntax = "something"
-"#;
-        let project_toml = ProjectToml::parse_config(toml);
-        match project_toml {
-            Ok(_) => {
-                panic!("This shouldn't return an Ok() - verify test")
-            },
-            Err(e) => {
-                let msg = String::from("expected a field: expected a section \
-                            for the key `local_phases`");
-                assert_eq!(Some(msg), e.detail);
-            }
-        }
+        assert!(project_toml.is_ok());
     }
 
     #[test]
     fn test_local_phase_accessor() {
         let p_toml= ProjectToml::default();
-        // If one works all of them does :)
-        assert_eq!(p_toml.local_phase(Some(Phase::Unit)).unwrap(), p_toml.local_phases.unit);
         // Test failure - When None it must throw an Err()
         assert!(p_toml.local_phase(None).is_err());
+        // If one works all of them does :)
+        assert_eq!(p_toml.local_phase(Some(Phase::Unit)).unwrap(),
+                   p_toml.local_phases.unwrap().unit);
+    }
+
+    mod when_project_toml {
+        pub use super::{ProjectToml, Phase};
+        mod is_well_configured {
+            fn toml<'a>() -> &'a str {
+                r#"
+                # This file is coming from chefdk (chef generate build-cookbook)
+                [local_phases]
+                unit = "rspec spec/"
+                lint = "cookstyle"
+                syntax = "foodcritic . --exclude spec -f any"
+                provision = "chef exec kitchen create"
+                deploy = "chef exec kitchen converge"
+                smoke = "chef exec kitchen verify"
+                cleanup = "chef exec kitchen destroy"
+                "#
+            }
+
+            #[test]
+            fn parse_project_config() {
+                let project_toml = super::ProjectToml::parse_config(toml());
+                match project_toml {
+                    Ok(p_toml) => {
+                        p_toml.local_phases.map(|phases| {
+                            assert_eq!("rspec spec/".to_string(), phases.unit.unwrap());
+                            assert_eq!("cookstyle".to_string(), phases.lint.unwrap());
+                            assert_eq!("foodcritic . --exclude spec -f any".to_string(),
+                                        phases.syntax.unwrap());
+                            assert_eq!("chef exec kitchen create".to_string(),
+                                        phases.provision.unwrap());
+                            assert_eq!("chef exec kitchen converge".to_string(),
+                                        phases.deploy.unwrap());
+                            assert_eq!("chef exec kitchen verify".to_string(),
+                                        phases.smoke.unwrap());
+                            assert_eq!(None, phases.functional);
+                            assert_eq!("chef exec kitchen destroy".to_string(),
+                                        phases.cleanup.unwrap());
+                        });
+                    },
+                    Err(e) => {
+                        panic!("Failed to parse: {:?}", e.detail)
+                    }
+                }
+            }
+        }
+
+        mod is_partially_configured {
+            fn toml<'a>() -> &'a str {
+                 r#"
+                # Here we just define three phases
+                [local_phases]
+                unit = "rspec spec/"
+                lint = "cookstyle"
+                syntax = "something"
+                "#
+            }
+
+            #[test]
+            fn parse_project_config() {
+                let project_toml = super::ProjectToml::parse_config(toml());
+                match project_toml {
+                    Ok(p_toml) => {
+                        p_toml.local_phases.map(|phases| {
+                            assert_eq!("rspec spec/".to_string(), phases.unit.unwrap());
+                            assert_eq!("cookstyle".to_string(), phases.lint.unwrap());
+                            assert_eq!("something".to_string(), phases.syntax.unwrap());
+                            // The rest should be defined as None
+                            // but we shouldn't fail parsing the file
+                            assert!(phases.provision.is_none());
+                            assert!(phases.deploy.is_none());
+                            assert!(phases.smoke.is_none());
+                            assert!(phases.functional.is_none());
+                            assert!(phases.cleanup.is_none());
+                        });
+                    },
+                    Err(e) => {
+                        panic!("Failed to parse: {:?}", e.detail)
+                    }
+                }
+            }
+        }
+
+        mod points_to_a_remote_file {
+            fn toml<'a>() -> &'a str {
+                r#"
+                # No [local_phases]
+                # Just point to a remote_file
+                remote_file = "url"
+                "#
+            }
+
+            #[test]
+            fn parse_project_config() {
+                let project_toml = super::ProjectToml::parse_config(toml());
+                match project_toml {
+                    Ok(p_toml) => {
+                        assert_eq!("url".to_string(), p_toml.remote_file.unwrap());
+                        // local_phases should be defined as None
+                        assert!(p_toml.local_phases.is_none());
+                    },
+                    Err(e) => {
+                        panic!("Failed to parse: {:?}", e.detail)
+                    }
+                }
+            }
+        }
+
+        mod is_misconfigured {
+        }
     }
 
     mod toml_file_path {
@@ -283,6 +384,7 @@ syntax = "echo local-syntax"
 provision = "echo local-provision"
 deploy = "echo local-deploy"
 smoke = "echo local-smoke"
+functional = "echo local-functional"
 cleanup = "echo local-cleanup"
 "#;
 
@@ -290,7 +392,7 @@ cleanup = "echo local-cleanup"
             file.write_all(toml.as_bytes()).expect("Unable to write local toml file");
 
             let local_toml = ProjectToml::load_toml_file(path).unwrap();
-            assert_eq!("echo local-unit".to_string(), local_toml.local_phases.unit);
+            assert_eq!("echo local-unit".to_string(), local_toml.local_phases.unwrap().unit.unwrap());
         }
     }
 
@@ -309,6 +411,7 @@ syntax = "echo remote-syntax"
 provision = "echo remote-provision"
 deploy = "echo remote-deploy"
 smoke = "echo remote-smoke"
+functional = "echo remote-functional"
 cleanup = "echo remote-cleanup"
 "#;
 
@@ -319,7 +422,8 @@ cleanup = "echo remote-cleanup"
                 .create();
 
             let remote_toml = ProjectToml::load_toml_remote(url).unwrap();
-            assert_eq!("echo remote-unit".to_string(), remote_toml.local_phases.unit);
+            assert_eq!("echo remote-unit".to_string(),
+                       remote_toml.local_phases.unwrap().unit.unwrap());
         }
     }
 }
