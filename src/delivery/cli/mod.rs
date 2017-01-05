@@ -177,26 +177,22 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a> {
 fn handle_spinner(matches: &ArgMatches) {
     if matches.is_present("no-spinner") {
         say::turn_off_spinner()
-    };
-}
-
-fn exit_with(e: DeliveryError, i: isize) {
-    sayln("red", e.description());
-    match e.detail() {
-        Some(deets) => sayln("red", &deets),
-        None => {}
     }
-    let x = i as ExitCode;
-    process::exit(x)
 }
 
-pub fn init_command<T: InitCommand>(opts: &T) -> Result<Config, DeliveryError> {
-    let mut config = try!(Config::load_config(&utils::cwd()));
+fn exit_with(e: DeliveryError, i: ExitCode) {
+    sayln("red", &format!("{}", e));
+    if let Some(dtail) = e.detail() {
+        sayln("red", &dtail);
+    }
+    process::exit(i)
+}
 
+pub fn init_command<T: InitCommand>(opts: &T) -> DeliveryResult<Config> {
+    let mut config = try!(Config::load_config(&utils::cwd()));
     config = opts.merge_options_and_config(config);
     config = opts.initialize_command_state(config);
-
-    return Ok(config)
+    Ok(config)
 }
 
 fn version() -> String {
