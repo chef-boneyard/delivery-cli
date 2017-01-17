@@ -17,12 +17,11 @@
 
 use std;
 use std::process;
-use std::error::Error;
 use std::time::Duration;
-use utils::{self};
+use utils;
 use utils::say::{self, sayln};
 use errors::DeliveryError;
-use types::{ExitCode};
+use types::{DeliveryResult, ExitCode};
 use config::Config;
 use clap::{App, ArgMatches};
 use project;

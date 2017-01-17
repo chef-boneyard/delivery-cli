@@ -1,9 +1,9 @@
 Feature: local
 
-  The `delivery local` command runs Workflow phases on your local
-  workstation, it requires your project to have the `project.toml`
-  file inside the `.delivery/` directory where a user can configure
-  the command(s) to run.
+  The `delivery local` command runs Workflow phases and stages on your
+  local workstation, it requires your project to have the `project.toml`
+  file inside the `.delivery/` directory where a user can configure the
+  command(s) to run.
 
 Background:
   When I clean up the ruby env so I can run other ruby bins like ChefDK
@@ -12,13 +12,13 @@ Background:
 Scenario: When local --help is run
   When I run `delivery local --help`
   Then the output should contain "cleanup"
-  Then the output should contain "deploy"
-  Then the output should contain "lint"
-  Then the output should contain "provision"
-  Then the output should contain "smoke"
-  Then the output should contain "functional"
-  Then the output should contain "syntax"
-  Then the output should contain "unit"
+  And the output should contain "deploy"
+  And the output should contain "lint"
+  And the output should contain "provision"
+  And the output should contain "smoke"
+  And the output should contain "functional"
+  And the output should contain "syntax"
+  And the output should contain "unit"
   And the exit status should be 0
 
 Scenario: When local is run with no subcommands
@@ -28,7 +28,7 @@ Scenario: When local is run with no subcommands
 
 Scenario: When local is run with an invalid subcommand
   When I run `delivery local bogus`
-  Then the output should contain "error: 'bogus' isn't a valid value for '<phase>'"
+  Then the output should contain "error: 'bogus' isn't a valid value for '<stage_phase>'"
   And the exit status should be 1
 
 Scenario: Executing the lint phase locally
@@ -125,3 +125,64 @@ Scenario: When local is run with a remote toml flag with erroneous url
   And I run my ptty command
   Then the ptty exit status should be 1
   And the ptty output should contain "An HTTP Error occured"
+
+Scenario: Executing the Verify Stage that includes the lint,
+          unit and syntax phases.
+  When I have a custom project.toml file
+  And I run `delivery local verify`
+  Then the output should match /Running.*Verify.*Stage/
+  And the output should match /Running.*Lint.*Phase/
+  And the output should contain "no offenses detected"
+  And the output should match /Running.*Syntax.*Phase/
+  And the output should match /Running.*Unit.*Phase/
+  And the output should contain "This is a cool unit test"
+  And the exit status should be 0
+
+Scenario: Executing the Acceptance Stage that includes the
+          provision, deploy, smoke and functional phases.
+  When I have a custom project.toml file
+  And I run `delivery local acceptance`
+  Then the output should match /Running.*Acceptance.*Stage/
+  And the output should match /Running.*Provision.*Phase/
+  And the output should contain "Creating instances"
+  And the output should match /Running.*Deploy.*Phase/
+  And the output should contain "Converging instances"
+  And the output should match /Running.*Smoke.*Phase/
+  And the output should contain "Smoking tests"
+  And the output should match /Running.*Functional.*Phase/
+  And the output should contain "Functional tests"
+  And the output should match /Running.*Cleanup.*Phase/
+  And the output should contain "Cleaning up"
+  And the exit status should be 0
+
+Scenario: Executing All phases at once.
+  When I have a custom project.toml file
+  And I run `delivery local all`
+  Then the output should match /Running.*All.*Stage/
+  And the output should match /Running.*Lint.*Phase/
+  And the output should contain "no offenses detected"
+  And the output should match /Running.*Syntax.*Phase/
+  And the output should match /Running.*Unit.*Phase/
+  And the output should contain "This is a cool unit test"
+  And the output should match /Running.*Provision.*Phase/
+  And the output should contain "Creating instances"
+  And the output should match /Running.*Deploy.*Phase/
+  And the output should contain "Converging instances"
+  And the output should match /Running.*Smoke.*Phase/
+  And the output should contain "Smoking tests"
+  And the output should match /Running.*Functional.*Phase/
+  And the output should contain "Functional tests"
+  And the output should match /Running.*Cleanup.*Phase/
+  And the output should contain "Cleaning up"
+  And the exit status should be 0
+
+Scenario: Executing stages that fails should stop on the failed
+          phase and print the exit code.
+  When I have a custom project.toml file with failures
+  And I run `delivery local verify`
+  Then the output should match /Running.*Verify.*Stage/
+  And the output should not match /Running.*Syntax.*Phase/
+  And the output should not match /Running.*Unit.*Phase/
+  And the output should match /Running.*Lint.*Phase/
+  And the output should contain "Phase failed with exit code (2)"
+  And the exit status should be 1

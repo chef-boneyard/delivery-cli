@@ -19,30 +19,51 @@ use cli::local::LocalClapOptions;
 use types::{DeliveryResult, ExitCode};
 use utils::say::{sayln, say};
 use std::process::{Stdio};
-use delivery_config::project::ProjectToml;
+use delivery_config::project::{Phase, ProjectToml};
+use errors::{DeliveryError, Kind};
 use project;
 use utils;
 
 pub fn run(opts: LocalClapOptions) -> DeliveryResult<ExitCode> {
     sayln("green", "Chef Delivery");
     let project_toml = try!(ProjectToml::load_toml(opts.remote_toml));
-    if let Some(phase_cmd) = try!(project_toml.local_phase(opts.phase.clone())) {
+
+    // If a Stage was provided, trigger their phases in order
+    if let Some(stage) = opts.stage {
         say("white", "Running ");
-        say("magenta", &format!("{:?}", opts.phase.unwrap()));
+        say("yellow", &format!("{:?}", stage));
+        sayln("white", " Stage");
+        for phase in stage.phases().into_iter() {
+            match try!(exec_phase(project_toml.clone(), Some(phase))) {
+                0 => continue,
+                exit_code => return Err(DeliveryError {
+                    kind: Kind::PhaseFailed(exit_code),
+                    detail: None
+                }),
+            }
+        }
+        Ok(0)
+    } else {
+        exec_phase(project_toml, opts.phase)
+    }
+}
+
+fn exec_phase(project_toml: ProjectToml, phase: Option<Phase>) -> DeliveryResult<ExitCode> {
+    if let Some(phase_cmd) = try!(project_toml.local_phase(phase.clone())) {
+        say("white", "Running ");
+        say("magenta", &format!("{:?}", phase.unwrap()));
         sayln("white", " Phase");
         debug!("Executing command: {}", phase_cmd);
         Ok(exec_command(&phase_cmd))
     } else {
-        let phase = opts.phase.unwrap();
+        let p = phase.unwrap();
         sayln("red", &format!("Unable to execute an empty phase.\nPlease verify that \
                               your project.toml has a {} phase configured as follows:
-                              \n[local_phases]\n{} = \"insert script here\"",
-                              phase, phase));
+                              \n[local_phases]\n{} = \"insert script here\"", p, p));
         Ok(1)
     }
 }
-
-pub fn exec_command(cmd: &str) -> ExitCode {
+fn exec_command(cmd: &str) -> ExitCode {
     // TODO: I just copy paste the old code and modified a little bit
     // so it works but we have to work on UW-75 to make it right!
     // We should maybe create a tempfile to stick the command coming from
