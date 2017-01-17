@@ -143,8 +143,7 @@ pub fn run() {
             // so for now...
             let mut a = make_app(&build_version);
             a.print_help().ok().expect("failed to write help to stdout");
-            sayln("red", "missing subcommand");
-            process::exit(1);
+            Ok(1)
         }
     };
     match cmd_result {
