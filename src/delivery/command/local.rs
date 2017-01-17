@@ -31,7 +31,7 @@ pub fn run(opts: LocalClapOptions) -> DeliveryResult<ExitCode> {
     // If a Stage was provided, trigger their phases in order
     if let Some(stage) = opts.stage {
         say("white", "Running ");
-        say("yellow", &format!("{:?}", stage));
+        say("yellow", &format!("{}", stage));
         sayln("white", " Stage");
         for phase in stage.phases().into_iter() {
             match try!(exec_phase(project_toml.clone(), Some(phase))) {

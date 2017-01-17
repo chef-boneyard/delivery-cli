@@ -88,6 +88,16 @@ impl Display for Phase {
     }
 }
 
+impl Display for Stage {
+    fn fmt(&self, f:&mut Formatter) -> Result<(), Error> {
+        match *self {
+            Stage::Verify => write!(f, "Verify"),
+            Stage::Acceptance => write!(f, "Acceptance"),
+            Stage::All => write!(f, "Every"),
+        }
+    }
+}
+
 impl Stage {
     pub fn phases(&self) -> Vec<Phase> {
         match *self {

@@ -158,7 +158,7 @@ Scenario: Executing the Acceptance Stage that includes the
 Scenario: Executing All phases at once.
   When I have a custom project.toml file
   And I run `delivery local all`
-  Then the output should match /Running.*All.*Stage/
+  Then the output should match /Running.*Every.*Stage/
   And the output should match /Running.*Lint.*Phase/
   And the output should contain "no offenses detected"
   And the output should match /Running.*Syntax.*Phase/
