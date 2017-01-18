@@ -52,7 +52,7 @@ pub struct LocalPhases {
     pub cleanup: Option<String>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Phase {
     Unit,
     Lint,
@@ -61,7 +61,14 @@ pub enum Phase {
     Deploy,
     Smoke,
     Functional,
-    Cleanup
+    Cleanup,
+}
+
+#[derive(Clone, Debug)]
+pub enum Stage {
+    Verify,
+    Acceptance,
+    All,
 }
 
 // Modify how we display this enum so we can print the phases
@@ -76,7 +83,46 @@ impl Display for Phase {
             Phase::Deploy => write!(f, "deploy"),
             Phase::Smoke => write!(f, "smoke"),
             Phase::Functional => write!(f, "funtional"),
-            Phase::Cleanup => write!(f, "cleanup")
+            Phase::Cleanup => write!(f, "cleanup"),
+        }
+    }
+}
+
+impl Display for Stage {
+    fn fmt(&self, f:&mut Formatter) -> Result<(), Error> {
+        match *self {
+            Stage::Verify => write!(f, "Verify"),
+            Stage::Acceptance => write!(f, "Acceptance"),
+            Stage::All => write!(f, "Every"),
+        }
+    }
+}
+
+impl Stage {
+    pub fn phases(&self) -> Vec<Phase> {
+        match *self {
+            Stage::Verify => vec![
+                Phase::Lint,
+                Phase::Syntax,
+                Phase::Unit,
+            ],
+            Stage::Acceptance => vec![
+                Phase::Provision,
+                Phase::Deploy,
+                Phase::Smoke,
+                Phase::Functional,
+                Phase::Cleanup,
+            ],
+            Stage::All => vec![
+                Phase::Lint,
+                Phase::Syntax,
+                Phase::Unit,
+                Phase::Provision,
+                Phase::Deploy,
+                Phase::Smoke,
+                Phase::Functional,
+                Phase::Cleanup,
+            ],
         }
     }
 }
@@ -210,7 +256,7 @@ impl ProjectToml {
 
 #[cfg(test)]
 mod tests {
-    pub use super::{ProjectToml, Phase};
+    pub use super::{ProjectToml, Phase, Stage};
 
     #[test]
     fn test_project_toml_with_defaults_plus_overrides() {
@@ -242,6 +288,31 @@ mod tests {
         // If one works all of them does :)
         assert_eq!(p_toml.local_phase(Some(Phase::Unit)).unwrap(),
                    p_toml.local_phases.unwrap().unit);
+    }
+
+    #[test]
+    fn test_stages_phases() {
+        let verify = Stage::Verify;
+        assert!(verify.phases().contains(&Phase::Syntax));
+        assert!(verify.phases().contains(&Phase::Unit));
+        assert!(verify.phases().contains(&Phase::Lint));
+
+        let acceptance = Stage::Acceptance;
+        assert!(acceptance.phases().contains(&Phase::Smoke));
+        assert!(acceptance.phases().contains(&Phase::Deploy));
+        assert!(acceptance.phases().contains(&Phase::Provision));
+        assert!(acceptance.phases().contains(&Phase::Functional));
+        assert!(acceptance.phases().contains(&Phase::Cleanup));
+
+        let all = Stage::All;
+        assert!(all.phases().contains(&Phase::Syntax));
+        assert!(all.phases().contains(&Phase::Unit));
+        assert!(all.phases().contains(&Phase::Lint));
+        assert!(all.phases().contains(&Phase::Smoke));
+        assert!(all.phases().contains(&Phase::Deploy));
+        assert!(all.phases().contains(&Phase::Provision));
+        assert!(all.phases().contains(&Phase::Functional));
+        assert!(all.phases().contains(&Phase::Cleanup));
     }
 
     mod when_project_toml {

@@ -34,6 +34,16 @@ lint = "echo 'This file is wrong, we have missing phases'"
 EOF
 end
 
+# Mock a project.toml that has failures on phases
+def project_toml_with_failures
+<<EOF
+[local_phases]
+lint = "foodcritic failure"
+syntax = "chefstyle failure"
+unit = "rspec failure"
+EOF
+end
+
 # Mock a project.toml that is partially config
 def partial_project_toml
 <<EOF
@@ -49,10 +59,11 @@ def project_toml
 unit = "echo 'This is a cool unit test'"
 lint = "cookstyle"
 syntax = "foodcritic ."
-provision = "chef exec kitchen create"
-deploy = "chef exec kitchen converge"
-smoke = "chef exec kitchen verify"
-cleanup = "chef exec kitchen destroy"
+provision = "echo 'Creating instances'"
+deploy = "echo 'Converging instances'"
+smoke = "echo 'Smoking tests'"
+functional = "echo 'Functional tests'"
+cleanup = "echo 'Cleaning up'"
 EOF
 end
 

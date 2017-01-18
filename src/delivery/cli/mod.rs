@@ -17,12 +17,11 @@
 
 use std;
 use std::process;
-use std::error::Error;
 use std::time::Duration;
-use utils::{self};
+use utils;
 use utils::say::{self, sayln};
 use errors::DeliveryError;
-use types::{ExitCode};
+use types::{DeliveryResult, ExitCode};
 use config::Config;
 use clap::{App, ArgMatches};
 use project;
@@ -143,8 +142,7 @@ pub fn run() {
             // so for now...
             let mut a = make_app(&build_version);
             a.print_help().ok().expect("failed to write help to stdout");
-            sayln("red", "missing subcommand");
-            process::exit(1);
+            Ok(1)
         }
     };
     match cmd_result {
@@ -177,26 +175,22 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a> {
 fn handle_spinner(matches: &ArgMatches) {
     if matches.is_present("no-spinner") {
         say::turn_off_spinner()
-    };
-}
-
-fn exit_with(e: DeliveryError, i: isize) {
-    sayln("red", e.description());
-    match e.detail() {
-        Some(deets) => sayln("red", &deets),
-        None => {}
     }
-    let x = i as ExitCode;
-    process::exit(x)
 }
 
-pub fn init_command<T: InitCommand>(opts: &T) -> Result<Config, DeliveryError> {
-    let mut config = try!(Config::load_config(&utils::cwd()));
+fn exit_with(e: DeliveryError, i: ExitCode) {
+    sayln("red", &format!("{}", e));
+    if let Some(dtail) = e.detail() {
+        sayln("red", &dtail);
+    }
+    process::exit(i)
+}
 
+pub fn init_command<T: InitCommand>(opts: &T) -> DeliveryResult<Config> {
+    let mut config = try!(Config::load_config(&utils::cwd()));
     config = opts.merge_options_and_config(config);
     config = opts.initialize_command_state(config);
-
-    return Ok(config)
+    Ok(config)
 }
 
 fn version() -> String {

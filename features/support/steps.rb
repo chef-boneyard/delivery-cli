@@ -67,6 +67,10 @@ Given(/^I have a custom project.toml file$/) do
   step %(a file named ".delivery/project.toml" with:), project_toml
 end
 
+Given(/^I have a custom project.toml file with failures$/) do
+  step %(a file named ".delivery/project.toml" with:), project_toml_with_failures
+end
+
 Given(/^I have a valid cli.toml file$/) do
   step %(a file named ".delivery/cli.toml" with:), valid_cli_toml
 end

@@ -22,12 +22,14 @@ use std::io;
 use std::fmt;
 use hyper;
 use toml;
+use types::ExitCode;
 use hyper::error::Error as HttpError;
 
 #[derive(Debug)]
 pub enum Kind {
     ChangeNotFound,
     PhaseNotFound,
+    PhaseFailed(ExitCode),
     LocalPhasesNotFound,
     AuthenticationFailed,
     InternalServerError,
@@ -104,6 +106,7 @@ impl error::Error for DeliveryError {
         match self.kind {
             Kind::ChangeNotFound => "GET failed for specific change",
             Kind::PhaseNotFound => "Phase not implemented",
+            Kind::PhaseFailed(_) => "Phase failed!",
             Kind::LocalPhasesNotFound => "LocalPhases tag not found",
             Kind::NoMatchingCommand => "No command matches your arguments - likely unimplemented feature",
             Kind::ClapArgAliasOverlap => "There was an argument/alias overlap.",
@@ -180,7 +183,11 @@ impl error::Error for DeliveryError {
 
 impl fmt::Display for DeliveryError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.description().fmt(f)
+        let msg = match self.kind {
+            Kind::PhaseFailed(ref e) => format!("Phase failed with exit code ({})!", e),
+            _ => self.description().to_string(),
+        };
+        write!(f, "{}", msg)
     }
 }
 
