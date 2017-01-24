@@ -297,7 +297,7 @@ Scenario: For automation purposes I should be able to request a token
         }
       end
     """
-  When I invoke a pseudo tty with command "delivery token --server localhost:8080 --ent automation --user token --raw"
+  When I invoke a pseudo tty with command "delivery token --server 127.0.0.1:8080 --ent automation --user token --raw"
   And I set inside my ptty the env variable "AUTOMATE_PASSWORD" to "something"
   And I run my ptty command
   Then the ptty exit status should be 0
