@@ -202,8 +202,11 @@ fn exit_with(e: DeliveryError, i: ExitCode) {
 
 pub fn init_command<T: InitCommand>(opts: &T) -> DeliveryResult<Config> {
     let mut config = try!(Config::load_config(&utils::cwd()));
+    debug!("Initial config: {:?}", config);
     config = try!(opts.merge_options_and_config(config));
+    debug!("Merged config: {:?}", config);
     config = try!(opts.initialize_command_state(config));
+    debug!("Command specific config: {:?}", config);
     Ok(config)
 }
 
