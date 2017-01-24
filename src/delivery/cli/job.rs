@@ -17,6 +17,7 @@
 use cli::arguments::{pipeline_arg, project_arg, local_arg, patchset_arg, u_e_s_o_args, value_of};
 use clap::{Arg, App, SubCommand, ArgMatches};
 use cli::InitCommand;
+use types::DeliveryResult;
 use config::Config;
 use project;
 
@@ -106,6 +107,13 @@ impl<'n> InitCommand for JobClapOptions<'n> {
             .set_project(&project);
         
         return new_config;
+    }
+
+    fn initialize_command_state(&self, config: Config) -> DeliveryResult<Config> {
+        if self.local {
+            return Ok(config)
+        }
+        self.init_project_specific(config)
     }
 }
 

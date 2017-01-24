@@ -19,6 +19,7 @@ use cli::arguments::{pipeline_arg, config_path_arg, no_open_arg, project_arg,
           value_of};
 use clap::{App, SubCommand, ArgMatches};
 use cli::InitCommand;
+use types::DeliveryResult;
 use config::Config;
 use project;
 
@@ -99,6 +100,13 @@ impl<'n> InitCommand for InitClapOptions<'n> {
             .set_generator(&self.generator)
             .set_config_json(&self.config_json);
         return new_config;
+    }
+
+    fn initialize_command_state(&self, config: Config) -> DeliveryResult<Config> {
+        if self.local {
+            return Ok(config)
+        }
+        self.init_project_specific(config)
     }
 }
 
