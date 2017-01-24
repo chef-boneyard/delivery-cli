@@ -65,3 +65,25 @@ Scenario: Executing a local job
   And 'git fetch origin username/feature/branch' should not be run
   And 'git fetch origin master' should be run
   And the exit status should be 0
+
+Scenario: Real job triggering; this command is exactly as we trigger jobs in Chef Automate
+  Given I am in a blank workspace
+  When I run `delivery job build syntax --server delivery.mycompany.com --user cukes --ent skunkworks --org engineering --project phoenix_project --for master --change-id 80983bb0-5cb5-4ec9-a5f1-b023d4c14d69 --shasum 88782dfd260a2b8277b100ba5192c7131b81aa0a --git-url ssh://cukes@skunkworks@delivery.mycompany.com:2828/skunkworks/engineering/phoenix_project`
+  Then the output should contain:
+  """
+  Chef Client finished
+  """
+  And "git clone ssh://cukes@skunkworks@delivery.mycompany.com:2828/skunkworks/engineering/phoenix_project ." should be run
+  And 'git fetch origin' should be run
+  And 'git remote add delivery ssh://cukes@skunkworks@delivery.mycompany.com:2828/skunkworks/engineering/phoenix_project' should not be run
+  And the exit status should be 0
+
+Scenario: Real job triggering; If you try to run a job outside of the git_repo and
+          also without specifying a `--project` flag. We must fail.
+  Given I am in a blank workspace
+  When I run `delivery job build syntax --server delivery.mycompany.com --user cukes --ent skunkworks --org engineering --for master --change-id 80983bb0-5cb5-4ec9-a5f1-b023d4c14d69 --shasum 88782dfd260a2b8277b100ba5192c7131b81aa0a --git-url ssh://cukes@skunkworks@delivery.mycompany.com:2828/skunkworks/engineering/phoenix_project`
+  Then the output should contain:
+  """
+  Cannot find a .git/config file. Run 'git init' in your project root to initialize it
+  """
+  And the exit status should not be 0
