@@ -17,6 +17,7 @@
 use cli::arguments::{u_e_s_o_args, value_of};
 use clap::{App, SubCommand, ArgMatches};
 use cli::InitCommand;
+use types::DeliveryResult;
 use config::Config;
 
 pub const SUBCOMMAND_NAME: &'static str = "clone";
@@ -66,8 +67,8 @@ impl<'n> InitCommand for CloneClapOptions<'n> {
         return new_config;
     }
 
-    fn initialize_command_state(&self, config: Config) -> Config {
-        return config;
+    fn initialize_command_state(&self, config: Config) -> DeliveryResult<Config> {
+        return Ok(config);
     }
 }
 

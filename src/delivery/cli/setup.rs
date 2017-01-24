@@ -18,6 +18,7 @@ use cli::arguments::{pipeline_arg, config_path_arg, u_e_s_o_args,
             project_arg, value_of};
 use clap::{App, SubCommand, ArgMatches};
 use cli::InitCommand;
+use types::DeliveryResult;
 use config::Config;
 
 pub const SUBCOMMAND_NAME: &'static str = "setup";
@@ -72,8 +73,8 @@ impl<'n> InitCommand for SetupClapOptions<'n> {
         return new_config;
     }
 
-    fn initialize_command_state(&self, config: Config) -> Config {
-        return config;
+    fn initialize_command_state(&self, config: Config) -> DeliveryResult<Config> {
+        return Ok(config);
     }
 }
 

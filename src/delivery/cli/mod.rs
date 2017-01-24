@@ -61,14 +61,14 @@ pub trait InitCommand {
     // if it hasn't been already as well as make sure the git remote is up to date.
     // Can override to fix the initialization needs of your command (for example,
     // simply return the config in a non-project specific command like api).
-    fn initialize_command_state(&self, mut config: Config) -> Config {
+    fn initialize_command_state(&self, mut config: Config) -> DeliveryResult<Config> {
         if config.project.is_none() {
             config.project = project::project_from_cwd().ok();
         }
 
-        let git_url = config.delivery_git_ssh_url().unwrap();
-        git::create_or_update_delivery_remote(&git_url, &project::project_path()).unwrap();
-        return config
+        let git_url = try!(config.delivery_git_ssh_url());
+        try!(git::create_or_update_delivery_remote(&git_url, &project::project_path()));
+        Ok(config)
     }
 }
 
@@ -189,7 +189,7 @@ fn exit_with(e: DeliveryError, i: ExitCode) {
 pub fn init_command<T: InitCommand>(opts: &T) -> DeliveryResult<Config> {
     let mut config = try!(Config::load_config(&utils::cwd()));
     config = opts.merge_options_and_config(config);
-    config = opts.initialize_command_state(config);
+    config = try!(opts.initialize_command_state(config));
     Ok(config)
 }
 

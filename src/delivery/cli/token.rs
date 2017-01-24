@@ -17,6 +17,7 @@
 use cli::arguments::{value_of, u_e_s_o_args};
 use clap::{Arg, App, SubCommand, ArgMatches};
 use cli::InitCommand;
+use types::DeliveryResult;
 use config::Config;
 
 pub const SUBCOMMAND_NAME: &'static str = "token";
@@ -78,8 +79,8 @@ impl<'n> InitCommand for TokenClapOptions<'n> {
         return new_config;
     }
 
-    fn initialize_command_state(&self, config: Config) -> Config {
-        return config;
+    fn initialize_command_state(&self, config: Config) -> DeliveryResult<Config> {
+        return Ok(config);
     }
 }
 
