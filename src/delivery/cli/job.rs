@@ -96,8 +96,8 @@ impl<'n> JobClapOptions<'n> {
 }
 
 impl<'n> InitCommand for JobClapOptions<'n> {
-    fn merge_options_and_config(&self, config: Config) -> Config {
-        let project = project::project_or_from_cwd(&self.project).unwrap();
+    fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
+        let project = try!(project::project_or_from_cwd(&self.project));
 
         let new_config = config.set_pipeline(&self.pipeline)
             .set_user(with_default(&self.user, "you", &&self.local))
@@ -105,8 +105,7 @@ impl<'n> InitCommand for JobClapOptions<'n> {
             .set_enterprise(with_default(&self.ent, "local", &&self.local))
             .set_organization(with_default(&self.org, "workstation", &&self.local))
             .set_project(&project);
-        
-        return new_config;
+        Ok(new_config)
     }
 
     fn initialize_command_state(&self, config: Config) -> DeliveryResult<Config> {

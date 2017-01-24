@@ -152,7 +152,7 @@ impl ProjectToml {
             return ProjectToml::load_toml_remote(url)
         }
 
-        let path = ProjectToml::toml_file_path(project::project_path());
+        let path = ProjectToml::toml_file_path(try!(project::project_path()));
         let project_toml = try!(ProjectToml::load_toml_file(path));
 
         match project_toml.remote_file {

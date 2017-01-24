@@ -54,7 +54,7 @@ mod spin;
 use command;
 
 pub trait InitCommand {
-    fn merge_options_and_config(&self, config: Config) -> Config;
+    fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config>;
 
     // The initialization of a CLI command could be different from another one
     // so we need a main method we can easily overrive if such behavior is
@@ -81,7 +81,7 @@ pub trait InitCommand {
         }
 
         let git_url = try!(config.delivery_git_ssh_url());
-        try!(git::create_or_update_delivery_remote(&git_url, &project::project_path()));
+        try!(git::create_or_update_delivery_remote(&git_url, &try!(project::project_path())));
         Ok(config)
     }
 }
@@ -202,7 +202,7 @@ fn exit_with(e: DeliveryError, i: ExitCode) {
 
 pub fn init_command<T: InitCommand>(opts: &T) -> DeliveryResult<Config> {
     let mut config = try!(Config::load_config(&utils::cwd()));
-    config = opts.merge_options_and_config(config);
+    config = try!(opts.merge_options_and_config(config));
     config = try!(opts.initialize_command_state(config));
     Ok(config)
 }

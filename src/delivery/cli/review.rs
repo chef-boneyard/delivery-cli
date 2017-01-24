@@ -17,6 +17,7 @@
 use cli::arguments::{pipeline_arg, no_open_arg, value_of, auto_bump};
 use clap::{App, SubCommand, ArgMatches};
 use config::Config;
+use types::DeliveryResult;
 use cli::InitCommand;
 use project;
 
@@ -52,7 +53,7 @@ impl<'n> ReviewClapOptions<'n> {
 }
 
 impl<'n> InitCommand for ReviewClapOptions<'n> {
-    fn merge_options_and_config(&self, config: Config) -> Config {
+    fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
         let mut new_config = config.set_pipeline(&self.pipeline);
 
         if new_config.auto_bump.is_none() {
@@ -63,7 +64,7 @@ impl<'n> InitCommand for ReviewClapOptions<'n> {
             new_config.project = project::project_from_cwd().ok();
         }
 
-        return new_config;
+        Ok(new_config)
     }
 }
 

@@ -61,16 +61,16 @@ impl<'n> ApiClapOptions<'n> {
 }
 
 impl<'n> InitCommand for ApiClapOptions<'n> {
-    fn merge_options_and_config(&self, config: Config) -> Config {
+    fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
         let new_config = config.set_user(&self.user)
             .set_server(&self.server)
             .set_api_port(&self.api_port)
             .set_enterprise(&self.ent);
-        return new_config;
+        Ok(new_config)
     }
 
     fn initialize_command_state(&self, config: Config) -> DeliveryResult<Config> {
-        return Ok(config);
+        Ok(config)
     }
 }
 

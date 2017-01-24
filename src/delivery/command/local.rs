@@ -54,7 +54,7 @@ fn exec_phase(project_toml: ProjectToml, phase: Option<Phase>) -> DeliveryResult
         say("magenta", &format!("{:?}", phase.unwrap()));
         sayln("white", " Phase");
         debug!("Executing command: {}", phase_cmd);
-        Ok(exec_command(&phase_cmd))
+        exec_command(&phase_cmd)
     } else {
         let p = phase.unwrap();
         sayln("red", &format!("Unable to execute an empty phase.\nPlease verify that \
@@ -63,7 +63,7 @@ fn exec_phase(project_toml: ProjectToml, phase: Option<Phase>) -> DeliveryResult
         Ok(1)
     }
 }
-fn exec_command(cmd: &str) -> ExitCode {
+fn exec_command(cmd: &str) -> DeliveryResult<ExitCode> {
     // TODO: I just copy paste the old code and modified a little bit
     // so it works but we have to work on UW-75 to make it right!
     // We should maybe create a tempfile to stick the command coming from
@@ -75,7 +75,7 @@ fn exec_command(cmd: &str) -> ExitCode {
         .args(&args_vec)
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
-        .current_dir(project::project_path())
+        .current_dir(try!(project::project_path()))
         .output()
         .unwrap_or_else(|e| { panic!("Unexpected error: Failed to execute process: {}", e) });
 
@@ -83,5 +83,5 @@ fn exec_command(cmd: &str) -> ExitCode {
         Some(code) => code,
         _ => 1
     };
-    return return_code
+    Ok(return_code)
 }
