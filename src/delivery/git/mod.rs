@@ -420,7 +420,7 @@ pub fn git_push(pipeline: &str) -> Result<(), DeliveryError> {
 // it will also detect if the commit failed and transform the error to a
 // more specific one. (Ex. If we try to commit when nothing has changed)
 pub fn git_commit(message: &str) -> Result<(), DeliveryError> {
-    match git_command(&["commit", "-m", message], &project_path()) {
+    match git_command(&["commit", "-m", message], &try!(project_path())) {
         Err(DeliveryError{ kind, detail: Some(output) }) => {
             if output.contains("nothing to commit") {
               return Err(DeliveryError{ kind: Kind::EmptyGitCommit, detail: None });

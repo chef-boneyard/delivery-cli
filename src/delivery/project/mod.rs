@@ -156,7 +156,7 @@ pub fn push_project_content_to_delivery(pipeline: &str) -> DeliveryResult<bool> 
 
 // Check to see if the origin remote is set up.
 pub fn missing_github_remote() -> DeliveryResult<bool> {
-    let git_remote_result = git::git_command(&["remote"], &project_path());
+    let git_remote_result = git::git_command(&["remote"], &try!(project_path()));
     match git_remote_result {
         Ok(git_result) => Ok(!git_result.stdout.contains("origin")),
         Err(e) => return Err(e)
@@ -203,8 +203,8 @@ pub fn root_dir(dir: &Path) -> DeliveryResult<PathBuf> {
     }
 }
 
-pub fn project_path() -> PathBuf {
-    root_dir(&utils::cwd()).unwrap()
+pub fn project_path() -> DeliveryResult<PathBuf> {
+    root_dir(&utils::cwd())
 }
 
 // Return the project name from the current path
@@ -255,7 +255,7 @@ pub fn create_feature_branch_if_missing(project_path: &PathBuf, branch_name: &st
 pub fn add_commit_build_cookbook(custom_config_passed: &bool) -> DeliveryResult<bool> {
     // .delivery is probably not yet under version control, so we have to add
     // the whole folder instead of .delivery/build_cookbook.
-    try!(git::git_command(&["add", ".delivery"], &project_path()));
+    try!(git::git_command(&["add", ".delivery"], &try!(project_path())));
 
     let mut commit_msg = "Adds Delivery build cookbook".to_string();
     if *custom_config_passed {
@@ -285,9 +285,9 @@ pub fn create_delivery_readme() -> DeliveryResult<bool> {
 }
 
 pub fn commit_delivery_readme() -> DeliveryResult<()> {
-    try!(git::git_command(&["add", "DELIVERY.md"], &project_path()));
+    try!(git::git_command(&["add", "DELIVERY.md"], &try!(project_path())));
     let commit_msg = "New pipeline verification commit".to_string();
-    try!(git::git_command(&["commit", "-m", &commit_msg], &project_path()));
+    try!(git::git_command(&["commit", "-m", &commit_msg], &try!(project_path())));
     Ok(())
 }
 
@@ -305,7 +305,7 @@ pub fn create_default_build_cookbook(pipeline: &str) -> DeliveryResult<Command> 
         .arg(".delivery/build_cookbook")
         .arg("--pipeline")
         .arg(pipeline)
-        .current_dir(&project_path());
+        .current_dir(&try!(project_path()));
     let output = try!(command.output());
     try!(handle_chef_generate_cookbook_cmd(output));
     Ok(command)

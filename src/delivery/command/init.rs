@@ -65,7 +65,7 @@ pub fn run(opts: InitClapOptions) -> DeliveryResult<ExitCode> {
     };
 
     // Initalize the repo.
-    let project_path = project::project_path();
+    let project_path = try!(project::project_path());
     project::create_dot_delivery();
 
     if !opts.local {
@@ -279,7 +279,7 @@ fn create_delivery_pipeline(client: &APIClient, org: &str,
 // Returns true if a CUSTOM build cookbook was generated, else it returns false.
 fn generate_build_cookbook(config: &Config) -> DeliveryResult<bool> {
     let cache_path = try!(project::generator_cache_path());
-    let project_path = project::project_path();
+    let project_path = try!(project::project_path());
     match config.generator().ok() {
         Some(generator_str) => {
             sayln("cyan", "Generating custom build cookbook...");
@@ -288,7 +288,7 @@ fn generate_build_cookbook(config: &Config) -> DeliveryResult<bool> {
         // Default build cookbook
         None => {
             sayln("cyan", "Generating default build cookbook...");
-            if project::project_path().join(".delivery/build_cookbook").exists() {
+            if try!(project::project_path()).join(".delivery/build_cookbook").exists() {
                 sayln("white", "  Skipping: build cookbook already exists at \
                                 .delivery/build_cookbook.");
                 Ok(false)
@@ -331,7 +331,7 @@ fn generate_custom_build_cookbook(generator_str: String,
 fn generate_delivery_config(config_json: Option<String>) -> DeliveryResult<bool> {
     if let Some(json) = config_json {
         sayln("cyan", "Copying custom Delivery config...");
-        let proj_path = project::project_path();
+        let proj_path = try!(project::project_path());
         let json_path = PathBuf::from(&json);
 
         // Create config

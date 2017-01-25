@@ -17,6 +17,7 @@
 use cli::arguments::{value_of, u_e_s_o_args};
 use clap::{Arg, App, SubCommand, ArgMatches};
 use cli::InitCommand;
+use types::DeliveryResult;
 use config::Config;
 
 pub const SUBCOMMAND_NAME: &'static str = "token";
@@ -65,7 +66,7 @@ impl<'n> TokenClapOptions<'n> {
 }
 
 impl<'n> InitCommand for TokenClapOptions<'n> {
-    fn merge_options_and_config(&self, config: Config) -> Config {
+    fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
         let mut new_config = config.set_server(&self.server)
             .set_api_port(&self.port)
             .set_enterprise(&self.ent)
@@ -75,11 +76,11 @@ impl<'n> InitCommand for TokenClapOptions<'n> {
             new_config.saml = self.saml;
         }
 
-        return new_config;
+        Ok(new_config)
     }
 
-    fn initialize_command_state(&self, config: Config) -> Config {
-        return config;
+    fn initialize_command_state(&self, config: Config) -> DeliveryResult<Config> {
+        Ok(config)
     }
 }
 

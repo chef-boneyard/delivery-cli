@@ -17,6 +17,7 @@
 use cli::arguments::{pipeline_arg, project_arg, local_arg, patchset_arg, u_e_s_o_args, value_of};
 use clap::{Arg, App, SubCommand, ArgMatches};
 use cli::InitCommand;
+use types::DeliveryResult;
 use config::Config;
 use project;
 
@@ -95,8 +96,8 @@ impl<'n> JobClapOptions<'n> {
 }
 
 impl<'n> InitCommand for JobClapOptions<'n> {
-    fn merge_options_and_config(&self, config: Config) -> Config {
-        let project = project::project_or_from_cwd(&self.project).unwrap();
+    fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
+        let project = try!(project::project_or_from_cwd(&self.project));
 
         let new_config = config.set_pipeline(&self.pipeline)
             .set_user(with_default(&self.user, "you", &&self.local))
@@ -104,8 +105,25 @@ impl<'n> InitCommand for JobClapOptions<'n> {
             .set_enterprise(with_default(&self.ent, "local", &&self.local))
             .set_organization(with_default(&self.org, "workstation", &&self.local))
             .set_project(&project);
-        
-        return new_config;
+        Ok(new_config)
+    }
+
+    fn initialize_command_state(&self, config: Config) -> DeliveryResult<Config> {
+        // If we are running in local-mode, the whole config is fake to mock
+        // the workspace and other things. So we just return the dummy config.
+        if self.local {
+            return Ok(config)
+        }
+
+        // When `delivery job` runs outside the git_repo, it means we are
+        // triggering a job on the Chef Automate Server within the workspace.
+        // That means we are not going to be able to retrive the project_path,
+        // if that is the case, it should not initialize any project specific
+        // command, like the remote.
+        match project::project_path() {
+            Ok(_) => self.init_project_specific(config),
+            Err(_) => Ok(config)
+        }
     }
 }
 

@@ -136,6 +136,12 @@ Given(/^I already have a .delivery\/config.json on disk$/) do
   step %(a file named ".delivery/config.json" with:), default_delivery_config
 end
 
+Given(/^I am in a blank workspace$/) do
+  step %(I cd to "..")
+  step %(a directory named "workspace")
+  step %(I cd to "workspace")
+end
+
 Given(/^I clean up the ruby env so I can run other ruby bins like ChefDK$/) do
   step "I set the environment variables to:", table(%{
           | variable        | value |

@@ -17,6 +17,7 @@
 use cli::arguments::{pipeline_arg, patchset_arg, value_of};
 use clap::{App, SubCommand, ArgMatches};
 use cli::InitCommand;
+use types::DeliveryResult;
 use config::Config;
 
 pub const SUBCOMMAND_NAME: &'static str = "diff";
@@ -51,9 +52,16 @@ impl<'n> DiffClapOptions<'n> {
 }
 
 impl<'n> InitCommand for DiffClapOptions<'n> {
-    fn merge_options_and_config(&self, config: Config) -> Config {
+    fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
         let new_config = config.set_pipeline(&self.pipeline);
-        return new_config;
+        Ok(new_config)
+    }
+
+    fn initialize_command_state(&self, config: Config) -> DeliveryResult<Config> {
+        if self.local {
+            return Ok(config)
+        }
+        self.init_project_specific(config)
     }
 }
 

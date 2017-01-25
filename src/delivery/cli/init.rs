@@ -19,6 +19,7 @@ use cli::arguments::{pipeline_arg, config_path_arg, no_open_arg, project_arg,
           value_of};
 use clap::{App, SubCommand, ArgMatches};
 use cli::InitCommand;
+use types::DeliveryResult;
 use config::Config;
 use project;
 
@@ -87,8 +88,8 @@ impl<'n> InitClapOptions<'n> {
 }
 
 impl<'n> InitCommand for InitClapOptions<'n> {
-    fn merge_options_and_config(&self, config: Config) -> Config {
-        let project = project::project_or_from_cwd(&self.project).unwrap();
+    fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
+        let project = try!(project::project_or_from_cwd(&self.project));
 
         let new_config = config.set_user(&self.user)
             .set_server(&self.server)
@@ -98,7 +99,14 @@ impl<'n> InitCommand for InitClapOptions<'n> {
             .set_pipeline(&self.pipeline)
             .set_generator(&self.generator)
             .set_config_json(&self.config_json);
-        return new_config;
+        Ok(new_config)
+    }
+
+    fn initialize_command_state(&self, config: Config) -> DeliveryResult<Config> {
+        if self.local {
+            return Ok(config)
+        }
+        self.init_project_specific(config)
     }
 }
 

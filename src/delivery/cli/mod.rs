@@ -54,21 +54,35 @@ mod spin;
 use command;
 
 pub trait InitCommand {
-    fn merge_options_and_config(&self, config: Config) -> Config;
+    fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config>;
 
-    // Default implementation for project specific commands.
+    // The initialization of a CLI command could be different from another one
+    // so we need a main method we can easily overrive if such behavior is
+    // different. This fun will provide an easy way to do so by calling other
+    // specific initialization functions, this will allow you to take actions
+    // after or before making a call.
+    //
+    // You can also override this to fix the initialization needs of your command
+    // (for example, simply return the config in a non-project specific command
+    // like api).
+    //
+    // By default we call the project specific commands
+    fn initialize_command_state(&self, config: Config) -> DeliveryResult<Config> {
+        self.init_project_specific(config)
+    }
+
+    // Project specific commands.
+    //
     // Most project specific commands need to populate the project config entry
     // if it hasn't been already as well as make sure the git remote is up to date.
-    // Can override to fix the initialization needs of your command (for example,
-    // simply return the config in a non-project specific command like api).
-    fn initialize_command_state(&self, mut config: Config) -> Config {
+    fn init_project_specific(&self, mut config: Config) -> DeliveryResult<Config> {
         if config.project.is_none() {
             config.project = project::project_from_cwd().ok();
         }
 
-        let git_url = config.delivery_git_ssh_url().unwrap();
-        git::create_or_update_delivery_remote(&git_url, &project::project_path()).unwrap();
-        return config
+        let git_url = try!(config.delivery_git_ssh_url());
+        try!(git::create_or_update_delivery_remote(&git_url, &try!(project::project_path())));
+        Ok(config)
     }
 }
 
@@ -189,8 +203,11 @@ fn exit_with(e: DeliveryError, i: ExitCode) {
 
 pub fn init_command<T: InitCommand>(opts: &T) -> DeliveryResult<Config> {
     let mut config = try!(Config::load_config(&utils::cwd()));
-    config = opts.merge_options_and_config(config);
-    config = opts.initialize_command_state(config);
+    debug!("Initial config: {:?}", config);
+    config = try!(opts.merge_options_and_config(config));
+    debug!("Merged config: {:?}", config);
+    config = try!(opts.initialize_command_state(config));
+    debug!("Command specific config: {:?}", config);
     Ok(config)
 }
 
