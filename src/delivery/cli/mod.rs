@@ -23,7 +23,7 @@ use utils::say::{self, sayln};
 use errors::DeliveryError;
 use types::{DeliveryResult, ExitCode};
 use config::Config;
-use clap::{App, ArgMatches};
+use clap::{App, ArgMatches, AppSettings};
 use project;
 use git;
 
@@ -157,6 +157,7 @@ pub fn run() {
 fn make_app<'a>(version: &'a str) -> App<'a, 'a> {
     App::new("delivery")
         .version(version)
+        .setting(AppSettings::GlobalVersion)
         .arg(no_spinner_arg().global(true))
         .arg(non_interactive_arg().global(true))
         .subcommand(review::clap_subcommand())
