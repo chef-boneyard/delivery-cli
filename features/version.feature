@@ -8,3 +8,9 @@ Scenario: asking for the version with --version
   When I successfully run `delivery --version`
   Then the output should match /delivery \d+\.\d+\.\d+ \([a-f0-9]+\)/
 
+Scenario: asking for the version in any subcommand with --version
+
+  When I successfully run `delivery api --version`
+  Then the output should match /delivery-api \d+\.\d+\.\d+ \([a-f0-9]+\)/
+
+
