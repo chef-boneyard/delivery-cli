@@ -2,7 +2,7 @@
 #
 # Author: Jon Anderson (janderson@chef.io)
 
-RUST_VERSION ?= 1.13.0
+RUST_VERSION ?= 1.15.0
 
 CARGO_OPTS ?=
 DELIV_CLI_VERSION = $(shell git describe --abbrev=0 --tags)
