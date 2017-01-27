@@ -24,8 +24,8 @@ use std::io;
 use std::time::Duration;
 
 /// Because sometimes, you just want a global variable.
-static mut show_spinner: bool = true;
-static mut show_output:  bool = true;
+static mut SHOW_SPINNER: bool = true;
+static mut SHOW_OUTPUT:  bool = true;
 
 pub struct Spinner {
     tx: Sender<isize>,
@@ -48,7 +48,7 @@ impl Spinner {
         let spinner_chars = vec!["|", "/", "-", "\\"];
         for spin in spinner_chars.iter().cycle() {
             unsafe {
-                if show_spinner {
+                if SHOW_SPINNER {
                     say("yellow", *spin);
                 }
             }
@@ -56,7 +56,7 @@ impl Spinner {
             match r {
                 Ok(_) => {
                     unsafe {
-                        if show_spinner {
+                        if SHOW_SPINNER {
                             say("white", "\x08 \x08");
                         }
                     }
@@ -65,7 +65,7 @@ impl Spinner {
                 Err(_) => {
                     thread::sleep(Duration::from_millis(100));
                     unsafe {
-                        if show_spinner {
+                        if SHOW_SPINNER {
                             say("white", "\x08");
                         }
                     }
@@ -78,19 +78,19 @@ impl Spinner {
 
 pub fn turn_off_output() {
     unsafe {
-        show_output = false;
+        SHOW_OUTPUT = false;
     }
 }
 
 pub fn turn_on_output() {
     unsafe {
-        show_output = true;
+        SHOW_OUTPUT = true;
     }
 }
 
 pub fn turn_off_spinner() {
     unsafe {
-        show_spinner = false;
+        SHOW_SPINNER = false;
     }
 }
 
@@ -114,7 +114,7 @@ pub fn say(color: &str, to_say: &str) {
     match term::stdout() {
         Some(t) => {
             unsafe {
-                if show_output {
+                if SHOW_OUTPUT {
                     say_term(t, color, to_say)
                 } else {
                     debug!("{}", to_say)

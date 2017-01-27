@@ -17,3 +17,6 @@ tmp/
 /omnibus/Berksfile.lock
 /omnibus/Gemfile.lock
 cookbooks/delivery_rust/Berksfile.lock
+
+# Habitat
+results/
