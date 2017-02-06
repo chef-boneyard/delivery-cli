@@ -244,10 +244,22 @@ impl DeliveryConfig {
 
         // Try to decode the config, but if you are unable to, try V1;
         // If you are still unable; just fail
-        let json: DeliveryConfig = try!(json::decode(&config_json).or_else( |e| {
-            debug!("Unable to parse DeliveryConfig: {}", e);
+        let json: DeliveryConfig = try!(json::decode(&config_json).or_else( |e_v2| {
+            debug!("Unable to parse DeliveryConfig: {}", e_v2);
             debug!("Attempting to load version: 1");
-            let v1_config = try!(DeliveryConfigV1::load_config(p_path));
+            let v1_config = try!(DeliveryConfigV1::load_config(p_path).or_else(|e_v1| {
+                debug!("Unable to parse DeliveryConfigV1: {}", e_v1);
+                // If we couldn't parse any version of the delivery config,
+                // lets make sure we give the user the right error message
+                Err(DeliveryError {
+                    kind: Kind::DeliveryConfigParse,
+                    detail: Some(format!(
+                        "  version 2: {}\n  version 1: {}\n\nSee: \
+                        https://docs.chef.io/config_json_delivery.html",
+                        e_v2, e_v1).to_string()
+                    ),
+                })
+            }));
             v1_config.convert_to_v2()
         }));
         Ok(json)
