@@ -1,6 +1,6 @@
 default['delivery_rust']['ruby_version'] = '2.3.0'
 
-rust_version = '1.13.0'
+rust_version = '1.15.0'
 time = Time.now.utc.strftime("+%Y-%m-%dT%H:%M:%SZ")
 default['delivery_rust']['rust_version'] = rust_version
 default['delivery_rust']['cargo_env'] = {
