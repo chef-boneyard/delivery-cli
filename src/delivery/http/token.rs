@@ -20,7 +20,6 @@ use token::TokenStore;
 use http::*;
 use hyper::status::StatusCode;
 use rustc_serialize::json;
-use std::io::prelude::*;
 use config::Config;
 
 #[derive(RustcEncodable, RustcDecodable, Debug, Clone)]

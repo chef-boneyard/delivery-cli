@@ -220,7 +220,6 @@ impl TokenStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::prelude::*;
     use std::fs::File;
     use tempdir::TempDir;
     use utils::path_join_many::PathJoinMany;
