@@ -7,7 +7,12 @@ pub fn exe_path() -> PathBuf {
 }
 
 pub fn root() -> PathBuf {
-    exe_path().parent().unwrap().parent().unwrap().parent().unwrap().join("tests")
+    let mut exe = exe_path(); // support
+    exe.pop();                // tests/
+    exe.pop();                // debug/
+    exe.pop();                // target/
+    exe.pop();                // delivery-cli/
+    exe.join("tests")
 }
 
 pub fn fixtures() -> PathBuf {

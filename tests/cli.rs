@@ -126,6 +126,7 @@ fn delivery_verify_command(job_root: &Path) -> Command {
 fn delivery_cmd() -> Command {
     let mut delivery_path = env::current_exe().unwrap();
     delivery_path.pop();
+    delivery_path.pop();
     Command::new(delivery_path.join("delivery").to_str().unwrap())
 }
 
