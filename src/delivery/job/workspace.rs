@@ -278,7 +278,7 @@ impl Workspace {
                 return self.setup_build_cookbook_from_chef_server(&path);
             }
         }
-        let valid_paths = vec!["path", "git", "supermarket", "enterprise"];
+        let valid_paths = vec!["path", "git", "supermarket", "enterprise", "server"];
         for path in valid_paths {
             let is_path = build_cookbook.find(path);
             if is_path.is_some() {
