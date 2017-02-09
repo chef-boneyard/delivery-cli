@@ -22,10 +22,7 @@ use std::default::Default;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::PathBuf;
-
 use rustc_serialize::json;
-use rustc_serialize::json::DecoderError;
-
 use errors::{DeliveryError, Kind};
 use types::DeliveryResult;
 use git;
@@ -43,15 +40,6 @@ pub struct DeliveryConfig {
     pub dependencies: Option<Vec<String>>
 }
 
-// v1 config, deprecated, but still supported
-#[derive(RustcDecodable)]
-pub struct DeliveryConfigV1 {
-    pub version: String,
-    pub build_cookbook: String,
-    pub skip_phases: Option<Vec<String>>,
-    pub build_nodes: Option<HashMap<String, Vec<String>>>
-}
-
 impl Default for DeliveryConfig {
     fn default() -> DeliveryConfig {
         let mut build_cookbook = HashMap::new();
@@ -64,7 +52,7 @@ impl Default for DeliveryConfig {
             build_cookbook: build_cookbook,
             skip_phases: Some(Vec::new()),
             build_nodes: Some(HashMap::new()),
-            dependencies: Some(Vec::new())
+            dependencies: Some(Vec::new()),
         }
     }
 }
@@ -120,19 +108,11 @@ impl DeliveryConfig {
     }
 
     pub fn validate_config_file(proj_path: &PathBuf) -> DeliveryResult<bool> {
-        let config_file_path = try!(DeliveryConfig::find_config_file(proj_path));
-        let mut config_file = try!(File::open(&config_file_path));
-        let mut config_file_content = String::new();
-        try!(config_file.read_to_string(&mut config_file_content));
-        let config_file_content_str = config_file_content.trim();
-        // try to parse it as v2
-        let parse_v2_result: Result<DeliveryConfig, DecoderError> = json::decode(config_file_content_str);
-        let result = match parse_v2_result {
+        let result = match DeliveryConfig::load_config(proj_path) {
             Ok(_) => Ok(true),
             Err(_) => {
-                // then try as v1
-                let parse_v1_result: Result<DeliveryConfigV1, DecoderError> = json::decode(config_file_content_str);
-                match parse_v1_result {
+                // Lets try as v1
+                match DeliveryConfigV1::load_config(proj_path) {
                     Ok(_) => Ok(true),
                     Err(e) => Err(e)
                 }
@@ -143,4 +123,43 @@ impl DeliveryConfig {
         Ok(boolean_result)
     }
 
+    pub fn load_config(p_path: &PathBuf) -> DeliveryResult<DeliveryConfig> {
+        let config_path = try!(DeliveryConfig::find_config_file(p_path));
+        let mut config_file = try!(File::open(&config_path));
+        let mut config_json = String::new();
+        try!(config_file.read_to_string(&mut config_json));
+        let json = try!(json::decode(&config_json));
+        Ok(json)
+    }
+}
+
+// v1 config, deprecated, but still supported
+#[derive(RustcDecodable)]
+pub struct DeliveryConfigV1 {
+    pub version: String,
+    pub build_cookbook: String,
+    pub skip_phases: Option<Vec<String>>,
+    pub build_nodes: Option<HashMap<String, Vec<String>>>
+}
+
+impl Default for DeliveryConfigV1 {
+    fn default() -> DeliveryConfigV1 {
+        DeliveryConfigV1 {
+            version: "1".to_string(),
+            build_cookbook: "./.delivery/build_cookbook".to_string(),
+            skip_phases: Some(Vec::new()),
+            build_nodes: Some(HashMap::new()),
+        }
+    }
+}
+
+impl DeliveryConfigV1 {
+    pub fn load_config(p_path: &PathBuf) -> DeliveryResult<DeliveryConfigV1> {
+        let config_path = try!(DeliveryConfig::find_config_file(p_path));
+        let mut config_file = try!(File::open(&config_path));
+        let mut config_json = String::new();
+        try!(config_file.read_to_string(&mut config_json));
+        let json = try!(json::decode(&config_json));
+        Ok(json)
+    }
 }
