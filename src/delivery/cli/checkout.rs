@@ -14,9 +14,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-use cli::arguments::{pipeline_arg, patchset_arg, value_of};
+use cli::arguments::{pipeline_arg, patchset_arg, value_of, project_specific_args};
 use clap::{App, SubCommand, ArgMatches};
-use cli::CommandPrep;
+use cli::CommandPrep, merge_fips_options_and_config};
 use config::Config;
 use types::DeliveryResult;
 
@@ -27,13 +27,18 @@ pub struct CheckoutClapOptions<'n> {
     pub pipeline: &'n str,
     pub change: &'n str,
     pub patchset: &'n str,
+    pub fips: bool,
+    pub fips_git_port: &'n str,
 }
+
 impl<'n> Default for CheckoutClapOptions<'n> {
     fn default() -> Self {
         CheckoutClapOptions {
             pipeline: "master",
             change: "",
             patchset: "",
+            fips: false,
+            fips_git_port: "",
         }
     }
 }
@@ -44,6 +49,8 @@ impl<'n> CheckoutClapOptions<'n> {
             pipeline: value_of(&matches, "pipeline"),
             change: value_of(&matches, "change"),
             patchset: value_of(&matches, "patchset"),
+            fips: matches.is_present("fips"),
+            fips_git_port: value_of(&matches, "fips-git-port"),
         }
     }
 }
@@ -51,7 +58,7 @@ impl<'n> CheckoutClapOptions<'n> {
 impl<'n> CommandPrep for CheckoutClapOptions<'n> {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
         let new_config = config.set_pipeline(&self.pipeline);
-        Ok(new_config)
+        merge_fips_options_and_config(self.fips, self.fips_git_port, new_config)
     }
 }
 
@@ -61,4 +68,5 @@ pub fn clap_subcommand<'c>() -> App<'c, 'c> {
         .args(&vec![patchset_arg()])
         .args(&pipeline_arg())
         .args_from_usage("<change> 'Name of the feature branch to checkout'")
+        .args(&project_specific_args())
 }

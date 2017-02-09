@@ -14,9 +14,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-use cli::arguments::{pipeline_arg, project_arg, local_arg, patchset_arg, u_e_s_o_args, value_of};
+use cli::arguments::{pipeline_arg, project_arg, local_arg, patchset_arg,
+                     project_specific_args, u_e_s_o_args, value_of};
 use clap::{Arg, App, SubCommand, ArgMatches};
-use cli::CommandPrep;
+use cli::{CommandPrep, merge_fips_options_and_config};
 use types::DeliveryResult;
 use config::Config;
 use project;
@@ -43,6 +44,8 @@ pub struct JobClapOptions<'n> {
     pub skip_default: bool,
     pub local: bool,
     pub docker_image: &'n str,
+    pub fips: bool,
+    pub fips_git_port: &'n str,
 }
 
 impl<'n> Default for JobClapOptions<'n> {
@@ -66,6 +69,8 @@ impl<'n> Default for JobClapOptions<'n> {
             skip_default: false,
             local: false,
             docker_image: "",
+            fips: false,
+            fips_git_port: "",
         }
     }
 }
@@ -91,6 +96,8 @@ impl<'n> JobClapOptions<'n> {
             skip_default: matches.is_present("skip-default"),
             local: matches.is_present("local"),
             docker_image: value_of(&matches, "docker"),
+            fips: matches.is_present("fips"),
+            fips_git_port: value_of(&matches, "fips-git-port"),
         }
     }
 }
@@ -105,7 +112,7 @@ impl<'n> CommandPrep for JobClapOptions<'n> {
             .set_enterprise(with_default(&self.ent, "local", &&self.local))
             .set_organization(with_default(&self.org, "workstation", &&self.local))
             .set_project(&project);
-        Ok(new_config)
+        merge_fips_options_and_config(self.fips, self.fips_git_port, new_config)
     }
 
     fn initialize_command_state(&self, config: Config) -> DeliveryResult<Config> {
@@ -117,7 +124,7 @@ impl<'n> CommandPrep for JobClapOptions<'n> {
 
         // When `delivery job` runs outside the git_repo, it means we are
         // triggering a job on the Chef Automate Server within the workspace.
-        // That means we are not going to be able to retrive the project_path,
+        // That means we are not going to be able to retrieve the project_path,
         // if that is the case, it should not initialize any project specific
         // command, like the remote.
         match project::project_path() {
@@ -152,4 +159,5 @@ pub fn clap_subcommand<'c>() -> App<'c, 'c> {
                           <phases> 'One or more phases'")
         .args(&u_e_s_o_args())
         .args(&pipeline_arg())
+        .args(&project_specific_args())
 }

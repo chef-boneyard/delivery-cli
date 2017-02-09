@@ -69,7 +69,7 @@ impl Default for Config {
             config_json: None,
             saml: None,
             fips: None,
-            fips_git_port: None,
+            fips_git_port: Some(String::from("36534")),
         }
     }
 }

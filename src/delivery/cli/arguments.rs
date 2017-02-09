@@ -49,6 +49,14 @@ pub fn u_e_s_o_args<'a>() -> Vec<Arg<'a, 'a>> {
         "-s --server=[server] 'The Delivery server address'"]
 }
 
+// Defines all the options shared between commands that
+// are project specific (i.e. must be run in the context of a git repo).
+pub fn project_specific_args<'a>() -> Vec<Arg<'a, 'a>> {
+    make_arg_vec![
+        "--fips 'Runs command in FIPS mode. This proxies all git traffic through Stunnel FIPS encryption'",
+        "--fips-git-port=[port] 'The port Stunnel listens locally on when proxying git traffic'"]
+}
+
 pub fn scp_args<'a>() -> Vec<Arg<'a, 'a>> {
     make_arg_vec![
         "--bitbucket=[project-key] 'Use a Bitbucket repository for Code Review with the provided Project Key'",

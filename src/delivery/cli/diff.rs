@@ -14,9 +14,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-use cli::arguments::{pipeline_arg, patchset_arg, value_of};
+use cli::arguments::{pipeline_arg, patchset_arg,
+                     value_of, project_specific_args};
 use clap::{App, SubCommand, ArgMatches};
-use cli::CommandPrep;
+use cli::{CommandPrep, merge_fips_options_and_config};
 use types::DeliveryResult;
 use config::Config;
 
@@ -28,7 +29,10 @@ pub struct DiffClapOptions<'n> {
     pub patchset: &'n str,
     pub pipeline: &'n str,
     pub local: bool,
+    pub fips: bool,
+    pub fips_git_port: &'n str,
 }
+
 impl<'n> Default for DiffClapOptions<'n> {
     fn default() -> Self {
         DiffClapOptions {
@@ -36,6 +40,8 @@ impl<'n> Default for DiffClapOptions<'n> {
             patchset: "",
             pipeline: "master",
             local: false,
+            fips: false,
+            fips_git_port: "",
         }
     }
 }
@@ -47,6 +53,8 @@ impl<'n> DiffClapOptions<'n> {
             patchset: value_of(&matches, "patchset"),
             pipeline: value_of(&matches, "pipeline"),
             local: matches.is_present("local"),
+            fips: matches.is_present("fips"),
+            fips_git_port: value_of(&matches, "fips-git-port"),
         }
     }
 }
@@ -54,7 +62,7 @@ impl<'n> DiffClapOptions<'n> {
 impl<'n> CommandPrep for DiffClapOptions<'n> {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
         let new_config = config.set_pipeline(&self.pipeline);
-        Ok(new_config)
+        merge_fips_options_and_config(self.fips, self.fips_git_port, new_config)
     }
 
     fn initialize_command_state(&self, config: Config) -> DeliveryResult<Config> {
@@ -74,4 +82,5 @@ pub fn clap_subcommand<'c>() -> App<'c, 'c> {
             "<change> 'Name of the feature branch to compare'
             -l --local \
             'Diff against the local branch HEAD'")
+        .args(&project_specific_args())
 }

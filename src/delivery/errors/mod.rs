@@ -89,7 +89,8 @@ pub enum Kind {
     TokenExpired,
     NoEditor,
     MissingProjectConfig,
-    MissingRequiredConfigOption
+    MissingRequiredConfigOption,
+    FipsNotSupportedForChefDKPlatform,
 }
 
 #[derive(Debug)]
@@ -169,7 +170,8 @@ impl error::Error for DeliveryError {
             Kind::TokenExpired => "The API token has expired. Try `delivery token` to generate a new one",
             Kind::NoEditor => "Environment variable EDITOR not set",
             Kind::MissingProjectConfig => "Unable to find .delivery/config.json in this directory or its parents",
-            Kind::MissingRequiredConfigOption => "A required config option was not set. Please specify in your cli.toml."
+            Kind::MissingRequiredConfigOption => "A required config option was not set. Please specify in your cli.toml.",
+            Kind::FipsNotSupportedForChefDKPlatform => "The ChefDK for your platform does not support FIPS mode.\nCentOS and Windows are the currently supported FIPS platforms for ChefDK.",
         }
     }
 

@@ -16,9 +16,9 @@
 //
 use cli::arguments::{pipeline_arg, config_path_arg, no_open_arg, project_arg,
           local_arg, config_project_arg, u_e_s_o_args, scp_args,
-          value_of};
+          value_of, project_specific_args};
 use clap::{App, SubCommand, ArgMatches};
-use cli::CommandPrep;
+use cli::{CommandPrep, merge_fips_options_and_config};
 use types::DeliveryResult;
 use config::Config;
 use project;
@@ -42,7 +42,10 @@ pub struct InitClapOptions<'n> {
     pub no_open: bool,
     pub skip_build_cookbook: bool,
     pub local: bool,
+    pub fips: bool,
+    pub fips_git_port: &'n str,
 }
+
 impl<'n> Default for InitClapOptions<'n> {
     fn default() -> Self {
         InitClapOptions {
@@ -61,6 +64,8 @@ impl<'n> Default for InitClapOptions<'n> {
             no_open: false,
             skip_build_cookbook: false,
             local: false,
+            fips: false,
+            fips_git_port: "",
         }
     }
 }
@@ -83,6 +88,8 @@ impl<'n> InitClapOptions<'n> {
             no_open: matches.is_present("no-open"),
             skip_build_cookbook: matches.is_present("skip-build-cookbook"),
             local: matches.is_present("local"),
+            fips: matches.is_present("fips"),
+            fips_git_port: value_of(&matches, "fips-git-port"),
         }
     }
 }
@@ -99,7 +106,7 @@ impl<'n> CommandPrep for InitClapOptions<'n> {
             .set_pipeline(&self.pipeline)
             .set_generator(&self.generator)
             .set_config_json(&self.config_json);
-        Ok(new_config)
+        merge_fips_options_and_config(self.fips, self.fips_git_port, new_config)
     }
 
     fn initialize_command_state(&self, config: Config) -> DeliveryResult<Config> {
@@ -123,4 +130,5 @@ pub fn clap_subcommand<'c>() -> App<'c, 'c> {
         .args(&u_e_s_o_args())
         .args(&scp_args())
         .args(&pipeline_arg())
+        .args(&project_specific_args())
 }

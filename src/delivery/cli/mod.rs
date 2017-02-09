@@ -19,9 +19,10 @@ use std;
 use std::process;
 use std::time::Duration;
 use std::path::PathBuf;
+use std::path::Path;
 use utils;
 use utils::say::{self, sayln};
-use errors::DeliveryError;
+use errors::{Kind, DeliveryError};
 use types::{DeliveryResult, ExitCode};
 use config::Config;
 use clap::{App, ArgMatches, AppSettings};
@@ -70,7 +71,7 @@ pub trait CommandPrep {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config>;
 
     // The initialization of a CLI command could be different from another one
-    // so we need a main method we can easily overrive if such behavior is
+    // so we need a main method we can easily override if such behavior is
     // different. This fun will provide an easy way to do so by calling other
     // specific initialization functions, this will allow you to take actions
     // after or before making a call.
@@ -95,6 +96,12 @@ pub trait CommandPrep {
 
         let git_url = try!(config.delivery_git_ssh_url());
         try!(git::create_or_update_delivery_remote(&git_url, &try!(project::project_path())));
+        if config.fips.unwrap_or(false) {
+            if !Path::new("/opt/chefdk/embedded/bin/stunnel").exists() {
+                return Err(DeliveryError{ kind: Kind::FipsNotSupportedForChefDKPlatform, detail: None })
+            }
+        }
+
         Ok(config)
     }
 }
@@ -215,6 +222,15 @@ fn match_command_and_start(app_matches: &ArgMatches, build_version: &str) -> Del
     cmd_result
 }
 
+pub fn merge_fips_options_and_config(fips: bool, fips_git_port: &str, mut config: Config) -> DeliveryResult<Config> {
+    if config.fips.is_none() {
+        config.fips = Some(fips);
+    }
+
+    let new_config = config.set_fips_git_port(fips_git_port);
+
+    Ok(new_config)
+}
 
 fn make_app<'a>(version: &'a str) -> App<'a, 'a> {
     App::new("delivery")
