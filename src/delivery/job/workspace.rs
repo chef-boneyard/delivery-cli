@@ -34,7 +34,6 @@ use utils::path_join_many::PathJoinMany;
 use utils::path_ext::{is_file, is_dir};
 use std::error;
 use config::Config;
-//use regex::Regex;
 
 #[derive(RustcDecodable, Debug)]
 pub struct Workspace {

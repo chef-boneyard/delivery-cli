@@ -37,7 +37,48 @@ pub struct DeliveryConfig {
     pub build_cookbook: HashMap<String, String>,
     pub skip_phases: Option<Vec<String>>,
     pub build_nodes: Option<HashMap<String, Vec<String>>>,
-    pub dependencies: Option<Vec<String>>
+    pub job_dispatch: Option<JobDispatch>,
+    pub dependencies: Option<Vec<String>>,
+}
+
+// JobDispatch Struct
+//
+// This structure has two main files;
+//   * version - The config version
+//   * filters - Specific filters to search for nodes for each phase
+//
+// Example:
+//  "job_dispatch": {
+//    "version": "v2",
+//    "filters": {
+//      "unit": [
+//        {
+//          "platform_family": ["debian"],
+//          "platform_version": ["12.04"]
+//        },
+//        {
+//          "platform_family": ["rhel"]
+//        }
+//      ],
+//      "syntax": [
+//        {
+//          "platform_family": ["debian"],
+//          "platform_version": ["12.04"]
+//        },
+//        {
+//          "platform_family": ["debian"],
+//          "platform_version": ["14.04"]
+//        },
+//        {
+//          "platform_family": ["rhel"]
+//        }
+//      ]
+//    }
+//  }
+#[derive(RustcEncodable, RustcDecodable, Clone)]
+pub struct JobDispatch {
+    pub version: String,
+    pub filters: Option<HashMap<String, Vec<HashMap<String, Vec<String>>>>>,
 }
 
 impl Default for DeliveryConfig {
@@ -47,11 +88,18 @@ impl Default for DeliveryConfig {
                               "build_cookbook".to_string());
         build_cookbook.insert("path".to_string(),
                               ".delivery/build_cookbook".to_string());
+
+        let job_dispatch = JobDispatch {
+            version: "v2".to_string(),
+            filters: None,
+        };
+
         DeliveryConfig {
             version: "2".to_string(),
             build_cookbook: build_cookbook,
             skip_phases: Some(Vec::new()),
-            build_nodes: Some(HashMap::new()),
+            build_nodes: None,
+            job_dispatch: Some(job_dispatch),
             dependencies: Some(Vec::new()),
         }
     }
@@ -107,6 +155,7 @@ impl DeliveryConfig {
         }
     }
 
+    // Validate if the config.json is valid
     pub fn validate_config_file(proj_path: &PathBuf) -> DeliveryResult<bool> {
         let result = match DeliveryConfig::load_config(proj_path) {
             Ok(_) => Ok(true),
@@ -123,6 +172,7 @@ impl DeliveryConfig {
         Ok(boolean_result)
     }
 
+    // Load the .delivery/config.json into a DeliveryConfig object
     pub fn load_config(p_path: &PathBuf) -> DeliveryResult<DeliveryConfig> {
         let config_path = try!(DeliveryConfig::find_config_file(p_path));
         let mut config_file = try!(File::open(&config_path));
