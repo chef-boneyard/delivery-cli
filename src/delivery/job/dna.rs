@@ -15,15 +15,15 @@
 // limitations under the License.
 //
 
-use rustc_serialize::json;
 use job::change::{Change, BuilderCompat};
+use delivery_config::DeliveryConfig;
 
 #[derive(RustcEncodable)]
 pub struct Top {
     pub workspace_path: String,
     pub workspace: WorkspaceCompat,
     pub change: Change,
-    pub config: json::Json
+    pub config: DeliveryConfig,
 }
 
 #[derive(RustcEncodable)]
