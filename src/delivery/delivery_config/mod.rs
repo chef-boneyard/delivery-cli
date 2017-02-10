@@ -77,6 +77,15 @@ pub struct JobDispatch {
     pub filters: Option<HashMap<String, Vec<HashMap<String, Vec<String>>>>>,
 }
 
+impl Default for JobDispatch {
+    fn default() -> Self {
+        JobDispatch {
+            version: "v2".to_string(),
+            filters: None,
+        }
+    }
+}
+
 impl Default for DeliveryConfig {
     fn default() -> Self {
         let mut build_cookbook = HashMap::new();
@@ -85,17 +94,13 @@ impl Default for DeliveryConfig {
         build_cookbook.insert("path".to_string(),
                               ".delivery/build_cookbook".to_string());
 
-        let job_dispatch = JobDispatch {
-            version: "v2".to_string(),
-            filters: None,
-        };
 
         DeliveryConfig {
             version: "2".to_string(),
             build_cookbook: build_cookbook,
             skip_phases: Some(Vec::new()),
             build_nodes: None,
-            job_dispatch: Some(job_dispatch),
+            job_dispatch: Some(JobDispatch::default()),
             dependencies: Some(Vec::new()),
         }
     }
