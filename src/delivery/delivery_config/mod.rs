@@ -101,7 +101,76 @@ impl Default for DeliveryConfig {
     }
 }
 
+// BuildCookbookLocation Enumarator
+//
+// The build_cokbook could be sourced from the following locations:
+//   * Local       - On the project repo
+//   * Git         - From a git server. (url)
+//   * Supermarket - From a Supermarket Server
+//   * Workflow    - From the Workflow Server
+//   * ChefServer  - From the Chef Server
+//
+// Examples: https://docs.chef.io/config_json_delivery.html#examples
+pub enum BuildCookbookLocation {
+    Local,
+    Git,
+    Supermarket,
+    Workflow,
+    ChefServer,
+}
+
 impl DeliveryConfig {
+    // Return the build_cookbook location
+    //
+    // Searches for the right field inside the build_cookbook HashMap
+    // and translates it to a BuildCookbookLocation Enum, if none of
+    // the possible entries exist, throws a `Err()`
+    pub fn build_cookbook_location(&self) -> DeliveryResult<BuildCookbookLocation> {
+        if self.build_cookbook.contains_key("path") {
+            return Ok(BuildCookbookLocation::Local)
+        }
+        if self.build_cookbook.contains_key("git") {
+            return Ok(BuildCookbookLocation::Git)
+        }
+        if self.build_cookbook.contains_key("supermarket") {
+            return Ok(BuildCookbookLocation::Supermarket)
+        }
+        if self.build_cookbook.contains_key("enterprise") {
+            return Ok(BuildCookbookLocation::Workflow)
+        }
+        if self.build_cookbook.contains_key("server") {
+            return Ok(BuildCookbookLocation::ChefServer)
+        }
+        Err(DeliveryError{ kind: Kind::NoValidBuildCookbook, detail: None })
+    }
+
+    // Get the content of a specific build_cookbook field
+    //
+    // The build_cookbook is difined as a HashMap that we can easily extract
+    // the content of a particular `key`, this will reduce complexity and code
+    //
+    // Example:
+    // ```
+    // config    = DeliveryConfig.default();
+    // c_version = try!(config.build_cookbook_get("version"));
+    // assert_eq!("2".to_string(), c_version);
+    // ```
+    pub fn build_cookbook_get(&self, key: &str) -> DeliveryResult<String> {
+        self.build_cookbook.get(key)
+            .ok_or(DeliveryError{
+                kind: Kind::MissingBuildCookbookField,
+                detail: Some(format!("Unable to find '{}' field.", key).to_string())
+            }).map(|s| { s.to_owned() })
+    }
+
+    // Return the build_cookbook name
+    //
+    // A valid Delivery V2 config should always have a `name` entry
+    // inside the build_cookbook HashMap.
+    pub fn build_cookbook_name(&self) -> DeliveryResult<String> {
+        self.build_cookbook_get("name")
+    }
+
     /// Copy a provided `config.json` file to `.delivery/` of
     /// the project root path. Also verify that the config is
     /// valid and finally add/commit the changes.
@@ -162,6 +231,7 @@ impl DeliveryConfig {
     // path, it will try to decode the config V2 (latest at the moment)
     // and if it is unable to do so, it will try to decode in V1
     pub fn load_config(p_path: &PathBuf) -> DeliveryResult<Self> {
+        debug!("Loading config.json into memory");
         let config_path = try!(DeliveryConfig::find_config_file(p_path));
         let mut config_file = try!(File::open(&config_path));
         let mut config_json = String::new();
