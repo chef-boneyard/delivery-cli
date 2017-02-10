@@ -171,7 +171,7 @@ impl error::Error for DeliveryError {
             Kind::NoEditor => "Environment variable EDITOR not set",
             Kind::MissingProjectConfig => "Unable to find .delivery/config.json in this directory or its parents",
             Kind::MissingRequiredConfigOption => "A required config option was not set. Please specify in your cli.toml.",
-            Kind::FipsNotSupportedForChefDKPlatform => "The ChefDK for your platform does not support FIPS mode.\nCentOS and Windows are the currently supported FIPS platforms for ChefDK.",
+            Kind::FipsNotSupportedForChefDKPlatform => "The ChefDK for your platform does not support FIPS mode.\nRHEL and Windows are the currently supported FIPS platforms for ChefDK.",
         }
     }
 

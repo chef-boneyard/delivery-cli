@@ -20,6 +20,8 @@ use std::process;
 use std::time::Duration;
 use std::path::PathBuf;
 use std::path::Path;
+use std::io::prelude::*;
+use std::fs::File;
 use utils;
 use utils::say::{self, sayln};
 use errors::{Kind, DeliveryError};
@@ -100,6 +102,34 @@ pub trait CommandPrep {
             if !Path::new("/opt/chefdk/embedded/bin/stunnel").exists() {
                 return Err(DeliveryError{ kind: Kind::FipsNotSupportedForChefDKPlatform, detail: None })
             }
+            try!(std::fs::create_dir_all(try!(utils::home_dir(&[".chefdk/etc/"]))));
+            try!(std::fs::create_dir_all(try!(utils::home_dir(&[".chefdk/log/"]))));
+
+            let mut conf_file = try!(File::create(try!(utils::home_dir(&[".chefdk/etc/stunnel.conf"]))));
+            try!(conf_file.write_all(b"fips = yes\n"));
+            try!(conf_file.write_all(b"client = yes\n"));
+
+            let output = "output = ".to_string();
+            let output_conf = output + try!(utils::home_dir(&[".chefdk/log/stunnel.log\n"])).to_str().unwrap();
+            try!(conf_file.write_all(output_conf.as_bytes()));
+
+            try!(conf_file.write_all(b"[git]\n"));
+
+            let fips_git_port = config.fips_git_port.as_ref().unwrap();
+            let accept = "accept = ".to_string() + fips_git_port + "\n";
+            try!(conf_file.write_all(accept.as_bytes()));
+
+            let server = config.server.as_ref().unwrap();
+            let connect = "connect = ".to_string() + server + ":8989\n";
+            try!(conf_file.write_all(connect.as_bytes()));
+
+            let ca_file = "CAfile = ".to_string() + try!(utils::home_dir(&[".chefdk/etc/automate-nginx-cert.pem\n"])).to_str().unwrap();
+            try!(conf_file.write_all(ca_file.as_bytes()));
+
+            try!(conf_file.write_all(b"verifyChain = yes\n"));
+
+            let check_host = "checkHost = ".to_string() + server +"\n";
+            try!(conf_file.write_all(check_host.as_bytes()));
         }
 
         Ok(config)
