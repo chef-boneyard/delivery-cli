@@ -43,9 +43,9 @@ pub struct DeliveryConfig {
 
 // JobDispatch Struct
 //
-// This structure has two main files;
+// This structure has two main fields;
 //   * version - The config version
-//   * filters - Specific filters to search for nodes for each phase
+//   * filters - Specific search nodes filters for each phase
 //
 // Example:
 //  "job_dispatch": {
@@ -54,17 +54,13 @@ pub struct DeliveryConfig {
 //      "unit": [
 //        {
 //          "platform_family": ["debian"],
-//          "platform_version": ["12.04"]
+//          "platform_version": ["14.04"]
 //        },
 //        {
 //          "platform_family": ["rhel"]
 //        }
 //      ],
 //      "syntax": [
-//        {
-//          "platform_family": ["debian"],
-//          "platform_version": ["12.04"]
-//        },
 //        {
 //          "platform_family": ["debian"],
 //          "platform_version": ["14.04"]
@@ -82,7 +78,7 @@ pub struct JobDispatch {
 }
 
 impl Default for DeliveryConfig {
-    fn default() -> DeliveryConfig {
+    fn default() -> Self {
         let mut build_cookbook = HashMap::new();
         build_cookbook.insert("name".to_string(),
                               "build_cookbook".to_string());
@@ -155,32 +151,33 @@ impl DeliveryConfig {
         }
     }
 
-    // Validate if the config.json is valid
+    // Validate the config.json file
     pub fn validate_config_file(proj_path: &PathBuf) -> DeliveryResult<bool> {
-        let result = match DeliveryConfig::load_config(proj_path) {
-            Ok(_) => Ok(true),
-            Err(_) => {
-                // Lets try as v1
-                match DeliveryConfigV1::load_config(proj_path) {
-                    Ok(_) => Ok(true),
-                    Err(e) => Err(e)
-                }
-            }
-        };
-        // convert any error in a delivery error
-        let boolean_result = try!(result);
-        Ok(boolean_result)
+        DeliveryConfig::load_config(proj_path).and(Ok(true))
     }
 
     // Load the .delivery/config.json into a DeliveryConfig object
-    pub fn load_config(p_path: &PathBuf) -> DeliveryResult<DeliveryConfig> {
+    //
+    // This fn is capable of loading the `config.json` from a provided
+    // path, it will try to decode the config V2 (latest at the moment)
+    // and if it is unable to do so, it will try to decode in V1
+    pub fn load_config(p_path: &PathBuf) -> DeliveryResult<Self> {
         let config_path = try!(DeliveryConfig::find_config_file(p_path));
         let mut config_file = try!(File::open(&config_path));
         let mut config_json = String::new();
         try!(config_file.read_to_string(&mut config_json));
-        let json = try!(json::decode(&config_json));
+
+        // Try to decode the config, but if you are unable to, try V1;
+        // If you are still unable; just fail
+        let json: DeliveryConfig = try!(json::decode(&config_json).or_else( |e| {
+            debug!("Unable to parse DeliveryConfig: {}", e);
+            debug!("Attepting to load version: 1");
+            let v1_config = try!(DeliveryConfigV1::load_config(p_path));
+            v1_config.convert_to_v2()
+        }));
         Ok(json)
     }
+
 }
 
 // v1 config, deprecated, but still supported
@@ -193,7 +190,7 @@ pub struct DeliveryConfigV1 {
 }
 
 impl Default for DeliveryConfigV1 {
-    fn default() -> DeliveryConfigV1 {
+    fn default() -> Self {
         DeliveryConfigV1 {
             version: "1".to_string(),
             build_cookbook: "./.delivery/build_cookbook".to_string(),
@@ -204,12 +201,63 @@ impl Default for DeliveryConfigV1 {
 }
 
 impl DeliveryConfigV1 {
-    pub fn load_config(p_path: &PathBuf) -> DeliveryResult<DeliveryConfigV1> {
+    // Load the .delivery/config.json into a DeliveryConfigV1 object
+    pub fn load_config(p_path: &PathBuf) -> DeliveryResult<Self> {
         let config_path = try!(DeliveryConfig::find_config_file(p_path));
         let mut config_file = try!(File::open(&config_path));
         let mut config_json = String::new();
         try!(config_file.read_to_string(&mut config_json));
-        let json = try!(json::decode(&config_json));
+        let json: DeliveryConfigV1 = try!(json::decode(&config_json));
         Ok(json)
+    }
+
+    // Convert DeliveryConfigV1 to V2
+    //
+    // The big difference between V1 and V2 is that the build_cookbook field was
+    // at first a simple String that pointed to either a build_cookbook path stored
+    // locally or a simple name of the build_cookbook that would mean we would pull
+    // it from the Chef Sever. In V2 instead we allows multiple locations including
+    // `path` and `server` among others.
+    //
+    // This function will decode a V1 config and convert it into V2 properly
+    fn convert_to_v2(&self) -> DeliveryResult<DeliveryConfig> {
+        let mut build_cookbook = HashMap::new();
+
+        // Detect if the build_cookbook is stored locally or remotely
+        if self.build_cookbook.contains("/") {
+            // A local path, lets add the `path` field
+            let cookbook_path = PathBuf::from(&self.build_cookbook);
+            let cookbook_name = try!(cookbook_path.file_name().ok_or(DeliveryError{
+                kind: Kind::NoValidBuildCookbook,
+                detail: Some("V1: Expected a valid path to a build_cookbook".to_string())
+            }));
+
+            build_cookbook.insert(String::from("name"),
+                                  cookbook_name
+                                    .to_string_lossy()
+                                    .into_owned());
+            build_cookbook.insert(String::from("path"),
+                                  cookbook_path
+                                    .to_string_lossy()
+                                    .into_owned());
+        } else {
+            // A build_cookbook name, load it from the `server`
+            build_cookbook.insert(String::from("name"),
+                                  self.build_cookbook.clone());
+            build_cookbook.insert(String::from("server"), String::from("true"));
+        }
+
+        Ok(
+            // Instantiate a DeliveryConfig consuming `self` properties
+            DeliveryConfig {
+                // This is a config coming from V1, lets persist this
+                version: "1".to_string(),
+                build_cookbook: build_cookbook,
+                skip_phases: self.skip_phases.clone(),
+                build_nodes: self.build_nodes.clone(),
+                job_dispatch: None,
+                dependencies: None,
+            }
+        )
     }
 }

@@ -281,19 +281,6 @@ impl Workspace {
     }
 
     fn setup_build_cookbook(&self, toml_config: &Config, config: &DeliveryConfig) -> DeliveryResult<()> {
-        //let build_cookbook = try!(config.build_cookbook.get("name").ok_or(DeliveryError{
-            //kind: Kind::NoBuildCookbook,
-            //detail: None
-        //}));
-        // config v1
-        //if build_cookbook.is_string() {
-            //let path = build_cookbook.as_string().unwrap();
-            //if path.contains("/") {
-                //return self.setup_build_cookbook_from_path(&self.repo.join(&path));
-            //} else {
-                //return self.setup_build_cookbook_from_chef_server(&path);
-            //}
-        //}
         let sources = vec!["path", "git", "supermarket", "enterprise", "server"];
         for src in sources {
             if config.build_cookbook.contains_key(src) {
@@ -396,32 +383,6 @@ impl Workspace {
             detail: None
         }));
         Ok(name.to_owned())
-        // config v1
-        //let bc_name = match config.build_cookbook.get("name") {
-            //Some(bc) => {
-                //// config v1
-                //if bc.is_string() {
-                    //let bc_string = bc.as_string().unwrap();
-                    //if bc_string.contains("/") {
-                        //let r = Regex::new(r"(.+)/(.+)").unwrap();
-                        //let caps_result = r.captures(bc_string);
-                        //let caps = caps_result.unwrap();
-                        //caps.at(2).unwrap()
-                    //} else {
-                        //bc_string
-                    //}
-                //} else {
-                    //let is_bc_name = try!(bc.find("name").ok_or(DeliveryError{
-                        //kind: Kind::MissingBuildCookbookName,
-                        //detail: None}));
-                    //try!(is_bc_name.as_string().ok_or(DeliveryError{
-                        //kind: Kind::ExpectedJsonString,
-                        //detail: None}))
-                //}
-            //},
-            //None => return Err(DeliveryError{kind: Kind::NoValidBuildCookbook, detail: None})
-        //};
-        //Ok(bc_name.to_string())
     }
 
     pub fn run_job(&self, phase_arg: &str,
