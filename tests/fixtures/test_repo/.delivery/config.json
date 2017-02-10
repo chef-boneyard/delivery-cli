@@ -5,6 +5,8 @@
       "path": "cookbooks/delivery_test"
     },
     "build_nodes": {
-        "default"    : ["name:delivery-builder*"]
-    }
+        "default": ["name:delivery-builder*"]
+    },
+    "skip_phases": [],
+    "dependencies": []
 }

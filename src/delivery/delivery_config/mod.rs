@@ -210,7 +210,7 @@ impl DeliveryConfig {
         }
     }
 
-    pub fn config_file_path(proj_path: &PathBuf) -> PathBuf {
+    fn config_file_path(proj_path: &PathBuf) -> PathBuf {
         proj_path.join_many(&[".delivery", "config.json"])
     }
 
@@ -246,7 +246,7 @@ impl DeliveryConfig {
         // If you are still unable; just fail
         let json: DeliveryConfig = try!(json::decode(&config_json).or_else( |e| {
             debug!("Unable to parse DeliveryConfig: {}", e);
-            debug!("Attepting to load version: 1");
+            debug!("Attempting to load version: 1");
             let v1_config = try!(DeliveryConfigV1::load_config(p_path));
             v1_config.convert_to_v2()
         }));
@@ -334,5 +334,93 @@ impl DeliveryConfigV1 {
                 dependencies: None,
             }
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    mod v1 {
+        use super::*;
+
+        #[test]
+        fn default() {
+            let c_v1 = DeliveryConfigV1::default();
+            assert_eq!(c_v1.version, "1".to_string());
+            assert_eq!(c_v1.build_cookbook, "./.delivery/build_cookbook".to_string());
+            assert_eq!(c_v1.skip_phases, Some(Vec::new()));
+            assert_eq!(c_v1.build_nodes, Some(HashMap::new()));
+        }
+    }
+
+    mod v2 {
+        use super::*;
+
+        #[test]
+        fn default() {
+            let mut build_cookbook = HashMap::new();
+            build_cookbook.insert("name".to_string(),
+                                  "build_cookbook".to_string());
+            build_cookbook.insert("path".to_string(),
+                                  ".delivery/build_cookbook".to_string());
+            let c_v2 = DeliveryConfig::default();
+            assert_eq!(c_v2.version, "2".to_string());
+            assert_eq!(c_v2.skip_phases, Some(Vec::new()));
+            assert_eq!(c_v2.job_dispatch.unwrap().version, "v2".to_string());
+            assert_eq!(c_v2.dependencies, Some(Vec::new()));
+            assert_eq!(c_v2.build_cookbook, build_cookbook);
+            assert!(c_v2.build_nodes.is_none());
+        }
+
+        mod job_dispatch {
+            use super::*;
+
+            #[test]
+            fn default() {
+                let job_d = JobDispatch::default();
+                assert_eq!(job_d.version, "v2".to_string());
+                assert!(job_d.filters.is_none());
+            }
+
+            #[test]
+            fn complex_config() {
+                let mut complex = JobDispatch::default();
+                let mut filters = HashMap::new();
+                let mut filter_1 = HashMap::new();
+                let mut filter_2 = HashMap::new();
+                filter_1.insert(String::from("platform_family"),
+                                vec![String::from("debian")]);
+                filter_1.insert(String::from("platform_version"),
+                                vec![String::from("14.04")]);
+
+                filter_2.insert(String::from("platform_family"),
+                                vec![String::from("rhel")]);
+
+                filters.insert("unit".to_string(), vec![filter_1.clone(), filter_2.clone()]);
+                filters.insert("syntax".to_string(), vec![filter_1.clone(), filter_2.clone()]);
+                filters.insert("publish".to_string(), vec![filter_1, filter_2]);
+
+                complex.filters = Some(filters);
+                assert!(complex.filters.clone().unwrap().get("unit").is_some());
+                assert!(complex.filters.clone().unwrap().get("syntax").is_some());
+                assert!(complex.filters.clone().unwrap().get("publish").is_some());
+
+                // Extract the platform_family content of the filter1 for the unit phase
+                assert!(complex.filters.clone().unwrap().get("unit")
+                        .unwrap()[0].get("platform_family").is_some());
+                // Extract the platform_version content of the filter1 for the syntax phase
+                assert_eq!(complex.filters.clone().unwrap().get("syntax")
+                        .unwrap()[0].get("platform_version").unwrap()[0],
+                        String::from("14.04"));
+                // Extract the platform_family content of the filter2 for the publish phase
+                assert_eq!(complex.filters.clone().unwrap().get("publish")
+                        .unwrap()[1].get("platform_family").unwrap()[0],
+                        String::from("rhel"));
+
+                // Filter for deploy phase doesn't exist
+                assert!(complex.filters.clone().unwrap().get("deploy").is_none());
+            }
+        }
     }
 }
