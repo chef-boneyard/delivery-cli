@@ -1,6 +1,8 @@
 extern crate delivery;
 
-use delivery::delivery_config::{DeliveryConfigV1, DeliveryConfig};
+use delivery::delivery_config::{DeliveryConfigV1,
+                                DeliveryConfig,
+                                BuildCookbookLocation};
 use std::collections::HashMap;
 use support::paths::fixture_file;
 
@@ -66,6 +68,12 @@ mod v2 {
         assert!(c_v1_to_v2.skip_phases.is_none());
         assert!(c_v1_to_v2.dependencies.is_none());
         assert!(c_v1_to_v2.job_dispatch.is_none());
+        assert_eq!(c_v1_to_v2.build_cookbook_name().unwrap(),
+            "build_cookbook".to_string());
+        assert_eq!(c_v1_to_v2.build_cookbook_get("path").unwrap(),
+            "./.delivery/build_cookbook".to_string());
+        assert_eq!(c_v1_to_v2.build_cookbook_location().unwrap(),
+            BuildCookbookLocation::Local);
     });
 
     test!(load_config_failure_invalid_config {
@@ -108,6 +116,18 @@ mod v2 {
             Some(vec!["projectA".to_string(), "projectZ".to_string()])
         );
         assert_eq!(c_v2.build_cookbook, build_cookbook);
+
+        // Extract build_cookbook fields
+        assert_eq!(c_v2.build_cookbook_name().unwrap(),
+            "cerebro".to_string());
+        assert_eq!(c_v2.build_cookbook_get("enterprise").unwrap(),
+            "marvel".to_string());
+        assert_eq!(c_v2.build_cookbook_get("organization").unwrap(),
+            "x-men".to_string());
+        assert_eq!(c_v2.build_cookbook_location().unwrap(),
+            BuildCookbookLocation::Workflow);
+
+        // Default, build_nodes no more. Instead job_dispatch
         assert!(c_v2.build_nodes.is_none());
 
         assert!(c_v2.job_dispatch.is_some());

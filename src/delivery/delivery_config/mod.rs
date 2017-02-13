@@ -94,7 +94,6 @@ impl Default for DeliveryConfig {
         build_cookbook.insert("path".to_string(),
                               ".delivery/build_cookbook".to_string());
 
-
         DeliveryConfig {
             version: "2".to_string(),
             build_cookbook: build_cookbook,
@@ -116,6 +115,7 @@ impl Default for DeliveryConfig {
 //   * ChefServer  - From the Chef Server
 //
 // Examples: https://docs.chef.io/config_json_delivery.html#examples
+#[derive(Debug, PartialEq)]
 pub enum BuildCookbookLocation {
     Local,
     Git,
@@ -156,9 +156,9 @@ impl DeliveryConfig {
     //
     // Example:
     // ```
-    // config    = DeliveryConfig.default();
-    // c_version = try!(config.build_cookbook_get("version"));
-    // assert_eq!("2".to_string(), c_version);
+    // config        = DeliveryConfig.default();
+    // cookbook_name = try!(config.build_cookbook_get("name"));
+    // assert_eq!("build_cookbook".to_string(), cookbook_name);
     // ```
     pub fn build_cookbook_get(&self, key: &str) -> DeliveryResult<String> {
         self.build_cookbook.get(key)
@@ -432,6 +432,116 @@ mod tests {
 
                 // Filter for deploy phase doesn't exist
                 assert!(complex.filters.clone().unwrap().get("deploy").is_none());
+            }
+
+            mod build_cookbook {
+                use super::*;
+
+                fn blank_bk_with_name() -> HashMap<String, String> {
+                    let mut bk = HashMap::new();
+                    bk.insert("name".to_string(), "cook_nice".to_string());
+                    bk
+                }
+
+                fn chef_server() -> HashMap<String, String> {
+                    let mut chef = blank_bk_with_name();
+                    chef.insert("server".to_string(), "true".to_string());
+                    chef
+                }
+
+                fn supermarket() -> HashMap<String, String> {
+                    let mut supermarket = blank_bk_with_name();
+                    supermarket.insert("supermarket".to_string(), "true".to_string());
+                    supermarket
+                }
+
+                fn workflow() -> HashMap<String, String> {
+                    let mut workflow = blank_bk_with_name();
+                    workflow.insert("enterprise".to_string(), "mx".to_string());
+                    workflow.insert("organization".to_string(), "df".to_string());
+                    workflow
+                }
+
+                fn git() -> HashMap<String, String> {
+                    let mut git = blank_bk_with_name();
+                    git.insert("git".to_string(),
+                        "git@github.com:marvel/cerebro.git".to_string());
+                    git
+                }
+
+                mod location {
+                    use super::*;
+
+                    #[test]
+                    fn default() {
+                        let config = DeliveryConfig::default();
+                        assert_eq!(BuildCookbookLocation::Local,
+                                   config.build_cookbook_location().unwrap());
+                    }
+
+                    #[test]
+                    fn chef_server() {
+                        let mut config = DeliveryConfig::default();
+                        config.build_cookbook = super::chef_server();
+                        assert_eq!(BuildCookbookLocation::ChefServer,
+                                   config.build_cookbook_location().unwrap());
+                    }
+
+                    #[test]
+                    fn supermarket() {
+                        let mut config = DeliveryConfig::default();
+                        config.build_cookbook = super::supermarket();
+                        assert_eq!(BuildCookbookLocation::Supermarket,
+                                   config.build_cookbook_location().unwrap());
+                    }
+
+                    #[test]
+                    fn workflow() {
+                        let mut config = DeliveryConfig::default();
+                        config.build_cookbook = super::workflow();
+                        assert_eq!(BuildCookbookLocation::Workflow,
+                                   config.build_cookbook_location().unwrap());
+                    }
+
+                    #[test]
+                    fn git() {
+                        let mut config = DeliveryConfig::default();
+                        config.build_cookbook = super::git();
+                        assert_eq!(BuildCookbookLocation::Git,
+                                   config.build_cookbook_location().unwrap());
+                    }
+
+                    #[test]
+                    fn failure_invalid_build_cookbook() {
+                        let mut config = DeliveryConfig::default();
+                        config.build_cookbook = super::blank_bk_with_name();
+                        assert!(config.build_cookbook_location().is_err());
+                    }
+                }
+
+                #[test]
+                fn get() {
+                    let mut config = DeliveryConfig::default();
+                    config.build_cookbook = workflow();
+                    assert_eq!("cook_nice".to_string(),
+                                config.build_cookbook_get("name").unwrap());
+                    assert_eq!("mx".to_string(),
+                                config.build_cookbook_get("enterprise").unwrap());
+                    assert_eq!("df".to_string(),
+                                config.build_cookbook_get("organization").unwrap());
+
+                    // This doesn't exist :-)
+                    assert!(config.build_cookbook_get("so").is_err());
+                    assert!(config.build_cookbook_get("much").is_err());
+                    assert!(config.build_cookbook_get("fun").is_err());
+                }
+
+                #[test]
+                fn name() {
+                    let config = DeliveryConfig::default();
+                    assert_eq!("build_cookbook".to_string(),
+                                config.build_cookbook_name().unwrap());
+                }
             }
         }
     }
