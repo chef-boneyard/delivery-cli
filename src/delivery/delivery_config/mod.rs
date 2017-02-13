@@ -131,20 +131,15 @@ impl DeliveryConfig {
     // and translates it to a BuildCookbookLocation Enum, if none of
     // the possible entries exist, throws a `Err()`
     pub fn build_cookbook_location(&self) -> DeliveryResult<BuildCookbookLocation> {
-        if self.build_cookbook.contains_key("path") {
-            return Ok(BuildCookbookLocation::Local)
-        }
-        if self.build_cookbook.contains_key("git") {
-            return Ok(BuildCookbookLocation::Git)
-        }
-        if self.build_cookbook.contains_key("supermarket") {
-            return Ok(BuildCookbookLocation::Supermarket)
-        }
-        if self.build_cookbook.contains_key("enterprise") {
-            return Ok(BuildCookbookLocation::Workflow)
-        }
-        if self.build_cookbook.contains_key("server") {
-            return Ok(BuildCookbookLocation::ChefServer)
+        for (key, _) in self.build_cookbook.iter() {
+            match key.as_str() {
+                "path"          => return Ok(BuildCookbookLocation::Local),
+                "git"           => return Ok(BuildCookbookLocation::Git),
+                "supermarket"   => return Ok(BuildCookbookLocation::Supermarket),
+                "enterprise"    => return Ok(BuildCookbookLocation::Workflow),
+                "server"        => return Ok(BuildCookbookLocation::ChefServer),
+                _               => continue,
+            }
         }
         Err(DeliveryError{ kind: Kind::NoValidBuildCookbook, detail: None })
     }
