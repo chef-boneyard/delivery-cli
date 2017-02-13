@@ -18,7 +18,7 @@
 use job::change::{Change, BuilderCompat};
 use delivery_config::DeliveryConfig;
 
-#[derive(RustcEncodable)]
+#[derive(Serialize)]
 pub struct Top {
     pub workspace_path: String,
     pub workspace: WorkspaceCompat,
@@ -26,13 +26,13 @@ pub struct Top {
     pub config: DeliveryConfig,
 }
 
-#[derive(RustcEncodable)]
+#[derive(Serialize)]
 pub struct DNA {
     pub delivery: Top,
     pub delivery_builder: BuilderCompat
 }
 
-#[derive(RustcEncodable)]
+#[derive(Serialize)]
 pub struct WorkspaceCompat {
     pub root: String,
     pub chef: String,

@@ -17,6 +17,7 @@
 
 pub use errors;
 use errors::{DeliveryError, Kind};
+use types::DeliveryResult;
 use std::fs::File;
 use std::default::Default;
 use utils::say::{say, sayln};
@@ -27,7 +28,7 @@ use std::io::prelude::*;
 use utils::path_join_many::PathJoinMany;
 use utils::path_ext::{is_dir, is_file};
 
-#[derive(RustcEncodable, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Config {
     pub server: Option<String>,
     pub api_port: Option<String>,
@@ -75,10 +76,13 @@ impl Default for Config {
 macro_rules! config_accessor_for {
     ($name:ident, $set_name:ident, $err_msg:expr) => (
         impl Config {
-            pub fn $name(&self) -> Result<String, DeliveryError> {
+            pub fn $name(&self) -> DeliveryResult<String> {
                 match self.$name {
                     Some(ref v) => Ok(v.clone()),
-                    None => Err(DeliveryError{ kind: Kind::MissingConfig, detail: Some(String::from($err_msg)) })
+                    None => Err(DeliveryError{
+                        kind: Kind::MissingConfig,
+                        detail: Some(String::from($err_msg))
+                    })
                 }
             }
 
@@ -112,7 +116,7 @@ impl Config {
     /// port `443`. Unless a port is specified in the configuration,
     /// we'll just return the server name; otherwise we append the
     /// port.
-    pub fn api_host_and_port(&self) -> Result<String, DeliveryError> {
+    pub fn api_host_and_port(&self) -> DeliveryResult<String> {
         let s = try!(self.server());
         return Ok(match self.api_port {
             Some(ref p) => format!("{}:{}", s, p),
@@ -121,7 +125,7 @@ impl Config {
     }
 
     /// Returns the SSH URL to talk to Delivery's Git
-    pub fn delivery_git_ssh_url(&self) -> Result<String, DeliveryError> {
+    pub fn delivery_git_ssh_url(&self) -> DeliveryResult<String> {
         if self.fips.unwrap_or(false) {
             self.delivery_git_fips_enabled_url()
         } else {
@@ -129,7 +133,7 @@ impl Config {
         }
     }
 
-    fn delivery_git_ssh_standard_url(&self) -> Result<String, DeliveryError> {
+    fn delivery_git_ssh_standard_url(&self) -> DeliveryResult<String> {
         let s = try!(self.server());
         let host_and_port = match self.git_port {
             Some(ref p) => format!("{}:{}", s, p),
@@ -142,7 +146,7 @@ impl Config {
         Ok(format!("ssh://{}@{}@{}/{}/{}/{}", u, e, host_and_port, e, o, p))
     }
 
-    fn delivery_git_fips_enabled_url(&self) -> Result<String, DeliveryError> {
+    fn delivery_git_fips_enabled_url(&self) -> DeliveryResult<String> {
         let host_and_port = format!("{}:{}", "localhost", try!(self.fips_git_port()));
         let u = try!(self.user());
         let e = try!(self.enterprise());
@@ -151,7 +155,7 @@ impl Config {
         Ok(format!("ssh://{}@{}@{}/{}/{}/{}", u, e, host_and_port, e, o, p))
     }
 
-    pub fn load_config(cwd: &PathBuf) -> Result<Config, DeliveryError> {
+    pub fn load_config(cwd: &PathBuf) -> DeliveryResult<Self> {
         let have_config = Config::have_dot_delivery_cli(cwd);
         match have_config.as_ref() {
             Some(path) => {
@@ -165,7 +169,7 @@ impl Config {
         }
     }
 
-    pub fn write_file(&self, path: &PathBuf) -> Result<(), DeliveryError> {
+    pub fn write_file(&self, path: &PathBuf) -> DeliveryResult<()> {
         let write_dir = path.join_many(&[".delivery"]);
         if !is_dir(&write_dir) {
             try!(mkdir_recursive(&write_dir));
@@ -174,7 +178,7 @@ impl Config {
         say("white", "Writing configuration to ");
         sayln("yellow", &format!("{}", write_path.display()));
         let mut f = try!(File::create(&write_path));
-        let toml_string = toml::encode_str(self);
+        let toml_string = try!(toml::to_string(self));
         sayln("magenta", "New configuration");
         sayln("magenta", "-----------------");
         say("white", &toml_string);
@@ -182,69 +186,44 @@ impl Config {
         Ok(())
     }
 
-    pub fn parse_config(toml: &str) -> Result<Config, DeliveryError> {
-        let mut parser = toml::Parser::new(toml);
-        match parser.parse() {
-            Some(value) => { return Config::set_values_from_toml_table(value); },
-            None => {
-                return Err(DeliveryError{
-                    kind: Kind::ConfigParse,
-                    detail: Some(format!("Parse errors: {:?}", parser.errors))
-                });
-            }
-        }
-    }
-
-    fn set_values_from_toml_table(table: toml::Table) -> Result<Config, DeliveryError> {
+    pub fn parse_config(toml_str: &str) -> DeliveryResult<Self> {
         let mut config: Config = Default::default();
-        config.server = stringify_or("server", &table, config.server);
-        config.api_port = stringify_or("api_port", &table, config.api_port);
-        config.api_protocol = stringify_or("api_protocol", &table, config.api_protocol);
-        config.pipeline = stringify_or("pipeline", &table, config.pipeline);
-        config.project = stringify_or("project", &table, config.project);
-        config.enterprise = stringify_or("enterprise", &table,
-                                         config.enterprise);
-        config.organization = stringify_or("organization", &table,
-                                           config.organization);
-        config.user = stringify_or("user", &table, config.user);
-        config.git_port = stringify_or("git_port", &table, config.git_port);
-        config.token_file = stringify_or("token_file", &table, config.token_file);
-        config.generator = stringify_or("generator", &table, config.generator);
-        config.non_interactive = boolify_or("non_interactive", &table, config.non_interactive);
-        config.auto_bump = boolify_or("auto_bump", &table, config.auto_bump);
-        config.config_json = stringify_or("config_json", &table, config.config_json);
-        config.saml = boolify_or("saml", &table, config.saml);
-        config.fips = boolify_or("fips", &table, config.fips);
-        config.fips_git_port = stringify_or("fips_git_port", &table, config.fips_git_port);
-        return Ok(config);
+        let toml = try!(toml::from_str::<Config>(toml_str));
+        try!(config.override_with(toml));
+        Ok(config)
     }
 
-    fn read_file(path: &PathBuf) -> Result<String, DeliveryError>  {
+    pub fn override_with(&mut self, config: Config) -> DeliveryResult<()> {
+        // (afiune) TODO: I think we could do better by implementing some
+        // sort of Iterator or other thing that let us loop throught the
+        // fields, but for now this is good enough.
+        //
+        // If the `config` has some new config, override `self`
+        if config.server.is_some() { self.server = config.server }
+        if config.api_port.is_some() { self.api_port = config.api_port }
+        if config.pipeline.is_some() { self.pipeline = config.pipeline }
+        if config.project.is_some() { self.project = config.project }
+        if config.enterprise.is_some() { self.enterprise = config.enterprise }
+        if config.organization.is_some() { self.organization = config.organization }
+        if config.user.is_some() { self.user = config.user }
+        if config.git_port.is_some() { self.git_port = config.git_port }
+        if config.token_file.is_some() { self.token_file = config.token_file }
+        if config.generator.is_some() { self.generator = config.generator }
+        if config.non_interactive.is_some() { self.non_interactive = config.non_interactive }
+        if config.auto_bump.is_some() { self.auto_bump = config.auto_bump }
+        if config.config_json.is_some() { self.config_json = config.config_json }
+        if config.saml.is_some() { self.saml = config.saml }
+        if config.fips.is_some() { self.fips = config.fips }
+        if config.fips_git_port.is_some() { self.fips_git_port = config.fips_git_port }
+        if config.api_protocol.is_some() { self.api_protocol = config.api_protocol }
+        Ok(())
+    }
+
+    fn read_file(path: &PathBuf) -> DeliveryResult<String>  {
         let mut toml_file = try!(File::open(path));
         let mut toml = String::new();
         try!(toml_file.read_to_string(&mut toml));
         Ok(toml)
-    }
-
-    fn stringify_values(toml_value: Option<&toml::Value>) -> Option<String> {
-        match toml_value {
-            Some(value) => {
-                let is_string = value.as_str();
-                match is_string {
-                    Some(vstr) => return Some(String::from(vstr)),
-                    None => return None
-                }
-            },
-            None => {
-                return None;
-            }
-        }
-    }
-
-    fn boolify_values(toml_value: Option<&toml::Value>) -> Option<bool> {
-        toml_value.and_then(|v| {
-            v.as_bool()
-        })
     }
 
     fn check_dot_delivery_cli(path: PathBuf) -> Option<PathBuf> {
@@ -270,14 +249,6 @@ impl Config {
             }
         };
     }
-}
-
-fn stringify_or(key: &str, table: &toml::Table, default: Option<String>) -> Option<String> {
-    Config::stringify_values(table.get(key)).or(default)
-}
-
-fn boolify_or(key: &str, table: &toml::Table, default: Option<bool>) -> Option<bool> {
-    Config::boolify_values(table.get(key)).or(default)
 }
 
 #[cfg(test)]

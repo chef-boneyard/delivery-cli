@@ -19,10 +19,10 @@ use errors::{DeliveryError, Kind};
 use token::TokenStore;
 use http::*;
 use hyper::status::StatusCode;
-use rustc_serialize::json;
+use serde_json;
 use config::Config;
 
-#[derive(RustcEncodable, RustcDecodable, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TokenRequest {
     username: String,
     password: String
@@ -32,19 +32,19 @@ impl TokenRequest {
     pub fn payload(user: &str, pass: &str) -> Result<String, DeliveryError> {
         let treq = TokenRequest{  username: String::from(user),
                                   password: String::from(pass) };
-        let payload = try!(json::encode(&treq));
+        let payload = try!(serde_json::to_string(&treq));
         Ok(payload)
     }
 }
 
-#[derive(RustcEncodable, RustcDecodable, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TokenResponse {
     token: String
 }
 
 impl TokenResponse {
     pub fn parse_token(response: &str) -> Result<String, DeliveryError> {
-        let tresponse: TokenResponse = try!(json::decode(response));
+        let tresponse: TokenResponse = try!(serde_json::from_str(response));
         Ok(tresponse.token)
     }
 

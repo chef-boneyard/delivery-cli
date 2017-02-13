@@ -21,7 +21,10 @@ extern crate regex;
 extern crate term;
 extern crate toml;
 extern crate time;
-extern crate rustc_serialize;
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde_json;
 extern crate rpassword;
 extern crate libc;
 extern crate tempdir;

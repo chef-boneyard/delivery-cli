@@ -15,7 +15,7 @@
 // limitations under the License.
 //
 
-use rustc_serialize::json;
+use serde_json;
 use std::error::{self, Error};
 use std::num;
 use std::io;
@@ -193,17 +193,8 @@ impl fmt::Display for DeliveryError {
     }
 }
 
-impl From<json::EncoderError> for DeliveryError {
-    fn from(err: json::EncoderError) -> DeliveryError {
-        DeliveryError{
-            kind: Kind::JsonEncode,
-            detail: Some(err.description().to_string())
-        }
-    }
-}
-
-impl From<json::DecoderError> for DeliveryError {
-    fn from(err: json::DecoderError) -> DeliveryError {
+impl From<serde_json::Error> for DeliveryError {
+    fn from(err: serde_json::Error) -> DeliveryError {
         DeliveryError{
             kind: Kind::JsonParseError,
             detail: Some(format!("{}: {}", err.description().to_string(), err))
@@ -216,15 +207,6 @@ impl From<io::Error> for DeliveryError {
         DeliveryError{
             kind: Kind::IoError,
             detail: Some(format!("{}", err))
-        }
-    }
-}
-
-impl From<json::ParserError> for DeliveryError {
-    fn from(err: json::ParserError) -> DeliveryError {
-        DeliveryError{
-            kind: Kind::JsonError,
-            detail: Some(err.description().to_string())
         }
     }
 }
@@ -249,8 +231,17 @@ impl From<num::ParseIntError> for DeliveryError {
     }
 }
 
-impl From<toml::DecodeError> for DeliveryError {
-    fn from(err: toml::DecodeError) -> DeliveryError {
+impl From<toml::de::Error> for DeliveryError {
+    fn from(err: toml::de::Error) -> DeliveryError {
+        DeliveryError{
+            kind: Kind::TomlDecodeError,
+            detail: Some(format!("{}: {}", err.description().to_string(), err))
+        }
+    }
+}
+
+impl From<toml::ser::Error> for DeliveryError {
+    fn from(err: toml::ser::Error) -> DeliveryError {
         DeliveryError{
             kind: Kind::TomlDecodeError,
             detail: Some(format!("{}: {}", err.description().to_string(), err))

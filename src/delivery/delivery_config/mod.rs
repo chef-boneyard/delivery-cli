@@ -22,16 +22,16 @@ use std::default::Default;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::PathBuf;
-use rustc_serialize::json;
 use errors::{DeliveryError, Kind};
 use types::DeliveryResult;
-use git;
 use utils::{walk_tree_for_path, read_file, copy_recursive, file_needs_updated};
 use utils::path_join_many::PathJoinMany;
+use serde_json;
+use git;
 
 pub mod project;
 
-#[derive(RustcEncodable, RustcDecodable, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct DeliveryConfig {
     pub version: String,
     pub build_cookbook: HashMap<String, String>,
@@ -71,7 +71,7 @@ pub struct DeliveryConfig {
 //      ]
 //    }
 //  }
-#[derive(RustcEncodable, RustcDecodable, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct JobDispatch {
     pub version: String,
     pub filters: Option<HashMap<String, Vec<HashMap<String, Vec<String>>>>>,
@@ -244,7 +244,7 @@ impl DeliveryConfig {
 
         // Try to decode the config, but if you are unable to, try V1;
         // If you are still unable; just fail
-        let json: DeliveryConfig = try!(json::decode(&config_json).or_else( |e_v2| {
+        let json: DeliveryConfig = try!(serde_json::from_str(&config_json).or_else( |e_v2| {
             debug!("Unable to parse DeliveryConfig: {}", e_v2);
             debug!("Attempting to load version: 1");
             let v1_config = try!(DeliveryConfigV1::load_config(p_path).or_else(|e_v1| {
@@ -268,7 +268,7 @@ impl DeliveryConfig {
 }
 
 // v1 config, deprecated, but still supported
-#[derive(RustcDecodable)]
+#[derive(Deserialize)]
 pub struct DeliveryConfigV1 {
     pub version: String,
     pub build_cookbook: String,
@@ -294,7 +294,7 @@ impl DeliveryConfigV1 {
         let mut config_file = try!(File::open(&config_path));
         let mut config_json = String::new();
         try!(config_file.read_to_string(&mut config_json));
-        let json: DeliveryConfigV1 = try!(json::decode(&config_json));
+        let json: DeliveryConfigV1 = try!(serde_json::from_str(&config_json));
         Ok(json)
     }
 

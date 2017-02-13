@@ -18,13 +18,12 @@
 use errors::{DeliveryError, Kind};
 use types::DeliveryResult;
 use git;
-use rustc_serialize::{Encodable, Encoder};
-use rustc_serialize::json;
+use serde_json;
 use delivery_config::{DeliveryConfig, BuildCookbookLocation};
 use job::dna::{Top, DNA, WorkspaceCompat};
 use job::change::{Change, BuilderCompat};
 use std::process::{Command, Stdio};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::fs::File;
 use std::io::prelude::*;
 use utils;
@@ -34,7 +33,6 @@ use utils::path_ext::{is_file, is_dir};
 use std::error;
 use config::Config;
 
-#[derive(RustcDecodable, Debug)]
 pub struct Workspace {
     pub root: PathBuf,
     pub chef: PathBuf,
@@ -67,31 +65,6 @@ else
   end
 end
 "#;
-
-// We want this to encode as strings, not as vectors of bytes. It's
-// cool - I accept we'll panic if its not a utf8 string.
-impl Encodable for Workspace {
-    fn encode<S: Encoder>(&self, encoder: &mut S) -> Result<(), S::Error> {
-        encoder.emit_struct("Workspace", 0, |encoder| {
-            try!(encode_path_field(encoder, 0usize, "root",  &self.root));
-            try!(encode_path_field(encoder, 1usize, "chef",  &self.chef));
-            try!(encode_path_field(encoder, 2usize, "cache", &self.cache));
-            try!(encode_path_field(encoder, 3usize, "repo",  &self.repo));
-            try!(encode_path_field(encoder, 4usize, "ssh_wrapper",
-                                   &self.ssh_wrapper));
-            Ok(())
-        })
-    }
-}
-
-fn encode_path_field<S: Encoder>(encoder: &mut S, size: usize,
-                                 name: &str, p: &Path) -> Result<(), S::Error> {
-    encoder.emit_struct_field(name, size, |e| encode_path(p, e))
-}
-
-fn encode_path<S: Encoder>(p: &Path, encoder: &mut S) -> Result<(), S::Error> {
-    path_to_string(p).encode(encoder)
-}
 
 impl Workspace {
     pub fn new(root: &PathBuf) -> Workspace {
@@ -473,7 +446,7 @@ impl Workspace {
         let dna_json_path = &self.chef.join("dna.json");
         let mut dna_json = try!(File::create(dna_json_path));
         try!(utils::chmod(dna_json_path, "0644"));
-        let data = try!(json::encode(&dna));
+        let data = try!(serde_json::to_string(&dna));
         try!(dna_json.write_all(data.as_bytes()));
         Ok(())
     }
