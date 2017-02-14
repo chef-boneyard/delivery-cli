@@ -34,14 +34,7 @@ pub fn copy_recursive<P: ?Sized>(f: &P, t: &P) -> Result<(), DeliveryError>
                       .arg(from.to_str().unwrap())
                       .arg(to.to_str().unwrap())
                       .output());
-    if !result.status.success() {
-        let detail = Some(format!("STDOUT: {}\nSTDERR: {}",
-                                  String::from_utf8_lossy(&result.stdout),
-                                  String::from_utf8_lossy(&result.stderr)));
-        Err(DeliveryError{ kind: Kind::CopyFailed, detail: detail })
-    } else {
-        Ok(())
-    }
+    super::cmd_success_or_err(&result, Kind::CopyFailed)
 }
 
 pub fn remove_recursive<P: ?Sized>(path: &P) -> Result<(), DeliveryError>
@@ -55,14 +48,7 @@ pub fn remove_recursive<P: ?Sized>(path: &P) -> Result<(), DeliveryError>
                               .arg("-force")
                               .arg(path.as_ref().to_str().unwrap())
                               .output());
-            if !result.status.success() {
-                let detail = Some(format!("STDOUT: {}\nSTDERR: {}",
-                                          String::from_utf8_lossy(&result.stdout),
-                                          String::from_utf8_lossy(&result.stderr)));
-                Err(DeliveryError{ kind: Kind::RemoveFailed, detail: detail })
-            } else {
-                Ok(())
-            }
+            super::cmd_success_or_err(&result, Kind::RemoveFailed)
         },
         Err(ref e) if e.kind() == io::ErrorKind::NotFound => {
             // probably should get specific. Re-raise unless this is

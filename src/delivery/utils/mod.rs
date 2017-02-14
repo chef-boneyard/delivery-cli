@@ -16,10 +16,12 @@
 //
 
 use errors::{DeliveryError, Kind};
+use types::DeliveryResult;
 use std::convert::AsRef;
 use std::fs;
 use std::env;
 use std::fs::File;
+use std::process::Output as CmdOutput;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use utils::path_join_many::PathJoinMany;
@@ -153,9 +155,23 @@ pub fn file_needs_updated(source_f: &PathBuf, dest_f: &PathBuf) ->Result<bool, D
     Ok(true)
 }
 
+pub fn cmd_success_or_err(out: &CmdOutput, e_kind: Kind) -> DeliveryResult<()> {
+    if ! out.status.success() {
+        return Err(DeliveryError{
+            kind: e_kind,
+            detail: Some(
+                format!("STDOUT: {}\nSTDERR: {}\n",
+                String::from_utf8_lossy(&out.stdout),
+                String::from_utf8_lossy(&out.stderr))
+            )
+        })
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
-    use super::walk_tree_for_path;
+    use super::*;
     use std::env;
     use std::path::PathBuf;
     use std::ffi::OsStr;
@@ -173,6 +189,15 @@ mod tests {
         // starting from / we don't expect to find .delivery
         let result = walk_tree_for_path(&PathBuf::from("/"), ".delivery-123");
         assert!(result.is_none());
+    }
+
+    #[test]
+    fn cmd_success_or_err() {
+        let ls = make_command("ls").output().unwrap();
+        assert!(super::cmd_success_or_err(&ls, Kind::FailedToExecute).is_ok());
+
+        let no_zero_exitcode = make_command("ls").arg("-").output().unwrap();
+        assert!(super::cmd_success_or_err(&no_zero_exitcode, Kind::FailedToExecute).is_err());
     }
 }
 

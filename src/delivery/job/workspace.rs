@@ -137,49 +137,19 @@ impl Workspace {
              .arg(&path_to_string(&self.chef.join("build_cookbook.tgz")))
              .current_dir(&self.root)
              .output()?;
-        if ! result.status.success() {
-            let output = String::from_utf8_lossy(&result.stdout);
-            let error = String::from_utf8_lossy(&result.stderr);
-            return Err(DeliveryError{
-                kind: Kind::SupermarketFailed,
-                detail: Some(
-                    format!("Failed 'knife supermarket download'\nOUT: {}\nERR: {}\nSite: {}",
-                    &output, &error, &site).to_string()
-                )
-            });
-        }
+        utils::cmd_success_or_err(&result, Kind::SupermarketFailed)?;
         let tar_result = utils::make_command("tar")
              .arg("zxf")
              .arg(&path_to_string(&self.chef.join("build_cookbook.tgz")))
              .current_dir(&self.chef)
              .output()?;
-        if ! tar_result.status.success() {
-            let output = String::from_utf8_lossy(&tar_result.stdout);
-            let error = String::from_utf8_lossy(&tar_result.stderr);
-            return Err(DeliveryError{
-                kind: Kind::TarFailed,
-                detail: Some(
-                    format!("Failed 'tar zxf'\nOUT: {}\nERR: {}",
-                    &output, &error).to_string()
-                )
-            });
-        }
+        utils::cmd_success_or_err(&tar_result, Kind::TarFailed)?;
         let mv_result = utils::make_command("mv")
              .arg(&path_to_string(&self.chef.join(name)))
              .arg(&path_to_string(&self.chef.join("build_cookbook")))
              .current_dir(&self.chef)
              .output()?;
-        if ! mv_result.status.success() {
-            let output = String::from_utf8_lossy(&mv_result.stdout);
-            let error = String::from_utf8_lossy(&mv_result.stderr);
-            return Err(DeliveryError{
-                kind: Kind::MoveFailed,
-                detail: Some(
-                    format!("Failed 'mv'\nOUT: {}\nERR: {}",
-                    &output, &error).to_string()
-                )
-            });
-        }
+        utils::cmd_success_or_err(&mv_result, Kind::MoveFailed)?;
         Ok(())
     }
 
@@ -192,34 +162,14 @@ impl Workspace {
                         .arg(&path_to_string(&self.chef.join("tmp_cookbook")))
                         .current_dir(&self.root)
                         .output()?;
-        if ! result.status.success() {
-            let output = String::from_utf8_lossy(&result.stdout);
-            let error = String::from_utf8_lossy(&result.stderr);
-            return Err(DeliveryError{
-                kind: Kind::ChefServerFailed,
-                 detail: Some(
-                    format!("Failed 'knife cookbook download'\nOUT: {}\nERR: {}",
-                    &output, &error).to_string()
-                )
-            });
-        }
+        utils::cmd_success_or_err(&result, Kind::ChefServerFailed)?;
         let mv_result = utils::make_command("mv")
                             .arg(&path_to_string(&self.chef.join_many(&["tmp_cookbook",
                                                                       "cookbooks", &name])))
                             .arg(&path_to_string(&self.chef.join("build_cookbook")))
                             .current_dir(&self.chef)
                             .output()?;
-        if ! mv_result.status.success() {
-            let output = String::from_utf8_lossy(&mv_result.stdout);
-            let error = String::from_utf8_lossy(&mv_result.stderr);
-            return Err(DeliveryError{
-                kind: Kind::MoveFailed,
-                detail: Some(
-                    format!("Failed 'mv'\nOUT: {}\nERR: {}",
-                    &output, &error).to_string()
-                )
-            });
-        }
+        utils::cmd_success_or_err(&mv_result, Kind::MoveFailed)?;
         Ok(())
     }
 
@@ -281,16 +231,7 @@ impl Workspace {
                     return Err(DeliveryError{ kind: Kind::FailedToExecute,
                                                       detail: Some(d)}) },
             };
-            if !output.status.success() {
-                return Err(DeliveryError{
-                    kind: Kind::BerksFailed,
-                    detail: Some(
-                        format!("STDOUT: {}\nSTDERR: {}\n",
-                        String::from_utf8_lossy(&output.stdout),
-                        String::from_utf8_lossy(&output.stderr))
-                    )
-                });
-            }
+            utils::cmd_success_or_err(&output, Kind::BerksFailed)?;
             let stdout = String::from_utf8_lossy(&output.stdout).to_string();
             debug!("berks vendor stdout: {}", stdout);
             let stderr = String::from_utf8_lossy(&output.stderr).to_string();
@@ -298,22 +239,12 @@ impl Workspace {
         } else {
             debug!("No Berksfile found; simply moving the cookbook");
             try!(utils::mkdir_recursive(&self.chef.join("cookbooks")));
-            let mv_result = try!(Command::new("mv")
-                                 .arg(&path_to_string(&self.chef.join("build_cookbook")))
-                                 .arg(&path_to_string(&self.chef.join_many(&["cookbooks", bc_name])))
-                                 .current_dir(&self.chef)
-                                 .output());
-            if ! mv_result.status.success() {
-                let output = String::from_utf8_lossy(&mv_result.stdout);
-                let error = String::from_utf8_lossy(&mv_result.stderr);
-                return Err(DeliveryError{
-                    kind: Kind::MoveFailed,
-                    detail: Some(
-                        format!("Failed 'mv'\nOUT: {}\nERR: {}",
-                        &output, &error).to_string()
-                    )
-                });
-            }
+            let mv_result = Command::new("mv")
+                                .arg(&path_to_string(&self.chef.join("build_cookbook")))
+                                .arg(&path_to_string(&self.chef.join_many(&["cookbooks", bc_name])))
+                                .current_dir(&self.chef)
+                                .output()?;
+            utils::cmd_success_or_err(&mv_result, Kind::MoveFailed)?;
         }
         Ok(())
     }
@@ -369,16 +300,7 @@ impl Workspace {
                 })
             },
         };
-        if !output.status.success() {
-            return Err(DeliveryError{
-                kind: Kind::ChefFailed,
-                detail: Some(
-                    format!("STDOUT: {}\nSTDERR: {}\n",
-                    String::from_utf8_lossy(&output.stdout),
-                    String::from_utf8_lossy(&output.stderr))
-                )
-            });
-        }
+        utils::cmd_success_or_err(&output, Kind::ChefFailed)?;
         Ok(())
     }
 
