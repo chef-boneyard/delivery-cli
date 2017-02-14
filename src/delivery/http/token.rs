@@ -32,7 +32,7 @@ impl TokenRequest {
     pub fn payload(user: &str, pass: &str) -> Result<String, DeliveryError> {
         let treq = TokenRequest{  username: String::from(user),
                                   password: String::from(pass) };
-        let payload = try!(serde_json::to_string(&treq));
+        let payload = serde_json::to_string(&treq)?;
         Ok(payload)
     }
 }

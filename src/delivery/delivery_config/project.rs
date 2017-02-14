@@ -151,8 +151,8 @@ impl ProjectToml {
             return ProjectToml::load_toml_remote(url)
         }
 
-        let path = ProjectToml::toml_file_path(try!(project::project_path()));
-        let project_toml = try!(ProjectToml::load_toml_file(path));
+        let path = ProjectToml::toml_file_path(project::project_path()?);
+        let project_toml = ProjectToml::load_toml_file(path)?;
 
         match project_toml.remote_file {
             Some(url) => ProjectToml::load_toml_remote(&url),
@@ -162,8 +162,8 @@ impl ProjectToml {
 
     fn load_toml_file(toml_path: PathBuf) -> DeliveryResult<ProjectToml> {
         debug!("Loading local project.toml from {:?}", toml_path);
-        try!(ProjectToml::validate_file(&toml_path));
-        let toml = try!(utils::read_file(&toml_path));
+        ProjectToml::validate_file(&toml_path)?;
+        let toml = utils::read_file(&toml_path)?;
         ProjectToml::parse_config(&toml)
     }
 
@@ -173,7 +173,7 @@ impl ProjectToml {
         match client.get(toml_url).send() {
             Ok(mut resp) => {
                 let mut toml = String::new();
-                try!(resp.read_to_string(&mut toml));
+                resp.read_to_string(&mut toml)?;
                 debug!("Content Remote project.toml: {:?}", toml);
                 ProjectToml::parse_config(&toml)
             },
@@ -214,7 +214,7 @@ impl ProjectToml {
 
     fn parse_config(toml: &str) -> DeliveryResult<ProjectToml> {
         debug!("Parsing toml: {}", toml);
-        let toml_object = try!(toml::from_str::<ProjectToml>(toml));
+        let toml_object = toml::from_str::<ProjectToml>(toml)?;
         Ok(toml_object)
     }
 

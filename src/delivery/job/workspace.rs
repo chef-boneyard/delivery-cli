@@ -110,13 +110,13 @@ impl Workspace {
 
     fn setup_build_cookbook_from_git(&self,
                         config: &DeliveryConfig) -> DeliveryResult<()> {
-        let git_url = try!(config.build_cookbook_get("git"));
+        let git_url = config.build_cookbook_get("git")?;
         let branch = config.build_cookbook_get("branch").unwrap_or("master".to_owned());
         let build_cookbook_path = &self.chef.join("build_cookbook");
-        try!(git::git_command(&["clone", &git_url,
-                                &path_to_string(build_cookbook_path)],
-                              &self.chef));
-        try!(git::git_command(&["checkout", &branch], build_cookbook_path));
+        git::git_command(&["clone", &git_url,
+                         &path_to_string(build_cookbook_path)],
+                         &self.chef)?;
+        git::git_command(&["checkout", &branch], build_cookbook_path)?;
         Ok(())
     }
 
@@ -124,10 +124,10 @@ impl Workspace {
     // either.
     fn setup_build_cookbook_from_supermarket(&self,
                         config: &DeliveryConfig) -> DeliveryResult<()> {
-        let name = try!(config.build_cookbook_name());
+        let name = config.build_cookbook_name()?;
         let site = config.build_cookbook_get("site")
                         .unwrap_or("https://supermarket.chef.io".to_owned());
-        let result = try!(utils::make_command("knife")
+        let result = utils::make_command("knife")
              .arg("supermarket")
              .arg("download")
              .arg(&name)
@@ -136,7 +136,7 @@ impl Workspace {
              .arg("-f")
              .arg(&path_to_string(&self.chef.join("build_cookbook.tgz")))
              .current_dir(&self.root)
-             .output());
+             .output()?;
         if ! result.status.success() {
             let output = String::from_utf8_lossy(&result.stdout);
             let error = String::from_utf8_lossy(&result.stderr);
@@ -148,11 +148,11 @@ impl Workspace {
                 )
             });
         }
-        let tar_result = try!(utils::make_command("tar")
+        let tar_result = utils::make_command("tar")
              .arg("zxf")
              .arg(&path_to_string(&self.chef.join("build_cookbook.tgz")))
              .current_dir(&self.chef)
-             .output());
+             .output()?;
         if ! tar_result.status.success() {
             let output = String::from_utf8_lossy(&tar_result.stdout);
             let error = String::from_utf8_lossy(&tar_result.stderr);
@@ -164,11 +164,11 @@ impl Workspace {
                 )
             });
         }
-        let mv_result = try!(utils::make_command("mv")
+        let mv_result = utils::make_command("mv")
              .arg(&path_to_string(&self.chef.join(name)))
              .arg(&path_to_string(&self.chef.join("build_cookbook")))
              .current_dir(&self.chef)
-             .output());
+             .output()?;
         if ! mv_result.status.success() {
             let output = String::from_utf8_lossy(&mv_result.stdout);
             let error = String::from_utf8_lossy(&mv_result.stderr);
@@ -184,14 +184,14 @@ impl Workspace {
     }
 
     fn setup_build_cookbook_from_chef_server(&self, name: &str) -> DeliveryResult<()> {
-        try!(utils::mkdir_recursive(&self.chef.join("tmp_cookbook")));
-        let result = try!(utils::make_command("knife")
-                          .arg("download")
-                          .arg(&format!("/cookbooks/{}", &name))
-                          .arg("--chef-repo-path")
-                          .arg(&path_to_string(&self.chef.join("tmp_cookbook")))
-                          .current_dir(&self.root)
-                          .output());
+        utils::mkdir_recursive(&self.chef.join("tmp_cookbook"))?;
+        let result = utils::make_command("knife")
+                        .arg("download")
+                        .arg(&format!("/cookbooks/{}", &name))
+                        .arg("--chef-repo-path")
+                        .arg(&path_to_string(&self.chef.join("tmp_cookbook")))
+                        .current_dir(&self.root)
+                        .output()?;
         if ! result.status.success() {
             let output = String::from_utf8_lossy(&result.stdout);
             let error = String::from_utf8_lossy(&result.stderr);
@@ -203,12 +203,12 @@ impl Workspace {
                 )
             });
         }
-        let mv_result = try!(utils::make_command("mv")
-                             .arg(&path_to_string(&self.chef.join_many(&["tmp_cookbook",
-                                                                         "cookbooks", &name])))
-                             .arg(&path_to_string(&self.chef.join("build_cookbook")))
-                             .current_dir(&self.chef)
-                             .output());
+        let mv_result = utils::make_command("mv")
+                            .arg(&path_to_string(&self.chef.join_many(&["tmp_cookbook",
+                                                                      "cookbooks", &name])))
+                            .arg(&path_to_string(&self.chef.join("build_cookbook")))
+                            .current_dir(&self.chef)
+                            .output()?;
         if ! mv_result.status.success() {
             let output = String::from_utf8_lossy(&mv_result.stdout);
             let error = String::from_utf8_lossy(&mv_result.stderr);
@@ -226,25 +226,25 @@ impl Workspace {
     fn setup_build_cookbook_from_workflow(&self,
                                           config: &DeliveryConfig,
                                           toml_config: &Config) -> DeliveryResult<()> {
-        let name = try!(config.build_cookbook_name());
-        let ent = try!(config.build_cookbook_get("enterprise"));
-        let org = try!(config.build_cookbook_get("organization"));
+        let name = config.build_cookbook_name()?;
+        let ent = config.build_cookbook_get("enterprise")?;
+        let org = config.build_cookbook_get("organization")?;
         let build_cookbook_config = toml_config.clone().set_enterprise(&ent)
                                                        .set_organization(&org)
                                                        .set_project(&name);
-        let url = try!(build_cookbook_config.delivery_git_ssh_url());
-        try!(git::git_command(
-                &["clone", &url, self.chef.join("build_cookbook").to_str().unwrap()],
-                &self.chef
-        ));
+        let url = build_cookbook_config.delivery_git_ssh_url()?;
+        git::git_command(
+            &["clone", &url, self.chef.join("build_cookbook").to_str().unwrap()],
+            &self.chef
+        )?;
         Ok(())
     }
 
     fn setup_build_cookbook(&self, toml_config: &Config,
                             config: &DeliveryConfig) -> DeliveryResult<()> {
-        match try!(config.build_cookbook_location()) {
+        match config.build_cookbook_location()? {
             BuildCookbookLocation::Local => {
-                let ab_path = self.repo.join(try!(config.build_cookbook_get("path")));
+                let ab_path = self.repo.join(config.build_cookbook_get("path")?);
                 self.setup_build_cookbook_from_path(&ab_path)
             },
             BuildCookbookLocation::Git => {
@@ -257,7 +257,7 @@ impl Workspace {
                 self.setup_build_cookbook_from_workflow(config, toml_config)
             },
             BuildCookbookLocation::ChefServer => {
-                let name = try!(config.build_cookbook_name());
+                let name = config.build_cookbook_name()?;
                 self.setup_build_cookbook_from_chef_server(&name)
             },
         }
@@ -330,8 +330,8 @@ impl Workspace {
     pub fn run_job(&self, phase_arg: &str,
                     drop_privilege: &Privilege,
                     local_change: &bool) -> DeliveryResult<()> {
-        let config = try!(DeliveryConfig::load_config(&self.repo));
-        let bc_name = try!(config.build_cookbook_name());
+        let config = DeliveryConfig::load_config(&self.repo)?;
+        let bc_name = config.build_cookbook_name()?;
         let run_list = {
             let phases: Vec<String> = phase_arg.split(" ")
                 .map(|p| format!("{}::{}", bc_name, p)).collect();
@@ -410,14 +410,14 @@ impl Workspace {
                               ws_path: &PathBuf) -> Result<(), DeliveryError> {
         let config_rb_path = &self.chef.join("config.rb");
         debug!("Writing content of chef/config.rb");
-        let mut config_rb = try!(File::create(config_rb_path));
-        try!(utils::chmod(config_rb_path, "0644"));
-        try!(config_rb.write_all(CONFIG_RB.as_bytes()));
-        let config = try!(DeliveryConfig::load_config(&self.repo));
+        let mut config_rb = File::create(config_rb_path)?;
+        utils::chmod(config_rb_path, "0644")?;
+        config_rb.write_all(CONFIG_RB.as_bytes())?;
+        let config = DeliveryConfig::load_config(&self.repo)?;
         debug!("Setting up the build_cookbook");
-        try!(self.setup_build_cookbook(toml_config, &config));
-        let build_cb_name = try!(config.build_cookbook_name());
-        try!(self.berks_vendor(&build_cb_name));
+        self.setup_build_cookbook(toml_config, &config)?;
+        let build_cb_name = config.build_cookbook_name()?;
+        self.berks_vendor(&build_cb_name)?;
         let workspace_data = WorkspaceCompat{
             root: path_to_string(&self.root),
             chef: path_to_string(&self.chef),
@@ -444,10 +444,10 @@ impl Workspace {
         };
         debug!("Writing content of chef/dna.json");
         let dna_json_path = &self.chef.join("dna.json");
-        let mut dna_json = try!(File::create(dna_json_path));
-        try!(utils::chmod(dna_json_path, "0644"));
-        let data = try!(serde_json::to_string(&dna));
-        try!(dna_json.write_all(data.as_bytes()));
+        let mut dna_json = File::create(dna_json_path)?;
+        utils::chmod(dna_json_path, "0644")?;
+        let data = serde_json::to_string(&dna)?;
+        dna_json.write_all(data.as_bytes())?;
         Ok(())
     }
 

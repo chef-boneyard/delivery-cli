@@ -396,10 +396,10 @@ impl APIClient {
 
     pub fn extract_pretty_json(resp: &mut HyperResponse) -> DeliveryResult<String> {
             let mut body = String::new();
-            try!(resp.read_to_string(&mut body));
+            resp.read_to_string(&mut body)?;
             debug!("Status: {:?} Body: {:?}", resp.status, body);
-            let json: SerdeJson = try!(serde_json::from_str(&body));
-            let json_str = try!(serde_json::to_string_pretty(&json));
+            let json: SerdeJson = serde_json::from_str(&body)?;
+            let json_str = serde_json::to_string_pretty(&json)?;
             Ok(json_str)
     }
 

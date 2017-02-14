@@ -178,7 +178,7 @@ impl Config {
         say("white", "Writing configuration to ");
         sayln("yellow", &format!("{}", write_path.display()));
         let mut f = try!(File::create(&write_path));
-        let toml_string = try!(toml::to_string(self));
+        let toml_string = toml::to_string(self)?;
         sayln("magenta", "New configuration");
         sayln("magenta", "-----------------");
         say("white", &toml_string);
@@ -188,8 +188,8 @@ impl Config {
 
     pub fn parse_config(toml_str: &str) -> DeliveryResult<Self> {
         let mut config: Config = Default::default();
-        let toml = try!(toml::from_str::<Config>(toml_str));
-        try!(config.override_with(toml));
+        let toml = toml::from_str::<Config>(toml_str)?;
+        config.override_with(toml)?;
         Ok(config)
     }
 

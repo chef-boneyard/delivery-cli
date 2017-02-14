@@ -152,7 +152,7 @@ impl DeliveryConfig {
     // Example:
     // ```
     // config        = DeliveryConfig.default();
-    // cookbook_name = try!(config.build_cookbook_get("name"));
+    // cookbook_name = config.build_cookbook_get("name")?;
     // assert_eq!("build_cookbook".to_string(), cookbook_name);
     // ```
     pub fn build_cookbook_get(&self, key: &str) -> DeliveryResult<String> {
@@ -232,17 +232,17 @@ impl DeliveryConfig {
     // and if it is unable to do so, it will try to decode in V1
     pub fn load_config(p_path: &PathBuf) -> DeliveryResult<Self> {
         debug!("Loading config.json into memory");
-        let config_path = try!(DeliveryConfig::find_config_file(p_path));
-        let mut config_file = try!(File::open(&config_path));
+        let config_path = DeliveryConfig::find_config_file(p_path)?;
+        let mut config_file = File::open(&config_path)?;
         let mut config_json = String::new();
-        try!(config_file.read_to_string(&mut config_json));
+        config_file.read_to_string(&mut config_json)?;
 
         // Try to decode the config, but if you are unable to, try V1;
         // If you are still unable; just fail
-        let json: DeliveryConfig = try!(serde_json::from_str(&config_json).or_else( |e_v2| {
+        let json: DeliveryConfig = serde_json::from_str(&config_json).or_else( |e_v2| {
             debug!("Unable to parse DeliveryConfig: {}", e_v2);
             debug!("Attempting to load version: 1");
-            let v1_config = try!(DeliveryConfigV1::load_config(p_path).or_else(|e_v1| {
+            let v1_config = DeliveryConfigV1::load_config(p_path).or_else(|e_v1| {
                 debug!("Unable to parse DeliveryConfigV1: {}", e_v1);
                 // If we couldn't parse any version of the delivery config,
                 // lets make sure we give the user the right error message
@@ -254,9 +254,9 @@ impl DeliveryConfig {
                         e_v2, e_v1).to_string()
                     ),
                 })
-            }));
+            })?;
             v1_config.convert_to_v2()
-        }));
+        })?;
         Ok(json)
     }
 
@@ -285,11 +285,11 @@ impl Default for DeliveryConfigV1 {
 impl DeliveryConfigV1 {
     // Load the .delivery/config.json into a DeliveryConfigV1 object
     pub fn load_config(p_path: &PathBuf) -> DeliveryResult<Self> {
-        let config_path = try!(DeliveryConfig::find_config_file(p_path));
-        let mut config_file = try!(File::open(&config_path));
+        let config_path = DeliveryConfig::find_config_file(p_path)?;
+        let mut config_file = File::open(&config_path)?;
         let mut config_json = String::new();
-        try!(config_file.read_to_string(&mut config_json));
-        let json: DeliveryConfigV1 = try!(serde_json::from_str(&config_json));
+        config_file.read_to_string(&mut config_json)?;
+        let json: DeliveryConfigV1 = serde_json::from_str(&config_json)?;
         Ok(json)
     }
 
@@ -309,10 +309,10 @@ impl DeliveryConfigV1 {
         if self.build_cookbook.contains("/") {
             // A local path, lets add the `path` field
             let cookbook_path = PathBuf::from(&self.build_cookbook);
-            let cookbook_name = try!(cookbook_path.file_name().ok_or(DeliveryError{
+            let cookbook_name = cookbook_path.file_name().ok_or(DeliveryError{
                 kind: Kind::NoValidBuildCookbook,
                 detail: Some("V1: Expected a valid path to a build_cookbook".to_string())
-            }));
+            })?;
 
             build_cookbook.insert(String::from("name"),
                                   cookbook_name

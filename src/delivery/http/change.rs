@@ -36,12 +36,12 @@ impl Description {
     }
 
     pub fn to_json(&self) -> Result<String, DeliveryError> {
-        let payload = try!(serde_json::to_string(&self));
+        let payload = serde_json::to_string(&self)?;
         Ok(payload)
     }
 
     pub fn parse_json(response: &str) -> Result<Description, DeliveryError> {
-        let description: Description = try!(serde_json::from_str(response));
+        let description: Description = serde_json::from_str(response)?;
         Ok(description)
     }
 
