@@ -107,14 +107,19 @@ pub trait CommandPrep {
                                           detail: None })
             }
 
-            try!(generate_stunnel_config(config.server.as_ref().unwrap(),
-                                         config.fips_git_port.as_ref().unwrap()
+            let stunnl_path_str = try!(generate_stunnel_config(config.server.as_ref().unwrap(),
+                                                               config.fips_git_port.as_ref().unwrap()
             ));
 
             let cert_string = try!(utils::copy_automate_nginx_cert(config.server.as_ref().unwrap(),
                                                                    config.api_port.as_ref().unwrap()));
             let mut cert_file = try!(File::create(try!(utils::home_dir(&[".chefdk/etc/automate-nginx-cert.pem"]))));
             try!(cert_file.write_all(cert_string.as_bytes()));
+
+            // Spawn the stunnel process for the duration of this command.
+            // Since this process is being supervised by delivery-cli, once the command exits
+            // regardless of success, the stunnel process will shut down.
+            try!(std::process::Command::new("/opt/chefdk/embedded/bin/stunnel").arg(stunnl_path_str).spawn());
         }
 
         Ok(config)
@@ -300,11 +305,12 @@ fn build_git_sha() -> String {
     format!("({})", sha)
 }
 
-fn generate_stunnel_config(server: &str, fips_git_port: &str) -> Result<(), DeliveryError> {
+fn generate_stunnel_config(server: &str, fips_git_port: &str) -> Result<String, DeliveryError> {
     try!(std::fs::create_dir_all(try!(utils::home_dir(&[".chefdk/etc/"]))));
     try!(std::fs::create_dir_all(try!(utils::home_dir(&[".chefdk/log/"]))));
 
-    let mut conf_file = try!(File::create(try!(utils::home_dir(&[".chefdk/etc/stunnel.conf"]))));
+    let stunnel_path = try!(utils::home_dir(&[".chefdk/etc/stunnel.conf"]));
+    let mut conf_file = try!(File::create(&stunnel_path));
     try!(conf_file.write_all(b"fips = yes\n"));
     try!(conf_file.write_all(b"client = yes\n"));
 
