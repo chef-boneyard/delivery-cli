@@ -124,6 +124,11 @@ fn find_command_with_pathext(candidate: &PathBuf) -> Option<PathBuf> {
     None
 }
 
+// TODO implement!
+pub fn generate_command_from_string(cmd_str: &str) -> Result<process::Command, DeliveryError> {
+    unimplemented!();
+}
+
 // ---------------
 // dummy functions
 // ---------------

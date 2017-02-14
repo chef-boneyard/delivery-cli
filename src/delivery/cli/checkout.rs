@@ -16,7 +16,7 @@
 //
 use cli::arguments::{pipeline_arg, patchset_arg, value_of, project_specific_args};
 use clap::{App, SubCommand, ArgMatches};
-use cli::CommandPrep, merge_fips_options_and_config};
+use cli::{CommandPrep, merge_fips_options_and_config};
 use config::Config;
 use types::DeliveryResult;
 

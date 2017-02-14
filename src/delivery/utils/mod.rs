@@ -20,6 +20,7 @@ use types::DeliveryResult;
 use std::convert::AsRef;
 use std::fs;
 use std::env;
+use std::process;
 use std::fs::File;
 use std::process::Output as CmdOutput;
 use std::io::prelude::*;
@@ -171,6 +172,15 @@ pub fn cmd_success_or_err(out: &CmdOutput, e_kind: Kind) -> DeliveryResult<()> {
         })
     }
     Ok(())
+}
+
+pub fn generate_command_from_string(cmd_str: &str) -> Result<process::Command, DeliveryError> {
+    let mut cmd_vec = cmd_str.split(" ").collect::<Vec<_>>();
+    let mut cmd = process::Command::new(&cmd_vec.remove(0));
+    if cmd_vec.len() > 0 {
+        cmd.args(&cmd_vec);
+    }
+    Ok(cmd)
 }
 
 #[cfg(test)]

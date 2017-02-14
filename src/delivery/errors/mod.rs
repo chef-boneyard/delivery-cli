@@ -20,6 +20,7 @@ use std::error::{self, Error};
 use std::num;
 use std::io;
 use std::fmt;
+use std::string;
 use hyper;
 use toml;
 use types::ExitCode;
@@ -91,6 +92,8 @@ pub enum Kind {
     MissingProjectConfig,
     MissingRequiredConfigOption,
     FipsNotSupportedForChefDKPlatform,
+    AutomateNginxCertFetchFailed,
+    FromUtf8Error,
 }
 
 #[derive(Debug)]
@@ -172,6 +175,8 @@ impl error::Error for DeliveryError {
             Kind::MissingProjectConfig => "Unable to find .delivery/config.json in this directory or its parents",
             Kind::MissingRequiredConfigOption => "A required config option was not set. Please specify in your cli.toml.",
             Kind::FipsNotSupportedForChefDKPlatform => "The ChefDK for your platform does not support FIPS mode.\nRHEL and Windows are the currently supported FIPS platforms for ChefDK.",
+            Kind::AutomateNginxCertFetchFailed => "Fetching the Automate certificate failed. The automate certificate is required for FIPS mode. Please make sure you can connect to your Automate server.",
+            Kind::FromUtf8Error => "Failed to convert bytes from Utf8 into a string.",
         }
     }
 
@@ -251,6 +256,16 @@ impl From<toml::ser::Error> for DeliveryError {
         DeliveryError{
             kind: Kind::TomlDecodeError,
             detail: Some(format!("{}: {}", err.description().to_string(), err))
+        }
+    }
+}
+
+impl From<string::FromUtf8Error> for DeliveryError {
+    fn from(err: string::FromUtf8Error) -> DeliveryError {
+        let detail = Some(err.description().to_string());
+        DeliveryError{
+            kind: Kind::FromUtf8Error,
+            detail: detail
         }
     }
 }

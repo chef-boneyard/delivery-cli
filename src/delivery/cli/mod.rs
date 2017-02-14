@@ -98,38 +98,23 @@ pub trait CommandPrep {
 
         let git_url = try!(config.delivery_git_ssh_url());
         try!(git::create_or_update_delivery_remote(&git_url, &try!(project::project_path())));
+
+        // All unwraps in here are safe since the config code guarantees
+        // that they have Some(value) through Default.
         if config.fips.unwrap_or(false) {
             if !Path::new("/opt/chefdk/embedded/bin/stunnel").exists() {
-                return Err(DeliveryError{ kind: Kind::FipsNotSupportedForChefDKPlatform, detail: None })
+                return Err(DeliveryError{ kind: Kind::FipsNotSupportedForChefDKPlatform,
+                                          detail: None })
             }
-            try!(std::fs::create_dir_all(try!(utils::home_dir(&[".chefdk/etc/"]))));
-            try!(std::fs::create_dir_all(try!(utils::home_dir(&[".chefdk/log/"]))));
 
-            let mut conf_file = try!(File::create(try!(utils::home_dir(&[".chefdk/etc/stunnel.conf"]))));
-            try!(conf_file.write_all(b"fips = yes\n"));
-            try!(conf_file.write_all(b"client = yes\n"));
+            try!(generate_stunnel_config(config.server.as_ref().unwrap(),
+                                         config.fips_git_port.as_ref().unwrap()
+            ));
 
-            let output = "output = ".to_string();
-            let output_conf = output + try!(utils::home_dir(&[".chefdk/log/stunnel.log\n"])).to_str().unwrap();
-            try!(conf_file.write_all(output_conf.as_bytes()));
-
-            try!(conf_file.write_all(b"[git]\n"));
-
-            let fips_git_port = config.fips_git_port.as_ref().unwrap();
-            let accept = "accept = ".to_string() + fips_git_port + "\n";
-            try!(conf_file.write_all(accept.as_bytes()));
-
-            let server = config.server.as_ref().unwrap();
-            let connect = "connect = ".to_string() + server + ":8989\n";
-            try!(conf_file.write_all(connect.as_bytes()));
-
-            let ca_file = "CAfile = ".to_string() + try!(utils::home_dir(&[".chefdk/etc/automate-nginx-cert.pem\n"])).to_str().unwrap();
-            try!(conf_file.write_all(ca_file.as_bytes()));
-
-            try!(conf_file.write_all(b"verifyChain = yes\n"));
-
-            let check_host = "checkHost = ".to_string() + server +"\n";
-            try!(conf_file.write_all(check_host.as_bytes()));
+            let cert_string = try!(utils::copy_automate_nginx_cert(config.server.as_ref().unwrap(),
+                                                                   config.api_port.as_ref().unwrap()));
+            let mut cert_file = try!(File::create(try!(utils::home_dir(&[".chefdk/etc/automate-nginx-cert.pem"]))));
+            try!(cert_file.write_all(cert_string.as_bytes()));
         }
 
         Ok(config)
@@ -313,6 +298,36 @@ fn version() -> String {
 fn build_git_sha() -> String {
     let sha = option_env!("DELIV_CLI_GIT_SHA").unwrap_or("0000");
     format!("({})", sha)
+}
+
+fn generate_stunnel_config(server: &str, fips_git_port: &str) -> Result<(), DeliveryError> {
+    try!(std::fs::create_dir_all(try!(utils::home_dir(&[".chefdk/etc/"]))));
+    try!(std::fs::create_dir_all(try!(utils::home_dir(&[".chefdk/log/"]))));
+
+    let mut conf_file = try!(File::create(try!(utils::home_dir(&[".chefdk/etc/stunnel.conf"]))));
+    try!(conf_file.write_all(b"fips = yes\n"));
+    try!(conf_file.write_all(b"client = yes\n"));
+
+    let output = "output = ".to_string();
+    let output_conf = output + try!(utils::home_dir(&[".chefdk/log/stunnel.log\n"])).to_str().unwrap();
+    try!(conf_file.write_all(output_conf.as_bytes()));
+
+    try!(conf_file.write_all(b"[git]\n"));
+
+    let accept = "accept = ".to_string() + fips_git_port + "\n";
+    try!(conf_file.write_all(accept.as_bytes()));
+
+    let connect = "connect = ".to_string() + server + ":8989\n";
+    try!(conf_file.write_all(connect.as_bytes()));
+
+    let cert_location_pathbuf = try!(utils::home_dir(&[".chefdk/etc/automate-nginx-cert.pem\n"]));
+    let cert_location = cert_location_pathbuf.to_str().unwrap();
+    let ca_file = "CAfile = ".to_string() + cert_location;
+    try!(conf_file.write_all(ca_file.as_bytes()));
+
+    try!(conf_file.write_all(b"verifyChain = yes\n"));
+
+    Ok(stunnel_path.to_str().unwrap().to_string())
 }
 
 #[cfg(test)]

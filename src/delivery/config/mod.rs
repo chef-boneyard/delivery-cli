@@ -54,7 +54,7 @@ impl Default for Config {
     fn default() -> Config {
         Config{
             server: None,
-            api_port: None,
+            api_port: Some(String::from("443")),
             api_protocol: Some(String::from("https")),
             enterprise: None,
             organization: None,
