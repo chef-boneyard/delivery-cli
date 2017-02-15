@@ -155,6 +155,9 @@ pub fn file_needs_updated(source_f: &PathBuf, dest_f: &PathBuf) ->Result<bool, D
     Ok(true)
 }
 
+// Verify if the `process::Output` of a `process::Command`
+// was executed successfully, otherwise return the provided
+// error and printing the STDOUT & STDERR
 pub fn cmd_success_or_err(out: &CmdOutput, e_kind: Kind) -> DeliveryResult<()> {
     if ! out.status.success() {
         return Err(DeliveryError{

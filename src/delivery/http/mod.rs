@@ -323,11 +323,15 @@ impl APIClient {
         if let Some(data) = json.as_array() {
             for obj in data.iter() {
                 if let Some(scp) = obj.as_object() {
-                    // What if we dong find "name" in the endpoint?
-                    let name = scp.get("name").unwrap().as_str().unwrap();
+                    let name = scp.get("name")
+                        .expect("Missing 'name' field for /scm-providers endpoint")
+                        .as_str().unwrap();
                     if name == scm {
-                        let scp_config = scp.get("scmSetupConfigs").unwrap().as_array().unwrap();
-                        debug!("{:?} Config: {:?}", scm, scp_config);
+                        debug!("Found SCM {} config: {:?}", scm, scp);
+                        let scp_config = scp.get("scmSetupConfigs")
+                            .expect("Missing 'scmSetupConfigs' field for /scm-providers endpoint")
+                            .as_array().unwrap();
+                        debug!("scmSetupConfigs: {:?}", scp_config);
                         return Ok(scp_config.clone())
                     }
                 }

@@ -19,8 +19,6 @@
 
 use std::collections::HashMap;
 use std::default::Default;
-use std::fs::File;
-use std::io::prelude::*;
 use std::path::PathBuf;
 use errors::{DeliveryError, Kind};
 use types::DeliveryResult;
@@ -125,11 +123,21 @@ pub enum BuildCookbookLocation {
 }
 
 impl DeliveryConfig {
-    // Return the build_cookbook location
-    //
-    // Searches for the right field inside the build_cookbook HashMap
-    // and translates it to a BuildCookbookLocation Enum, if none of
-    // the possible entries exist, throws a `Err()`
+    /// Return the build_cookbook location
+    ///
+    /// Searches for the right field inside the build_cookbook HashMap
+    /// and translates it to a BuildCookbookLocation Enum, if none of
+    /// the possible entries exist, throws a `Err()`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use delivery::delivery_config::{DeliveryConfig, BuildCookbookLocation};
+    ///
+    /// let config   = DeliveryConfig::default();
+    /// let location = config.build_cookbook_location().unwrap();
+    /// assert_eq!(BuildCookbookLocation::Local, location);
+    /// ```
     pub fn build_cookbook_location(&self) -> DeliveryResult<BuildCookbookLocation> {
         for (key, _) in self.build_cookbook.iter() {
             match key.as_str() {
@@ -144,17 +152,20 @@ impl DeliveryConfig {
         Err(DeliveryError{ kind: Kind::NoValidBuildCookbook, detail: None })
     }
 
-    // Get the content of a specific build_cookbook field
-    //
-    // The build_cookbook is difined as a HashMap that we can easily extract
-    // the content of a particular `key`, this will reduce complexity and code
-    //
-    // Example:
-    // ```
-    // config        = DeliveryConfig.default();
-    // cookbook_name = config.build_cookbook_get("name")?;
-    // assert_eq!("build_cookbook".to_string(), cookbook_name);
-    // ```
+    /// Get the content of a specific build_cookbook field
+    ///
+    /// The build_cookbook is difined as a HashMap that we can easily extract
+    /// the content of a particular `key`, this will reduce complexity and code
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use delivery::delivery_config::DeliveryConfig;
+    ///
+    /// let config        = DeliveryConfig::default();
+    /// let cookbook_name = config.build_cookbook_get("name").unwrap();
+    /// assert_eq!("build_cookbook".to_string(), cookbook_name);
+    /// ```
     pub fn build_cookbook_get(&self, key: &str) -> DeliveryResult<String> {
         self.build_cookbook.get(key)
             .ok_or(DeliveryError{
@@ -231,16 +242,13 @@ impl DeliveryConfig {
     // path, it will try to decode the config V2 (latest at the moment)
     // and if it is unable to do so, it will try to decode in V1
     pub fn load_config(p_path: &PathBuf) -> DeliveryResult<Self> {
-        debug!("Loading config.json into memory");
-        let config_path = DeliveryConfig::find_config_file(p_path)?;
-        let mut config_file = File::open(&config_path)?;
-        let mut config_json = String::new();
-        config_file.read_to_string(&mut config_json)?;
+        debug!("Loading config.json into memory from path: {}", p_path.display());
+        let config_json = read_file(&DeliveryConfig::find_config_file(p_path)?)?;
 
         // Try to decode the config, but if you are unable to, try V1;
         // If you are still unable; just fail
         let json: DeliveryConfig = serde_json::from_str(&config_json).or_else( |e_v2| {
-            debug!("Unable to parse DeliveryConfig: {}", e_v2);
+            debug!("Unable to parse DeliveryConfig: {}\nV2 Error: {}", config_json, e_v2);
             debug!("Attempting to load version: 1");
             let v1_config = DeliveryConfigV1::load_config(p_path).or_else(|e_v1| {
                 debug!("Unable to parse DeliveryConfigV1: {}", e_v1);
@@ -285,10 +293,7 @@ impl Default for DeliveryConfigV1 {
 impl DeliveryConfigV1 {
     // Load the .delivery/config.json into a DeliveryConfigV1 object
     pub fn load_config(p_path: &PathBuf) -> DeliveryResult<Self> {
-        let config_path = DeliveryConfig::find_config_file(p_path)?;
-        let mut config_file = File::open(&config_path)?;
-        let mut config_json = String::new();
-        config_file.read_to_string(&mut config_json)?;
+        let config_json = read_file(&DeliveryConfig::find_config_file(p_path)?)?;
         let json: DeliveryConfigV1 = serde_json::from_str(&config_json)?;
         Ok(json)
     }
