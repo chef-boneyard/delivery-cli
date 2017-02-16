@@ -17,7 +17,7 @@
 use cli::arguments::{pipeline_arg, config_path_arg, u_e_s_o_args,
             project_arg, value_of};
 use clap::{App, SubCommand, ArgMatches};
-use cli::InitCommand;
+use cli::CommandPrep;
 use types::DeliveryResult;
 use config::Config;
 
@@ -62,7 +62,7 @@ impl<'n> SetupClapOptions<'n> {
     }
 }
 
-impl<'n> InitCommand for SetupClapOptions<'n> {
+impl<'n> CommandPrep for SetupClapOptions<'n> {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
         let new_config = config.set_server(&self.server)
             .set_user(&self.user)

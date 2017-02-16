@@ -15,7 +15,6 @@
 // limitations under the License.
 //
 
-use cli;
 use cli::review::ReviewClapOptions;
 use config::Config;
 use project;
@@ -27,49 +26,58 @@ use cookbook;
 use git::{self, ReviewResult};
 use http;
 use delivery_config::DeliveryConfig;
+use command::Command;
 
-pub fn run(opts: ReviewClapOptions) -> DeliveryResult<ExitCode> {
-    sayln("green", "Chef Delivery");
-    let config = try!(cli::init_command(&opts));
-    let target = validate!(config, pipeline);
-    if let Some(should_bump) = config.auto_bump {
-        if should_bump {
-            let project = validate!(config, project);
-            let project_root = try!(project::root_dir(&utils::cwd()));
-            try!(DeliveryConfig::validate_config_file(&project_root));
-            try!(cookbook::bump_version(&project_root, &target, &project))
-        }
-    }
+pub struct ReviewCommand<'n> {
+    pub options: &'n ReviewClapOptions<'n>,
+    pub config: &'n Config,
+}
 
-    let head = try!(git::get_head());
-    say("white", "Review for change ");
-    say("yellow", &head);
-    say("white", " targeted for pipeline ");
-    sayln("magenta", &target);
-    let review = try!(project::review(&target, &head));
+impl<'n> Command for ReviewCommand<'n> {
+    fn run(self) -> DeliveryResult<ExitCode> {
+        sayln("green", "Chef Delivery");
 
-    if opts.edit {
-        try!(edit_change(&config, &review));
-    }
-
-    for line in review.messages.iter() {
-        sayln("white", line);
-    }
-
-    match project::handle_review_result(&review, &opts.no_open) {
-        Ok(result) => {
-            match result {
-                Some(url) => {sayln("magenta", &url)},
-                None => {}
+        let config_ref = self.config;
+        let target = validate!(config_ref, pipeline);
+        if let Some(should_bump) = self.config.auto_bump {
+            if should_bump {
+                let project =  validate!(config_ref, project);
+                let project_root = try!(project::root_dir(&utils::cwd()));
+                try!(DeliveryConfig::validate_config_file(&project_root));
+                try!(cookbook::bump_version(&project_root, &target, &project))
             }
-        },
-        Err(_) => {
-            sayln("yellow", "We could not open the review in the browser for you.");
-            sayln("yellow", "Make sure there is a program that can open HTML files in your path \
-                             or pass --no-open to bypass attempting to open this review in a browser.");
         }
+
+        let head = try!(git::get_head());
+        say("white", "Review for change ");
+        say("yellow", &head);
+        say("white", " targeted for pipeline ");
+        sayln("magenta", &target);
+        let review = try!(project::review(&target, &head));
+
+        if self.options.edit {
+            try!(edit_change(&self.config, &review));
+        }
+
+        for line in review.messages.iter() {
+            sayln("white", line);
+        }
+
+        match project::handle_review_result(&review, &self.options.no_open) {
+            Ok(result) => {
+                match result {
+                    Some(url) => {sayln("magenta", &url)},
+                    None => {}
+                }
+            },
+            Err(_) => {
+                sayln("yellow", "We could not open the review in the browser for you.");
+                sayln("yellow", "Make sure there is a program that can open HTML files in your path \
+                                 or pass --no-open to bypass attempting to open this review in a browser.");
+            }
+        }
+        Ok(0)
     }
-    Ok(0)
 }
 
 fn edit_change(config: &Config,

@@ -18,6 +18,7 @@
 use std;
 use std::process;
 use std::time::Duration;
+use std::path::PathBuf;
 use utils;
 use utils::say::{self, sayln};
 use errors::DeliveryError;
@@ -26,6 +27,8 @@ use config::Config;
 use clap::{App, ArgMatches, AppSettings};
 use project;
 use git;
+use delivery_config::project::ProjectToml;
+use utils::cwd;
 
 // Clap Arguments
 //
@@ -51,9 +54,19 @@ mod spin;
 
 // Implemented sub-commands. Should handle everything after args have
 // been parsed, including running the command, error handling, and UI outputting.
-use command;
+use command::Command;
+use command::api::ApiCommand;
+use command::checkout::CheckoutCommand;
+use command::clone::CloneCommand;
+use command::diff::DiffCommand;
+use command::init::InitCommand;
+use command::job::{JobCommand, run_docker_job};
+use command::local::LocalCommand;
+use command::review::ReviewCommand;
+use command::setup::SetupCommand;
+use command::token::TokenCommand;
 
-pub trait InitCommand {
+pub trait CommandPrep {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config>;
 
     // The initialization of a CLI command could be different from another one
@@ -92,54 +105,94 @@ pub fn run() {
     let app = make_app(&build_version);
     let app_matches = app.get_matches();
 
+    match match_command_and_start(&app_matches, &build_version) {
+        // You can exit with any integer, can also be used to bypass default
+        // error handling if you handled an error and returned non-zero.
+        Ok(exit_status) => process::exit(exit_status),
+        // Handles DeliveryError and exits 1.
+        Err(e) => exit_with(e, 1)
+    }
+}
+
+fn execute_command<C: Command>(matches: &ArgMatches, command: C) -> DeliveryResult<ExitCode> {
+    handle_spinner(&matches);
+    command.run()
+}
+
+fn match_command_and_start(app_matches: &ArgMatches, build_version: &str) -> DeliveryResult<ExitCode> {
     let cmd_result = match app_matches.subcommand() {
         (api::SUBCOMMAND_NAME, Some(matches)) => {
-            handle_spinner(&matches);
-            let api_opts = api::ApiClapOptions::new(&matches);
-            command::api::run(api_opts)
+            let options = api::ApiClapOptions::new(&matches);
+            let config = try!(init_command(&options));
+            let command = ApiCommand{options: &options, config: &config};
+            execute_command(&matches, command)
         },
         (checkout::SUBCOMMAND_NAME, Some(matches)) => {
-            handle_spinner(&matches);
-            let checkout_opts = checkout::CheckoutClapOptions::new(&matches);
-            command::checkout::run(checkout_opts)
+            let options = checkout::CheckoutClapOptions::new(&matches);
+            let config = try!(init_command(&options));
+            let command = CheckoutCommand{options: &options, config: &config};
+            execute_command(&matches, command)
         },
         (clone::SUBCOMMAND_NAME, Some(matches)) => {
-            handle_spinner(&matches);
-            let clone_opts = clone::CloneClapOptions::new(&matches);
-            command::clone::run(clone_opts)
+            let options = clone::CloneClapOptions::new(&matches);
+            let config = try!(init_command(&options));
+            let command = CloneCommand{options: &options, config: &config};
+            execute_command(&matches, command)
         },
         (diff::SUBCOMMAND_NAME, Some(matches)) => {
-            let diff_opts = diff::DiffClapOptions::new(&matches);
-            command::diff::run(diff_opts)
+            let options = diff::DiffClapOptions::new(&matches);
+            let config = try!(init_command(&options));
+            let command = DiffCommand{options: &options, config: &config};
+            execute_command(&matches, command)
         },
         (init::SUBCOMMAND_NAME, Some(matches)) => {
-            handle_spinner(&matches);
-            let init_opts = init::InitClapOptions::new(&matches);
-            command::init::run(init_opts)
+            let options = init::InitClapOptions::new(&matches);
+            let config = try!(init_command(&options));
+            let command = InitCommand{options: &options, config: &config};
+            execute_command(&matches, command)
         },
         (job::SUBCOMMAND_NAME, Some(matches)) => {
-            handle_spinner(&matches);
-            let job_opts = job::JobClapOptions::new(&matches);
-            command::job::run(job_opts)
-        },
-        (review::SUBCOMMAND_NAME, Some(matches)) => {
-            handle_spinner(&matches);
-            let review_opts = review::ReviewClapOptions::new(matches);
-            command::review::run(review_opts)
-        },
-        (setup::SUBCOMMAND_NAME, Some(matches)) => {
-            handle_spinner(&matches);
-            let setup_opts = setup::SetupClapOptions::new(matches);
-            command::setup::run(setup_opts)
-        },
-        (token::SUBCOMMAND_NAME, Some(matches)) => {
-            handle_spinner(&matches);
-            let token_opts = token::TokenClapOptions::new(matches);
-            command::token::run(token_opts)
+            let options = job::JobClapOptions::new(&matches);
+            let config = try!(init_command(&options));
+            let command = JobCommand{options: &options, config: &config};
+            if !options.docker_image.is_empty() {
+                run_docker_job(&options)
+            } else {
+                execute_command(&matches, command)
+            }
         },
         (local::SUBCOMMAND_NAME, Some(matches)) => {
-            let local_opts = local::LocalClapOptions::new(matches);
-            command::local::run(local_opts)
+            let options = local::LocalClapOptions::new(&matches);
+            let config = try!(ProjectToml::load_toml(options.remote_toml));
+            let command = LocalCommand{options: &options, config: &config};
+            execute_command(&matches, command)
+        },
+        (review::SUBCOMMAND_NAME, Some(matches)) => {
+            let options = review::ReviewClapOptions::new(&matches);
+            let config = try!(init_command(&options));
+            let command = ReviewCommand{options: &options, config: &config};
+            execute_command(&matches, command)
+        },
+        (setup::SUBCOMMAND_NAME, Some(matches)) => {
+            let options = setup::SetupClapOptions::new(&matches);
+            let config_path = if options.path.is_empty() {
+                cwd()
+            } else {
+                PathBuf::from(options.path)
+            };
+            let config = try!(init_command(&options));
+            let command = SetupCommand{
+                options: &options,
+                config: &config,
+                config_path: &config_path,
+            };
+            execute_command(&matches, command)
+        },
+        (token::SUBCOMMAND_NAME, Some(matches)) => {
+            let options = token::TokenClapOptions::new(&matches);
+            let config = try!(init_command(&options));
+            let command = TokenCommand{options: &options, config: &config};
+            execute_command(&matches, command)
         },
         (spin::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
@@ -159,14 +212,9 @@ pub fn run() {
             Ok(1)
         }
     };
-    match cmd_result {
-        // You can exit with any integer, can also be used to bypass default
-        // error handling if you handled an error and returned non-zero.
-        Ok(exit_status) => process::exit(exit_status),
-        // Handles DeliveryError and exits 1.
-        Err(e) => exit_with(e, 1)
-    }
+    cmd_result
 }
+
 
 fn make_app<'a>(version: &'a str) -> App<'a, 'a> {
     App::new("delivery")
@@ -201,7 +249,7 @@ fn exit_with(e: DeliveryError, i: ExitCode) {
     process::exit(i)
 }
 
-pub fn init_command<T: InitCommand>(opts: &T) -> DeliveryResult<Config> {
+fn init_command<T: CommandPrep>(opts: &T) -> DeliveryResult<Config> {
     let mut config = try!(Config::load_config(&utils::cwd()));
     debug!("Initial config: {:?}", config);
     config = try!(opts.merge_options_and_config(config));

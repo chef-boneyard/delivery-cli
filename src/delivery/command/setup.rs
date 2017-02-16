@@ -15,21 +15,23 @@
 // limitations under the License.
 //
 
-use cli;
 use cli::setup::SetupClapOptions;
 use types::{DeliveryResult, ExitCode};
 use utils::say::sayln;
-use utils::cwd;
 use std::path::PathBuf;
+use config::Config;
+use command::Command;
 
-pub fn run(opts: SetupClapOptions) -> DeliveryResult<ExitCode> {
-    sayln("green", "Chef Delivery");
-    let config_path = if opts.path.is_empty() {
-        cwd()
-    } else {
-        PathBuf::from(opts.path)
-    };
-    let config = try!(cli::init_command(&opts));
-    try!(config.write_file(&config_path));
-    Ok(0)
+pub struct SetupCommand<'n> {
+    pub options: &'n SetupClapOptions<'n>,
+    pub config: &'n Config,
+    pub config_path: &'n PathBuf,
+}
+
+impl<'n> Command for SetupCommand<'n> {
+    fn run(self) -> DeliveryResult<ExitCode> {
+        sayln("green", "Chef Delivery");
+        try!(self.config.write_file(self.config_path));
+        Ok(0)
+    }
 }

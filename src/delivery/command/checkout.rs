@@ -15,32 +15,40 @@
 // limitations under the License.
 //
 
-use cli;
 use git;
 use cli::checkout::CheckoutClapOptions;
 use types::{DeliveryResult, ExitCode};
 use utils::say::{sayln, say};
+use config::Config;
+use command::Command;
 
-pub fn run(opts: CheckoutClapOptions) -> DeliveryResult<ExitCode> {
-    sayln("green", "Chef Delivery");
-    let config = try!(cli::init_command(&opts));
-    let target = validate!(config, pipeline);
-    say("white", "Checking out ");
-    say("yellow", opts.change);
-    say("white", " targeted for pipeline ");
-    say("magenta", &target);
+pub struct CheckoutCommand<'n> {
+    pub options: &'n CheckoutClapOptions<'n>,
+    pub config: &'n Config,
+}
 
-    let pset = match opts.patchset {
-        "" | "latest" => {
-            sayln("white", " tracking latest changes");
-            "latest"
-        },
-        p @ _ => {
-            say("white", " at patchset ");
-            sayln("yellow", p);
-            p
-        }
-    };
-    try!(git::checkout_review(opts.change, pset, &target));
-    Ok(0)
+impl<'n> Command for CheckoutCommand<'n> {
+    fn run(self) -> DeliveryResult<ExitCode> {
+        sayln("green", "Chef Delivery");
+        let config_ref = self.config;
+        let target = validate!(config_ref, pipeline);
+        say("white", "Checking out ");
+        say("yellow", self.options.change);
+        say("white", " targeted for pipeline ");
+        say("magenta", &target);
+
+        let pset = match self.options.patchset {
+            "" | "latest" => {
+                sayln("white", " tracking latest changes");
+                "latest"
+            },
+            p @ _ => {
+                say("white", " at patchset ");
+                sayln("yellow", p);
+                p
+            }
+        };
+        try!(git::checkout_review(self.options.change, pset, &target));
+        Ok(0)
+    }
 }

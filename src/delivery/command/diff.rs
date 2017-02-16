@@ -15,27 +15,35 @@
 // limitations under the License.
 //
 
-use cli;
 use git;
 use cli::diff::DiffClapOptions;
 use types::{DeliveryResult, ExitCode};
 use utils::say::{say, sayln};
+use command::Command;
+use config::Config;
 
-pub fn run(opts: DiffClapOptions) -> DeliveryResult<ExitCode> {
-    sayln("green", "Chef Delivery");
-    let config = try!(cli::init_command(&opts));
-    let target = validate!(config, pipeline);
-    say("white", "Showing diff for ");
-    say("yellow", opts.change);
-    say("white", " targeted for pipeline ");
-    say("magenta", &target);
+pub struct DiffCommand<'n> {
+    pub options: &'n DiffClapOptions<'n>,
+    pub config: &'n Config,
+}
 
-    if opts.patchset == "latest" {
-        sayln("white", " latest patchset");
-    } else {
-        say("white", " at patchset ");
-        sayln("yellow", opts.patchset);
+impl<'n> Command for DiffCommand<'n> {
+    fn run(self) -> DeliveryResult<ExitCode> {
+        sayln("green", "Chef Delivery");
+        let config_ref = self.config;
+        let target = validate!(config_ref, pipeline);
+        say("white", "Showing diff for ");
+        say("yellow", self.options.change);
+        say("white", " targeted for pipeline ");
+        say("magenta", &target);
+
+        if self.options.patchset == "latest" {
+            sayln("white", " latest patchset");
+        } else {
+            say("white", " at patchset ");
+            sayln("yellow", self.options.patchset);
+        }
+        try!(git::diff(self.options.change, self.options.patchset, &target, &self.options.local));
+        Ok(0)
     }
-    try!(git::diff(opts.change, opts.patchset, &target, &opts.local));
-    Ok(0)
 }

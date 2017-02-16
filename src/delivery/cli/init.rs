@@ -18,7 +18,7 @@ use cli::arguments::{pipeline_arg, config_path_arg, no_open_arg, project_arg,
           local_arg, config_project_arg, u_e_s_o_args, scp_args,
           value_of};
 use clap::{App, SubCommand, ArgMatches};
-use cli::InitCommand;
+use cli::CommandPrep;
 use types::DeliveryResult;
 use config::Config;
 use project;
@@ -87,7 +87,7 @@ impl<'n> InitClapOptions<'n> {
     }
 }
 
-impl<'n> InitCommand for InitClapOptions<'n> {
+impl<'n> CommandPrep for InitClapOptions<'n> {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
         let project = try!(project::project_or_from_cwd(&self.project));
 

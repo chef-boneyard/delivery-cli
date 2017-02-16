@@ -15,32 +15,40 @@
 // limitations under the License.
 //
 
-use cli;
 use cli::token::TokenClapOptions;
 use types::{DeliveryResult, ExitCode};
 use utils::say::{turn_on_output, turn_off_output, sayln};
 use token::TokenStore;
+use config::Config;
+use command::Command;
 
-pub fn run(opts: TokenClapOptions) -> DeliveryResult<ExitCode> {
-    // If we want the raw token, we wont print any output
-    // during the token request so we will disable it
-    if opts.raw {
-        turn_off_output();
+pub struct TokenCommand<'n> {
+    pub options: &'n TokenClapOptions<'n>,
+    pub config: &'n Config,
+}
+
+impl<'n> Command for TokenCommand<'n> {
+    fn run(self) -> DeliveryResult<ExitCode> {
+
+        // If we want the raw token, we wont print any output
+        // during the token request so we will disable it
+        if self.options.raw {
+            turn_off_output();
+        }
+
+        sayln("green", "Chef Delivery");
+
+        let token: String = if self.options.verify {
+            try!(TokenStore::verify_token(&self.config))
+        } else {
+            try!(TokenStore::request_token(&self.config))
+        };
+
+        if self.options.raw {
+            turn_on_output();
+            sayln("white", &format!("{}", &token));
+        }
+
+        Ok(0)
     }
-
-    sayln("green", "Chef Delivery");
-    let config = try!(cli::init_command(&opts));
-
-    let token: String = if opts.verify {
-        try!(TokenStore::verify_token(&config))
-    } else {
-        try!(TokenStore::request_token(&config))
-    };
-
-    if opts.raw {
-        turn_on_output();
-        sayln("white", &format!("{}", &token));
-    }
-
-    Ok(0)
 }

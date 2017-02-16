@@ -16,7 +16,7 @@
 //
 use cli::arguments::{config_path_arg, value_of, u_e_s_o_args};
 use clap::{Arg, App, SubCommand, ArgMatches};
-use cli::InitCommand;
+use cli::CommandPrep;
 use types::DeliveryResult;
 use config::Config;
 
@@ -32,6 +32,7 @@ pub struct ApiClapOptions<'n> {
     pub ent: &'n str,
     pub user: &'n str,
 }
+
 impl<'n> Default for ApiClapOptions<'n> {
     fn default() -> Self {
         ApiClapOptions {
@@ -45,7 +46,6 @@ impl<'n> Default for ApiClapOptions<'n> {
         }
     }
 }
-
 impl<'n> ApiClapOptions<'n> {
     pub fn new(matches: &'n ArgMatches<'n>) -> Self {
         ApiClapOptions {
@@ -60,7 +60,7 @@ impl<'n> ApiClapOptions<'n> {
     }
 }
 
-impl<'n> InitCommand for ApiClapOptions<'n> {
+impl<'n> CommandPrep for ApiClapOptions<'n> {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
         let new_config = config.set_user(&self.user)
             .set_server(&self.server)

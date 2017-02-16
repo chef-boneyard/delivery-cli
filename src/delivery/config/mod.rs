@@ -27,6 +27,7 @@ use utils::mkdir_recursive;
 use std::io::prelude::*;
 use utils::path_join_many::PathJoinMany;
 use utils::path_ext::{is_dir, is_file};
+use std::clone::Clone;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Config {

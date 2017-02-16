@@ -16,7 +16,7 @@
 //
 use cli::arguments::{value_of, u_e_s_o_args};
 use clap::{Arg, App, SubCommand, ArgMatches};
-use cli::InitCommand;
+use cli::CommandPrep;
 use types::DeliveryResult;
 use config::Config;
 
@@ -65,7 +65,7 @@ impl<'n> TokenClapOptions<'n> {
     }
 }
 
-impl<'n> InitCommand for TokenClapOptions<'n> {
+impl<'n> CommandPrep for TokenClapOptions<'n> {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
         let mut new_config = config.set_server(&self.server)
             .set_api_port(&self.port)

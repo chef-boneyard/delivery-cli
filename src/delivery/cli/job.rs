@@ -16,7 +16,7 @@
 //
 use cli::arguments::{pipeline_arg, project_arg, local_arg, patchset_arg, u_e_s_o_args, value_of};
 use clap::{Arg, App, SubCommand, ArgMatches};
-use cli::InitCommand;
+use cli::CommandPrep;
 use types::DeliveryResult;
 use config::Config;
 use project;
@@ -95,7 +95,7 @@ impl<'n> JobClapOptions<'n> {
     }
 }
 
-impl<'n> InitCommand for JobClapOptions<'n> {
+impl<'n> CommandPrep for JobClapOptions<'n> {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
         let project = try!(project::project_or_from_cwd(&self.project));
 
