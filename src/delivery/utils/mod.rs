@@ -69,8 +69,9 @@ pub fn home_dir(to_append: &[&str]) -> Result<PathBuf, DeliveryError>
 }
 
 /// Walk up a file hierarchy searching for `dir/target`.
-pub fn walk_tree_for_path(dir: &Path, target: &str) -> Option<PathBuf> {
-    let mut current = dir;
+pub fn walk_tree_for_path<P>(dir: P, target: &str) -> Option<PathBuf>
+        where P: AsRef<Path> {
+    let mut current = dir.as_ref();
     loop {
         let candidate = current.join(target);
         if fs::metadata(&candidate).is_ok() {

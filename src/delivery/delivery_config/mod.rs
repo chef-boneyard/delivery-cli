@@ -19,7 +19,8 @@
 
 use std::collections::HashMap;
 use std::default::Default;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::fmt::Debug;
 use errors::{DeliveryError, Kind};
 use types::DeliveryResult;
 use utils::{walk_tree_for_path, read_file, copy_recursive, file_needs_updated};
@@ -221,7 +222,8 @@ impl DeliveryConfig {
         proj_path.join_many(&[".delivery", "config.json"])
     }
 
-    fn find_config_file(proj_path: &PathBuf) -> DeliveryResult<PathBuf> {
+    fn find_config_file<P>(proj_path: P) -> DeliveryResult<PathBuf>
+            where P: AsRef<Path> {
         match walk_tree_for_path(proj_path, ".delivery/config.json") {
             Some(p) => {
                 debug!("found config: {:?}", p);
@@ -242,16 +244,17 @@ impl DeliveryConfig {
     // This fn is capable of loading the `config.json` from a provided
     // path, it will try to decode the config V2 (latest at the moment)
     // and if it is unable to do so, it will try to decode in V1
-    pub fn load_config(p_path: &PathBuf) -> DeliveryResult<Self> {
-        debug!("Loading config.json into memory from path: {}", p_path.display());
-        let config_json = read_file(&DeliveryConfig::find_config_file(p_path)?)?;
+    pub fn load_config<P>(p_path: P) -> DeliveryResult<Self>
+            where P: AsRef<Path> + Debug {
+        debug!("Loading config.json into memory from path: {:?}", p_path);
+        let config_json = read_file(&DeliveryConfig::find_config_file(&p_path)?)?;
 
         // Try to decode the config, but if you are unable to, try V1;
         // If you are still unable; just fail
         let json: DeliveryConfig = serde_json::from_str(&config_json).or_else( |e_v2| {
             debug!("Unable to parse DeliveryConfig: {}\nV2 Error: {}", config_json, e_v2);
             debug!("Attempting to load version: 1");
-            let v1_config = DeliveryConfigV1::load_config(p_path).or_else(|e_v1| {
+            let v1_config = DeliveryConfigV1::load_config(&p_path).or_else(|e_v1| {
                 debug!("Unable to parse DeliveryConfigV1: {}", e_v1);
                 // If we couldn't parse any version of the delivery config,
                 // lets make sure we give the user the right error message
@@ -293,7 +296,8 @@ impl Default for DeliveryConfigV1 {
 
 impl DeliveryConfigV1 {
     // Load the .delivery/config.json into a DeliveryConfigV1 object
-    pub fn load_config(p_path: &PathBuf) -> DeliveryResult<Self> {
+    pub fn load_config<P>(p_path: P) -> DeliveryResult<Self>
+            where P: AsRef<Path> + Debug {
         let config_json = read_file(&DeliveryConfig::find_config_file(p_path)?)?;
         Ok(serde_json::from_str::<DeliveryConfigV1>(&config_json)?)
     }
