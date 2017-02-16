@@ -246,3 +246,62 @@ test!(job_verify_dna_json {
         None => panic!("No delivery_builderl/build_user, {}", dna_data)
     };
 });
+
+// This test is verifying that, when a project has custom attributes inside
+// the `.delivery/config.json` they has to be available on every phase so
+// that they get used by the build_cookbook.
+//
+// A clear example of this is in the `delivery-truck` build_cookbook:
+// => https://github.com/chef-cookbooks/delivery-truck/blob/master/.delivery/config.json#L10-L22
+//
+// This is necessary until we use a reserved work like `attributes` or somethig
+// else that will allow us to be prescriptive about the content of the file
+// that can be configurable, until then we need to use a very generic Json format.
+test!(job_verify_dna_json_with_extra_attributes {
+    let delivery_project_git = setup_mock_delivery_project_git("extra_attributes_config.json");
+    let local_project = setup_local_project_clone(&delivery_project_git.path());
+    let job_root = TempDir::new("job-root").unwrap();
+    setup_build_cookbook_project(&job_root.path());
+    setup_change(&local_project.path(), "rust/test", "freaky");
+    let mut command = delivery_verify_command(&job_root.path());
+    assert_command_successful(&mut command, &local_project.path());
+    let mut dna_file = panic_on_error!(File::open(&job_root.path().join_many(&["chef", "dna.json"])));
+    let mut dna_json = String::new();
+    panic_on_error!(dna_file.read_to_string(&mut dna_json));
+    let dna_data: Value = panic_on_error!(serde_json::from_str(&dna_json));
+    match dna_data.pointer("/delivery/config/build_cookbook") {
+        Some(data) => {
+            assert!(data.is_object());
+            assert_eq!(
+                data.as_object().unwrap().get("name").unwrap(),
+               "delivery_test"
+            );
+        },
+        None => panic!("No delivery/config/build_cookbook, {}", dna_data)
+    };
+    match dna_data.pointer("/delivery/config/attributes/key") {
+        Some(data) => {
+            assert!(data.is_string());
+            assert_eq!(data.as_str().unwrap(), "data");
+        },
+        None => panic!("No delivery/config/attributes/key, {}", dna_data)
+    };
+    match dna_data.pointer("/delivery/config/unlimited") {
+        Some(data) => {
+            assert!(data.is_string());
+            assert_eq!(data.as_str().unwrap(), "configurable_data");
+        },
+        None => panic!("No delivery/config/unlimited, {}", dna_data)
+    };
+    match dna_data.pointer("/delivery/config/more") {
+        Some(data) => {
+            assert!(data.is_array());
+            let vec_more_attributes = data.as_array().unwrap();
+            assert_eq!(vec_more_attributes[0], "and");
+            assert_eq!(vec_more_attributes[1], "more");
+            assert_eq!(vec_more_attributes[2], "and");
+            assert_eq!(vec_more_attributes[3], "more");
+        },
+        None => panic!("No delivery/config/unlimited, {}", dna_data)
+    };
+});
