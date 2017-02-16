@@ -23,6 +23,8 @@ use std::io::prelude::*;
 use std::io;
 use std::time::Duration;
 
+const ERROR_COLOR: &'static str = "red";
+
 /// Because sometimes, you just want a global variable.
 static mut SHOW_SPINNER: bool = true;
 static mut SHOW_OUTPUT:  bool = true;
@@ -131,4 +133,11 @@ pub fn say(color: &str, to_say: &str) {
 pub fn sayln(color: &str, to_say: &str) {
     say(color, to_say);
     say(color, "\n");
+}
+
+pub fn print_error(primary_error_str: &str, secondary_error_str: &str) -> () {
+    let final_error_str_primary = "ERROR: ".to_string() + primary_error_str;
+    say(ERROR_COLOR, &final_error_str_primary);
+    let final_error_str_secondary = "\n".to_string() + &secondary_error_str;
+    say("white", &final_error_str_secondary);
 }

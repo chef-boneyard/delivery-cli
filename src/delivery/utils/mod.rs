@@ -47,6 +47,8 @@ mod unix;
 #[cfg(target_os = "windows")]
 mod windows;
 
+pub const CHEFDK_OPENSSL_PATH: &'static str = "/opt/chefdk/embedded/bin/openssl";
+
 // Extract the Environment Variable of the provided `key`
 pub fn env_variable(key: &str) -> Option<String> {
     env::var(key).ok()
@@ -183,6 +185,59 @@ pub fn generate_command_from_string(cmd_str: &str) -> Result<process::Command, D
     Ok(cmd)
 }
 
+pub fn kill_child_processes(child_processes: Vec<process::Child>) -> DeliveryResult<()> {
+    for mut child in child_processes {
+        try!(child.kill());
+    }
+    Ok(())
+}
+
+pub fn copy_automate_nginx_cert(server: &str, port: &str) -> Result<String, DeliveryError>
+{
+    let cmd_str = format!("{openssl_path} s_client -connect {server}:{port} -showcerts",
+                          openssl_path=CHEFDK_OPENSSL_PATH, server=server, port=port);
+    let mut command = try!(generate_command_from_string(&cmd_str));
+    let result = try!(command.output());
+
+    if !result.status.success() {
+        Err(DeliveryError{
+            kind: Kind::AutomateNginxCertFetchFailed,
+            detail: Some(format!("STDOUT: {}\nSTDERR: {}",
+                                 String::from_utf8_lossy(&result.stdout),
+                                 String::from_utf8_lossy(&result.stderr)))
+        })
+    } else {
+        let openssl_output = try!(String::from_utf8(result.stdout));
+        match parse_certs_from_string(openssl_output) {
+            None => Err(DeliveryError{
+                kind: Kind::AutomateNginxCertFetchFailed,
+                detail: Some(format!("The cert chain request to {server}:{port} was \
+                                      successful but no certs were found. Have you set up \
+                                      certificates for your Automate server?",
+                                     server=server, port=port))
+            }),
+            Some(certs) => Ok(certs),
+        }
+    }
+}
+
+fn parse_certs_from_string(input: String) -> Option<String>
+{
+    let cert_split_on_begin: Vec<&str> = input.split("-----BEGIN CERTIFICATE-----\n").collect();
+    if cert_split_on_begin.len() < 2 {
+        return None
+    }
+
+    let cert_split_on_begin_minus_leading = &cert_split_on_begin[1..];
+    let mut certs = String::new();
+    for cert_block in cert_split_on_begin_minus_leading {
+        let cert_trim_to_end: Vec<&str> = cert_block.split("-----END CERTIFICATE-----\n").collect();
+        certs += &format!("-----BEGIN CERTIFICATE-----\n{}-----END CERTIFICATE-----\n",
+                          &cert_trim_to_end[0]);
+    }
+    Some(certs)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -212,6 +267,108 @@ mod tests {
 
         let no_zero_exitcode = make_command("ls").arg("-").output().unwrap();
         assert!(super::cmd_success_or_err(&no_zero_exitcode, Kind::FailedToExecute).is_err());
+    }
+
+    #[test]
+    fn parse_certs_from_string_parses_multiple_certs_with_leading_middle_end_cruft() {
+        let input = r#"leading
+-----BEGIN CERTIFICATE-----
+cert1
+-----END CERTIFICATE-----
+middle content
+-----BEGIN CERTIFICATE-----
+cert2
+-----END CERTIFICATE-----
+trailing
+"#;
+        let expected = r#"-----BEGIN CERTIFICATE-----
+cert1
+-----END CERTIFICATE-----
+-----BEGIN CERTIFICATE-----
+cert2
+-----END CERTIFICATE-----
+"#;
+        let actual = super::parse_certs_from_string(input.to_string());
+        assert_eq!(Some(expected.to_string()), actual);
+    }
+
+    #[test]
+    fn parse_certs_from_string_parses_multiple_certs_with_middle_end_cruft() {
+        let input = r#"-----BEGIN CERTIFICATE-----
+cert1
+-----END CERTIFICATE-----
+middle content
+-----BEGIN CERTIFICATE-----
+cert2
+-----END CERTIFICATE-----
+trailing
+"#;
+        let expected = r#"-----BEGIN CERTIFICATE-----
+cert1
+-----END CERTIFICATE-----
+-----BEGIN CERTIFICATE-----
+cert2
+-----END CERTIFICATE-----
+"#;
+        let actual = super::parse_certs_from_string(input.to_string());
+        assert_eq!(Some(expected.to_string()), actual);
+    }
+
+    #[test]
+    fn parse_certs_from_string_parses_multiple_certs_with_end_cruft() {
+        let input = r#"-----BEGIN CERTIFICATE-----
+cert1
+-----END CERTIFICATE-----
+-----BEGIN CERTIFICATE-----
+cert2
+-----END CERTIFICATE-----
+trailing
+"#;
+        let expected = r#"-----BEGIN CERTIFICATE-----
+cert1
+-----END CERTIFICATE-----
+-----BEGIN CERTIFICATE-----
+cert2
+-----END CERTIFICATE-----
+"#;
+        let actual = super::parse_certs_from_string(input.to_string());
+        assert_eq!(Some(expected.to_string()), actual);
+    }
+
+    #[test]
+    fn parse_certs_from_string_parses_multiple_certs_with_no_cruft() {
+        let input = r#"-----BEGIN CERTIFICATE-----
+cert1
+-----END CERTIFICATE-----
+-----BEGIN CERTIFICATE-----
+cert2
+-----END CERTIFICATE-----
+"#;
+        let expected = r#"-----BEGIN CERTIFICATE-----
+cert1
+-----END CERTIFICATE-----
+-----BEGIN CERTIFICATE-----
+cert2
+-----END CERTIFICATE-----
+"#;
+        let actual = super::parse_certs_from_string(input.to_string());
+        assert_eq!(Some(expected.to_string()), actual);
+    }
+
+    #[test]
+    fn parse_certs_from_string_parses_single_cert_with_middle_end_cruft() {
+        let input = r#"-----BEGIN CERTIFICATE-----
+cert1
+-----END CERTIFICATE-----
+middle content
+trailing
+"#;
+        let expected = r#"-----BEGIN CERTIFICATE-----
+cert1
+-----END CERTIFICATE-----
+"#;
+        let actual = super::parse_certs_from_string(input.to_string());
+        assert_eq!(Some(expected.to_string()), actual);
     }
 }
 
