@@ -24,6 +24,7 @@ use errors::{DeliveryError, Kind};
 use types::DeliveryResult;
 use utils::{walk_tree_for_path, read_file, copy_recursive, file_needs_updated};
 use utils::path_join_many::PathJoinMany;
+use serde_json::Value as SerdeJson;
 use serde_json;
 use git;
 
@@ -268,6 +269,23 @@ impl DeliveryConfig {
         Ok(json)
     }
 
+    // Load RAW .delivery/config.json
+    //
+    // At the moment we allow the config to have an infinite possibility of options
+    // that any JSON file can provide, even though we have reserved fields we need
+    // to pass all the parameters and options that the config has until we apply a
+    // RESTRICTION to allow just one field in particular, for example a key called
+    // `attributes` which then we can just inject into the DNA of the Workspace.
+    //
+    // This method will first verify that the config is valid and if it is, load it
+    // in a RAW format by leveraging the `serde_json::Value` Enum.
+    pub fn load_raw_config(p_path: &PathBuf) -> DeliveryResult<SerdeJson> {
+        DeliveryConfig::validate_config_file(p_path)?;
+        debug!("Loading RAW config.json into memory from path: {}", p_path.display());
+        let config_json = read_file(&DeliveryConfig::find_config_file(p_path)?)?;
+        let json: SerdeJson = serde_json::from_str(&config_json)?;
+        Ok(json)
+    }
 }
 
 // v1 config, deprecated, but still supported

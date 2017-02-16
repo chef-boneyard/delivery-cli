@@ -16,14 +16,14 @@
 //
 
 use job::change::{Change, BuilderCompat};
-use delivery_config::DeliveryConfig;
+use serde_json::Value as SerdeJson;
 
 #[derive(Serialize)]
 pub struct Top {
     pub workspace_path: String,
     pub workspace: WorkspaceCompat,
     pub change: Change,
-    pub config: DeliveryConfig,
+    pub config: SerdeJson,
 }
 
 #[derive(Serialize)]
