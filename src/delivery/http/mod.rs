@@ -395,7 +395,7 @@ impl APIClient {
             Err(e) => return Err(DeliveryError{kind: Kind::HttpError(e),
                                                detail: None})
         };
-        Ok(try!(serde_json::from_str(&body)))
+        Ok(serde_json::from_str(&body)?)
     }
 
     pub fn extract_pretty_json(resp: &mut HyperResponse) -> DeliveryResult<String> {
@@ -403,8 +403,7 @@ impl APIClient {
             resp.read_to_string(&mut body)?;
             debug!("Status: {:?} Body: {:?}", resp.status, body);
             let json: SerdeJson = serde_json::from_str(&body)?;
-            let json_str = serde_json::to_string_pretty(&json)?;
-            Ok(json_str)
+            Ok(serde_json::to_string_pretty(&json)?)
     }
 
     fn json_content(&self) -> hyper::header::ContentType {

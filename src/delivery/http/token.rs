@@ -44,8 +44,7 @@ pub struct TokenResponse {
 
 impl TokenResponse {
     pub fn parse_token(response: &str) -> Result<String, DeliveryError> {
-        let tresponse: TokenResponse = try!(serde_json::from_str(response));
-        Ok(tresponse.token)
+        Ok(serde_json::from_str::<TokenResponse>(response)?.token)
     }
 
     pub fn parse_token_expired(content: &str) -> bool {

@@ -28,8 +28,7 @@ pub struct LookupResponse {
 
 impl LookupResponse {
     pub fn parse_saml_enabled(response: &str) -> Result<bool, DeliveryError> {
-        let lresponse: LookupResponse = serde_json::from_str(response)?;
-        Ok(lresponse.enabled)
+        Ok(serde_json::from_str::<LookupResponse>(response)?.enabled)
     }
 }
 

@@ -295,8 +295,7 @@ impl DeliveryConfigV1 {
     // Load the .delivery/config.json into a DeliveryConfigV1 object
     pub fn load_config(p_path: &PathBuf) -> DeliveryResult<Self> {
         let config_json = read_file(&DeliveryConfig::find_config_file(p_path)?)?;
-        let json: DeliveryConfigV1 = serde_json::from_str(&config_json)?;
-        Ok(json)
+        Ok(serde_json::from_str::<DeliveryConfigV1>(&config_json)?)
     }
 
     // Convert DeliveryConfigV1 to V2

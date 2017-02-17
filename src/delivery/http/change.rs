@@ -41,8 +41,7 @@ impl Description {
     }
 
     pub fn parse_json(response: &str) -> Result<Description, DeliveryError> {
-        let description: Description = serde_json::from_str(response)?;
-        Ok(description)
+        Ok(serde_json::from_str::<Description>(response)?)
     }
 
     pub fn parse_text(text: &str) -> Result<Description, DeliveryError> {

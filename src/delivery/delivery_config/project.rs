@@ -214,8 +214,7 @@ impl ProjectToml {
 
     fn parse_config(toml: &str) -> DeliveryResult<ProjectToml> {
         debug!("Parsing toml: {}", toml);
-        let toml_object = toml::from_str::<ProjectToml>(toml)?;
-        Ok(toml_object)
+        Ok(toml::from_str::<ProjectToml>(toml)?)
     }
 
     fn validate_file(toml_path: &PathBuf) -> DeliveryResult<()> {
