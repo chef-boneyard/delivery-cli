@@ -189,7 +189,7 @@ impl Config {
     pub fn parse_config(toml_str: &str) -> DeliveryResult<Self> {
         let mut config: Config = Default::default();
         let toml = toml::from_str::<Config>(toml_str)?;
-        config.override_with(toml)?;
+        config.override_with(toml);
         Ok(config)
     }
 
@@ -198,7 +198,7 @@ impl Config {
     // This method will override the instance of the Config
     // `self` with another provided Config. This is useful,
     // for example, if you need to merge two configs.
-    pub fn override_with(&mut self, config: Config) -> DeliveryResult<()> {
+    pub fn override_with(&mut self, config: Config) {
         // (afiune) TODO: I think we could do better by implementing some
         // sort of Iterator or other thing that let us loop through the
         // fields, but for now this is good enough.
@@ -221,7 +221,6 @@ impl Config {
         if config.fips.is_some() { self.fips = config.fips }
         if config.fips_git_port.is_some() { self.fips_git_port = config.fips_git_port }
         if config.api_protocol.is_some() { self.api_protocol = config.api_protocol }
-        Ok(())
     }
 
     fn read_file(path: &PathBuf) -> DeliveryResult<String>  {
