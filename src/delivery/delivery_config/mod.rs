@@ -154,7 +154,7 @@ impl DeliveryConfig {
 
     /// Get the content of a specific build_cookbook field
     ///
-    /// The build_cookbook is difined as a HashMap that we can easily extract
+    /// The build_cookbook is defined as a HashMap that we can easily extract
     /// the content of a particular `key`, this will reduce complexity and code
     ///
     /// # Examples
@@ -216,6 +216,7 @@ impl DeliveryConfig {
         }
     }
 
+    // Returns the path of the `config.json` from the provided project path
     fn config_file_path(proj_path: &PathBuf) -> PathBuf {
         proj_path.join_many(&[".delivery", "config.json"])
     }

@@ -193,9 +193,14 @@ impl Config {
         Ok(config)
     }
 
+    // Override Config
+    //
+    // This method will override the instance of the Config
+    // `self` with another provided Config. This is useful,
+    // for example, if you need to merge two configs.
     pub fn override_with(&mut self, config: Config) -> DeliveryResult<()> {
         // (afiune) TODO: I think we could do better by implementing some
-        // sort of Iterator or other thing that let us loop throught the
+        // sort of Iterator or other thing that let us loop through the
         // fields, but for now this is good enough.
         //
         // If the `config` has some new config, override `self`
