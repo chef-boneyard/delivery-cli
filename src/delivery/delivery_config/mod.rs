@@ -311,7 +311,7 @@ impl DeliveryConfigV1 {
     // `path` and `server` among others.
     //
     // This function will decode a V1 config and convert it into V2 properly
-    fn convert_to_v2(&self) -> DeliveryResult<DeliveryConfig> {
+    fn convert_to_v2(self) -> DeliveryResult<DeliveryConfig> {
         let mut build_cookbook = HashMap::new();
 
         // Detect if the build_cookbook is stored locally or remotely
@@ -334,7 +334,7 @@ impl DeliveryConfigV1 {
         } else {
             // A build_cookbook name, load it from the `server`
             build_cookbook.insert(String::from("name"),
-                                  self.build_cookbook.clone());
+                                  self.build_cookbook);
             build_cookbook.insert(String::from("server"), String::from("true"));
         }
 
@@ -344,8 +344,8 @@ impl DeliveryConfigV1 {
                 // This is a config coming from V1, lets persist this
                 version: "1".to_string(),
                 build_cookbook: build_cookbook,
-                skip_phases: self.skip_phases.clone(),
-                build_nodes: self.build_nodes.clone(),
+                skip_phases: self.skip_phases,
+                build_nodes: self.build_nodes,
                 job_dispatch: None,
                 dependencies: None,
             }
