@@ -15,34 +15,40 @@
 // limitations under the License.
 //
 
-use cli;
 use cli::api::ApiClapOptions;
 use types::{DeliveryResult, ExitCode};
 use errors::{DeliveryError, Kind};
 use http::APIClient;
 use hyper::status::StatusCode;
+use command::Command;
+use config::Config;
 
-pub fn run(opts: ApiClapOptions) -> DeliveryResult<ExitCode> {
-    let config = try!(cli::init_command(&opts));
+pub struct ApiCommand<'n> {
+    pub options: &'n ApiClapOptions<'n>,
+    pub config: &'n Config,
+}
 
-    let client = try!(APIClient::from_config(&config));
-    let mut result = match opts.method {
-        "get" => try!(client.get(opts.path)),
-        "post" => try!(client.post(opts.path, opts.data)),
-        "put" => try!(client.put(opts.path, opts.data)),
-        "delete" => try!(client.delete(opts.path)),
-        _ => return Err(DeliveryError{ kind: Kind::UnsupportedHttpMethod,
-                                       detail: None })
-    };
-    match result.status {
-        StatusCode::NoContent => {},
-        StatusCode::InternalServerError => {
-            return Err(DeliveryError{ kind: Kind::InternalServerError, detail: None})
-        },
-        _ => {
-            let pretty_json = try!(APIClient::extract_pretty_json(&mut result));
-            println!("{}", pretty_json);
-        }
-    };
-    Ok(0)
+impl<'n> Command for ApiCommand<'n> {
+    fn run(self) -> DeliveryResult<ExitCode> {
+        let client = try!(APIClient::from_config(&self.config));
+        let mut result = match self.options.method {
+            "get" => try!(client.get(self.options.path)),
+            "post" => try!(client.post(self.options.path, self.options.data)),
+            "put" => try!(client.put(self.options.path, self.options.data)),
+            "delete" => try!(client.delete(self.options.path)),
+            _ => return Err(DeliveryError{ kind: Kind::UnsupportedHttpMethod,
+                                           detail: None })
+        };
+        match result.status {
+            StatusCode::NoContent => {},
+            StatusCode::InternalServerError => {
+                return Err(DeliveryError{ kind: Kind::InternalServerError, detail: None})
+            },
+            _ => {
+                let pretty_json = try!(APIClient::extract_pretty_json(&mut result));
+                println!("{}", pretty_json);
+            }
+        };
+        Ok(0)
+    }
 }

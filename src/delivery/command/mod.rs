@@ -25,3 +25,9 @@ pub mod diff;
 pub mod clone;
 pub mod api;
 pub mod job;
+
+use types::{DeliveryResult, ExitCode};
+
+pub trait Command {
+    fn run(self) -> DeliveryResult<ExitCode>;
+}

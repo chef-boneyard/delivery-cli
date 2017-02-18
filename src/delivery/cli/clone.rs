@@ -16,7 +16,7 @@
 //
 use cli::arguments::{u_e_s_o_args, value_of};
 use clap::{App, SubCommand, ArgMatches};
-use cli::InitCommand;
+use cli::CommandPrep;
 use types::DeliveryResult;
 use config::Config;
 
@@ -57,7 +57,7 @@ impl<'n> CloneClapOptions<'n> {
     }
 }
 
-impl<'n> InitCommand for CloneClapOptions<'n> {
+impl<'n> CommandPrep for CloneClapOptions<'n> {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
         let new_config = config.set_user(&self.user)
             .set_server(&self.server)

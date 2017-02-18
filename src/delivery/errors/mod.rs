@@ -88,7 +88,8 @@ pub enum Kind {
     NoToken,
     TokenExpired,
     NoEditor,
-    MissingProjectConfig
+    MissingProjectConfig,
+    MissingRequiredConfigOption
 }
 
 #[derive(Debug)]
@@ -167,7 +168,8 @@ impl error::Error for DeliveryError {
             Kind::NoToken => "Missing API token. Try `delivery token` to create one",
             Kind::TokenExpired => "The API token has expired. Try `delivery token` to generate a new one",
             Kind::NoEditor => "Environment variable EDITOR not set",
-            Kind::MissingProjectConfig => "Unable to find .delivery/config.json in this directory or its parents"
+            Kind::MissingProjectConfig => "Unable to find .delivery/config.json in this directory or its parents",
+            Kind::MissingRequiredConfigOption => "A required config option was not set. Please specify in your cli.toml."
         }
     }
 

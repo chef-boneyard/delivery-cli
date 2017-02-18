@@ -16,7 +16,7 @@
 //
 use cli::arguments::{pipeline_arg, patchset_arg, value_of};
 use clap::{App, SubCommand, ArgMatches};
-use cli::InitCommand;
+use cli::CommandPrep;
 use types::DeliveryResult;
 use config::Config;
 
@@ -51,7 +51,7 @@ impl<'n> DiffClapOptions<'n> {
     }
 }
 
-impl<'n> InitCommand for DiffClapOptions<'n> {
+impl<'n> CommandPrep for DiffClapOptions<'n> {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
         let new_config = config.set_pipeline(&self.pipeline);
         Ok(new_config)

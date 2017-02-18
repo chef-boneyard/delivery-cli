@@ -18,7 +18,7 @@ use cli::arguments::{pipeline_arg, no_open_arg, value_of, auto_bump};
 use clap::{App, SubCommand, ArgMatches};
 use config::Config;
 use types::DeliveryResult;
-use cli::InitCommand;
+use cli::CommandPrep;
 use project;
 
 pub const SUBCOMMAND_NAME: &'static str = "review";
@@ -52,7 +52,7 @@ impl<'n> ReviewClapOptions<'n> {
     }
 }
 
-impl<'n> InitCommand for ReviewClapOptions<'n> {
+impl<'n> CommandPrep for ReviewClapOptions<'n> {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
         let mut new_config = config.set_pipeline(&self.pipeline);
 

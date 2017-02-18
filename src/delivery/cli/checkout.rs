@@ -16,7 +16,7 @@
 //
 use cli::arguments::{pipeline_arg, patchset_arg, value_of};
 use clap::{App, SubCommand, ArgMatches};
-use cli::InitCommand;
+use cli::CommandPrep;
 use config::Config;
 use types::DeliveryResult;
 
@@ -48,7 +48,7 @@ impl<'n> CheckoutClapOptions<'n> {
     }
 }
 
-impl<'n> InitCommand for CheckoutClapOptions<'n> {
+impl<'n> CommandPrep for CheckoutClapOptions<'n> {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
         let new_config = config.set_pipeline(&self.pipeline);
         Ok(new_config)

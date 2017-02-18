@@ -23,32 +23,39 @@ use delivery_config::project::{Phase, ProjectToml};
 use errors::{DeliveryError, Kind};
 use project;
 use utils;
+use command::Command;
 
-pub fn run(opts: LocalClapOptions) -> DeliveryResult<ExitCode> {
-    sayln("green", "Chef Delivery");
-    let project_toml = try!(ProjectToml::load_toml(opts.remote_toml));
+pub struct LocalCommand<'n> {
+    pub options: &'n LocalClapOptions<'n>,
+    pub config: &'n ProjectToml,
+}
 
-    // If a Stage was provided, trigger their phases in order
-    if let Some(stage) = opts.stage {
-        say("white", "Running ");
-        say("yellow", &format!("{}", stage));
-        sayln("white", " Stage");
-        for phase in stage.phases().into_iter() {
-            match try!(exec_phase(project_toml.clone(), Some(phase))) {
-                0 => continue,
-                exit_code => return Err(DeliveryError {
-                    kind: Kind::PhaseFailed(exit_code),
-                    detail: None
-                }),
+impl<'n> Command for LocalCommand<'n> {
+    fn run(self) -> DeliveryResult<ExitCode> {
+        sayln("green", "Chef Delivery");
+
+        // If a Stage was provided, trigger their phases in order
+        if let Some(stage) = self.options.stage.clone() {
+            say("white", "Running ");
+            say("yellow", &format!("{}", stage));
+            sayln("white", " Stage");
+            for phase in stage.phases().into_iter() {
+                match try!(exec_phase(&self.config.clone(), Some(phase))) {
+                    0 => continue,
+                    exit_code => return Err(DeliveryError {
+                        kind: Kind::PhaseFailed(exit_code),
+                        detail: None
+                    }),
+                }
             }
+            Ok(0)
+        } else {
+            exec_phase(self.config, self.options.phase.clone())
         }
-        Ok(0)
-    } else {
-        exec_phase(project_toml, opts.phase)
     }
 }
 
-fn exec_phase(project_toml: ProjectToml, phase: Option<Phase>) -> DeliveryResult<ExitCode> {
+fn exec_phase(project_toml: &ProjectToml, phase: Option<Phase>) -> DeliveryResult<ExitCode> {
     if let Some(phase_cmd) = try!(project_toml.local_phase(phase.clone())) {
         say("white", "Running ");
         say("magenta", &format!("{:?}", phase.unwrap()));

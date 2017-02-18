@@ -15,30 +15,36 @@
 // limitations under the License.
 //
 
-use cli;
 use git;
 use cli::clone::CloneClapOptions;
 use types::{DeliveryResult, ExitCode};
 use utils::say::{say, sayln};
 use utils::cwd;
+use command::Command;
+use config::Config;
 
-pub fn run(opts: CloneClapOptions) -> DeliveryResult<ExitCode> {
-    sayln("green", "Chef Delivery");
-    let config = try!(cli::init_command(&opts));
-    say("white", "Cloning ");
-    let delivery_url = try!(config.delivery_git_ssh_url());
-    let clone_url = if opts.git_url.is_empty() {
-        delivery_url.clone()
-    } else {
-        String::from(opts.git_url)
-    };
-    say("yellow", &clone_url);
-    say("white", " to ");
-    sayln("magenta", &format!("{}", opts.project));
-    try!(git::clone(opts.project, &clone_url));
-    let project_root = cwd().join(opts.project);
-    try!(git::create_or_update_delivery_remote(&delivery_url,
-                                               &project_root));
-    Ok(0)
+pub struct CloneCommand<'n> {
+    pub options: &'n CloneClapOptions<'n>,
+    pub config: &'n Config,
 }
 
+impl<'n> Command for CloneCommand<'n> {
+    fn run(self) -> DeliveryResult<ExitCode> {
+        sayln("green", "Chef Delivery");
+        say("white", "Cloning ");
+        let delivery_url = try!(self.config.delivery_git_ssh_url());
+        let clone_url = if self.options.git_url.is_empty() {
+            delivery_url.clone()
+        } else {
+            String::from(self.options.git_url)
+        };
+        say("yellow", &clone_url);
+        say("white", " to ");
+        sayln("magenta", &format!("{}", self.options.project));
+        try!(git::clone(self.options.project, &clone_url));
+        let project_root = cwd().join(self.options.project);
+        try!(git::create_or_update_delivery_remote(&delivery_url,
+                                                   &project_root));
+        Ok(0)
+    }
+}
