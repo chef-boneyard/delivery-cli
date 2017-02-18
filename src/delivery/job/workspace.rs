@@ -16,14 +16,14 @@
 //
 
 use errors::{DeliveryError, Kind};
+use types::DeliveryResult;
 use git;
-use rustc_serialize::{Encodable, Encoder};
-use rustc_serialize::json::{self, Json};
+use serde_json;
+use delivery_config::{DeliveryConfig, BuildCookbookLocation};
 use job::dna::{Top, DNA, WorkspaceCompat};
 use job::change::{Change, BuilderCompat};
-use job;
 use std::process::{Command, Stdio};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::fs::File;
 use std::io::prelude::*;
 use utils;
@@ -32,9 +32,7 @@ use utils::path_join_many::PathJoinMany;
 use utils::path_ext::{is_file, is_dir};
 use std::error;
 use config::Config;
-use regex::Regex;
 
-#[derive(RustcDecodable, Debug)]
 pub struct Workspace {
     pub root: PathBuf,
     pub chef: PathBuf,
@@ -67,31 +65,6 @@ else
   end
 end
 "#;
-
-// We want this to encode as strings, not as vectors of bytes. It's
-// cool - I accept we'll panic if its not a utf8 string.
-impl Encodable for Workspace {
-    fn encode<S: Encoder>(&self, encoder: &mut S) -> Result<(), S::Error> {
-        encoder.emit_struct("Workspace", 0, |encoder| {
-            try!(encode_path_field(encoder, 0usize, "root",  &self.root));
-            try!(encode_path_field(encoder, 1usize, "chef",  &self.chef));
-            try!(encode_path_field(encoder, 2usize, "cache", &self.cache));
-            try!(encode_path_field(encoder, 3usize, "repo",  &self.repo));
-            try!(encode_path_field(encoder, 4usize, "ssh_wrapper",
-                                   &self.ssh_wrapper));
-            Ok(())
-        })
-    }
-}
-
-fn encode_path_field<S: Encoder>(encoder: &mut S, size: usize,
-                                 name: &str, p: &Path) -> Result<(), S::Error> {
-    encoder.emit_struct_field(name, size, |e| encode_path(p, e))
-}
-
-fn encode_path<S: Encoder>(p: &Path, encoder: &mut S) -> Result<(), S::Error> {
-    path_to_string(p).encode(encoder)
-}
 
 impl Workspace {
     pub fn new(root: &PathBuf) -> Workspace {
@@ -131,191 +104,116 @@ impl Workspace {
         Ok(())
     }
 
-    fn setup_build_cookbook_from_path(&self, path: &PathBuf) -> Result<(), DeliveryError> {
+    fn setup_build_cookbook_from_path(&self, path: &PathBuf) -> DeliveryResult<()> {
         utils::copy_recursive(path, &self.chef.join("build_cookbook"))
     }
 
-    fn setup_build_cookbook_from_git(&self, build_cookbook: &Json, git_url: &str) -> Result<(), DeliveryError> {
-        let branch = match build_cookbook.find("branch") {
-            Some(b) => try!(b.as_string().ok_or(DeliveryError{
-                kind: Kind::ExpectedJsonString,
-                detail: Some("Expected 'branch' value to be a string".to_string())
-            })),
-            None => "master"
-        };
+    fn setup_build_cookbook_from_git(&self,
+                        config: &DeliveryConfig) -> DeliveryResult<()> {
+        let git_url = config.build_cookbook_get("git")?;
+        let branch = config.build_cookbook_get("branch").unwrap_or("master".to_owned());
         let build_cookbook_path = &self.chef.join("build_cookbook");
-        try!(git::git_command(&["clone", git_url,
-                                &path_to_string(build_cookbook_path)],
-                              &self.chef));
-        try!(git::git_command(&["checkout", &branch], build_cookbook_path));
+        git::git_command(&["clone", &git_url,
+                         &path_to_string(build_cookbook_path)],
+                         &self.chef)?;
+        git::git_command(&["checkout", &branch], build_cookbook_path)?;
         Ok(())
     }
 
     // This will need a windows implementation, and probably won't work on non-gnu tar systems
     // either.
-    fn setup_build_cookbook_from_supermarket(&self, build_cookbook: &Json) -> Result<(), DeliveryError> {
-        let is_name = build_cookbook.find("name");
-        if is_name.is_some() {
-            let name = match is_name.unwrap().as_string() {
-                Some(n) => n,
-                None => return Err(DeliveryError{
-                    kind: Kind::ExpectedJsonString,
-                    detail: Some("Build cookbook 'path' value must be a string".to_string())
-                })
-            };
-            let site = match build_cookbook.find("site") {
-                Some(s) => try!(s.as_string().ok_or(DeliveryError{
-                    kind: Kind::ExpectedJsonString,
-                    detail: Some("Expected 'site' value to be a string".to_string())
-                })),
-                None => "https://supermarket.chef.io"
-            };
-            let result = try!(utils::make_command("knife")
-                 .arg("supermarket")
-                 .arg("download")
-                 .arg(&name)
-                 .arg("-m")
-                 .arg(&site)
-                 .arg("-f")
-                 .arg(&path_to_string(&self.chef.join("build_cookbook.tgz")))
-                 .current_dir(&self.root)
-                 .output());
-            if ! result.status.success() {
-                let output = String::from_utf8_lossy(&result.stdout);
-                let error = String::from_utf8_lossy(&result.stderr);
-                return Err(DeliveryError{kind: Kind::SupermarketFailed, detail: Some(format!("Failed 'knife supermarket download'\nOUT: {}\nERR: {}\nSite: {}", &output, &error, &site).to_string())});
-            }
-            let tar_result = try!(utils::make_command("tar")
-                 .arg("zxf")
-                 .arg(&path_to_string(&self.chef.join("build_cookbook.tgz")))
-                 .current_dir(&self.chef)
-                 .output());
-            if ! tar_result.status.success() {
-                let output = String::from_utf8_lossy(&tar_result.stdout);
-                let error = String::from_utf8_lossy(&tar_result.stderr);
-                return Err(DeliveryError{kind: Kind::TarFailed, detail: Some(format!("Failed 'tar zxf'\nOUT: {}\nERR: {}", &output, &error).to_string())});
-            }
-            let mv_result = try!(utils::make_command("mv")
-                 .arg(&path_to_string(&self.chef.join(name)))
-                 .arg(&path_to_string(&self.chef.join("build_cookbook")))
-                 .current_dir(&self.chef)
-                 .output());
-            if ! mv_result.status.success() {
-                let output = String::from_utf8_lossy(&mv_result.stdout);
-                let error = String::from_utf8_lossy(&mv_result.stderr);
-                return Err(DeliveryError{kind: Kind::MoveFailed, detail: Some(format!("Failed 'mv'\nOUT: {}\nERR: {}", &output, &error).to_string())});
-            }
-        } else {
-            return Err(DeliveryError{ kind: Kind::MissingBuildCookbookName, detail: None })
-        }
+    fn setup_build_cookbook_from_supermarket(&self,
+                        config: &DeliveryConfig) -> DeliveryResult<()> {
+        let name = config.build_cookbook_name()?;
+        let site = config.build_cookbook_get("site")
+                        .unwrap_or("https://supermarket.chef.io".to_owned());
+        let result = utils::make_command("knife")
+             .arg("supermarket")
+             .arg("download")
+             .arg(&name)
+             .arg("-m")
+             .arg(&site)
+             .arg("-f")
+             .arg(&path_to_string(&self.chef.join("build_cookbook.tgz")))
+             .current_dir(&self.root)
+             .output()?;
+        utils::cmd_success_or_err(&result, Kind::SupermarketFailed)?;
+        let tar_result = utils::make_command("tar")
+             .arg("zxf")
+             .arg(&path_to_string(&self.chef.join("build_cookbook.tgz")))
+             .current_dir(&self.chef)
+             .output()?;
+        utils::cmd_success_or_err(&tar_result, Kind::TarFailed)?;
+        let mv_result = utils::make_command("mv")
+             .arg(&path_to_string(&self.chef.join(name)))
+             .arg(&path_to_string(&self.chef.join("build_cookbook")))
+             .current_dir(&self.chef)
+             .output()?;
+        utils::cmd_success_or_err(&mv_result, Kind::MoveFailed)?;
         Ok(())
     }
 
-    fn setup_build_cookbook_from_chef_server(&self, name: &str) -> Result<(), DeliveryError> {
-        try!(utils::mkdir_recursive(&self.chef.join("tmp_cookbook")));
-        let result = try!(utils::make_command("knife")
-                          .arg("download")
-                          .arg(&format!("/cookbooks/{}", &name))
-                          .arg("--chef-repo-path")
-                          .arg(&path_to_string(&self.chef.join("tmp_cookbook")))
-                          .current_dir(&self.root)
-                          .output());
-        if ! result.status.success() {
-            let output = String::from_utf8_lossy(&result.stdout);
-            let error = String::from_utf8_lossy(&result.stderr);
-            return Err(DeliveryError{kind: Kind::ChefServerFailed, detail: Some(format!("Failed 'knife cookbook download'\nOUT: {}\nERR: {}", &output, &error).to_string())});
-        }
-        let mv_result = try!(utils::make_command("mv")
-                             .arg(&path_to_string(&self.chef.join_many(&["tmp_cookbook",
-                                                                         "cookbooks", &name])))
-                             .arg(&path_to_string(&self.chef.join("build_cookbook")))
-                             .current_dir(&self.chef)
-                             .output());
-        if ! mv_result.status.success() {
-            let output = String::from_utf8_lossy(&mv_result.stdout);
-            let error = String::from_utf8_lossy(&mv_result.stderr);
-            return Err(DeliveryError{kind: Kind::MoveFailed, detail: Some(format!("Failed 'mv'\nOUT: {}\nERR: {}", &output, &error).to_string())});
-        }
+    fn setup_build_cookbook_from_chef_server(&self, name: &str) -> DeliveryResult<()> {
+        utils::mkdir_recursive(&self.chef.join("tmp_cookbook"))?;
+        let result = utils::make_command("knife")
+                        .arg("download")
+                        .arg(&format!("/cookbooks/{}", &name))
+                        .arg("--chef-repo-path")
+                        .arg(&path_to_string(&self.chef.join("tmp_cookbook")))
+                        .current_dir(&self.root)
+                        .output()?;
+        utils::cmd_success_or_err(&result, Kind::ChefServerFailed)?;
+        let mv_result = utils::make_command("mv")
+                            .arg(&path_to_string(&self.chef.join_many(&["tmp_cookbook",
+                                                                      "cookbooks", &name])))
+                            .arg(&path_to_string(&self.chef.join("build_cookbook")))
+                            .current_dir(&self.chef)
+                            .output()?;
+        utils::cmd_success_or_err(&mv_result, Kind::MoveFailed)?;
         Ok(())
     }
 
-    fn setup_build_cookbook_from_delivery(&self, build_cookbook: &Json, toml_config: &Config) -> Result<(), DeliveryError> {
-        let is_name = try!(build_cookbook.find("name").ok_or(DeliveryError{ kind: Kind::MissingBuildCookbookField, detail: Some("Missing name".to_string())}));
-        let name = try!(is_name.as_string().ok_or(DeliveryError{
-            kind: Kind::ExpectedJsonString,
-            detail: Some("Build cookbook 'name' value must be a string".to_string())
-        }));
-        let is_ent = try!(build_cookbook.find("enterprise").ok_or(DeliveryError{ kind: Kind::MissingBuildCookbookField, detail: Some("Missing enterprise".to_string())}));
-        let ent = try!(is_ent.as_string().ok_or(DeliveryError{
-            kind: Kind::ExpectedJsonString,
-            detail: Some("Build cookbook 'enterprise' value must be a string".to_string())
-        }));
-        let is_org = try!(build_cookbook.find("organization").ok_or(DeliveryError{ kind: Kind::MissingBuildCookbookField, detail: Some("Missing organization".to_string())}));
-        let org = try!(is_org.as_string().ok_or(DeliveryError{
-            kind: Kind::ExpectedJsonString,
-            detail: Some("Build cookbook 'organization' value must be a string".to_string())
-        }));
-
-        let build_cookbook_config = toml_config.clone().set_enterprise(ent)
-                                                       .set_organization(org)
-                                                       .set_project(name);
-
-        let url = try!(build_cookbook_config.delivery_git_ssh_url());
-        try!(git::git_command(&["clone", &url, self.chef.join("build_cookbook").to_str().unwrap()], &self.chef));
+    fn setup_build_cookbook_from_workflow(&self,
+                                          config: &DeliveryConfig,
+                                          toml_config: &Config) -> DeliveryResult<()> {
+        let name = config.build_cookbook_name()?;
+        let ent = config.build_cookbook_get("enterprise")?;
+        let org = config.build_cookbook_get("organization")?;
+        let build_cookbook_config = toml_config.clone().set_enterprise(&ent)
+                                                       .set_organization(&org)
+                                                       .set_project(&name);
+        let url = build_cookbook_config.delivery_git_ssh_url()?;
+        git::git_command(
+            &["clone", &url, self.chef.join("build_cookbook").to_str().unwrap()],
+            &self.chef
+        )?;
         Ok(())
     }
 
-    fn setup_build_cookbook(&self, toml_config: &Config, config: &Json) -> Result<(), DeliveryError> {
-        let build_cookbook = try!(config.find("build_cookbook").ok_or(DeliveryError{
-            kind: Kind::NoBuildCookbook,
-            detail: None
-        }));
-        if build_cookbook.is_string() {
-            let path = build_cookbook.as_string().unwrap();
-            if path.contains("/") {
-                return self.setup_build_cookbook_from_path(&self.repo.join(&path));
-            } else {
-                return self.setup_build_cookbook_from_chef_server(&path);
-            }
+    fn setup_build_cookbook(&self, toml_config: &Config,
+                            config: &DeliveryConfig) -> DeliveryResult<()> {
+        match config.build_cookbook_location()? {
+            BuildCookbookLocation::Local => {
+                let ab_path = self.repo.join(config.build_cookbook_get("path")?);
+                self.setup_build_cookbook_from_path(&ab_path)
+            },
+            BuildCookbookLocation::Git => {
+                self.setup_build_cookbook_from_git(config)
+            },
+            BuildCookbookLocation::Supermarket => {
+                self.setup_build_cookbook_from_supermarket(config)
+            },
+            BuildCookbookLocation::Workflow => {
+                self.setup_build_cookbook_from_workflow(config, toml_config)
+            },
+            BuildCookbookLocation::ChefServer => {
+                let name = config.build_cookbook_name()?;
+                self.setup_build_cookbook_from_chef_server(&name)
+            },
         }
-        let valid_paths = vec!["path", "git", "supermarket", "enterprise"];
-        for path in valid_paths {
-            let is_path = build_cookbook.find(path);
-            if is_path.is_some() {
-                match is_path.unwrap().as_string() {
-                    Some(p) => {
-                        match path {
-                            "path" => return self.setup_build_cookbook_from_path(&self.repo.join(p)),
-                            "git"  => return self.setup_build_cookbook_from_git(&build_cookbook, &p),
-                            "supermarket" => return self.setup_build_cookbook_from_supermarket(&build_cookbook),
-                            "enterprise" => return self.setup_build_cookbook_from_delivery(&build_cookbook, toml_config),
-                            "server" => {
-                                let is_name = try!(build_cookbook.find("name")
-                                                   .ok_or(DeliveryError{
-                                                       kind: Kind::MissingBuildCookbookName,
-                                                       detail: None
-                                                   }));
-                                let name = try!(is_name.as_string()
-                                                .ok_or(DeliveryError{
-                                                    kind: Kind::ExpectedJsonString,
-                                                    detail: Some("Expected 'name' to be a string".to_string())
-                                                }));
-                                return self.setup_build_cookbook_from_chef_server(&name);
-                            },
-                            _ => unreachable!()
-                        }
-                    },
-                    None => return Err(DeliveryError{
-                        kind: Kind::ExpectedJsonString,
-                        detail: Some(format!("Build cookbook '{}' value must be a string", path).to_string())
-                    })
-                }
-            }
-        }
-        Err(DeliveryError{ kind: Kind::NoValidBuildCookbook, detail: None })
     }
 
-    fn berks_vendor(&self, config: &Json) -> Result<(), DeliveryError> {
+    fn berks_vendor(&self, bc_name: &str) -> DeliveryResult<()> {
         try!(utils::remove_recursive(&self.chef.join("cookbooks")));
         if is_file(&self.chef.join_many(&["build_cookbook", "Berksfile"])) {
             debug!("Running 'berks vendor cookbooks' inside the build_cookbooks");
@@ -333,9 +231,7 @@ impl Workspace {
                     return Err(DeliveryError{ kind: Kind::FailedToExecute,
                                                       detail: Some(d)}) },
             };
-            if !output.status.success() {
-                return Err(DeliveryError{ kind: Kind::BerksFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(&output.stdout), String::from_utf8_lossy(&output.stderr)))});
-            }
+            utils::cmd_success_or_err(&output, Kind::BerksFailed)?;
             let stdout = String::from_utf8_lossy(&output.stdout).to_string();
             debug!("berks vendor stdout: {}", stdout);
             let stderr = String::from_utf8_lossy(&output.stderr).to_string();
@@ -343,17 +239,12 @@ impl Workspace {
         } else {
             debug!("No Berksfile found; simply moving the cookbook");
             try!(utils::mkdir_recursive(&self.chef.join("cookbooks")));
-            let bc_name = try!(self.build_cookbook_name(&config));
-            let mv_result = try!(Command::new("mv")
-                                 .arg(&path_to_string(&self.chef.join("build_cookbook")))
-                                 .arg(&path_to_string(&self.chef.join_many(&["cookbooks", &bc_name])))
-                                 .current_dir(&self.chef)
-                                 .output());
-            if ! mv_result.status.success() {
-                let output = String::from_utf8_lossy(&mv_result.stdout);
-                let error = String::from_utf8_lossy(&mv_result.stderr);
-                return Err(DeliveryError{kind: Kind::MoveFailed, detail: Some(format!("Failed 'mv'\nOUT: {}\nERR: {}", &output, &error).to_string())});
-            }
+            let mv_result = Command::new("mv")
+                                .arg(&path_to_string(&self.chef.join("build_cookbook")))
+                                .arg(&path_to_string(&self.chef.join_many(&["cookbooks", bc_name])))
+                                .current_dir(&self.chef)
+                                .output()?;
+            utils::cmd_success_or_err(&mv_result, Kind::MoveFailed)?;
         }
         Ok(())
     }
@@ -367,36 +258,11 @@ impl Workspace {
         utils::chown_all("dbuild:dbuild", paths_to_chown)
     }
 
-    pub fn build_cookbook_name(&self, config: &Json) -> Result<String, DeliveryError> {
-        let bc_name = match config.find("build_cookbook") {
-            Some(bc) => {
-                if bc.is_string() {
-                    let bc_string = bc.as_string().unwrap();
-                    if bc_string.contains("/") {
-                        let r = Regex::new(r"(.+)/(.+)").unwrap();
-                        let caps_result = r.captures(bc_string);
-                        let caps = caps_result.unwrap();
-                        caps.at(2).unwrap()
-                    } else {
-                        bc_string
-                    }
-                } else {
-                    let is_bc_name = try!(bc.find("name").ok_or(DeliveryError{
-                        kind: Kind::MissingBuildCookbookName,
-                        detail: None}));
-                    try!(is_bc_name.as_string().ok_or(DeliveryError{
-                        kind: Kind::ExpectedJsonString,
-                        detail: None}))
-                }
-            },
-            None => return Err(DeliveryError{kind: Kind::NoValidBuildCookbook, detail: None})
-        };
-        Ok(bc_name.to_string())
-    }
-
-    pub fn run_job(&self, phase_arg: &str, drop_privilege: &Privilege, local_change: &bool) -> Result<(), DeliveryError> {
-        let config = try!(job::config::load_config(&self.repo.join_many(&[".delivery", "config.json"])));
-        let bc_name = try!(self.build_cookbook_name(&config));
+    pub fn run_job(&self, phase_arg: &str,
+                    drop_privilege: &Privilege,
+                    local_change: &bool) -> DeliveryResult<()> {
+        let config = DeliveryConfig::load_config(&self.repo)?;
+        let bc_name = config.build_cookbook_name()?;
         let run_list = {
             let phases: Vec<String> = phase_arg.split(" ")
                 .map(|p| format!("{}::{}", bc_name, p)).collect();
@@ -424,11 +290,17 @@ impl Workspace {
         debug!("Job Command: {:?}", command);
         let output = match command.output() {
             Ok(o) => o,
-            Err(e) => { return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute chef-client: {}", error::Error::description(&e)))}) },
+            Err(e) => {
+                return Err(DeliveryError{
+                    kind: Kind::FailedToExecute,
+                    detail: Some(
+                        format!("failed to execute chef-client: {}",
+                        error::Error::description(&e))
+                    )
+                })
+            },
         };
-        if !output.status.success() {
-            return Err(DeliveryError{ kind: Kind::ChefFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(&output.stdout), String::from_utf8_lossy(&output.stderr)))});
-        }
+        utils::cmd_success_or_err(&output, Kind::ChefFailed)?;
         Ok(())
     }
 
@@ -459,14 +331,15 @@ impl Workspace {
                               toml_config: &Config, change: Change,
                               ws_path: &PathBuf) -> Result<(), DeliveryError> {
         let config_rb_path = &self.chef.join("config.rb");
-        let mut config_rb = try!(File::create(config_rb_path));
-        try!(utils::chmod(config_rb_path, "0644"));
-        try!(config_rb.write_all(CONFIG_RB.as_bytes()));
-        let proj_config_path = &self.repo.join_many(&[".delivery",
-                                                      "config.json"]);
-        let config = try!(job::config::load_config(proj_config_path));
-        try!(self.setup_build_cookbook(toml_config, &config));
-        try!(self.berks_vendor(&config));
+        debug!("Writing content of chef/config.rb");
+        let mut config_rb = File::create(config_rb_path)?;
+        utils::chmod(config_rb_path, "0644")?;
+        config_rb.write_all(CONFIG_RB.as_bytes())?;
+        let config = DeliveryConfig::load_config(&self.repo)?;
+        debug!("Setting up the build_cookbook");
+        self.setup_build_cookbook(toml_config, &config)?;
+        let build_cb_name = config.build_cookbook_name()?;
+        self.berks_vendor(&build_cb_name)?;
         let workspace_data = WorkspaceCompat{
             root: path_to_string(&self.root),
             chef: path_to_string(&self.chef),
@@ -491,15 +364,17 @@ impl Workspace {
             delivery: top,
             delivery_builder: compat
         };
+        debug!("Writing content of chef/dna.json");
         let dna_json_path = &self.chef.join("dna.json");
-        let mut dna_json = try!(File::create(dna_json_path));
-        try!(utils::chmod(dna_json_path, "0644"));
-        let data = try!(json::encode(&dna));
-        try!(dna_json.write_all(data.as_bytes()));
+        let mut dna_json = File::create(dna_json_path)?;
+        utils::chmod(dna_json_path, "0644")?;
+        let data = serde_json::to_string(&dna)?;
+        dna_json.write_all(data.as_bytes())?;
         Ok(())
     }
 
-    pub fn setup_repo_for_change(&self, git_url: &str, change_branch: &str, pipeline: &str, sha: &str) -> Result<(), DeliveryError> {
+    pub fn setup_repo_for_change(&self, git_url: &str, change_branch: &str,
+                                 pipeline: &str, sha: &str) -> DeliveryResult<()> {
         if ! is_dir(&self.repo.join(".git")) {
             try!(git::git_command(&["clone", git_url, "."], &self.repo));
         }

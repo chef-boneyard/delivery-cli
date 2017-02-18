@@ -24,7 +24,6 @@
 use errors::{DeliveryError, Kind};
 use hyper::Client as HyperClient;
 use project;
-use rustc_serialize::Decodable;
 use std::default::Default;
 use std::io::Read;
 use std::path::PathBuf;
@@ -34,13 +33,13 @@ use types::DeliveryResult;
 use utils;
 use utils::path_join_many::PathJoinMany;
 
-#[derive(RustcEncodable, RustcDecodable, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct ProjectToml {
     pub remote_file: Option<String>,
     pub local_phases: Option<LocalPhases>
 }
 
-#[derive(RustcEncodable, RustcDecodable, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct LocalPhases {
     pub unit: Option<String>,
     pub lint: Option<String>,
@@ -152,8 +151,8 @@ impl ProjectToml {
             return ProjectToml::load_toml_remote(url)
         }
 
-        let path = ProjectToml::toml_file_path(try!(project::project_path()));
-        let project_toml = try!(ProjectToml::load_toml_file(path));
+        let path = ProjectToml::toml_file_path(project::project_path()?);
+        let project_toml = ProjectToml::load_toml_file(path)?;
 
         match project_toml.remote_file {
             Some(url) => ProjectToml::load_toml_remote(&url),
@@ -163,8 +162,8 @@ impl ProjectToml {
 
     fn load_toml_file(toml_path: PathBuf) -> DeliveryResult<ProjectToml> {
         debug!("Loading local project.toml from {:?}", toml_path);
-        try!(ProjectToml::validate_file(&toml_path));
-        let toml = try!(utils::read_file(&toml_path));
+        ProjectToml::validate_file(&toml_path)?;
+        let toml = utils::read_file(&toml_path)?;
         ProjectToml::parse_config(&toml)
     }
 
@@ -174,7 +173,7 @@ impl ProjectToml {
         match client.get(toml_url).send() {
             Ok(mut resp) => {
                 let mut toml = String::new();
-                try!(resp.read_to_string(&mut toml));
+                resp.read_to_string(&mut toml)?;
                 debug!("Content Remote project.toml: {:?}", toml);
                 ProjectToml::parse_config(&toml)
             },
@@ -214,21 +213,8 @@ impl ProjectToml {
     }
 
     fn parse_config(toml: &str) -> DeliveryResult<ProjectToml> {
-        let mut parser = toml::Parser::new(toml);
-        match parser.parse() {
-            Some(value) => { 
-                ProjectToml::decode_toml(toml::Value::Table(value))
-            },
-            None => {
-                Err(DeliveryError{
-                    kind: Kind::ConfigParse,
-                    detail: Some(
-                        format!("Unable to parse .delivery/project.toml: {:?}",
-                        parser.errors)
-                    )
-                })
-            }
-        }
+        debug!("Parsing toml: {}", toml);
+        Ok(toml::from_str::<ProjectToml>(toml)?)
     }
 
     fn validate_file(toml_path: &PathBuf) -> DeliveryResult<()> {
@@ -244,12 +230,6 @@ impl ProjectToml {
                 )
             })
         }
-    }
-
-    fn decode_toml(table: toml::Value) -> DeliveryResult<ProjectToml> {
-        let mut decoder = toml::Decoder::new(table);
-        let project_config = try!(ProjectToml::decode(&mut decoder));
-        Ok(project_config) 
     }
 }
 

@@ -35,16 +35,7 @@ pub fn copy_recursive<P: ?Sized>(f: &P, t: &P) -> Result<(), DeliveryError>
          .arg(from.to_str().unwrap())
          .arg(to.to_str().unwrap())
          .output());
-    if !result.status.success() {
-        Err(DeliveryError{
-            kind: Kind::CopyFailed,
-            detail: Some(format!("STDOUT: {}\nSTDERR: {}",
-                                 String::from_utf8_lossy(&result.stdout),
-                                 String::from_utf8_lossy(&result.stderr)))
-        })
-    } else {
-        Ok(())
-    }
+    super::cmd_success_or_err(&result, Kind::CopyFailed)
 }
 
 pub fn remove_recursive<P: ?Sized>(path: &P) -> Result<(), DeliveryError>
@@ -64,16 +55,7 @@ pub fn chmod<P: ?Sized>(path: &P, setting: &str) -> Result<(), DeliveryError>
          .arg(setting)
          .arg(path.as_ref().to_str().unwrap())
          .output());
-    if !result.status.success() {
-        Err(DeliveryError{
-            kind: Kind::ChmodFailed,
-            detail: Some(format!("STDOUT: {}\nSTDERR: {}",
-                                 String::from_utf8_lossy(&result.stdout),
-                                 String::from_utf8_lossy(&result.stderr)))
-        })
-    } else {
-        Ok(())
-    }
+    super::cmd_success_or_err(&result, Kind::ChmodFailed)
 }
 
 pub fn chown_all<P: AsRef<Path>>(who: &str,
@@ -91,15 +73,7 @@ pub fn chown_all<P: AsRef<Path>>(who: &str,
                 detail: Some(format!("failed to execute chown: {}",
                                      error::Error::description(&e)))}) },
     };
-    if !output.status.success() {
-        Err(DeliveryError{
-            kind: Kind::ChownFailed,
-            detail: Some(format!("STDOUT: {}\nSTDERR: {}\n",
-                                 String::from_utf8_lossy(&output.stdout),
-                                 String::from_utf8_lossy(&output.stderr)))})
-    } else {
-        Ok(())
-    }
+    super::cmd_success_or_err(&output, Kind::ChmodFailed)
 }
 
 pub fn privileged_process() -> bool {

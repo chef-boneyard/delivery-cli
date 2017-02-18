@@ -15,7 +15,7 @@
 // limitations under the License.
 //
 
-use rustc_serialize::json;
+use serde_json;
 use std::error::{self, Error};
 use std::num;
 use std::io;
@@ -53,6 +53,7 @@ pub enum Kind {
     EmptyGitCommit,
     GitSetupFailed,
     ConfigParse,
+    DeliveryConfigParse,
     MissingConfig,
     MissingConfigFile,
     ConfigValidation,
@@ -72,6 +73,7 @@ pub enum Kind {
     TarFailed,
     MissingBuildCookbookField,
     ChefServerFailed,
+    ChefdkGenerateFailed,
     ChownFailed,
     ChefFailed,
     ChmodFailed,
@@ -128,6 +130,7 @@ impl error::Error for DeliveryError {
             Kind::OptionConstraint => "Invalid option constraint",
             Kind::UnknownProjectType => "Unknown Project Type",
             Kind::ConfigParse => "Failed to parse the cli config file",
+            Kind::DeliveryConfigParse => "Unable to parse the config.json file.",
             Kind::MissingConfig => "A configuration value is missing",
             Kind::MissingConfigFile => "Could not find the configuration file.",
             Kind::ConfigValidation => "A required option is missing - use the command line options or 'delivery setup'",
@@ -147,6 +150,7 @@ impl error::Error for DeliveryError {
             Kind::RemoveFailed => "Cannot remove a file or directory",
             Kind::MissingBuildCookbookField => "Missing a required field in your build_cookbook",
             Kind::ChefServerFailed => "Failed to download a cookbook from the Chef Server",
+            Kind::ChefdkGenerateFailed => "Failed to execute 'chef generate'",
             Kind::ChownFailed => "Cannot set ownership to the dbuild user and group",
             Kind::ChefFailed => "Chef Client failed",
             Kind::ChmodFailed => "Cannot set permissions",
@@ -191,17 +195,8 @@ impl fmt::Display for DeliveryError {
     }
 }
 
-impl From<json::EncoderError> for DeliveryError {
-    fn from(err: json::EncoderError) -> DeliveryError {
-        DeliveryError{
-            kind: Kind::JsonEncode,
-            detail: Some(err.description().to_string())
-        }
-    }
-}
-
-impl From<json::DecoderError> for DeliveryError {
-    fn from(err: json::DecoderError) -> DeliveryError {
+impl From<serde_json::Error> for DeliveryError {
+    fn from(err: serde_json::Error) -> DeliveryError {
         DeliveryError{
             kind: Kind::JsonParseError,
             detail: Some(format!("{}: {}", err.description().to_string(), err))
@@ -214,15 +209,6 @@ impl From<io::Error> for DeliveryError {
         DeliveryError{
             kind: Kind::IoError,
             detail: Some(format!("{}", err))
-        }
-    }
-}
-
-impl From<json::ParserError> for DeliveryError {
-    fn from(err: json::ParserError) -> DeliveryError {
-        DeliveryError{
-            kind: Kind::JsonError,
-            detail: Some(err.description().to_string())
         }
     }
 }
@@ -247,8 +233,17 @@ impl From<num::ParseIntError> for DeliveryError {
     }
 }
 
-impl From<toml::DecodeError> for DeliveryError {
-    fn from(err: toml::DecodeError) -> DeliveryError {
+impl From<toml::de::Error> for DeliveryError {
+    fn from(err: toml::de::Error) -> DeliveryError {
+        DeliveryError{
+            kind: Kind::TomlDecodeError,
+            detail: Some(format!("{}: {}", err.description().to_string(), err))
+        }
+    }
+}
+
+impl From<toml::ser::Error> for DeliveryError {
+    fn from(err: toml::ser::Error) -> DeliveryError {
         DeliveryError{
             kind: Kind::TomlDecodeError,
             detail: Some(format!("{}: {}", err.description().to_string(), err))

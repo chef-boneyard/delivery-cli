@@ -1,5 +1,5 @@
 extern crate delivery;
-extern crate rustc_serialize;
+extern crate serde_json;
 extern crate tempdir;
 #[macro_use] extern crate log;
 
@@ -29,3 +29,4 @@ mod support;
 mod config;
 mod cli;
 mod utils;
+mod delivery_config;

@@ -15,7 +15,7 @@
 // limitations under the License.
 //
 
-#[derive(RustcDecodable, RustcEncodable, Debug)]
+#[derive(Serialize, Debug)]
 pub struct Change {
     pub enterprise: String,
     pub organization: String,
@@ -30,7 +30,7 @@ pub struct Change {
     pub patchset_branch: String,
 }
 
-#[derive(RustcDecodable, RustcEncodable, Debug)]
+#[derive(Serialize, Debug)]
 pub struct BuilderCompat {
     pub workspace: String,
     pub repo: String,

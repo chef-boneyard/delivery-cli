@@ -1,0 +1,8 @@
+{
+    "version": "2",
+    "build_cookbook": {},
+    "build_nodes": {},
+    "skip_phases": "Skip them all",
+    "dependencies": [],
+    "job_dispatch": {}
+}

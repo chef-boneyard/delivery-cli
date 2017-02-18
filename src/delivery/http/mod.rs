@@ -25,7 +25,8 @@ use hyper::error::Error as HttpError;
 use http;
 use http::token::TokenResponse;
 use mime;
-use rustc_serialize::json;
+use serde_json;
+use serde_json::Value as SerdeJson;
 use std::io::prelude::*;
 use errors::{DeliveryError, Kind};
 use token::TokenStore;
@@ -316,16 +317,21 @@ impl APIClient {
         self.parse_response(try!(self.post(&path, &payload)))
     }
 
-    fn get_scm_server_config(&self, scm: &str) -> DeliveryResult<Vec<json::Json>> {
+    fn get_scm_server_config(&self, scm: &str) -> DeliveryResult<Vec<SerdeJson>> {
         let json = try!(APIClient::parse_json(self.get("scm-providers")));
         debug!("Endpoint[scm-providers]: {:?}", json);
         if let Some(data) = json.as_array() {
             for obj in data.iter() {
                 if let Some(scp) = obj.as_object() {
-                    let name = scp.get("name").unwrap().as_string().unwrap();
+                    let name = scp.get("name")
+                        .expect("Missing 'name' field for /scm-providers endpoint")
+                        .as_str().unwrap();
                     if name == scm {
-                        let scp_config = scp.get("scmSetupConfigs").unwrap().as_array().unwrap();
-                        debug!("{:?} Config: {:?}", scm, scp_config);
+                        debug!("Found SCM {} config: {:?}", scm, scp);
+                        let scp_config = scp.get("scmSetupConfigs")
+                            .expect("Missing 'scmSetupConfigs' field for /scm-providers endpoint")
+                            .as_array().unwrap();
+                        debug!("scmSetupConfigs: {:?}", scp_config);
                         return Ok(scp_config.clone())
                     }
                 }
@@ -338,11 +344,11 @@ impl APIClient {
         })
     }
 
-    pub fn get_github_server_config(&self) -> DeliveryResult<Vec<json::Json>> {
+    pub fn get_github_server_config(&self) -> DeliveryResult<Vec<SerdeJson>> {
         self.get_scm_server_config("GitHub")
     }
 
-    pub fn get_bitbucket_server_config(&self) -> DeliveryResult<Vec<json::Json>> {
+    pub fn get_bitbucket_server_config(&self) -> DeliveryResult<Vec<SerdeJson>> {
         self.get_scm_server_config("Bitbucket")
     }
 
@@ -379,7 +385,7 @@ impl APIClient {
         self.parse_response(try!(self.post(&path, &payload)))
     }
 
-    pub fn parse_json(result: Result<HyperResponse, HttpError>) -> DeliveryResult<json::Json> {
+    pub fn parse_json(result: Result<HyperResponse, HttpError>) -> DeliveryResult<SerdeJson> {
         let body = match result {
             Ok(mut b) => {
                 let mut body_string = String::new();
@@ -389,16 +395,15 @@ impl APIClient {
             Err(e) => return Err(DeliveryError{kind: Kind::HttpError(e),
                                                detail: None})
         };
-        Ok(try!(json::Json::from_str(&body)))
+        Ok(serde_json::from_str(&body)?)
     }
 
-    pub fn extract_pretty_json(resp: &mut HyperResponse) ->
-        DeliveryResult<String> {
+    pub fn extract_pretty_json(resp: &mut HyperResponse) -> DeliveryResult<String> {
             let mut body = String::new();
-            try!(resp.read_to_string(&mut body));
+            resp.read_to_string(&mut body)?;
             debug!("Status: {:?} Body: {:?}", resp.status, body);
-            let json = try!(json::Json::from_str(&body));
-            Ok(format!("{}", json.pretty()))
+            let json: SerdeJson = serde_json::from_str(&body)?;
+            Ok(serde_json::to_string_pretty(&json)?)
     }
 
     fn json_content(&self) -> hyper::header::ContentType {

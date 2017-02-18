@@ -18,11 +18,11 @@
 use errors::{DeliveryError, Kind};
 use http::*;
 use hyper::status::StatusCode;
-use rustc_serialize::json;
+use serde_json;
 
 use config::Config;
 
-#[derive(RustcEncodable, RustcDecodable, Debug, Clone, PartialEq, PartialOrd)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, PartialOrd)]
 pub struct Description {
     pub title: String,
     pub description: String
@@ -36,13 +36,12 @@ impl Description {
     }
 
     pub fn to_json(&self) -> Result<String, DeliveryError> {
-        let payload = try!(json::encode(&self));
+        let payload = serde_json::to_string(&self)?;
         Ok(payload)
     }
 
     pub fn parse_json(response: &str) -> Result<Description, DeliveryError> {
-        let description: Description = try!(json::decode(response));
-        Ok(description)
+        Ok(serde_json::from_str::<Description>(response)?)
     }
 
     pub fn parse_text(text: &str) -> Result<Description, DeliveryError> {

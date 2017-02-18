@@ -47,8 +47,8 @@ Scenario: setup with organization
   And the file ".delivery/cli.toml" should contain exactly:
     """
     api_protocol = "https"
-    git_port = "8989"
     organization = "Engineering"
+    git_port = "8989"
     pipeline = "master"
 
     """
@@ -60,9 +60,9 @@ Scenario: setup with user
   And the file ".delivery/cli.toml" should contain exactly:
     """
     api_protocol = "https"
+    user = "alice"
     git_port = "8989"
     pipeline = "master"
-    user = "alice"
 
     """
 
@@ -84,10 +84,10 @@ Scenario: setup with server
   And a file named ".delivery/cli.toml" should exist
   And the file ".delivery/cli.toml" should contain exactly:
     """
+    server = "delivery.mycompany.com"
     api_protocol = "https"
     git_port = "8989"
     pipeline = "master"
-    server = "delivery.mycompany.com"
 
     """
 
@@ -98,9 +98,9 @@ Scenario: setup with project
   And the file ".delivery/cli.toml" should contain exactly:
     """
     api_protocol = "https"
+    project = "coffee_lover"
     git_port = "8989"
     pipeline = "master"
-    project = "coffee_lover"
 
     """
 
@@ -110,14 +110,14 @@ Scenario: setup with all the args
   And a file named ".delivery/cli.toml" should exist
   And the file ".delivery/cli.toml" should contain exactly:
     """
-    api_protocol = "https"
-    enterprise = "Foobar"
-    git_port = "8989"
-    organization = "Engineering"
-    pipeline = "legacy"
-    project = "makeitwork"
     server = "delivery.mycompany.com"
+    api_protocol = "https"
     user = "alice"
+    enterprise = "Foobar"
+    organization = "Engineering"
+    project = "makeitwork"
+    git_port = "8989"
+    pipeline = "legacy"
 
     """
 
@@ -130,23 +130,24 @@ Scenario: setup when a config file already exists
   Given a directory named ".delivery"
   And a file named ".delivery/cli.toml" with:
     """
-    enterprise = "Foobar"
-    git_port = "8989"
-    organization = "Engineering"
-    pipeline = "master"
     server = "delivery.mycompany.com"
+    api_protocol = "https"
     user = "alice"
+    enterprise = "Foobar"
+    organization = "Engineering"
+    git_port = "8989"
+    pipeline = "master"
 
     """
   When I successfully run `delivery setup --ent=Bar`
   Then the file ".delivery/cli.toml" should contain exactly:
     """
-    api_protocol = "https"
-    enterprise = "Bar"
-    git_port = "8989"
-    organization = "Engineering"
-    pipeline = "master"
     server = "delivery.mycompany.com"
+    api_protocol = "https"
     user = "alice"
+    enterprise = "Bar"
+    organization = "Engineering"
+    git_port = "8989"
+    pipeline = "master"
 
     """

@@ -22,7 +22,6 @@ extern crate env_logger;
 extern crate term;
 #[macro_use] extern crate hyper;
 extern crate delivery;
-extern crate rustc_serialize;
 extern crate time;
 
 use delivery::cli;

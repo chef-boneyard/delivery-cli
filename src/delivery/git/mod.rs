@@ -20,7 +20,7 @@ pub use errors;
 use std::process::Command;
 use utils::say::{say, sayln, Spinner};
 use utils::path_ext::{is_dir};
-use utils::{find_command};
+use utils::{cmd_success_or_err, find_command};
 use errors::{DeliveryError, Kind};
 use std::env;
 use std::path::{Path, PathBuf};
@@ -103,9 +103,7 @@ pub fn git_command<P: ?Sized>(args: &[&str], c: &P) -> Result<GitResult, Deliver
     };
     debug!("Git exited: {}", output.status);
     spinner.stop();
-    if !output.status.success() {
-        return Err(DeliveryError{ kind: Kind::GitFailed, detail: Some(format!("STDOUT: {}\nSTDERR: {}\n", String::from_utf8_lossy(&output.stdout), String::from_utf8_lossy(&output.stderr)))});
-    }
+    cmd_success_or_err(&output, Kind::GitFailed)?;
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
     debug!("Git stdout: {}", stdout);
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();

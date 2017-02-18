@@ -15,14 +15,14 @@
 // limitations under the License.
 //
 
-use utils::{self, walk_tree_for_path, mkdir_recursive};
+use utils::{self, walk_tree_for_path, mkdir_recursive, cmd_success_or_err};
 use utils::path_ext::is_dir;
 use errors::{DeliveryError, Kind};
 use types::DeliveryResult;
 use std::path::{Path, PathBuf};
 use http::APIClient;
 use git::{self, ReviewResult};
-use std::process::{Output, Command};
+use std::process::Command;
 use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
@@ -306,8 +306,8 @@ pub fn create_default_build_cookbook(pipeline: &str) -> DeliveryResult<Command> 
         .arg("--pipeline")
         .arg(pipeline)
         .current_dir(&try!(project_path()));
-    let output = try!(command.output());
-    try!(handle_chef_generate_cookbook_cmd(output));
+    let output = command.output()?;
+    cmd_success_or_err(&output, Kind::ChefdkGenerateFailed)?;
     Ok(command)
 }
 
@@ -356,31 +356,14 @@ pub fn chef_generate_build_cookbook_from_generator(
         .arg(generator)
         .current_dir(&project_path);
 
-    let output = try!(command.output());
-    try!(handle_chef_generate_cookbook_cmd(output));
+    let output = command.output()?;
+    cmd_success_or_err(&output, Kind::ChefdkGenerateFailed)?;
     Ok(command)
 }
 
 // Default cookbooks generator cache path
 pub fn generator_cache_path() -> DeliveryResult<PathBuf> {
     utils::home_dir(&[".delivery/cache/generator-cookbooks"])
-}
-
-fn handle_chef_generate_cookbook_cmd(output: Output) -> DeliveryResult<()> {
-    if !output.status.success() {
-        return Err(
-            DeliveryError {
-                kind: Kind::FailedToExecute,
-                detail: Some(format!(
-                            "Failed to execute chef generate:\n\
-                            STDOUT: {}\nSTDERR: {}",
-                            String::from_utf8_lossy(&output.stdout),
-                            String::from_utf8_lossy(&output.stderr)
-                        ))
-            }
-        )
-    }
-    Ok(())
 }
 
 pub fn review(target: &str, head: &str) -> DeliveryResult<ReviewResult> {

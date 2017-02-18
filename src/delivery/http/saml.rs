@@ -18,18 +18,17 @@
 use errors::{DeliveryError, Kind};
 use http::*;
 use hyper::status::StatusCode;
-use rustc_serialize::json;
+use serde_json;
 use config::Config;
 
-#[derive(RustcEncodable, RustcDecodable, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LookupResponse {
     enabled: bool
 }
 
 impl LookupResponse {
     pub fn parse_saml_enabled(response: &str) -> Result<bool, DeliveryError> {
-        let lresponse: LookupResponse = try!(json::decode(response));
-        Ok(lresponse.enabled)
+        Ok(serde_json::from_str::<LookupResponse>(response)?.enabled)
     }
 }
 
