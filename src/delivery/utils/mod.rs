@@ -122,7 +122,8 @@ pub fn path_to_string<P: AsRef<Path>>(p: P) -> String {
 ///
 /// remove_file("foo.txt");
 /// ```
-pub fn read_file(path: &PathBuf) -> Result<String, DeliveryError> {
+pub fn read_file<P>(path: P) -> DeliveryResult<String>
+        where P: AsRef<Path> {
     let mut buffer = String::new();
     let mut f = try!(File::open(path));
     try!(f.read_to_string(&mut buffer));
@@ -136,8 +137,10 @@ pub fn cwd() -> PathBuf {
 
 // Returns true if dest_f doesn't exist or has content different from source_f,
 // returns false if dest_f exist but contains the exact content as source_f.
-pub fn file_needs_updated(source_f: &PathBuf, dest_f: &PathBuf) ->Result<bool, DeliveryError> {
-    if dest_f.exists() {
+pub fn file_needs_updated<A, B>(source_f: A, dest_f: B) -> DeliveryResult<bool>
+        where A: AsRef<Path>,
+              B: AsRef<Path> {
+    if dest_f.as_ref().exists() {
         let mut md5_source = Md5::new();            
         let mut source_f = try!(File::open(&source_f));
         let mut source_str = String::new();

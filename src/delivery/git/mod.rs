@@ -86,7 +86,8 @@ pub struct GitResult {
 //
 // Where <P: ?Sized> == Any Type (Sized or Unsized)
 // Where P: AsRef<Path> == Any type that implements the AsRef<Path> trait
-pub fn git_command<P: ?Sized>(args: &[&str], c: &P) -> Result<GitResult, DeliveryError> where P: AsRef<Path> {
+pub fn git_command<P>(args: &[&str], c: &P) -> Result<GitResult, DeliveryError>
+        where P: AsRef<Path> + ?Sized {
     let cwd = c.as_ref();
     let spinner = Spinner::start();
     let command_path = match find_command("git") {
