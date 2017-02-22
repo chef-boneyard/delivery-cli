@@ -1,4 +1,5 @@
 extern crate delivery;
+#[macro_use]
 extern crate serde_json;
 extern crate tempdir;
 #[macro_use] extern crate log;
