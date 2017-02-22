@@ -18,10 +18,11 @@ use cli::arguments::{pipeline_arg, config_path_arg, no_open_arg, project_arg,
           local_arg, config_project_arg, u_e_s_o_args, scp_args,
           value_of, project_specific_args};
 use clap::{App, SubCommand, ArgMatches};
-use cli::{CommandPrep, merge_fips_options_and_config};
+use cli::Options;
 use types::DeliveryResult;
 use config::Config;
 use project;
+use fips;
 
 pub const SUBCOMMAND_NAME: &'static str = "init";
 
@@ -94,7 +95,7 @@ impl<'n> InitClapOptions<'n> {
     }
 }
 
-impl<'n> CommandPrep for InitClapOptions<'n> {
+impl<'n> Options for InitClapOptions<'n> {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
         let project = try!(project::project_or_from_cwd(&self.project));
 
@@ -106,15 +107,10 @@ impl<'n> CommandPrep for InitClapOptions<'n> {
             .set_pipeline(&self.pipeline)
             .set_generator(&self.generator)
             .set_config_json(&self.config_json);
-        merge_fips_options_and_config(self.fips, self.fips_git_port, new_config)
+
+        fips::merge_fips_options_and_config(self.fips, self.fips_git_port, new_config)
     }
 
-    fn initialize_command_state(&self, config: Config) -> DeliveryResult<Config> {
-        if self.local {
-            return Ok(config)
-        }
-        self.init_project_specific(config)
-    }
 }
 
 pub fn clap_subcommand<'c>() -> App<'c, 'c> {

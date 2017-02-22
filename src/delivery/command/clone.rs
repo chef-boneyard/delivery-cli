@@ -15,6 +15,8 @@
 // limitations under the License.
 //
 
+use std;
+use fips;
 use git;
 use cli::clone::CloneClapOptions;
 use types::{DeliveryResult, ExitCode};
@@ -29,7 +31,12 @@ pub struct CloneCommand<'n> {
 }
 
 impl<'n> Command for CloneCommand<'n> {
-    fn run(self) -> DeliveryResult<ExitCode> {
+    fn setup(&self, child_processes: &mut Vec<std::process::Child>) -> DeliveryResult<()> {
+        try!(fips::setup_and_start_stunnel_if_fips_mode(&self.config, child_processes));
+        Ok(())
+    }
+
+    fn run(&self) -> DeliveryResult<ExitCode> {
         sayln("green", "Chef Delivery");
         say("white", "Cloning ");
         let delivery_url = try!(self.config.delivery_git_ssh_url());

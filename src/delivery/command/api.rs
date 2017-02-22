@@ -29,7 +29,7 @@ pub struct ApiCommand<'n> {
 }
 
 impl<'n> Command for ApiCommand<'n> {
-    fn run(self) -> DeliveryResult<ExitCode> {
+    fn run(&self) -> DeliveryResult<ExitCode> {
         let client = try!(APIClient::from_config(&self.config));
         let mut result = match self.options.method {
             "get" => try!(client.get(self.options.path)),

@@ -32,18 +32,11 @@ use toml;
 use types::DeliveryResult;
 use utils;
 use utils::path_join_many::PathJoinMany;
-use fips::CheckFipsMode;
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct ProjectToml {
     pub remote_file: Option<String>,
     pub local_phases: Option<LocalPhases>
-}
-
-impl CheckFipsMode for ProjectToml {
-    fn is_fips_mode(&self) -> bool {
-        false
-    }
 }
 
 #[derive(Deserialize, Clone, Debug)]

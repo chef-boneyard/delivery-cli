@@ -15,7 +15,10 @@
 // limitations under the License.
 //
 
+use std;
+use fips;
 use git;
+use project;
 use cli::checkout::CheckoutClapOptions;
 use types::{DeliveryResult, ExitCode};
 use utils::say::{sayln, say};
@@ -28,7 +31,13 @@ pub struct CheckoutCommand<'n> {
 }
 
 impl<'n> Command for CheckoutCommand<'n> {
-    fn run(self) -> DeliveryResult<ExitCode> {
+    fn setup(&self, child_processes: &mut Vec<std::process::Child>) -> DeliveryResult<()> {
+        try!(project::ensure_git_remote_up_to_date(&self.config));
+        try!(fips::setup_and_start_stunnel_if_fips_mode(&self.config, child_processes));
+        Ok(())
+    }
+
+    fn run(&self) -> DeliveryResult<ExitCode> {
         sayln("green", "Chef Delivery");
         let config_ref = self.config;
         let target = validate!(config_ref, pipeline);

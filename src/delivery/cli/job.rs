@@ -14,10 +14,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+
+use fips;
 use cli::arguments::{pipeline_arg, project_arg, local_arg, patchset_arg,
                      project_specific_args, u_e_s_o_args, value_of};
 use clap::{Arg, App, SubCommand, ArgMatches};
-use cli::{CommandPrep, merge_fips_options_and_config};
+use cli::Options;
 use types::DeliveryResult;
 use config::Config;
 use project;
@@ -102,7 +104,7 @@ impl<'n> JobClapOptions<'n> {
     }
 }
 
-impl<'n> CommandPrep for JobClapOptions<'n> {
+impl<'n> Options for JobClapOptions<'n> {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
         let project = try!(project::project_or_from_cwd(&self.project));
 
@@ -112,25 +114,8 @@ impl<'n> CommandPrep for JobClapOptions<'n> {
             .set_enterprise(with_default(&self.ent, "local", &&self.local))
             .set_organization(with_default(&self.org, "workstation", &&self.local))
             .set_project(&project);
-        merge_fips_options_and_config(self.fips, self.fips_git_port, new_config)
-    }
 
-    fn initialize_command_state(&self, config: Config) -> DeliveryResult<Config> {
-        // If we are running in local-mode, the whole config is fake to mock
-        // the workspace and other things. So we just return the dummy config.
-        if self.local {
-            return Ok(config)
-        }
-
-        // When `delivery job` runs outside the git_repo, it means we are
-        // triggering a job on the Chef Automate Server within the workspace.
-        // That means we are not going to be able to retrieve the project_path,
-        // if that is the case, it should not initialize any project specific
-        // command, like the remote.
-        match project::project_path() {
-            Ok(_) => self.init_project_specific(config),
-            Err(_) => Ok(config)
-        }
+        fips::merge_fips_options_and_config(self.fips, self.fips_git_port, new_config)
     }
 }
 

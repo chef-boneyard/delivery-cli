@@ -18,8 +18,12 @@
 use std;
 use utils;
 use std::fs::File;
+use std::path::Path;
 use std::io::Write;
 use errors::DeliveryError;
+use types::DeliveryResult;
+use errors::Kind;
+use config::Config;
 
 pub const STUNNEL_PATH: &'static str = "/opt/chefdk/embedded/bin/stunnel";
 
@@ -27,17 +31,47 @@ pub trait CheckFipsMode {
     fn is_fips_mode(&self) -> bool;
 }
 
-pub fn start_stunnel() -> Result<std::process::Child, DeliveryError> {
+pub fn setup_and_start_stunnel_if_fips_mode(config: &Config, child_processes: &mut Vec<std::process::Child>) -> DeliveryResult<()> {
+    if let Some(fips) = config.fips {
+        if fips {
+            if !Path::new(STUNNEL_PATH).exists() {
+                return Err(DeliveryError{ kind: Kind::FipsNotSupportedForChefDKPlatform,
+                                          detail: None })
+            }
+
+            let server = validate!(config, server);
+            let fips_git_port = validate!(config, fips_git_port);
+
+            try!(generate_stunnel_config(&server, &fips_git_port));
+            try!(write_stunnel_cert_file(&server,
+                                         config.api_port.as_ref().unwrap_or(&"443".to_string())
+            ));
+            try!(start_stunnel(child_processes));
+        }
+    }
+    Ok(())
+}
+
+pub fn merge_fips_options_and_config(fips: bool, fips_git_port: &str, mut config: Config) -> DeliveryResult<Config> {
+    if config.fips.is_none() {
+        config.fips = Some(fips);
+    }
+
+    let new_config = config.set_fips_git_port(fips_git_port);
+    Ok(new_config)
+}
+
+fn start_stunnel(child_processes: &mut Vec<std::process::Child>) -> DeliveryResult<()> {
     let stunnel_config_path = try!(utils::home_dir(&[".chefdk/etc/stunnel.conf"])).to_str().unwrap().to_string();
     let mut stunnel_command = 
         try!(utils::generate_command_from_string(&format!("{stunnel_path} {config}",
                                                           stunnel_path=STUNNEL_PATH,
                                                           config=stunnel_config_path)));
-    Ok(try!(stunnel_command.spawn()))
-
+    child_processes.push(try!(stunnel_command.spawn()));
+    Ok(())
 }
 
-pub fn write_stunnel_cert_file(server: &str, api_port: &str) -> Result<(), DeliveryError> {
+fn write_stunnel_cert_file(server: &str, api_port: &str) -> Result<(), DeliveryError> {
     let cert_string = try!(utils::copy_automate_nginx_cert(server, api_port));
     let mut cert_file =
         try!(File::create(try!(utils::home_dir(&[".chefdk/etc/automate-nginx-cert.pem"]))));
@@ -45,7 +79,7 @@ pub fn write_stunnel_cert_file(server: &str, api_port: &str) -> Result<(), Deliv
     Ok(())
 }
 
-pub fn generate_stunnel_config(server: &str, fips_git_port: &str) -> Result<(), DeliveryError> {
+fn generate_stunnel_config(server: &str, fips_git_port: &str) -> Result<(), DeliveryError> {
     try!(std::fs::create_dir_all(try!(utils::home_dir(&[".chefdk/etc/"]))));
     try!(std::fs::create_dir_all(try!(utils::home_dir(&[".chefdk/log/"]))));
 

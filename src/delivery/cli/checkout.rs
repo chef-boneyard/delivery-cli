@@ -14,9 +14,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+use project;
+use fips;
 use cli::arguments::{pipeline_arg, patchset_arg, value_of, project_specific_args};
 use clap::{App, SubCommand, ArgMatches};
-use cli::{CommandPrep, merge_fips_options_and_config};
+use cli::Options;
 use config::Config;
 use types::DeliveryResult;
 
@@ -55,10 +57,15 @@ impl<'n> CheckoutClapOptions<'n> {
     }
 }
 
-impl<'n> CommandPrep for CheckoutClapOptions<'n> {
+impl<'n> Options for CheckoutClapOptions<'n> {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
-        let new_config = config.set_pipeline(&self.pipeline);
-        merge_fips_options_and_config(self.fips, self.fips_git_port, new_config)
+        let mut new_config = config.set_pipeline(&self.pipeline);
+
+        if new_config.project.is_none() {
+            new_config.project = project::project_from_cwd().ok();
+        }
+
+        fips::merge_fips_options_and_config(self.fips, self.fips_git_port, new_config)
     }
 }
 

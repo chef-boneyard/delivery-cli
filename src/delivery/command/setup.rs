@@ -29,7 +29,7 @@ pub struct SetupCommand<'n> {
 }
 
 impl<'n> Command for SetupCommand<'n> {
-    fn run(self) -> DeliveryResult<ExitCode> {
+    fn run(&self) -> DeliveryResult<ExitCode> {
         sayln("green", "Chef Delivery");
         try!(self.config.write_file(self.config_path));
         Ok(0)

@@ -14,13 +14,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+
+use project;
+use fips;
 use cli::arguments::{pipeline_arg, no_open_arg,
                      value_of, auto_bump, project_specific_args};
 use clap::{App, SubCommand, ArgMatches};
 use config::Config;
 use types::DeliveryResult;
-use cli::{CommandPrep, merge_fips_options_and_config};
-use project;
+use cli::Options;
 
 pub const SUBCOMMAND_NAME: &'static str = "review";
 
@@ -59,7 +61,7 @@ impl<'n> ReviewClapOptions<'n> {
     }
 }
 
-impl<'n> CommandPrep for ReviewClapOptions<'n> {
+impl<'n> Options for ReviewClapOptions<'n> {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
         let mut new_config = config.set_pipeline(&self.pipeline);
 
@@ -71,7 +73,7 @@ impl<'n> CommandPrep for ReviewClapOptions<'n> {
             new_config.project = project::project_from_cwd().ok();
         }
 
-        merge_fips_options_and_config(self.fips, self.fips_git_port, new_config)
+        fips::merge_fips_options_and_config(self.fips, self.fips_git_port, new_config)
     }
 }
 

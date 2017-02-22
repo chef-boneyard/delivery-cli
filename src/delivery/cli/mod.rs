@@ -20,19 +20,14 @@ use std::env;
 use std::process;
 use std::time::Duration;
 use std::path::PathBuf;
-use std::path::Path;
 use utils;
 use utils::say::{self, sayln, print_error};
-use errors::{Kind, DeliveryError};
+use errors::DeliveryError;
 use types::{DeliveryResult, ExitCode};
 use config::Config;
 use clap::{App, ArgMatches, AppSettings};
-use project;
-use git;
 use delivery_config::project::ProjectToml;
 use utils::cwd;
-use fips;
-use fips::CheckFipsMode;
 
 // Clap Arguments
 //
@@ -70,55 +65,8 @@ use command::review::ReviewCommand;
 use command::setup::SetupCommand;
 use command::token::TokenCommand;
 
-pub trait CommandPrep {
+pub trait Options {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config>;
-
-    // The initialization of a CLI command could be different from another one
-    // so we need a main method we can easily override if such behavior is
-    // different. This fun will provide an easy way to do so by calling other
-    // specific initialization functions, this will allow you to take actions
-    // after or before making a call.
-    //
-    // You can also override this to fix the initialization needs of your command
-    // (for example, simply return the config in a non-project specific command
-    // like api).
-    //
-    // By default we call the project specific commands
-    fn initialize_command_state(&self, config: Config) -> DeliveryResult<Config> {
-        self.init_project_specific(config)
-    }
-
-    // Project specific commands.
-    //
-    // Most project specific commands need to populate the project config entry
-    // if it hasn't been already as well as make sure the git remote is up to date.
-    fn init_project_specific(&self, mut config: Config) -> DeliveryResult<Config> {
-        if config.project.is_none() {
-            config.project = project::project_from_cwd().ok();
-        }
-
-        if config.is_fips_mode() {
-            if !Path::new(fips::STUNNEL_PATH).exists() {
-                return Err(DeliveryError{ kind: Kind::FipsNotSupportedForChefDKPlatform,
-                                          detail: None })
-            }
-
-            let server = validate!(config, server);
-            let fips_git_port = validate!(config, fips_git_port);
-
-            try!(fips::generate_stunnel_config(&server, &fips_git_port));
-            try!(fips::write_stunnel_cert_file(&server,
-                                               config.api_port.as_ref().unwrap_or(&"443".to_string())
-            ));
-        }
-
-        let git_url = try!(config.delivery_git_ssh_url());
-        try!(git::create_or_update_delivery_remote(&git_url,
-                                                   &try!(project::project_path())
-        ));
-
-        Ok(config)
-    }
 }
 
 pub fn run() {
@@ -136,15 +84,13 @@ pub fn run() {
     }
 }
 
-fn execute_command<C: Command>(matches: &ArgMatches, command: C, fips_mode: bool) -> DeliveryResult<ExitCode> {
+fn execute_command<C: Command>(matches: &ArgMatches, command: C) -> DeliveryResult<ExitCode> {
     handle_spinner(&matches);
 
     // Store any child processes that need to die even on panic in here.
     let mut child_processes: Vec<process::Child> = Vec::new();
 
-    if fips_mode {
-        child_processes.push(try!(fips::start_stunnel()));
-    }
+    try!(command.setup(&mut child_processes));
 
     // Attempt to unwind any errors so we can kill child processes properly
     // and print a more graceful error. Worst case, we are back to where we started.
@@ -153,85 +99,78 @@ fn execute_command<C: Command>(matches: &ArgMatches, command: C, fips_mode: bool
         command_result = command.run();
     }));
 
-    match command_panic_result {
-        // Note that this can contain a DeliveryError.
-        Ok(_) => {
-            try!(utils::kill_child_processes(child_processes));
-            command_result
-        },
-        // This will give a more user friendly error on unwraps
-        // or crashes that aren't error handled.
-        Err(_) => {
-            try!(utils::kill_child_processes(child_processes));
-            if env::var_os("RUST_BACKTRACE").is_none() && env::var_os("RUST_LOG").is_none() {
-                let primary_error_str = "An unexpected error occured.\nIf issues persist, please re-run this command with extra debug info prepended to it and report output to Chef:\n";
-                let mut secondary_error_str = "RUST_LOG=debug RUST_BACKTRACE=1 ".to_string();
-                for argument in std::env::args() {
-                    secondary_error_str += &format!("{} ", argument);
-                }
-                secondary_error_str += "\n";
+    try!(command.teardown(child_processes));
 
-                print_error(primary_error_str, &secondary_error_str);
+    // This will give a more user friendly error on unwraps
+    // or crashes that aren't error handled.
+    if command_panic_result.is_err() {
+        if env::var_os("RUST_BACKTRACE").is_none() && env::var_os("RUST_LOG").is_none() {
+            let primary_error_str = "An unexpected error occured.\nIf issues persist, please re-run this command with extra debug info prepended to it and report output to Chef:\n";
+            let mut secondary_error_str = "RUST_LOG=debug RUST_BACKTRACE=1 ".to_string();
+            for argument in std::env::args() {
+                secondary_error_str += &format!("{} ", argument);
             }
-
-            Ok(1)
+            print_error(primary_error_str, &secondary_error_str);
         }
     }
+
+    command_result
 }
+
 
 fn match_command_and_start(app_matches: &ArgMatches, build_version: &str) -> DeliveryResult<ExitCode> {
     let cmd_result = match app_matches.subcommand() {
         (api::SUBCOMMAND_NAME, Some(matches)) => {
             let options = api::ApiClapOptions::new(&matches);
-            let config = try!(init_command(&options));
+            let config = try!(load_config_and_merge_with_options(&options));
             let command = ApiCommand{options: &options, config: &config};
-            execute_command(&matches, command, config.is_fips_mode())
+            execute_command(&matches, command)
         },
         (checkout::SUBCOMMAND_NAME, Some(matches)) => {
             let options = checkout::CheckoutClapOptions::new(&matches);
-            let config = try!(init_command(&options));
+            let config = try!(load_config_and_merge_with_options(&options));
             let command = CheckoutCommand{options: &options, config: &config};
-            execute_command(&matches, command, config.is_fips_mode())
+            execute_command(&matches, command)
         },
         (clone::SUBCOMMAND_NAME, Some(matches)) => {
             let options = clone::CloneClapOptions::new(&matches);
-            let config = try!(init_command(&options));
+            let config = try!(load_config_and_merge_with_options(&options));
             let command = CloneCommand{options: &options, config: &config};
-            execute_command(&matches, command, config.is_fips_mode())
+            execute_command(&matches, command)
         },
         (diff::SUBCOMMAND_NAME, Some(matches)) => {
             let options = diff::DiffClapOptions::new(&matches);
-            let config = try!(init_command(&options));
+            let config = try!(load_config_and_merge_with_options(&options));
             let command = DiffCommand{options: &options, config: &config};
-            execute_command(&matches, command, config.is_fips_mode())
+            execute_command(&matches, command)
         },
         (init::SUBCOMMAND_NAME, Some(matches)) => {
             let options = init::InitClapOptions::new(&matches);
-            let config = try!(init_command(&options));
+            let config = try!(load_config_and_merge_with_options(&options));
             let command = InitCommand{options: &options, config: &config};
-            execute_command(&matches, command, config.is_fips_mode())
+            execute_command(&matches, command)
         },
         (job::SUBCOMMAND_NAME, Some(matches)) => {
             let options = job::JobClapOptions::new(&matches);
-            let config = try!(init_command(&options));
+            let config = try!(load_config_and_merge_with_options(&options));
             let command = JobCommand{options: &options, config: &config};
             if !options.docker_image.is_empty() {
                 run_docker_job(&options)
             } else {
-                execute_command(&matches, command, config.is_fips_mode())
+                execute_command(&matches, command)
             }
         },
         (local::SUBCOMMAND_NAME, Some(matches)) => {
             let options = local::LocalClapOptions::new(&matches);
             let config = try!(ProjectToml::load_toml(options.remote_toml));
             let command = LocalCommand{options: &options, config: &config};
-            execute_command(&matches, command, config.is_fips_mode())
+            execute_command(&matches, command)
         },
         (review::SUBCOMMAND_NAME, Some(matches)) => {
             let options = review::ReviewClapOptions::new(&matches);
-            let config = try!(init_command(&options));
+            let config = try!(load_config_and_merge_with_options(&options));
             let command = ReviewCommand{options: &options, config: &config};
-            execute_command(&matches, command, config.is_fips_mode())
+            execute_command(&matches, command)
         },
         (setup::SUBCOMMAND_NAME, Some(matches)) => {
             let options = setup::SetupClapOptions::new(&matches);
@@ -240,19 +179,19 @@ fn match_command_and_start(app_matches: &ArgMatches, build_version: &str) -> Del
             } else {
                 PathBuf::from(options.path)
             };
-            let config = try!(init_command(&options));
+            let config = try!(load_config_and_merge_with_options(&options));
             let command = SetupCommand{
                 options: &options,
                 config: &config,
                 config_path: &config_path,
             };
-            execute_command(&matches, command, config.is_fips_mode())
+            execute_command(&matches, command)
         },
         (token::SUBCOMMAND_NAME, Some(matches)) => {
             let options = token::TokenClapOptions::new(&matches);
-            let config = try!(init_command(&options));
+            let config = try!(load_config_and_merge_with_options(&options));
             let command = TokenCommand{options: &options, config: &config};
-            execute_command(&matches, command, config.is_fips_mode())
+            execute_command(&matches, command)
         },
         (spin::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
@@ -273,16 +212,6 @@ fn match_command_and_start(app_matches: &ArgMatches, build_version: &str) -> Del
         }
     };
     cmd_result
-}
-
-pub fn merge_fips_options_and_config(fips: bool, fips_git_port: &str, mut config: Config) -> DeliveryResult<Config> {
-    if config.fips.is_none() {
-        config.fips = Some(fips);
-    }
-
-    let new_config = config.set_fips_git_port(fips_git_port);
-
-    Ok(new_config)
 }
 
 fn make_app<'a>(version: &'a str) -> App<'a, 'a> {
@@ -318,13 +247,11 @@ fn exit_with(e: DeliveryError, i: ExitCode) {
     process::exit(i)
 }
 
-fn init_command<T: CommandPrep>(opts: &T) -> DeliveryResult<Config> {
+fn load_config_and_merge_with_options<T: Options>(opts: &T) -> DeliveryResult<Config> {
     let mut config = try!(Config::load_config(&utils::cwd()));
     debug!("Initial config: {:?}", config);
     config = try!(opts.merge_options_and_config(config));
     debug!("Merged config: {:?}", config);
-    config = try!(opts.initialize_command_state(config));
-    debug!("Command specific config: {:?}", config);
     Ok(config)
 }
 

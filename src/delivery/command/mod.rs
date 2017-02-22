@@ -26,8 +26,19 @@ pub mod clone;
 pub mod api;
 pub mod job;
 
+use std;
+use utils;
 use types::{DeliveryResult, ExitCode};
 
-pub trait Command {
-    fn run(self) -> DeliveryResult<ExitCode>;
+pub trait Command: Sized {
+    fn setup(&self, child_processes: &mut Vec<std::process::Child>) -> DeliveryResult<()> {
+        let _ = child_processes;
+        Ok(())
+    }
+
+    fn run(&self) -> DeliveryResult<ExitCode>;
+
+    fn teardown(&self, child_processes: Vec<std::process::Child>) -> DeliveryResult<()> {
+        utils::kill_child_processes(child_processes)
+    }
 }

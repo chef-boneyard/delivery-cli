@@ -178,7 +178,7 @@ pub fn cmd_success_or_err(out: &CmdOutput, e_kind: Kind) -> DeliveryResult<()> {
 
 pub fn generate_command_from_string(cmd_str: &str) -> Result<process::Command, DeliveryError> {
     let mut cmd_vec = cmd_str.split(" ").collect::<Vec<_>>();
-    let mut cmd = process::Command::new(&cmd_vec.remove(0));
+    let mut cmd = make_command(&cmd_vec.remove(0));
     if cmd_vec.len() > 0 {
         cmd.args(&cmd_vec);
     }
@@ -199,25 +199,17 @@ pub fn copy_automate_nginx_cert(server: &str, port: &str) -> Result<String, Deli
     let mut command = try!(generate_command_from_string(&cmd_str));
     let result = try!(command.output());
 
-    if !result.status.success() {
-        Err(DeliveryError{
+    try!(cmd_success_or_err(&result, Kind::AutomateNginxCertFetchFailed));
+    let openssl_output = try!(String::from_utf8(result.stdout));
+    match parse_certs_from_string(openssl_output) {
+        None => Err(DeliveryError{
             kind: Kind::AutomateNginxCertFetchFailed,
-            detail: Some(format!("STDOUT: {}\nSTDERR: {}",
-                                 String::from_utf8_lossy(&result.stdout),
-                                 String::from_utf8_lossy(&result.stderr)))
-        })
-    } else {
-        let openssl_output = try!(String::from_utf8(result.stdout));
-        match parse_certs_from_string(openssl_output) {
-            None => Err(DeliveryError{
-                kind: Kind::AutomateNginxCertFetchFailed,
-                detail: Some(format!("The cert chain request to {server}:{port} was \
-                                      successful but no certs were found. Have you set up \
-                                      certificates for your Automate server?",
-                                     server=server, port=port))
-            }),
-            Some(certs) => Ok(certs),
-        }
+            detail: Some(format!("The cert chain request to {server}:{port} was \
+                                  successful but no certs were found. Have you set up \
+                                  certificates for your Automate server?",
+                                 server=server, port=port))
+        }),
+        Some(certs) => Ok(certs),
     }
 }
 

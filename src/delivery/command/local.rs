@@ -31,7 +31,7 @@ pub struct LocalCommand<'n> {
 }
 
 impl<'n> Command for LocalCommand<'n> {
-    fn run(self) -> DeliveryResult<ExitCode> {
+    fn run(&self) -> DeliveryResult<ExitCode> {
         sayln("green", "Chef Delivery");
 
         // If a Stage was provided, trigger their phases in order

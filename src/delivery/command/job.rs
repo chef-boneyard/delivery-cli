@@ -16,6 +16,8 @@
 //
 
 use git;
+use std;
+use fips;
 use std::env;
 use std::process;
 use std::io::prelude::*;
@@ -28,9 +30,9 @@ use errors::{DeliveryError, Kind};
 use utils::say::{say, sayln};
 use utils::path_join_many::PathJoinMany;
 use utils::{self, cwd, privileged_process};
-
 use command::Command;
 use config::Config;
+use project;
 
 pub struct JobCommand<'n> {
     pub options: &'n JobClapOptions<'n>,
@@ -38,7 +40,24 @@ pub struct JobCommand<'n> {
 }
 
 impl<'n> Command for JobCommand<'n> {
-    fn run(self) -> DeliveryResult<ExitCode> {
+    fn setup(&self, child_processes: &mut Vec<std::process::Child>) -> DeliveryResult<()> {
+        // When `delivery job` runs outside the git_repo, it means we are
+        // triggering a job on the Chef Automate Server within the workspace.
+        // That means we are not going to be able to retrieve the project_path,
+        // if that is the case, it should not initialize any project specific
+        // command, like the remote.
+        if project::project_path().is_ok() && !self.options.local {
+            try!(project::ensure_git_remote_up_to_date(&self.config));
+        }
+
+        if !self.options.local {
+            try!(fips::setup_and_start_stunnel_if_fips_mode(&self.config, child_processes));
+        }
+
+        Ok(())
+    }
+
+    fn run(&self) -> DeliveryResult<ExitCode> {
         sayln("green", "Chef Delivery");
 
         let p = try!(self.config.project());

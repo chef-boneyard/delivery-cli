@@ -28,7 +28,6 @@ use std::io::prelude::*;
 use utils::path_join_many::PathJoinMany;
 use utils::path_ext::{is_dir, is_file};
 use std::clone::Clone;
-use fips::CheckFipsMode;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Config {
@@ -72,12 +71,6 @@ impl Default for Config {
             fips: None,
             fips_git_port: None,
         }
-    }
-}
-
-impl CheckFipsMode for Config {
-    fn is_fips_mode(&self) -> bool {
-        self.fips.unwrap_or(false)
     }
 }
 

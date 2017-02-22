@@ -137,7 +137,6 @@ pub fn sayln(color: &str, to_say: &str) {
 
 pub fn print_error(primary_error_str: &str, secondary_error_str: &str) -> () {
     let final_error_str_primary = "ERROR: ".to_string() + primary_error_str;
-    say(ERROR_COLOR, &final_error_str_primary);
-    let final_error_str_secondary = "\n".to_string() + &secondary_error_str;
-    say("white", &final_error_str_secondary);
+    sayln(ERROR_COLOR, &final_error_str_primary);
+    sayln("white", &secondary_error_str);
 }
