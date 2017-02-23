@@ -28,7 +28,7 @@ pub struct TokenCommand<'n> {
 }
 
 impl<'n> Command for TokenCommand<'n> {
-    fn run(self) -> DeliveryResult<ExitCode> {
+    fn run(&self) -> DeliveryResult<ExitCode> {
 
         // If we want the raw token, we wont print any output
         // during the token request so we will disable it

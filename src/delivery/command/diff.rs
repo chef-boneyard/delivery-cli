@@ -15,6 +15,9 @@
 // limitations under the License.
 //
 
+use std;
+use project;
+use fips;
 use git;
 use cli::diff::DiffClapOptions;
 use types::{DeliveryResult, ExitCode};
@@ -28,7 +31,16 @@ pub struct DiffCommand<'n> {
 }
 
 impl<'n> Command for DiffCommand<'n> {
-    fn run(self) -> DeliveryResult<ExitCode> {
+    fn setup(&self, child_processes: &mut Vec<std::process::Child>) -> DeliveryResult<()> {
+        if !self.options.local {
+            try!(project::ensure_git_remote_up_to_date(&self.config));
+            try!(fips::setup_and_start_stunnel_if_fips_mode(&self.config, child_processes));
+        }
+
+        Ok(())
+    }
+
+    fn run(&self) -> DeliveryResult<ExitCode> {
         sayln("green", "Chef Delivery");
         let config_ref = self.config;
         let target = validate!(config_ref, pipeline);

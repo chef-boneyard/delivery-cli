@@ -14,12 +14,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-use cli::arguments::{pipeline_arg, no_open_arg, value_of, auto_bump};
+
+use project;
+use fips;
+use cli::arguments::{pipeline_arg, no_open_arg,
+                     value_of, auto_bump, project_specific_args};
 use clap::{App, SubCommand, ArgMatches};
 use config::Config;
 use types::DeliveryResult;
-use cli::CommandPrep;
-use project;
+use cli::Options;
 
 pub const SUBCOMMAND_NAME: &'static str = "review";
 
@@ -29,6 +32,8 @@ pub struct ReviewClapOptions<'n> {
     pub no_open: bool,
     pub auto_bump: bool,
     pub edit: bool,
+    pub fips: bool,
+    pub fips_git_port: &'n str,
 }
 impl<'n> Default for ReviewClapOptions<'n> {
     fn default() -> Self {
@@ -37,6 +42,8 @@ impl<'n> Default for ReviewClapOptions<'n> {
             no_open: false,
             auto_bump: false,
             edit: false,
+            fips: false,
+            fips_git_port: "",
         }
     }
 }
@@ -48,11 +55,13 @@ impl<'n> ReviewClapOptions<'n> {
             no_open: matches.is_present("no-open"),
             auto_bump: matches.is_present("auto-bump"),
             edit: matches.is_present("edit"),
+            fips: matches.is_present("fips"),
+            fips_git_port: value_of(&matches, "fips-git-port"),
         }
     }
 }
 
-impl<'n> CommandPrep for ReviewClapOptions<'n> {
+impl<'n> Options for ReviewClapOptions<'n> {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
         let mut new_config = config.set_pipeline(&self.pipeline);
 
@@ -64,7 +73,7 @@ impl<'n> CommandPrep for ReviewClapOptions<'n> {
             new_config.project = project::project_from_cwd().ok();
         }
 
-        Ok(new_config)
+        fips::merge_fips_options_and_config(self.fips, self.fips_git_port, new_config)
     }
 }
 
@@ -74,4 +83,5 @@ pub fn clap_subcommand<'c>() -> App<'c, 'c> {
         .args(&vec![no_open_arg(), auto_bump()])
         .args_from_usage("-e --edit 'Edit change title and description'")
         .args(&pipeline_arg())
+        .args(&project_specific_args())
 }

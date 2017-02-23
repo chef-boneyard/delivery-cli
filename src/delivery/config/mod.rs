@@ -109,7 +109,7 @@ config_accessor_for!(pipeline, set_pipeline, "Pipeline not set; try --for or set
 config_accessor_for!(token_file, set_token_file, "token_file not set; set it in your cli.toml");
 config_accessor_for!(generator, set_generator, "build_cookbook generator not set; set it in your cli.toml");
 config_accessor_for!(config_json, set_config_json, "config_json not set; set it in your cli.toml");
-config_accessor_for!(fips_git_port, set_fips_git_port, "fips_git_port not set. set it in your cli.toml");
+config_accessor_for!(fips_git_port, set_fips_git_port, "You did not set the fips_git_port. Set this value in your cli.toml or pass --fips-git-port.\nIt should be set to any port that is free and open on localhost (i.e. `fips_git_port = \"36534\"` in your cli.toml).");
 
 impl Config {
     /// Return the host and port at which we can access the Delivery
@@ -272,6 +272,7 @@ mod tests {
         match config_result {
             Ok(config) => {
                 assert_eq!(Some(String::from("127.0.0.1")), config.server);
+                assert_eq!(None, config.api_port);
                 assert_eq!(Some("https".to_string()), config.api_protocol);
                 assert_eq!(Some("8989".to_string()), config.git_port);
                 assert_eq!(Some("master".to_string()), config.pipeline);

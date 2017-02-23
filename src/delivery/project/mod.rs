@@ -26,6 +26,7 @@ use std::process::Command;
 use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
+use config::Config;
 
 // README with a brief description of delivery and how to use it. This is added
 // to a new project by `delivery init` so we have something to submit as the
@@ -141,6 +142,13 @@ pub fn create_delivery_project(client: &APIClient, org: &str,
         try!(client.create_delivery_project(org, proj));
         return Ok(true)
     }
+}
+
+pub fn ensure_git_remote_up_to_date(config: &Config) -> DeliveryResult<()> {
+    try!(git::create_or_update_delivery_remote(&try!(config.delivery_git_ssh_url()),
+                                               &try!(project_path())
+    ));
+    Ok(())
 }
 
 // Push local content to the Delivery Server if no upstream commits.

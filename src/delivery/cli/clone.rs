@@ -14,9 +14,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-use cli::arguments::{u_e_s_o_args, value_of};
+use project;
+use fips;
+use cli::arguments::{u_e_s_o_args, value_of, project_specific_args};
 use clap::{App, SubCommand, ArgMatches};
-use cli::CommandPrep;
+use cli::Options;
 use types::DeliveryResult;
 use config::Config;
 
@@ -30,6 +32,8 @@ pub struct CloneClapOptions<'n> {
     pub ent: &'n str,
     pub org: &'n str,
     pub git_url: &'n str,
+    pub fips: bool,
+    pub fips_git_port: &'n str,
 }
 impl<'n> Default for CloneClapOptions<'n> {
     fn default() -> Self {
@@ -40,6 +44,8 @@ impl<'n> Default for CloneClapOptions<'n> {
             ent: "",
             org: "",
             git_url: "",
+            fips: false,
+            fips_git_port: "",
         }
     }
 }
@@ -53,22 +59,25 @@ impl<'n> CloneClapOptions<'n> {
             ent: value_of(&matches, "ent"),
             org: value_of(&matches, "org"),
             git_url: value_of(&matches, "git-url"),
+            fips: matches.is_present("fips"),
+            fips_git_port: value_of(&matches, "fips-git-port"),
         }
     }
 }
 
-impl<'n> CommandPrep for CloneClapOptions<'n> {
+impl<'n> Options for CloneClapOptions<'n> {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
-        let new_config = config.set_user(&self.user)
+        let mut new_config = config.set_user(&self.user)
             .set_server(&self.server)
             .set_enterprise(&self.ent)
             .set_organization(&self.org)
             .set_project(&self.project);
-        Ok(new_config)
-    }
 
-    fn initialize_command_state(&self, config: Config) -> DeliveryResult<Config> {
-        Ok(config)
+        if new_config.project.is_none() {
+            new_config.project = project::project_from_cwd().ok();
+        }
+
+        fips::merge_fips_options_and_config(self.fips, self.fips_git_port, new_config)
     }
 }
 
@@ -80,4 +89,5 @@ pub fn clap_subcommand<'c>() -> App<'c, 'c> {
             -g --git-url=[url] \
             'Git URL (-u -s -e -o ignored if used)'")
         .args(&u_e_s_o_args())
+        .args(&project_specific_args())
 }

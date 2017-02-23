@@ -16,7 +16,7 @@
 //
 use cli::arguments::{config_path_arg, value_of, u_e_s_o_args};
 use clap::{Arg, App, SubCommand, ArgMatches};
-use cli::CommandPrep;
+use cli::Options;
 use types::DeliveryResult;
 use config::Config;
 
@@ -60,17 +60,13 @@ impl<'n> ApiClapOptions<'n> {
     }
 }
 
-impl<'n> CommandPrep for ApiClapOptions<'n> {
+impl<'n> Options for ApiClapOptions<'n> {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
         let new_config = config.set_user(&self.user)
             .set_server(&self.server)
             .set_api_port(&self.api_port)
             .set_enterprise(&self.ent);
         Ok(new_config)
-    }
-
-    fn initialize_command_state(&self, config: Config) -> DeliveryResult<Config> {
-        Ok(config)
     }
 }
 

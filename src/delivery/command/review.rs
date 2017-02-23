@@ -15,9 +15,10 @@
 // limitations under the License.
 //
 
+use std;
+use fips;
 use cli::review::ReviewClapOptions;
 use config::Config;
-use project;
 use utils;
 use utils::say::{sayln, say};
 use errors::DeliveryError;
@@ -27,6 +28,7 @@ use git::{self, ReviewResult};
 use http;
 use delivery_config::DeliveryConfig;
 use command::Command;
+use project;
 
 pub struct ReviewCommand<'n> {
     pub options: &'n ReviewClapOptions<'n>,
@@ -34,7 +36,13 @@ pub struct ReviewCommand<'n> {
 }
 
 impl<'n> Command for ReviewCommand<'n> {
-    fn run(self) -> DeliveryResult<ExitCode> {
+    fn setup(&self, child_processes: &mut Vec<std::process::Child>) -> DeliveryResult<()> {
+        try!(project::ensure_git_remote_up_to_date(&self.config));
+        try!(fips::setup_and_start_stunnel_if_fips_mode(&self.config, child_processes));
+        Ok(())
+    }
+
+    fn run(&self) -> DeliveryResult<ExitCode> {
         sayln("green", "Chef Delivery");
 
         let config_ref = self.config;

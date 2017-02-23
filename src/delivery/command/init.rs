@@ -20,6 +20,8 @@
 // Returns an integer exit code, handling all errors it knows how to
 // and panicing on unexpected errors.
 
+use std;
+use fips;
 use cli::init::InitClapOptions;
 use delivery_config::DeliveryConfig;
 use config::Config;
@@ -41,7 +43,15 @@ pub struct InitCommand<'n> {
 }
 
 impl<'n> Command for InitCommand<'n> {
-    fn run(self) -> DeliveryResult<ExitCode> {
+    fn setup(&self, child_processes: &mut Vec<std::process::Child>) -> DeliveryResult<()> {
+        if !self.options.local {
+            try!(project::ensure_git_remote_up_to_date(&self.config));
+            try!(fips::setup_and_start_stunnel_if_fips_mode(&self.config, child_processes));
+        }
+        Ok(())
+    }
+
+    fn run(&self) -> DeliveryResult<ExitCode> {
         sayln("green", "Chef Delivery");
 
         let branch = try!(self.config.pipeline());
