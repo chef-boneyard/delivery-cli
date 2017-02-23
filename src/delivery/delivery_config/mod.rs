@@ -187,26 +187,26 @@ impl DeliveryConfig {
     /// the project root path. Also verify that the config is
     /// valid and finally add/commit the changes.
     /// If the config already exists, skip this process.
-    pub fn copy_config_file(config_f: &PathBuf,
-                            proj_path: &PathBuf) -> DeliveryResult<Option<String>> {
-        let write_path = DeliveryConfig::config_file_path(proj_path);
+    pub fn copy_config_file<P>(config_f: P, proj_path: P) -> DeliveryResult<Option<String>>
+            where P: AsRef<Path> + Debug {
+        let write_path = DeliveryConfig::config_file_path(&proj_path);
 
         // If a config.json already exists, check to see if it is exactly
         // the same as what we want to copy to it.
-        if !try!(file_needs_updated(config_f, &write_path)) {
+        if !file_needs_updated(&config_f, &write_path)? {
             return Ok(None)
         }
 
-        try!(copy_recursive(config_f, &write_path));
-        try!(DeliveryConfig::validate_config_file(proj_path));
-        let content = try!(read_file(&write_path));
-        Ok(Some(content))
+        try!(copy_recursive(&config_f, &write_path));
+        try!(DeliveryConfig::validate_config_file(&proj_path));
+        Ok(Some(read_file(&write_path)?))
     }
 
-    pub fn git_add_commit_config(proj_path: &PathBuf) -> DeliveryResult<bool> {
-        let config_path = DeliveryConfig::config_file_path(proj_path);
+    pub fn git_add_commit_config<P>(proj_path: P) -> DeliveryResult<bool>
+            where P: AsRef<Path> {
+        let config_path = DeliveryConfig::config_file_path(&proj_path);
         let config_path_str = &config_path.to_str().unwrap();
-        try!(git::git_command(&["add", &config_path_str], proj_path));
+        try!(git::git_command(&["add", &config_path_str], &proj_path));
 
         // Commit the changes made in .delivery but detect if nothing has changed,
         // if that is the case, we are Ok() to continue
@@ -218,8 +218,9 @@ impl DeliveryConfig {
     }
 
     // Returns the path of the `config.json` from the provided project path
-    fn config_file_path(proj_path: &PathBuf) -> PathBuf {
-        proj_path.join_many(&[".delivery", "config.json"])
+    fn config_file_path<P>(p_path: P) -> PathBuf
+            where P: AsRef<Path>  {
+        p_path.as_ref().join_many(&[".delivery", "config.json"])
     }
 
     fn find_config_file<P>(proj_path: P) -> DeliveryResult<PathBuf>
@@ -235,8 +236,9 @@ impl DeliveryConfig {
     }
 
     // Validate the config.json file
-    pub fn validate_config_file(proj_path: &PathBuf) -> DeliveryResult<bool> {
-        DeliveryConfig::load_config(proj_path).and(Ok(true))
+    pub fn validate_config_file<P>(p_path: P) -> DeliveryResult<bool>
+            where P: AsRef<Path> + Debug {
+        DeliveryConfig::load_config(p_path).and(Ok(true))
     }
 
     // Load the .delivery/config.json into a DeliveryConfig object

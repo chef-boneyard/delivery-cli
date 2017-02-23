@@ -24,9 +24,9 @@ use std::path::{Path, PathBuf};
 use std::convert::AsRef;
 use std::error;
 
-pub fn copy_recursive<P: ?Sized>(f: &P, t: &P) -> Result<(), DeliveryError>
-    where P: AsRef<Path>
-{
+pub fn copy_recursive<A, B>(f: &A, t: &B) -> Result<(), DeliveryError>
+        where A: AsRef<Path> + ?Sized,
+              B: AsRef<Path> + ?Sized {
     let from = f.as_ref();
     let to = t.as_ref();
     let result = try!(Command::new("cp")

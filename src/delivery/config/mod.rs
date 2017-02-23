@@ -23,7 +23,7 @@ use std::default::Default;
 use utils::say::{say, sayln};
 use std::path::PathBuf;
 use toml;
-use utils::mkdir_recursive;
+use utils::{read_file, mkdir_recursive};
 use std::io::prelude::*;
 use utils::path_join_many::PathJoinMany;
 use utils::path_ext::{is_dir, is_file};
@@ -160,7 +160,7 @@ impl Config {
         let have_config = Config::have_dot_delivery_cli(cwd);
         match have_config.as_ref() {
             Some(path) => {
-                let toml = try!(Config::read_file(path));
+                let toml = read_file(path)?;
                 match Config::parse_config(&toml) {
                     Ok(c) => return Ok(c),
                     Err(_) => return Ok(Default::default())
@@ -222,13 +222,6 @@ impl Config {
         if config.fips.is_some() { self.fips = config.fips }
         if config.fips_git_port.is_some() { self.fips_git_port = config.fips_git_port }
         if config.api_protocol.is_some() { self.api_protocol = config.api_protocol }
-    }
-
-    fn read_file(path: &PathBuf) -> DeliveryResult<String>  {
-        let mut toml_file = try!(File::open(path));
-        let mut toml = String::new();
-        try!(toml_file.read_to_string(&mut toml));
-        Ok(toml)
     }
 
     fn check_dot_delivery_cli(path: PathBuf) -> Option<PathBuf> {
