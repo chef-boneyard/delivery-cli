@@ -457,6 +457,10 @@ mod tests {
                         .unwrap().get("platform_version").unwrap()[0],
                         String::from("14.04"));
 
+                // Extracting a key that doesn't exist will return None
+                assert!(simple.filters.clone().unwrap().get("default")
+                        .unwrap().get("platform").is_none());
+
                 // Filter for deploy phase doesn't exist
                 assert!(simple.filters.clone().unwrap().get("deploy").is_none());
             }
