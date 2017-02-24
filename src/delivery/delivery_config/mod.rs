@@ -26,6 +26,7 @@ use types::DeliveryResult;
 use utils::{walk_tree_for_path, read_file, copy_recursive, file_needs_updated};
 use utils::path_join_many::PathJoinMany;
 use serde_json;
+use serde_json::Value as SerdeJson;
 use git;
 
 pub mod project;
@@ -73,7 +74,7 @@ pub struct DeliveryConfig {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct JobDispatch {
     pub version: String,
-    pub filters: Option<HashMap<String, Vec<HashMap<String, Vec<String>>>>>,
+    pub filters: Option<HashMap<String, SerdeJson>>,
 }
 
 impl Default for JobDispatch {
