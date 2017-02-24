@@ -26,6 +26,7 @@ use types::DeliveryResult;
 use utils::{walk_tree_for_path, read_file, copy_recursive, file_needs_updated};
 use utils::path_join_many::PathJoinMany;
 use serde_json;
+use serde_json::Value as SerdeJson;
 use git;
 
 pub mod project;
@@ -73,7 +74,7 @@ pub struct DeliveryConfig {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct JobDispatch {
     pub version: String,
-    pub filters: Option<HashMap<String, Vec<HashMap<String, Vec<String>>>>>,
+    pub filters: Option<HashMap<String, SerdeJson>>,
 }
 
 impl Default for JobDispatch {
@@ -404,20 +405,19 @@ mod tests {
             #[test]
             fn complex_config() {
                 let mut complex = JobDispatch::default();
+                let filter = json!([
+                    {
+                        "platform_family": ["debian"],
+                        "platform_version": ["14.04"],
+                    },
+                    {
+                        "platform_family": ["rhel"],
+                    }
+                ]);
                 let mut filters = HashMap::new();
-                let mut filter_1 = HashMap::new();
-                let mut filter_2 = HashMap::new();
-                filter_1.insert(String::from("platform_family"),
-                                vec![String::from("debian")]);
-                filter_1.insert(String::from("platform_version"),
-                                vec![String::from("14.04")]);
-
-                filter_2.insert(String::from("platform_family"),
-                                vec![String::from("rhel")]);
-
-                filters.insert("unit".to_string(), vec![filter_1.clone(), filter_2.clone()]);
-                filters.insert("syntax".to_string(), vec![filter_1.clone(), filter_2.clone()]);
-                filters.insert("publish".to_string(), vec![filter_1, filter_2]);
+                filters.insert("unit".to_string(), filter.clone());
+                filters.insert("syntax".to_string(), filter.clone());
+                filters.insert("publish".to_string(), filter.clone());
 
                 complex.filters = Some(filters);
                 assert!(complex.filters.clone().unwrap().get("unit").is_some());
@@ -438,6 +438,31 @@ mod tests {
 
                 // Filter for deploy phase doesn't exist
                 assert!(complex.filters.clone().unwrap().get("deploy").is_none());
+            }
+
+            #[test]
+            fn simple_filter() {
+                let mut simple = JobDispatch::default();
+                let filter = json!({
+                    "platform_family": ["debian"],
+                    "platform_version": ["14.04"],
+                });
+                let mut filters = HashMap::new();
+                filters.insert("default".to_string(), filter);
+
+                simple.filters = Some(filters);
+
+                // Extract the platform_version content of the filter for the default phase
+                assert_eq!(simple.filters.clone().unwrap().get("default")
+                        .unwrap().get("platform_version").unwrap()[0],
+                        String::from("14.04"));
+
+                // Extracting a key that doesn't exist will return None
+                assert!(simple.filters.clone().unwrap().get("default")
+                        .unwrap().get("platform").is_none());
+
+                // Filter for deploy phase doesn't exist
+                assert!(simple.filters.clone().unwrap().get("deploy").is_none());
             }
 
             mod build_cookbook {
