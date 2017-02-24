@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-use cli::arguments::{config_path_arg, value_of, u_e_s_o_args};
+use cli::arguments::{api_port_arg, config_path_arg, value_of, u_e_s_o_args};
 use clap::{Arg, App, SubCommand, ArgMatches};
 use cli::Options;
 use types::DeliveryResult;
@@ -73,13 +73,13 @@ impl<'n> Options for ApiClapOptions<'n> {
 pub fn clap_subcommand<'c>() -> App<'c, 'c> {
     SubCommand::with_name(SUBCOMMAND_NAME)
         .about("Helper to call Delivery's HTTP API")
+        .arg(api_port_arg())
         .args(&vec![config_path_arg()])
         .arg(Arg::from_usage("<method> 'HTTP method for the request'")
              .takes_value(false)
              .possible_values(&["get", "put", "post", "delete"]))
         .args_from_usage(
-             "<path> 'Path for rqeuest URL'
-             --api-port=[api-port] 'Port for Delivery server'")
+            "<path> 'Path for request URL'")
         .arg(Arg::with_name("data")
              .long("data")
              .short("d")

@@ -23,7 +23,8 @@ use std::io::prelude::*;
 use std::io;
 use std::time::Duration;
 
-const ERROR_COLOR: &'static str = "red";
+pub const ERROR_COLOR: &'static str = "red";
+pub const SUCCESS_COLOR: &'static str = "green";
 
 /// Because sometimes, you just want a global variable.
 static mut SHOW_SPINNER: bool = true;

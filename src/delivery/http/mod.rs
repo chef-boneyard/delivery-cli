@@ -80,9 +80,10 @@ enum HTTPMethod {
 
 #[derive(Debug)]
 pub struct APIClient {
+    enterprise: Option<String>,
+    api_version: Option<String>,
     proto: HProto,
     host: String,
-    enterprise: String,
     auth: Option<APIAuth>
 }
 
@@ -98,7 +99,6 @@ impl APIClient {
             c.set_auth(auth);
             Ok(c)
         })
-        // Ok(client)
     }
 
     /// Create a new `APIClient` from the specified `Config`
@@ -108,32 +108,65 @@ impl APIClient {
     /// raise an error if any of these values are unset.
     pub fn from_config_no_auth(config: &Config)
                                -> DeliveryResult<APIClient> {
+        APIClient::from_config_with_basic_routing(config).and_then(|mut c| {
+            let ent = try!(config.enterprise());
+            c.set_enterprise(&ent);
+            c.set_api_version("v0");
+            Ok(c)
+        })
+    }
+
+    // Create a new `APIClient` from the specified `Config`
+    // instance that makes no assumptions about prepending
+    // your routes with the enterprise or API version.
+    // Use to make unauthenticated requests where you specify
+    // the full route.
+    pub fn from_config_with_basic_routing(config: &Config)
+                                          -> DeliveryResult<APIClient> {
         let host = try!(config.api_host_and_port());
-        let ent = try!(config.enterprise());
         let proto_str = try!(config.api_protocol());
         let proto = try!(HProto::from_str(&proto_str));
-        Ok(APIClient::new(proto, &host, &ent))
+        Ok(APIClient::new(proto, &host))
     }
 
     /// Create a new `APIClient` using HTTP attached to the enterprise
     /// given by `ent`.
     pub fn new_http(host: &str, ent: &str) -> APIClient {
-        APIClient::new(HProto::HTTP, host, ent)
+        let mut api_client = APIClient::new(HProto::HTTP, host);
+        api_client.set_enterprise(&ent);
+        api_client.set_api_version("v0");
+        api_client
     }
 
     /// Create a new `APIClient` using HTTPS attached to the
     /// enterprise given by `ent`.
     pub fn new_https(host: &str, ent: &str) -> APIClient {
-        APIClient::new(HProto::HTTPS, host, ent)
+        let mut api_client = APIClient::new(HProto::HTTPS, host);
+        api_client.set_enterprise(&ent);
+        api_client.set_api_version("v0");
+        api_client
     }
 
-    fn new(proto: HProto, host: &str, ent: &str) -> APIClient {
+    fn new(proto: HProto, host: &str) -> APIClient {
         APIClient {
+            api_version: None,
             proto: proto,
             host: String::from(host),
-            enterprise: String::from(ent),
+            enterprise: None,
             auth: None
         }
+    }
+
+    pub fn set_auth(&mut self, auth: APIAuth) {
+        self.auth = Some(auth);
+    }
+
+    pub fn set_enterprise(&mut self, ent: &str) {
+        self.enterprise = Some(String::from(ent))
+    }
+
+    pub fn set_api_version(&mut self, api_version: &str) {
+        self.api_version = Some(String::from(api_version))
     }
 
     /// Parse the HyperResponse coming from a APIClient Request that
@@ -187,13 +220,20 @@ impl APIClient {
         }
     }
 
-    pub fn set_auth(&mut self, auth: APIAuth) {
-        self.auth = Some(auth);
-    }
-
     pub fn api_url(&self, path: &str) -> String {
-        format!("{}://{}/api/v0/e/{}/{}",
-                self.proto, self.host, self.enterprise, path)
+        let mut request_path = format!("{}://{}", self.proto, self.host);
+
+        if let Some(ref version) = self.api_version {
+            request_path += &format!("/api/{}", version);
+        }
+
+        if let Some(ref ent) = self.enterprise {
+            request_path += &format!("/e/{}", ent);
+        }
+
+        request_path += &format!("/{}", path);
+
+        request_path
     }
 
     pub fn get(&self, path: &str) -> Result<HyperResponse, HttpError> {
@@ -529,6 +569,27 @@ mod tests {
         let client = APIClient::from_config_no_auth(&config).unwrap();
         let url = client.api_url("foo");
         assert_eq!("https://earth/api/v0/e/ncc-1701/foo", url)
+    }
+
+    #[test]
+    fn from_config_no_auth_override_api_version_test() {
+        let config = Config::default()
+            .set_enterprise("ncc-1701")
+            .set_server("earth");
+
+        let mut client = APIClient::from_config_no_auth(&config).unwrap();
+        client.set_api_version("v1");
+        let url = client.api_url("foo");
+        assert_eq!("https://earth/api/v1/e/ncc-1701/foo", url)
+    }
+
+    #[test]
+    fn from_config_with_basic_routing_test() {
+        let config = Config::default()
+            .set_server("earth");
+        let client = APIClient::from_config_with_basic_routing(&config).unwrap();
+        let url = client.api_url("api/_status");
+        assert_eq!("https://earth/api/_status", url)
     }
 
     #[test]

@@ -46,7 +46,7 @@ pub fn u_e_s_o_args<'a>() -> Vec<Arg<'a, 'a>> {
         "-u --user=[user] 'User name for Delivery authentication'",
         "-e --ent=[ent] 'The enterprise in which the project lives'",
         "-o --org=[org] 'The organization in which the project lives'",
-        "-s --server=[server] 'The Delivery server address'"]
+        server_arg_str()]
 }
 
 // Defines all the options shared between commands that
@@ -71,6 +71,18 @@ pub fn pipeline_arg<'a>() -> Vec<Arg<'a, 'a>> {
         ).visible_alias("for")]
 }
 
+pub fn server_arg_str<'a>() -> &'a str {
+    "-s --server=[server] 'The Automate server address'"
+}
+
+pub fn api_port_arg_str<'a>() -> &'a str {
+    "--api-port=[api-port] 'Port for Automate server'"
+}
+
+fn_arg!(server_arg, server_arg_str());
+
+fn_arg!(api_port_arg, api_port_arg_str());
+
 fn_arg!(config_project_arg,
        "-c --config-json=[config-json] 'Path of a custom config.json file'");
 
@@ -92,7 +104,7 @@ fn_arg!(auto_bump, "-a --auto-bump 'Automatic cookbook version bump'");
 
 fn_arg!(no_spinner_arg, "--no-spinner 'Disable the spinner'");
 
-fn_arg!(non_interactive_arg, "--non-interactive 'Disable cli interactions'");
+fn_arg!(non_interactive_arg, "--non-interactive 'Disable command line interactions'");
 
 #[cfg(test)]
 mod tests {

@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-use cli::arguments::{value_of, u_e_s_o_args};
+use cli::arguments::{api_port_arg, value_of, u_e_s_o_args};
 use clap::{Arg, App, SubCommand, ArgMatches};
 use cli::Options;
 use types::DeliveryResult;
@@ -83,10 +83,10 @@ impl<'n> Options for TokenClapOptions<'n> {
 pub fn clap_subcommand<'c>() -> App<'c, 'c> {
     SubCommand::with_name(SUBCOMMAND_NAME)
         .about("Create a local API token")
+        .arg(api_port_arg())
         .args(&u_e_s_o_args())
         .args(&make_arg_vec![
             "--raw 'Output only the raw token string'",
             "--verify 'Verify the Token has expired'",
-            "--api-port=[api-port] 'Port for Delivery server'",
             "--saml=[true/false] 'Use SAML authentication (overrides Delivery server)'"])
 }

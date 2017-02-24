@@ -58,3 +58,4 @@ pub mod cookbook;
 pub mod cli;
 pub mod command;
 pub mod fips;
+pub mod json;

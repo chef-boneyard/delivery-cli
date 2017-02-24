@@ -49,6 +49,7 @@ pub mod job;
 pub mod token;
 pub mod setup;
 pub mod local;
+pub mod status;
 mod spin;
 
 // Implemented sub-commands. Should handle everything after args have
@@ -64,6 +65,7 @@ use command::local::LocalCommand;
 use command::review::ReviewCommand;
 use command::setup::SetupCommand;
 use command::token::TokenCommand;
+use command::status::StatusCommand;
 
 pub trait Options {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config>;
@@ -193,6 +195,12 @@ fn match_command_and_start(app_matches: &ArgMatches, build_version: &str) -> Del
             let command = TokenCommand{options: &options, config: &config};
             execute_command(&matches, command)
         },
+        (status::SUBCOMMAND_NAME, Some(matches)) => {
+            let options = status::StatusClapOptions::new(&matches);
+            let config = try!(load_config_and_merge_with_options(&options));
+            let command = StatusCommand{options: &options, config: &config};
+            execute_command(&matches, command)
+        },
         (spin::SUBCOMMAND_NAME, Some(matches)) => {
             handle_spinner(&matches);
             let spin_opts = spin::SpinClapOptions::new(&matches);
@@ -231,6 +239,7 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a> {
         .subcommand(token::clap_subcommand())
         .subcommand(spin::clap_subcommand())
         .subcommand(local::clap_subcommand())
+        .subcommand(status::clap_subcommand())
 }
 
 fn handle_spinner(matches: &ArgMatches) {
