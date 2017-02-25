@@ -31,6 +31,8 @@ pub mod say;
 pub mod path_join_many;
 pub mod path_ext;
 pub mod open;
+#[cfg(test)]
+pub mod test_paths;
 
 use crypto::digest::Digest;
 use crypto::md5::Md5;
