@@ -419,3 +419,40 @@ fn compare_directory_name(repo_name: &str) -> DeliveryResult<()> {
     Ok(())
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    mod verify_config_get_build_cookbook_path {
+        use super::*;
+
+        #[test]
+        fn from_delivery_cli() {
+            // This test is loading the config from `delivery-cli/.delivery/config.json`
+            let path = super::verify_config_get_build_cookbook_path(utils::cwd()).unwrap();
+            assert!(path.is_some());
+            assert_eq!(path.unwrap(), PathBuf::from("cookbooks/delivery_rust"));
+        }
+
+        #[test]
+        fn from_fixtures_config_not_found() {
+            // Using the home_dir to get a path that does not have a `config.json`
+            let project_path = utils::home_dir(&["tmp"]).unwrap();
+            let path = super::verify_config_get_build_cookbook_path(project_path).unwrap();
+            assert!(path.is_some());
+            // Therof, the method returns the default path for the build cookbook
+            assert_eq!(path.unwrap(), PathBuf::from(".delivery/build_cookbook"));
+        }
+
+        #[test]
+        fn from_fixtures_config_source_build_cookbook_from_workflow() {
+            // Using `fixtures/test_complex_repo` which does have a `config.json`
+            // but it points the build cookbook location to source if from Workflow
+            let project_path = utils::test_paths::fixture_file("test_complex_repo");
+            let path = super::verify_config_get_build_cookbook_path(project_path).unwrap();
+            // That is the reason why we assert for None
+            assert!(path.is_none());
+            // Because we don't need to generate the build cookbook
+        }
+    }
+}

@@ -8,8 +8,8 @@ def custom_config
 {
   "version": "2",
   "build_cookbook": {
-    "path": ".delivery/build_cookbook",
-    "name": "build_cookbook"
+    "path": ".delivery/custom_build_cookbook",
+    "name": "custom_build_cookbook"
   },
   "skip_phases": [ "smoke", "security", "syntax", "unit", "quality" ],
   "job_dispatch": {
@@ -19,6 +19,24 @@ def custom_config
     "publish": {
       "chef_server": true
     }
+  },
+  "dependencies": []
+}
+EOF
+end
+
+# Mock a config.json where the source of the build_cookbook is Supermarket
+def config_build_cookbook_from_supermarket
+<<EOF
+{
+  "version": "2",
+  "build_cookbook": {
+    "supermarket": "true",
+    "name": "vikings"
+  },
+  "skip_phases": [],
+  "job_dispatch": {
+    "version": "v2"
   },
   "dependencies": []
 }

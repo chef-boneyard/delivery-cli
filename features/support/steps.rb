@@ -273,6 +273,14 @@ Given(/^a custom config$/) do
   step %(a file named "../my_custom_config.json" with:), custom_config
 end
 
+Given(/^I have a config where the build_cookbook comes from Supermarket$/) do
+  step %(a file named ".delivery/config.json" with:), config_build_cookbook_from_supermarket
+end
+
+Given(/^I have already a custom config$/) do
+  step %(a file named ".delivery/config.json" with:), custom_config
+end
+
 Given(/^a change configuring a custom delivery is created$/) do
   step %("git checkout -b add-delivery-config" should be run)
   step %("git commit -m Adds custom Delivery config" should be run)
@@ -280,15 +288,20 @@ Given(/^a change configuring a custom delivery is created$/) do
 end
 
 Given(/^the change has the default generated build_cookbook$/) do
+  step %(the change has a generated build_cookbook called ".delivery/build_cookbook")
+end
+
+Given(/^the change has a generated build_cookbook called "([^"]*)"$/) do |bk_path|
   step %("git push --set-upstream --porcelain --progress --verbose delivery master" should be run)
   step %("git commit -m Add generated delivery configuration" should be run)
   step %("git commit -m Add generated delivery build cookbook" should be run)
-  step %(a directory named ".delivery/build_cookbook" should exist)
+  step %(a directory named "#{bk_path}" should exist)
 end
 
 Given(/^the change does not have the default generated build_cookbook$/) do
   step %("git commit -m Adds Delivery build cookbook and config" should not be run)
   step %("chef generate cookbook .delivery/build_cookbook" should not be run)
+  step %(the file ".delivery/build_cookbook" should not exist)
 end
 
 Given(/^a user creates a delivery backed project with option "([^"]*)"$/) do |option|
