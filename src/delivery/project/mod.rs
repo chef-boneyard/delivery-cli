@@ -306,11 +306,12 @@ pub fn create_dot_delivery() -> &'static Path {
     dot_delivery
 }
 
-pub fn create_default_build_cookbook(pipeline: &str) -> DeliveryResult<Command> {
+pub fn create_build_cookbook<P>(pipeline: &str, path: P) -> DeliveryResult<Command>
+        where P: AsRef<Path> {
     let mut command = utils::make_command("chef");
     command.arg("generate")
         .arg("build-cookbook")
-        .arg(".delivery/build_cookbook")
+        .arg(path.as_ref())
         .arg("--pipeline")
         .arg(pipeline)
         .current_dir(&try!(project_path()));

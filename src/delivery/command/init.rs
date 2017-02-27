@@ -23,9 +23,10 @@
 use std;
 use fips;
 use cli::init::InitClapOptions;
-use delivery_config::DeliveryConfig;
+use delivery_config::{BuildCookbookLocation, DeliveryConfig};
 use config::Config;
 use std::path::{Path, PathBuf};
+use std::fmt::Debug;
 use project;
 use git;
 use utils;
@@ -87,7 +88,6 @@ impl<'n> Command for InitCommand<'n> {
             try!(create_on_server(&self.config, scp.clone()))
         }
 
-
         // Generate build cookbook, either custom or default.
         let custom_build_cookbook_generated = if !self.options.skip_build_cookbook {
             try!(generate_build_cookbook(&self.config))
@@ -101,7 +101,7 @@ impl<'n> Command for InitCommand<'n> {
         );
 
         // Verify that the project has a config file
-        let config_path = project_path.join(".delivery/config.json");
+        let config_path = DeliveryConfig::config_file_path(&project_path);
         if !config_path.exists() {
             // Custom error handling for missing config file.
             if custom_build_cookbook_generated && !custom_config_passed {
@@ -260,6 +260,30 @@ fn create_on_server(config: &Config,
     Ok(())
 }
 
+// Verify if the config file already exists, if it does, parse the config and see where the
+// build_cookbook is being source from. We will only generate the build_cookbook if it is
+// coming from a local path. Otherwise we won't need to generate it.
+//
+// The Option could returns:
+// -> Some(Path) - Path where the build cookbook should be generated.
+// -> None - We do NOT need to generate any build_cookbook.
+fn verify_config_get_build_cookbook_path<P>(p_path: P) -> DeliveryResult<Option<PathBuf>>
+        where P: AsRef<Path> + Debug {
+    if let Some(config) = DeliveryConfig::load_config(p_path).ok() {
+        match config.build_cookbook_location()? {
+            BuildCookbookLocation::Local => {
+                return Ok(Some(PathBuf::from(config.build_cookbook_get("path")?)))
+            },
+            // This means that the buid_cookbook doesn't need to be
+            // generated locally since it is being source from other
+            // location. (Supermarket, Git, Workflow, ChefServer)
+            _ => return Ok(None)
+        }
+    }
+    // Getting here means that there is no config.json. Provide the default path.
+    Ok(Some(PathBuf::from(".delivery/build_cookbook")))
+}
+
 // Push content to Delivery if no upstream commits.
 fn push_project_content_to_delivery(pipeline: &str) -> DeliveryResult<()> {
     sayln("cyan", "Pushing initial git history...");
@@ -289,41 +313,54 @@ fn create_delivery_pipeline(client: &APIClient, org: &str,
 
 // Handles the build_cookbook generation
 //
-// Use the provided custom generator, if it is not provided we use the default
-// build_cookbook generator from the ChefDK.
+// Use the provided custom generator, if it is not provided generate a build bookbook
+// using the default generator from the ChefDK.
+//
+// If the project already has a config, get the path of the build cookbook and use it to
+// generate it. If there is no need to generate the build cookbook, skip and inform the user.
 //
 // Returns true if a CUSTOM build cookbook was generated, else it returns false.
 fn generate_build_cookbook(config: &Config) -> DeliveryResult<bool> {
-    let cache_path = try!(project::generator_cache_path());
-    let project_path = try!(project::project_path());
-    match config.generator().ok() {
-        Some(generator_str) => {
-            sayln("cyan", "Generating custom build cookbook...");
-            generate_custom_build_cookbook(generator_str, cache_path, project_path)
-        },
-        // Default build cookbook
-        None => {
-            sayln("cyan", "Generating default build cookbook...");
-            if try!(project::project_path()).join(".delivery/build_cookbook").exists() {
-                sayln("white", "  Skipping: build cookbook already exists at \
-                                .delivery/build_cookbook.");
-                Ok(false)
-            } else {
-                let pipeline = try!(config.pipeline());
-                try!(project::create_default_build_cookbook(&pipeline));
-                sayln("green", "  Build cookbook generated at .delivery/build_cookbook.");
-                try!(git::git_push(&pipeline));
-                sayln("green",
-                      &format!("  Build cookbook committed to git and pushed to pipeline named {}.", pipeline));
+    sayln("cyan", "Generating build cookbook...");
+    if let Some(bk_path) = verify_config_get_build_cookbook_path(project::project_path()?)? {
+        let cache_path = try!(project::generator_cache_path());
+        let project_path = try!(project::project_path());
+        match config.generator().ok() {
+            // Using a custom build cookbook generator
+            Some(generator_str) => {
+                sayln("green", &format!("  Using custom generator {}.", generator_str));
+                generate_custom_build_cookbook(generator_str, cache_path, project_path)?;
+                Ok(true)
+            },
+            // Generate build cookbook
+            None => {
+                if bk_path.exists() {
+                    sayln("white", &format!(
+                        "  Skipping: build cookbook already exists at {}.", bk_path.display()
+                    ));
+                } else {
+                    let pipeline = try!(config.pipeline());
+                    try!(project::create_build_cookbook(&pipeline, &bk_path));
+                    sayln("green", &format!(
+                        "  Build cookbook generated at {}.", bk_path.display()
+                    ));
+                    try!(git::git_push(&pipeline));
+                    sayln("green", &format!(
+                        "  Build cookbook committed to git and pushed to pipeline named {}.", pipeline
+                    ));
+                }
                 Ok(false)
             }
         }
+    } else {
+        sayln("white", "  Skipping: build cookbook doesn't need to be generated locally.");
+        Ok(false)
     }
 }
 
 fn generate_custom_build_cookbook(generator_str: String,
                                   cache_path: PathBuf,
-                                  project_path: PathBuf) -> DeliveryResult<bool> {
+                                  project_path: PathBuf) -> DeliveryResult<()> {
     let gen_path = Path::new(&generator_str);
     let mut generator_path = cache_path.clone();
     generator_path.push(gen_path.file_stem().unwrap());
@@ -341,7 +378,7 @@ fn generate_custom_build_cookbook(generator_str: String,
 
     try!(project::chef_generate_build_cookbook_from_generator(&generator_path, &project_path));
     sayln("green", "  Custom build cookbook generated at .delivery/build_cookbook.");
-    return Ok(true)
+    Ok(())
 }
 
 fn generate_delivery_config(config_json: Option<String>) -> DeliveryResult<bool> {
