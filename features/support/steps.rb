@@ -281,6 +281,10 @@ Given(/^I have already a custom config$/) do
   step %(a file named ".delivery/config.json" with:), custom_config
 end
 
+Given(/^I have already a custom config with a custom build_cookbook path$/) do
+  step %(a file named ".delivery/config.json" with:), config_with_custom_build_cookbook
+end
+
 Given(/^a change configuring a custom delivery is created$/) do
   step %("git checkout -b add-delivery-config" should be run)
   step %("git commit -m Adds custom Delivery config" should be run)

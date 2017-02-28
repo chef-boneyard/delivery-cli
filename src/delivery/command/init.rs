@@ -340,6 +340,8 @@ fn generate_build_cookbook(config: &Config) -> DeliveryResult<bool> {
                     ));
                 } else {
                     let pipeline = try!(config.pipeline());
+                    // Verify if the build_cookbook path is not the default, then `Err()`
+                    try!(verify_default_build_cookbook_path(&bk_path));
                     try!(project::create_build_cookbook(&pipeline, &bk_path));
                     sayln("green", &format!(
                         "  Build cookbook generated at {}.", bk_path.display()
@@ -452,6 +454,30 @@ fn compare_directory_name(repo_name: &str) -> DeliveryResult<()> {
                 detail: Some(msg)
             });
         }
+    }
+    Ok(())
+}
+
+// Currently the `chef generate build-cookbook` command doesn't allow
+// you to pass a custom path to generate a build-cookbook out side the
+// default location that is `.delivery/build_cookbook`
+//
+// If that is the case, we need to `Err()` with a helpful message.
+// TODO: (IDEA#383) Be able to generate build-cookbooks on a custom location
+fn verify_default_build_cookbook_path<P>(path: P) -> DeliveryResult<()>
+        where P: AsRef<Path> {
+    let default_path = PathBuf::from(".delivery/build_cookbook");
+    if path.as_ref() != default_path {
+        let msg = format!("\nThe build_cookbook {} doesn't exist.\n\
+                    Please specify the path to a build_cookbook \
+                    that exists or use the default path \
+                    '.delivery/build_cookbook' and then run the \
+                    'delivery init' command again to finish the \
+                    project initialization.", path.as_ref().display());
+        return Err(DeliveryError{
+            kind: Kind::NoBuildCookbook,
+            detail: Some(msg)
+        })
     }
     Ok(())
 }
