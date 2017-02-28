@@ -8,8 +8,8 @@ def custom_config
 {
   "version": "2",
   "build_cookbook": {
-    "path": ".delivery/custom_build_cookbook",
-    "name": "custom_build_cookbook"
+    "path": ".delivery/build_cookbook",
+    "name": "build_cookbook"
   },
   "skip_phases": [ "smoke", "security", "syntax", "unit", "quality" ],
   "job_dispatch": {
@@ -19,6 +19,23 @@ def custom_config
     "publish": {
       "chef_server": true
     }
+  },
+  "dependencies": []
+}
+EOF
+end
+
+def config_with_custom_build_cookbook
+<<EOF
+{
+  "version": "2",
+  "build_cookbook": {
+    "path": "cookbooks/bubulubu",
+    "name": "bubulubu"
+  },
+  "skip_phases": [],
+  "job_dispatch": {
+    "version": "v2"
   },
   "dependencies": []
 }

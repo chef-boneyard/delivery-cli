@@ -245,18 +245,30 @@ Scenario: When initializing a project that already have a custom config
   And I should be checked out to a feature branch named "initialize-delivery-pipeline"
   And a change should be created for branch "initialize-delivery-pipeline"
 
+# For now, the chef-dk generate build-cookbook command won't let you pass a custom
+# path where it should render the build_cookbook, until that is possible we will be
+# testing to fail when the path is not the default.
+# TODO: (IDEA#383) Be able to generate build-cookbooks on a custom location
+#
+# Happy path: The custom config has a default .delivery/build_cookbook
 Scenario: When initializing a project that already have a custom config
           that defines a local build cookbook location, it should create
-          a build cookbook locally.
+          a build cookbook locally if it is the default location.
   When I have already a custom config
   When a user creates a delivery backed project
   Then a delivery project is created in delivery
-  # For now, the chef-dk generate build-cookbook command won't let you pass a custom
-  # path where it should render the build_cookbook, until that is possible this test
-  # needs to be commented out
-  #
-  # And the change has a generated build_cookbook called ".delivery/custom_build_cookbook"
-  And the output should contain "Build cookbook generated at .delivery/custom_build_cookbook."
+  And the change has a generated build_cookbook called ".delivery/build_cookbook"
+  And the output should contain "Build cookbook generated at .delivery/build_cookbook."
   And the exit status should be 0
   And I should be checked out to a feature branch named "initialize-delivery-pipeline"
   And a change should be created for branch "initialize-delivery-pipeline"
+
+# Angry path: The custom config has a different location for the build_cookbook path
+Scenario: When initializing a project that already have a custom config
+          that defines a local build cookbook location that is NOT the
+          default, error with a nice message
+  When I have already a custom config with a custom build_cookbook path
+  When I run `delivery init`
+  Then the exit status should be 1
+  And the output should contain "No valid build_cookbook entry in .delivery/config.json"
+  And the output should contain "The build_cookbook cookbooks/bubulubu doesn't exist."

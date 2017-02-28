@@ -142,7 +142,7 @@ impl error::Error for DeliveryError {
             Kind::IoError => "An I/O Error occurred",
             Kind::JsonError => "A JSON Parser error occured",
             Kind::JsonEncode => "A JSON Encoding error occured",
-            Kind::NoBuildCookbook => "No build_cookbook entry in .delivery/config.json",
+            Kind::NoBuildCookbook => "No valid build_cookbook entry in .delivery/config.json",
             Kind::NoHomedir => "Cannot find a homedir",
             Kind::BerksFailed => "Berkshelf command failed",
             Kind::ExpectedJsonString => "Expected a JSON string",
