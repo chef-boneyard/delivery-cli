@@ -228,7 +228,35 @@ Scenario: When creating a delivery backed project for a pipeline using --pipelin
 Scenario: When creating a delivery backed project for a pipeline using --pipeline
   	  and --for, we would expect to have at least
   	  one commit into the pipeline branch locally
-    When I set up basic delivery and git configs
-    And I successfully run `git checkout -b awesome`
-    Then I run `delivery init --pipeline awesome --for also_awesome`
-    And the exit status should be 1
+  When I set up basic delivery and git configs
+  And I successfully run `git checkout -b awesome`
+  Then I run `delivery init --pipeline awesome --for also_awesome`
+  And the exit status should be 1
+
+Scenario: When initializing a project that already have a custom config
+          that source the build cookbook from Supermarket, it should not
+	  create any build cookbook locally.
+  When I have a config where the build_cookbook comes from Supermarket
+  When a user creates a delivery backed project
+  Then a delivery project is created in delivery
+  And the change does not have the default generated build_cookbook
+  And the output should contain "Skipping: build cookbook doesn't need to be generated locally."
+  And the exit status should be 0
+  And I should be checked out to a feature branch named "initialize-delivery-pipeline"
+  And a change should be created for branch "initialize-delivery-pipeline"
+
+Scenario: When initializing a project that already have a custom config
+          that defines a local build cookbook location, it should create
+          a build cookbook locally.
+  When I have already a custom config
+  When a user creates a delivery backed project
+  Then a delivery project is created in delivery
+  # For now, the chef-dk generate build-cookbook command won't let you pass a custom
+  # path where it should render the build_cookbook, until that is possible this test
+  # needs to be commented out
+  #
+  # And the change has a generated build_cookbook called ".delivery/custom_build_cookbook"
+  And the output should contain "Build cookbook generated at .delivery/custom_build_cookbook."
+  And the exit status should be 0
+  And I should be checked out to a feature branch named "initialize-delivery-pipeline"
+  And a change should be created for branch "initialize-delivery-pipeline"

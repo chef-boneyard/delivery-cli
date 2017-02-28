@@ -219,7 +219,7 @@ impl DeliveryConfig {
     }
 
     // Returns the path of the `config.json` from the provided project path
-    fn config_file_path<P>(p_path: P) -> PathBuf
+    pub fn config_file_path<P>(p_path: P) -> PathBuf
             where P: AsRef<Path>  {
         p_path.as_ref().join_many(&[".delivery", "config.json"])
     }
