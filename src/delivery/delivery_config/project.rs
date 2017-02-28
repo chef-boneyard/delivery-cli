@@ -81,7 +81,7 @@ impl Display for Phase {
             Phase::Provision => write!(f, "provision"),
             Phase::Deploy => write!(f, "deploy"),
             Phase::Smoke => write!(f, "smoke"),
-            Phase::Functional => write!(f, "funtional"),
+            Phase::Functional => write!(f, "functional"),
             Phase::Cleanup => write!(f, "cleanup"),
         }
     }
