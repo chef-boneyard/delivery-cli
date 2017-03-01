@@ -66,7 +66,7 @@ impl<'n> Command for StatusCommand<'n> {
         say_status(&s.status);
 
         if s.status == "up" {
-            sayln("green", &format!(" ({} ms)", &elapsed_milli.to_string()));
+            sayln("green", &format!(" (request took {} ms)", &elapsed_milli.to_string()));
         }
 
         sayln("white", &format!("Configuration Mode: {}", s.configuration_mode));
