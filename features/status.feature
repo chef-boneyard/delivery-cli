@@ -204,7 +204,25 @@ Scenario: when server knows about fips but it is disabled
     end
     """
   When I successfully run `delivery status --server=localhost --api-port=9999 --no-color`
-  Then the output should match /Status information for Automate server localhost:9999...\n\nStatus: up \(\d+ ms\)\nConfiguration Mode: standalone\nFIPS Mode: disabled\nUpstreams:\n  Lsyncd:\n    status: not_running\n  PostgreSQL:\n    status:up\n  RabbitMQ:\n    status: up\n    node_health:\n      status: up\n    vhost_aliveness:\n      status: up/
+  Then the output should match:
+  """
+  Status information for Automate server localhost:9999...
+
+  Status: up \(\d+ ms\)
+  Configuration Mode: standalone
+  FIPS Mode: disabled
+  Upstreams:
+    Lsyncd:
+      status: not_running
+    PostgreSQL:
+      status: up
+    RabbitMQ:
+      status: up
+      node_health:
+        status: up
+      vhost_aliveness:
+        status: up
+  """
 
 Scenario: when server knows about fips but it is enabled
   Given the Delivery API server on port "9999":
@@ -237,7 +255,33 @@ Scenario: when server knows about fips but it is enabled
     end
     """
   When I successfully run `delivery status --server=localhost --api-port=9999 --no-color`
-  Then the output should match /Status information for Automate server localhost:9999...\n\nStatus: up \(\d+ ms\)\nConfiguration Mode: standalone\nFIPS Mode: enabled\nUpstreams:\n  Lsyncd:\n    status: not_running\n  PostgreSQL:\n    status:up\n  RabbitMQ:\n    status: up\n    node_health:\n      status: up\n    vhost_aliveness:\n      status: up\n\nYour Automate Server is configured in FIPS mode.\nPlease add the following to your cli.toml to enable Automate FIPS mode on your machine:\n\nfips = true\nfips_git_port = OPEN_PORT\n\nReplace OPEN_PORT with any port that is free on your machine./
+  Then the output should match:
+  """
+  Status information for Automate server localhost:9999...
+
+  Status: up \(\d+ ms\)
+  Configuration Mode: standalone
+  FIPS Mode: enabled
+  Upstreams:
+    Lsyncd:
+      status: not_running
+    PostgreSQL:
+      status: up
+    RabbitMQ:
+      status: up
+      node_health:
+        status: up
+      vhost_aliveness:
+        status: up
+
+  Your Automate Server is configured in FIPS mode.
+  Please add the following to your cli.toml to enable Automate FIPS mode on your machine:
+
+  fips = true
+  fips_git_port = OPEN_PORT
+
+  Replace OPEN_PORT with any port that is free on your machine.
+  """
 
 Scenario: when server doesn't know about fips
   Given the Delivery API server on port "9999":
@@ -269,7 +313,24 @@ Scenario: when server doesn't know about fips
     end
     """
   When I successfully run `delivery status --server=localhost --api-port=9999 --no-color`
-  Then the output should match /Status information for Automate server localhost:9999...\n\nStatus: up \(\d+ ms\)\nConfiguration Mode: standalone\nUpstreams:\n  Lsyncd:\n    status: not_running\n  PostgreSQL:\n    status:up\n  RabbitMQ:\n    status: up\n    node_health:\n      status: up\n    vhost_aliveness:\n      status: up/
+  Then the output should match:
+  """
+  Status information for Automate server localhost:9999...
+
+  Status: up \(\d+ ms\)
+  Configuration Mode: standalone
+  Upstreams:
+    Lsyncd:
+      status: not_running
+    PostgreSQL:
+      status: up
+    RabbitMQ:
+      status: up
+      node_health:
+        status: up
+      vhost_aliveness:
+        status: up
+  """
 
 Scenario: when server doesn't know about fips and rabbit doesn't return optional content
   Given the Delivery API server on port "9999":
@@ -295,4 +356,17 @@ Scenario: when server doesn't know about fips and rabbit doesn't return optional
     end
     """
   When I successfully run `delivery status --server=localhost --api-port=9999 --no-color`
-  Then the output should match /Status information for Automate server localhost:9999...\n\nStatus: up \(\d+ ms\)\nConfiguration Mode: standalone\nUpstreams:\n  Lsyncd:\n    status: not_running\n  PostgreSQL:\n    status:up\n  RabbitMQ:\n    status: up/
+  Then the output should match:
+  """
+  Status information for Automate server localhost:9999...
+
+  Status: up \(\d+ ms\)
+  Configuration Mode: standalone
+  Upstreams:
+    Lsyncd:
+      status: not_running
+    PostgreSQL:
+      status: up
+    RabbitMQ:
+      status: up
+  """

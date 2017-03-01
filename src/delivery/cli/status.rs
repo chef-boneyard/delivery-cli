@@ -27,7 +27,6 @@ pub const SUBCOMMAND_NAME: &'static str = "status";
 pub struct StatusClapOptions<'n> {
     pub api_port: &'n str,
     pub json: bool,
-    pub no_color: bool,
     pub server: &'n str,
 }
 
@@ -36,7 +35,6 @@ impl<'n> Default for StatusClapOptions<'n> {
         StatusClapOptions {
             api_port: "",
             json: false,
-            no_color: false,
             server: "",
         }
     }
@@ -47,7 +45,6 @@ impl<'n> StatusClapOptions<'n> {
         StatusClapOptions {
             api_port: value_of(&matches, "api-port"),
             json: matches.is_present("json"),
-            no_color: matches.is_present("no-color"),
             server: value_of(&matches, "server"),
         }
     }
@@ -66,6 +63,5 @@ pub fn clap_subcommand<'c>() -> App<'c, 'c> {
         .about("Get status information about the Automate Server's _status endpoint")
         .arg(api_port_arg())
         .args_from_usage("--json 'Output the raw JSON from the _status endpoint'")
-        .args_from_usage("--no-color 'Prevent color output'")
         .arg(server_arg())
 }
