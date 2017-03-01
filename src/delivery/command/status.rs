@@ -105,7 +105,7 @@ impl<'n> Command for StatusCommand<'n> {
             if fips {
                 let msg = "\nYour Automate Server is configured in FIPS mode.\n\
                     Please add the following to your cli.toml to enable Automate FIPS \
-                    mode on your machine:\n\nfips = true\nfips_git_port = OPEN_PORT\n\n\
+                    mode on your machine:\n\nfips = true\nfips_git_port = \"OPEN_PORT\"\n\n\
                     Replace OPEN_PORT with any port that is free on your machine.";
                 sayln("white", msg);
             }
