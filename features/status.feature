@@ -208,7 +208,7 @@ Scenario: when server knows about fips but it is disabled
   """
   Status information for Automate server localhost:9999...
 
-  Status: up \(\d+ ms\)
+  Status: up \(request took \d+ ms\)
   Configuration Mode: standalone
   FIPS Mode: disabled
   Upstreams:
@@ -259,7 +259,7 @@ Scenario: when server knows about fips but it is enabled
   """
   Status information for Automate server localhost:9999...
 
-  Status: up \(\d+ ms\)
+  Status: up \(request took \d+ ms\)
   Configuration Mode: standalone
   FIPS Mode: enabled
   Upstreams:
@@ -317,7 +317,7 @@ Scenario: when server doesn't know about fips
   """
   Status information for Automate server localhost:9999...
 
-  Status: up \(\d+ ms\)
+  Status: up \(request took \d+ ms\)
   Configuration Mode: standalone
   Upstreams:
     Lsyncd:
@@ -360,7 +360,7 @@ Scenario: when server doesn't know about fips and rabbit doesn't return optional
   """
   Status information for Automate server localhost:9999...
 
-  Status: up \(\d+ ms\)
+  Status: up \(request took \d+ ms\)
   Configuration Mode: standalone
   Upstreams:
     Lsyncd:
