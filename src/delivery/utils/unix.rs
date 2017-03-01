@@ -113,3 +113,12 @@ pub fn find_command(command: &str) -> Option<PathBuf> {
     }
     None
 }
+
+pub fn stunnel_path() -> String {
+    String::from("/opt/chefdk/embedded/bin/stunnel")
+}
+
+pub fn chefdk_openssl_path() -> String {
+    String::from("/opt/chefdk/embedded/bin/openssl")
+}
+

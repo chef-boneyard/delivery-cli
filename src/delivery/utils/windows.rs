@@ -124,6 +124,14 @@ fn find_command_with_pathext(candidate: &PathBuf) -> Option<PathBuf> {
     None
 }
 
+pub fn stunnel_path() -> String {
+    String::from("C:\\opscode\\chefdk\\embedded\\bin\\stunnel.exe")
+}
+
+pub fn chefdk_openssl_path() -> String {
+    String::from("C:\\opscode\\chefdk\\embedded\\bin\\openssl.exe")
+}
+
 // ---------------
 // dummy functions
 // ---------------

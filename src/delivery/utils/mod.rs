@@ -49,8 +49,6 @@ mod unix;
 #[cfg(target_os = "windows")]
 mod windows;
 
-pub const CHEFDK_OPENSSL_PATH: &'static str = "/opt/chefdk/embedded/bin/openssl";
-
 // Extract the Environment Variable of the provided `key`
 pub fn env_variable(key: &str) -> Option<String> {
     env::var(key).ok()
@@ -200,7 +198,7 @@ pub fn kill_child_processes(child_processes: Vec<process::Child>) -> DeliveryRes
 pub fn copy_automate_nginx_cert(server: &str, port: &str) -> Result<String, DeliveryError>
 {
     let cmd_str = format!("{openssl_path} s_client -connect {server}:{port} -showcerts",
-                          openssl_path=CHEFDK_OPENSSL_PATH, server=server, port=port);
+                          openssl_path=chefdk_openssl_path(), server=server, port=port);
     let mut command = try!(generate_command_from_string(&cmd_str));
     let result = try!(command.output());
 
