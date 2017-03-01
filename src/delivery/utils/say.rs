@@ -29,6 +29,7 @@ pub const SUCCESS_COLOR: &'static str = "green";
 /// Because sometimes, you just want a global variable.
 static mut SHOW_SPINNER: bool = true;
 static mut SHOW_OUTPUT:  bool = true;
+static mut COLORIZE:     bool = true;
 
 pub struct Spinner {
     tx: Sender<isize>,
@@ -91,6 +92,12 @@ pub fn turn_on_output() {
     }
 }
 
+pub fn turn_off_color() {
+    unsafe {
+        COLORIZE = false;
+    }
+}
+
 pub fn turn_off_spinner() {
     unsafe {
         SHOW_SPINNER = false;
@@ -118,7 +125,11 @@ pub fn say(color: &str, to_say: &str) {
         Some(t) => {
             unsafe {
                 if SHOW_OUTPUT {
-                    say_term(t, color, to_say)
+                    if COLORIZE {
+                        say_term(t, color, to_say)
+                    } else {
+                        print!("{}", to_say)
+                    }
                 } else {
                     debug!("{}", to_say)
                 }

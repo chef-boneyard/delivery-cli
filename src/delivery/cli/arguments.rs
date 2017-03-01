@@ -104,6 +104,8 @@ fn_arg!(auto_bump, "-a --auto-bump 'Automatic cookbook version bump'");
 
 fn_arg!(no_spinner_arg, "--no-spinner 'Disable the spinner'");
 
+fn_arg!(no_color_arg, "--no-color 'Disable colors in terminal'");
+
 fn_arg!(non_interactive_arg, "--non-interactive 'Disable command line interactions'");
 
 #[cfg(test)]

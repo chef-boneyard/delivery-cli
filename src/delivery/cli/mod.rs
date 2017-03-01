@@ -35,7 +35,7 @@ use utils::cwd;
 // the ClapAlias trait for arguments that we might depricate in the future
 #[macro_use]
 pub mod arguments;
-use cli::arguments::{non_interactive_arg, no_spinner_arg};
+use cli::arguments::{non_interactive_arg, no_spinner_arg, no_color_arg};
 
 // Modules for setting up clap subcommand including their options and defaults,
 // as well as advanced subcommand match parsing (see local for an example).
@@ -87,7 +87,7 @@ pub fn run() {
 }
 
 fn execute_command<C: Command>(matches: &ArgMatches, command: C) -> DeliveryResult<ExitCode> {
-    handle_spinner(&matches);
+    handle_global_flags(&matches);
 
     // Store any child processes that need to die even on panic in here.
     let mut child_processes: Vec<process::Child> = Vec::new();
@@ -202,13 +202,13 @@ fn match_command_and_start(app_matches: &ArgMatches, build_version: &str) -> Del
             execute_command(&matches, command)
         },
         (spin::SUBCOMMAND_NAME, Some(matches)) => {
-            handle_spinner(&matches);
+            handle_global_flags(&matches);
             let spin_opts = spin::SpinClapOptions::new(&matches);
             let spinner = utils::say::Spinner::start();
             let sleep_time = Duration::from_secs(spin_opts.time);
             std::thread::sleep(sleep_time);
             spinner.stop();
-            handle_spinner(&matches);
+            handle_global_flags(&matches);
             Ok(0)
         },
         _ => {
@@ -227,6 +227,7 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a> {
         .version(version)
         .setting(AppSettings::GlobalVersion)
         .arg(no_spinner_arg().global(true))
+        .arg(no_color_arg().global(true))
         .arg(non_interactive_arg().global(true))
         .subcommand(review::clap_subcommand())
         .subcommand(clone::clap_subcommand())
@@ -242,9 +243,13 @@ fn make_app<'a>(version: &'a str) -> App<'a, 'a> {
         .subcommand(status::clap_subcommand())
 }
 
-fn handle_spinner(matches: &ArgMatches) {
+fn handle_global_flags(matches: &ArgMatches) {
     if matches.is_present("no-spinner") {
         say::turn_off_spinner()
+    }
+
+    if matches.is_present("no-color") {
+        say::turn_off_color()
     }
 }
 

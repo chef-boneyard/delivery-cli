@@ -21,7 +21,7 @@ use config::Config;
 use http;
 use serde_json;
 use types::{DeliveryResult, ExitCode};
-use utils::say::{say, sayln, ERROR_COLOR, SUCCESS_COLOR};
+use utils::say::{say, sayln};
 use std::time::Instant;
 use json::server_status::*;
 
@@ -45,85 +45,71 @@ impl<'n> Command for StatusCommand<'n> {
         json_string = json_string.replace("configuration mode", "configuration_mode");
 
         if self.options.json {
-            println!("{}", json_string);
+            sayln("white", json_string.as_ref());
             return Ok(0)
         }
+
+        // Closures to display status with the right color
+        let say_status   = |s: &str| if s == "up" { say("green", s) } else { say("red", s) };
+        let sayln_status = |s: &str| if s == "up" { sayln("green", s) } else { sayln("red", s) };
 
         // Replace "pong" with "up" because it is more human friendly word.
         json_string = json_string.replace("pong", "up");
 
         let s: ServerStatus = serde_json::from_str(&json_string)?;
 
-        println!("{}", &format!("Status information for Automate server {}...\n",
-                                try!(self.config.api_host_and_port())));
-        print!("Status: ");
-        print_status(&s.status, false, self.options.no_color);
+        sayln("white", &format!(
+                "Status information for Automate server {}...\n",
+                self.config.api_host_and_port()?
+        ));
+        say("white", "Status: ");
+        say_status(&s.status);
+
         if s.status == "up" {
-            if self.options.no_color {
-                println!("{}", &format!(" ({} ms)", &elapsed_milli.to_string()));
-            } else {
-                sayln(SUCCESS_COLOR, &format!(" ({} ms)", &elapsed_milli.to_string()));
-            }
+            sayln("green", &format!(" ({} ms)", &elapsed_milli.to_string()));
         }
 
-        println!("Configuration Mode: {}", s.configuration_mode);
+        sayln("white", &format!("Configuration Mode: {}", s.configuration_mode));
 
         // Backward compat: fips_mode was added later so it is an optional field.
         if let Some(fips) = s.fips_mode {
             let fips_output = if fips { "enabled" } else { "disabled" };
-            println!("FIPS Mode: {}", fips_output);
+            sayln("white", &format!("FIPS Mode: {}", fips_output));
         }
 
-        println!("Upstreams:");
-        println!("  Lsyncd:");
-        print!(  "    status: ");
-        print_status(&s.upstreams[0].lsyncd.status, true, self.options.no_color);
-        println!("  PostgreSQL:");
-        print!(  "    status:");
-        print_status(&s.upstreams[0].postgres.status, true, self.options.no_color);
-        println!("  RabbitMQ:");
-        print!(  "    status: ");
-        print_status(&s.upstreams[0].rabbitmq.status, true, self.options.no_color);
+        let ref u = s.upstreams[0];
+        sayln("white", "Upstreams:");
+        sayln("white", "  Lsyncd:");
+        say("white", "    status: ");
+        sayln_status(&u.lsyncd.status);
+        sayln("white", "  PostgreSQL:");
+        say("white",   "    status: ");
+        sayln_status(&u.postgres.status);
+        sayln("white", "  RabbitMQ:");
+        say("white",   "    status: ");
+        sayln_status(&u.rabbitmq.status);
 
-        if let Some(ref node_health) = s.upstreams[0].rabbitmq.node_health {
-            println!("    node_health:");
-            print!(  "      status: ");
-            print_status(&node_health.status, true, self.options.no_color);
+        if let Some(ref node_health) = u.rabbitmq.node_health {
+            sayln("white", "    node_health:");
+            say("white",   "      status: ");
+            sayln_status(&node_health.status);
         }
 
-        if let Some(ref vhost_aliveness) = s.upstreams[0].rabbitmq.vhost_aliveness {
-            println!("    vhost_aliveness:");
-            print!(  "      status: ");
-            print_status(&vhost_aliveness.status, true, self.options.no_color);
+        if let Some(ref vhost_aliveness) = u.rabbitmq.vhost_aliveness {
+            sayln("white", "    vhost_aliveness:");
+            say("white",   "      status: ");
+            sayln_status(&vhost_aliveness.status);
         }
 
         if let Some(fips) = s.fips_mode {
             if fips {
-                println!("\nYour Automate Server is configured in FIPS mode.");
-                println!("Please add the following to your cli.toml to enable Automate FIPS mode on your machine:\n");
-                println!("fips = true");
-                println!("fips_git_port = OPEN_PORT\n");
-                println!("Replace OPEN_PORT with any port that is free on your machine.");
+                let msg = "\nYour Automate Server is configured in FIPS mode.\n\
+                    Please add the following to your cli.toml to enable Automate FIPS \
+                    mode on your machine:\n\nfips = true\nfips_git_port = OPEN_PORT\n\n\
+                    Replace OPEN_PORT with any port that is free on your machine.";
+                sayln("white", msg);
             }
         }
-
         Ok(0)
-    }
-}
-
-fn print_status(status: &str, newline: bool, no_color_mode: bool) {
-    if no_color_mode {
-        if newline {
-            println!("{}", status);
-        } else {
-            print!("{}", status);
-        }
-    } else {
-        let color = if status == "up" { SUCCESS_COLOR } else { ERROR_COLOR };
-        if newline {
-            sayln(color, status);
-        } else {
-            say(color, status);
-        }
     }
 }
