@@ -278,7 +278,7 @@ Scenario: when server knows about fips but it is enabled
   Please add the following to your cli.toml to enable Automate FIPS mode on your machine:
 
   fips = true
-  fips_git_port = OPEN_PORT
+  fips_git_port = "OPEN_PORT"
 
   Replace OPEN_PORT with any port that is free on your machine.
   """
