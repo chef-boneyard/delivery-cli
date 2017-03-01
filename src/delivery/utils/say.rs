@@ -23,9 +23,6 @@ use std::io::prelude::*;
 use std::io;
 use std::time::Duration;
 
-pub const ERROR_COLOR: &'static str = "red";
-pub const SUCCESS_COLOR: &'static str = "green";
-
 /// Because sometimes, you just want a global variable.
 static mut SHOW_SPINNER: bool = true;
 static mut SHOW_OUTPUT:  bool = true;
@@ -106,6 +103,8 @@ pub fn turn_off_spinner() {
 
 fn say_term(mut t: Box<term::StdoutTerminal>, color: &str, to_say: &str) {
     let color_const = match color {
+        "success" => term::color::BRIGHT_GREEN,
+        "error" => term::color::BRIGHT_RED,
         "green" => term::color::BRIGHT_GREEN,
         "yellow" => term::color::BRIGHT_YELLOW,
         "red" => term::color::BRIGHT_RED,
@@ -149,6 +148,6 @@ pub fn sayln(color: &str, to_say: &str) {
 
 pub fn print_error(primary_error_str: &str, secondary_error_str: &str) -> () {
     let final_error_str_primary = "ERROR: ".to_string() + primary_error_str;
-    sayln(ERROR_COLOR, &final_error_str_primary);
+    sayln("error", &final_error_str_primary);
     sayln("white", &secondary_error_str);
 }

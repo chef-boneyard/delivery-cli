@@ -50,8 +50,8 @@ impl<'n> Command for StatusCommand<'n> {
         }
 
         // Closures to display status with the right color
-        let say_status   = |s: &str| if s == "up" { say("green", s) } else { say("red", s) };
-        let sayln_status = |s: &str| if s == "up" { sayln("green", s) } else { sayln("red", s) };
+        let say_status   = |s: &str| if s == "up" { say("success", s) } else { say("error", s) };
+        let sayln_status = |s: &str| if s == "up" { sayln("success", s) } else { sayln("error", s) };
 
         // Replace "pong" with "up" because it is more human friendly word.
         json_string = json_string.replace("pong", "up");
@@ -62,12 +62,15 @@ impl<'n> Command for StatusCommand<'n> {
                 "Status information for Automate server {}...\n",
                 self.config.api_host_and_port()?
         ));
+
         say("white", "Status: ");
         say_status(&s.status);
 
         if s.status == "up" {
-            sayln("green", &format!(" (request took {} ms)", &elapsed_milli.to_string()));
-        }
+            sayln("success", &format!(" (request took {} ms)", &elapsed_milli.to_string()));
+        } else {
+            sayln("error", &format!(" (request took {} ms)", &elapsed_milli.to_string()));
+	}
 
         sayln("white", &format!("Configuration Mode: {}", s.configuration_mode));
 
