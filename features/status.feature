@@ -370,3 +370,42 @@ Scenario: when server doesn't know about fips and rabbit doesn't return optional
     RabbitMQ:
       status: up
   """
+
+Scenario: when server returns not_running
+  Given the Delivery API server on port "9999":
+    """
+    get('/api/_status') do
+      {
+        "configuration_mode": "standalone",
+        "status": "not_running",
+        "upstreams": [
+          {
+            "lsyncd": {
+              "status": "not_running"
+            },
+            "postgres": {
+              "status": "pong"
+            },
+            "rabbitmq": {
+              "status": "pong"
+            }
+          }
+        ]
+      }
+    end
+    """
+  When I successfully run `delivery status --server=localhost --api-port=9999 --no-color`
+  Then the output should match:
+  """
+  Status information for Automate server localhost:9999...
+
+  Status: not_running \(request took \d+ ms\)
+  Configuration Mode: standalone
+  Upstreams:
+    Lsyncd:
+      status: not_running
+    PostgreSQL:
+      status: up
+    RabbitMQ:
+      status: up
+  """
