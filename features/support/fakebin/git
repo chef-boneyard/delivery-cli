@@ -32,12 +32,15 @@ else
 	          $DELIVERY_SYSTEM_GIT add .
 	          $DELIVERY_SYSTEM_GIT commit -a -m "commit copied repo"
 	    ;;
+        "ls-remote" )
+            echo "0dcf7e5cadbb945ecaa0fc470ba127e7fadac971	refs/heads/feature-branch"
+	    ;;
 	# there are some commands we don't want to run
 	"push" )
 	    ;;
-	"fetch" )
+	"pull" )
 	    ;;
-	"ls-remote" )
+	"fetch" )
 	    ;;
 	* )
 	    $DELIVERY_SYSTEM_GIT "$@"
