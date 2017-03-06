@@ -351,7 +351,11 @@ impl Workspace {
             workspace_path: path_to_string(ws_path),
             workspace: workspace_data,
             change: change,
-            config: config
+            // TODO: When we have a reserved field to pass attributes
+            // from the config to the build_cookbook. Replace it for:
+            //
+            // config: config.attributes
+            config: DeliveryConfig::load_raw_config(&self.repo)?,
         };
         let compat = BuilderCompat{
             workspace: path_to_string(&self.root),

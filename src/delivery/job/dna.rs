@@ -16,14 +16,30 @@
 //
 
 use job::change::{Change, BuilderCompat};
-use delivery_config::DeliveryConfig;
+use serde_json::Value as SerdeJson;
 
 #[derive(Serialize)]
 pub struct Top {
     pub workspace_path: String,
     pub workspace: WorkspaceCompat,
     pub change: Change,
-    pub config: DeliveryConfig,
+    // Use a generic Json format
+    //
+    // There are projects that have custom attributes inside the
+    // `.delivery/config.json` that needs to be available on every
+    // phase of the pipeline so that the build_cookbook can use them.
+    //
+    // A clear example of this is in the `delivery-truck` build_cookbook:
+    // => https://github.com/chef-cookbooks/delivery-truck/blob/master/.delivery/config.json#L10-L22
+    //
+    // For this reason we need to use a generic Json format until we
+    // have a reserved word in the config that allow us to be prescriptive
+    // about the content of the file that can be configurable.
+    //
+    // TODO: Restrict the config.json format by selecting a reserved field
+    // that allow users to inject attributes that will be used by the
+    // build_cookbook. (for example a field called `attributes`)
+    pub config: SerdeJson,
 }
 
 #[derive(Serialize)]
