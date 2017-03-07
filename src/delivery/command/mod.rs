@@ -26,6 +26,7 @@ pub mod clone;
 pub mod api;
 pub mod job;
 pub mod status;
+pub mod pull;
 
 use std;
 use utils;

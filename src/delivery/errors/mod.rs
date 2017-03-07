@@ -94,6 +94,7 @@ pub enum Kind {
     FipsNotSupportedForChefDKPlatform,
     AutomateNginxCertFetchFailed,
     FromUtf8Error,
+    BranchNotFoundOnDeliveryRemote,
 }
 
 #[derive(Debug)]
@@ -177,6 +178,7 @@ impl error::Error for DeliveryError {
             Kind::FipsNotSupportedForChefDKPlatform => "The ChefDK for your platform does not support FIPS mode.\nRHEL and Windows are the currently supported FIPS platforms for ChefDK.",
             Kind::AutomateNginxCertFetchFailed => "Fetching the Automate certificate failed. The automate certificate is required for FIPS mode. Please make sure you can connect to your Automate server.",
             Kind::FromUtf8Error => "Failed to convert bytes from Utf8 into a string.",
+            Kind::BranchNotFoundOnDeliveryRemote => "Could not find specified branch on the delivery remote.",
         }
     }
 

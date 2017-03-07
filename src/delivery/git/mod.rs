@@ -372,6 +372,32 @@ pub fn server_content(pipeline: &str) -> Result<bool, DeliveryError> {
     }
 }
 
+pub fn git_pull(branch: &str, rebase: bool) -> Result<GitResult, DeliveryError> {
+    // First, check if branch exists because for some reason rust
+    // will hang forever when trying to git pull a branch that doesn't exist.
+    match git_command(&["ls-remote", "--heads", "delivery"], &cwd()) {
+        Ok(result) => {
+            if !result.stdout.contains(&format!("refs/heads/{}", branch)) {
+                return Err(DeliveryError{ kind: Kind::BranchNotFoundOnDeliveryRemote,
+                                          detail: None})
+            }
+        },
+        Err(err) => return Err(err)
+    }
+
+    if rebase {
+        git_command(&["pull", "delivery", branch, "--rebase"], &cwd())
+    } else {
+        git_command(&["pull", "delivery", branch], &cwd())
+    }
+}
+
+pub fn git_current_sha() -> Result<String, DeliveryError> {
+    git_command(&["rev-parse", "HEAD"], &cwd()).and_then(|msg| {
+        Ok(msg.stdout)
+    })
+}
+
 // Push pipeline content to the Server
 pub fn git_push(pipeline: &str) -> Result<(), DeliveryError> {
     // Check if the pipeline branch exists and has commits.
