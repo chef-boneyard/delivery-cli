@@ -31,6 +31,7 @@ pub struct CheckoutClapOptions<'n> {
     pub patchset: &'n str,
     pub fips: bool,
     pub fips_git_port: &'n str,
+    pub fips_custom_cert_filename: &'n str,
 }
 
 impl<'n> Default for CheckoutClapOptions<'n> {
@@ -41,6 +42,7 @@ impl<'n> Default for CheckoutClapOptions<'n> {
             patchset: "",
             fips: false,
             fips_git_port: "",
+            fips_custom_cert_filename: "",
         }
     }
 }
@@ -53,6 +55,7 @@ impl<'n> CheckoutClapOptions<'n> {
             patchset: value_of(&matches, "patchset"),
             fips: matches.is_present("fips"),
             fips_git_port: value_of(&matches, "fips-git-port"),
+            fips_custom_cert_filename: value_of(&matches, "fips-custom-cert-filename"),
         }
     }
 }
@@ -65,7 +68,8 @@ impl<'n> Options for CheckoutClapOptions<'n> {
             new_config.project = project::project_from_cwd().ok();
         }
 
-        fips::merge_fips_options_and_config(self.fips, self.fips_git_port, new_config)
+        fips::merge_fips_options_and_config(self.fips, self.fips_git_port,
+                                            self.fips_custom_cert_filename, new_config)
     }
 }
 

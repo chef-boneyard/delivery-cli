@@ -34,6 +34,7 @@ pub struct CloneClapOptions<'n> {
     pub git_url: &'n str,
     pub fips: bool,
     pub fips_git_port: &'n str,
+    pub fips_custom_cert_filename: &'n str,
 }
 impl<'n> Default for CloneClapOptions<'n> {
     fn default() -> Self {
@@ -46,6 +47,7 @@ impl<'n> Default for CloneClapOptions<'n> {
             git_url: "",
             fips: false,
             fips_git_port: "",
+            fips_custom_cert_filename: "",
         }
     }
 }
@@ -61,6 +63,7 @@ impl<'n> CloneClapOptions<'n> {
             git_url: value_of(&matches, "git-url"),
             fips: matches.is_present("fips"),
             fips_git_port: value_of(&matches, "fips-git-port"),
+            fips_custom_cert_filename: value_of(&matches, "fips-custom-cert-filename"),
         }
     }
 }
@@ -77,7 +80,8 @@ impl<'n> Options for CloneClapOptions<'n> {
             new_config.project = project::project_from_cwd().ok();
         }
 
-        fips::merge_fips_options_and_config(self.fips, self.fips_git_port, new_config)
+        fips::merge_fips_options_and_config(self.fips, self.fips_git_port,
+                                            self.fips_custom_cert_filename, new_config)
     }
 }
 
