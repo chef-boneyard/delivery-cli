@@ -124,6 +124,10 @@ fn find_command_with_pathext(candidate: &PathBuf) -> Option<PathBuf> {
     None
 }
 
+pub fn ca_path() -> String {
+    String::from("C:\\opscode\\chefdk\\embedded\\ssl\\certs\\cacert.pem")
+}
+
 // ---------------
 // dummy functions
 // ---------------

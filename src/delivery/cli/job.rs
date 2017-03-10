@@ -48,6 +48,7 @@ pub struct JobClapOptions<'n> {
     pub docker_image: &'n str,
     pub fips: bool,
     pub fips_git_port: &'n str,
+    pub fips_custom_cert_filename: &'n str,
 }
 
 impl<'n> Default for JobClapOptions<'n> {
@@ -73,6 +74,7 @@ impl<'n> Default for JobClapOptions<'n> {
             docker_image: "",
             fips: false,
             fips_git_port: "",
+            fips_custom_cert_filename: "",
         }
     }
 }
@@ -100,6 +102,7 @@ impl<'n> JobClapOptions<'n> {
             docker_image: value_of(&matches, "docker"),
             fips: matches.is_present("fips"),
             fips_git_port: value_of(&matches, "fips-git-port"),
+            fips_custom_cert_filename: value_of(&matches, "fips-custom-cert-filename"),
         }
     }
 }
@@ -115,7 +118,8 @@ impl<'n> Options for JobClapOptions<'n> {
             .set_organization(with_default(&self.org, "workstation", &&self.local))
             .set_project(&project);
 
-        fips::merge_fips_options_and_config(self.fips, self.fips_git_port, new_config)
+        fips::merge_fips_options_and_config(self.fips, self.fips_git_port,
+                                            self.fips_custom_cert_filename, new_config)
     }
 }
 

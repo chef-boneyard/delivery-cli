@@ -113,3 +113,7 @@ pub fn find_command(command: &str) -> Option<PathBuf> {
     }
     None
 }
+
+pub fn ca_path() -> String {
+    String::from("/opt/chefdk/embedded/ssl/certs/cacert.pem")
+}

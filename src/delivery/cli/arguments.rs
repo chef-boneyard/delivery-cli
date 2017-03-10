@@ -54,7 +54,9 @@ pub fn u_e_s_o_args<'a>() -> Vec<Arg<'a, 'a>> {
 pub fn project_specific_args<'a>() -> Vec<Arg<'a, 'a>> {
     make_arg_vec![
         "--fips 'Runs command in FIPS mode. This proxies all git traffic through Stunnel FIPS encryption'",
-        "--fips-git-port=[port] 'The port Stunnel listens locally on when proxying git traffic'"]
+        "--fips-git-port=[port] 'The port Stunnel listens locally on when proxying git traffic'",
+        "--fips-custom-cert-filename=[cert] 'The path to a pem file that contains a self-signed certificate or certificate chain. Use this setting only when Automate server has a custom certificate authority or a self-signed certificate. Please see the Automate FIPS docs for more details.'"
+    ]
 }
 
 pub fn scp_args<'a>() -> Vec<Arg<'a, 'a>> {

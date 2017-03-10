@@ -45,6 +45,7 @@ pub struct InitClapOptions<'n> {
     pub local: bool,
     pub fips: bool,
     pub fips_git_port: &'n str,
+    pub fips_custom_cert_filename: &'n str,
 }
 
 impl<'n> Default for InitClapOptions<'n> {
@@ -67,6 +68,7 @@ impl<'n> Default for InitClapOptions<'n> {
             local: false,
             fips: false,
             fips_git_port: "",
+            fips_custom_cert_filename: "",
         }
     }
 }
@@ -91,6 +93,7 @@ impl<'n> InitClapOptions<'n> {
             local: matches.is_present("local"),
             fips: matches.is_present("fips"),
             fips_git_port: value_of(&matches, "fips-git-port"),
+            fips_custom_cert_filename: value_of(&matches, "fips-custom-cert-filename"),
         }
     }
 }
@@ -108,7 +111,8 @@ impl<'n> Options for InitClapOptions<'n> {
             .set_generator(&self.generator)
             .set_config_json(&self.config_json);
 
-        fips::merge_fips_options_and_config(self.fips, self.fips_git_port, new_config)
+        fips::merge_fips_options_and_config(self.fips, self.fips_git_port,
+                                            self.fips_custom_cert_filename, new_config)
     }
 
 }

@@ -29,6 +29,7 @@ pub const SUBCOMMAND_NAME: &'static str = "pull";
 pub struct PullClapOptions<'n> {
     pub pipeline: &'n str,
     pub fips: bool,
+    pub fips_custom_cert_filename: &'n str,
     pub fips_git_port: &'n str,
     pub rebase: bool,
 }
@@ -38,6 +39,7 @@ impl<'n> Default for PullClapOptions<'n> {
         PullClapOptions {
             pipeline: "",
             fips: false,
+            fips_custom_cert_filename: "",
             fips_git_port: "",
             rebase: false,
         }
@@ -49,6 +51,7 @@ impl<'n> PullClapOptions<'n> {
         PullClapOptions {
             pipeline: value_of(&matches, "pipeline"),
             fips: matches.is_present("fips"),
+            fips_custom_cert_filename: value_of(&matches, "fips-custom-cert-filename"),
             fips_git_port: value_of(&matches, "fips-git-port"),
             rebase: matches.is_present("rebase"),
         }
@@ -61,7 +64,8 @@ impl<'n> Options for PullClapOptions<'n> {
             config.project = project::project_from_cwd().ok();
         }
 
-        fips::merge_fips_options_and_config(self.fips, self.fips_git_port, config)
+        fips::merge_fips_options_and_config(self.fips, self.fips_git_port,
+                                            self.fips_custom_cert_filename, config)
     }
 }
 

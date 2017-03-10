@@ -48,6 +48,7 @@ pub struct Config {
     pub saml: Option<bool>,
     pub fips: Option<bool>,
     pub fips_git_port: Option<String>,
+    pub fips_custom_cert_filename: Option<String>,
 }
 
 impl Default for Config {
@@ -70,6 +71,7 @@ impl Default for Config {
             saml: None,
             fips: None,
             fips_git_port: None,
+            fips_custom_cert_filename: None,
         }
     }
 }
@@ -221,6 +223,7 @@ impl Config {
         if config.saml.is_some() { self.saml = config.saml }
         if config.fips.is_some() { self.fips = config.fips }
         if config.fips_git_port.is_some() { self.fips_git_port = config.fips_git_port }
+        if config.fips_custom_cert_filename.is_some() { self.fips_custom_cert_filename = config.fips_custom_cert_filename }
         if config.api_protocol.is_some() { self.api_protocol = config.api_protocol }
     }
 
