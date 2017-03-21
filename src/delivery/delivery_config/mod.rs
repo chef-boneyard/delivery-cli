@@ -275,6 +275,21 @@ impl DeliveryConfig {
         Ok(json)
     }
 
+    // Load RAW .delivery/config.json
+    //
+    // At the moment we allow the config to have an infinite possibility of options
+    // that any JSON file can have, and even though we have reserved fields, we need
+    // to have a mechanism to load them all without excluding non-reserved ones
+    //
+    // This method will first verify that the config is valid and if it is, load it
+    // in a RAW format by leveraging the `serde_json::Value` Enum.
+    pub fn load_raw_config(p_path: &PathBuf) -> DeliveryResult<SerdeJson> {
+        DeliveryConfig::validate_config_file(p_path)?;
+        debug!("Loading RAW config.json into memory from path: {}", p_path.display());
+        let config_json = read_file(&DeliveryConfig::find_config_file(p_path)?)?;
+        let json: SerdeJson = serde_json::from_str(&config_json)?;
+        Ok(json)
+    }
 }
 
 // v1 config, deprecated, but still supported

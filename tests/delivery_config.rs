@@ -159,4 +159,31 @@ mod v2 {
         // Filter for deploy phase doesn't exist
         assert!(complex_filters.get("deploy").is_none());
     });
+
+    test!(load_raw_config {
+        let source_dir = fixture_file("test_complex_repo");
+        let c_raw = DeliveryConfig::load_raw_config(&source_dir).unwrap();
+
+        // The RAW config can extract custom attributes
+        assert_eq!(
+            c_raw.get("like_delivery_truck").unwrap().as_str().unwrap(),
+            "great".to_string()
+        );
+
+        assert_eq!(
+            c_raw.get("extra_parameters").unwrap().as_str().unwrap(),
+            "are_ok".to_string()
+        );
+
+        // As well as reserved fields
+        assert_eq!(
+            c_raw.get("version").unwrap().as_str().unwrap(),
+            "2".to_string()
+        );
+
+        assert_eq!(
+            c_raw.get("dependencies").unwrap().as_array().unwrap()[0],
+            "projectA".to_string()
+        );
+    });
 }
