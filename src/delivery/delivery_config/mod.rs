@@ -279,7 +279,7 @@ impl DeliveryConfig {
     //
     // At the moment we allow the config to have an infinite possibility of options
     // that any JSON file can have, and even though we have reserved fields, we need
-    // to have a mechanism to load them all without excliding non-reserved ones
+    // to have a mechanism to load them all without excluding non-reserved ones
     //
     // This method will first verify that the config is valid and if it is, load it
     // in a RAW format by leveraging the `serde_json::Value` Enum.
