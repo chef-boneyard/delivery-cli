@@ -128,7 +128,7 @@ impl<'n> Command for JobCommand<'n> {
             String::from(self.options.git_url)
         };
         try!(ws.setup_repo_for_change(&clone_url, &c, &pi, self.options.shasum));
-        sayln("white", "Self.Configuring the job");
+        sayln("white", "Configuring the job");
         // This can be optimized out, almost certainly
         try!(utils::remove_recursive(&ws.chef.join("build_cookbook")));
         let change = Change {
