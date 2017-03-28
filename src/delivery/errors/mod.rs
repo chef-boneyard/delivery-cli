@@ -271,3 +271,34 @@ impl From<string::FromUtf8Error> for DeliveryError {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    pub use super::DeliveryError;
+    pub use super::Kind::{EndpointNotFound, JsonError};
+
+    mod constructor {
+        #[test]
+        fn throw_without_detail() {
+            let e = super::DeliveryError::throw(super::EndpointNotFound, None);
+            assert!(e.detail.is_none());
+            match e.kind {
+                super::EndpointNotFound => assert!(true),
+                _ => assert!(false),
+            }
+        }
+
+        #[test]
+        fn throw_with_detail() {
+            let msg = "Your json looks funcky".to_string();
+            // We clone it because we actually take ownership of the message
+            let e = super::DeliveryError::throw(super::JsonError, Some(msg.clone()));
+            assert!(e.detail.is_some());
+            assert_eq!(e.detail.unwrap(), msg);
+            match e.kind {
+                super::JsonError => assert!(true),
+                _ => assert!(false),
+            }
+        }
+    }
+}

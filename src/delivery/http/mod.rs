@@ -543,7 +543,7 @@ impl APIAuth {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    pub use super::*;
     use token::TokenStore;
     use std::env;
     use tempdir::TempDir;
@@ -759,5 +759,160 @@ mod tests {
                        assert_eq!(expect, detail);
                        Err(1)
                    }).is_err());
+    }
+
+    mod http_request {
+        use super::*;
+        use mockito::{SERVER_ADDRESS, mock};
+
+        fn client() -> APIClient {
+            APIClient::new_http(SERVER_ADDRESS, "gamer")
+        }
+
+        fn mock_endpoints() {
+            mock("GET", "/api/v0/e/gamer/orgs")
+                .with_status(200)
+                .match_header("Content-Type", "application/json")
+                .with_body("{}")
+                .create();
+            mock("GET", "/api/v0/e/gamer/not_found")
+                .with_status(404)
+                .create();
+            mock("POST", "/api/v0/e/gamer/orgs")
+                .with_status(201)
+                .create();
+            mock("POST", "/api/v0/e/gamer/orgs/zelda/projects")
+                .with_status(409)
+                .create();
+            mock("DELETE", "/api/v0/e/gamer/orgs/ganondorf")
+                .with_status(204)
+                .create();
+            mock("GET", "/api/v0/e/gamer/users")
+                .with_status(401)
+                .match_header("Content-Type", "application/json")
+                .with_body("{\"error\": \"unauthorized\"}")
+                .create();
+            mock("POST", "/api/v0/e/gamer/internal-users")
+                .with_status(401)
+                .match_header("Content-Type", "application/json")
+                .with_body("{\"error\": \"token_expired\"}")
+                .create();
+        }
+
+        mod parse_response {
+            use super::{client, APIClient};
+
+            #[test]
+            fn ok() {
+                super::mock_endpoints();
+                let response = client().get("orgs").unwrap();
+                let tuple = APIClient::parse_response(response);
+                assert!(tuple.is_ok());
+                let (code, content) = tuple.unwrap();
+                assert!(content.is_some());
+                assert_eq!(content.unwrap(), "{}");
+                assert_eq!(code, super::StatusCode::Ok);
+            }
+
+            #[test]
+            fn no_content() {
+                super::mock_endpoints();
+                let response = client().delete("orgs/ganondorf").unwrap();
+                let tuple = APIClient::parse_response(response);
+                assert!(tuple.is_ok());
+                let (code, content) = tuple.unwrap();
+                assert!(content.is_none());
+                assert_eq!(code, super::StatusCode::NoContent);
+            }
+
+            #[test]
+            fn created() {
+                super::mock_endpoints();
+                let response = client().post("orgs", "name: zelda").unwrap();
+                let tuple = APIClient::parse_response(response);
+                assert!(tuple.is_ok());
+                let (code, content) = tuple.unwrap();
+                assert!(content.is_none());
+                assert_eq!(code, super::StatusCode::Created);
+            }
+
+            #[test]
+            fn conflict_that_we_consider_as_ok() {
+                super::mock_endpoints();
+                let response = client().post("orgs/zelda/projects", "name: already_exist").unwrap();
+                let tuple = APIClient::parse_response(response);
+                assert!(tuple.is_ok());
+                let (code, content) = tuple.unwrap();
+                assert!(content.is_none());
+                assert_eq!(code, super::StatusCode::Conflict);
+            }
+
+
+            #[test]
+            fn not_found() {
+                super::mock_endpoints();
+                let response = client().get("not_found").unwrap();
+                let tuple = APIClient::parse_response(response);
+                assert!(tuple.is_err());
+                let error = tuple.unwrap_err();
+                assert_eq!(
+                    error.detail,
+                    Some(format!("Unable to access endpoint: {}", client().api_url("not_found")))
+                );
+                match error.kind {
+                    super::EndpointNotFound => assert!(true),
+                    _ => panic!("Wrong kind of error!"),
+                };
+            }
+
+            #[test]
+            fn unauthorized_token_expired() {
+                super::mock_endpoints();
+                let response = client().post("internal-users", "name: link").unwrap();
+                let tuple = APIClient::parse_response(response);
+                assert!(tuple.is_err());
+                let error = tuple.unwrap_err();
+                assert!(error.detail.is_none());
+                match error.kind {
+                    super::TokenExpired => assert!(true),
+                    _ => panic!("Wrong kind of error!"),
+                };
+            }
+
+            #[test]
+            fn unauthorized() {
+                super::mock_endpoints();
+                let response = client().get("users").unwrap();
+                let tuple = APIClient::parse_response(response);
+                assert!(tuple.is_err());
+                let error = tuple.unwrap_err();
+                let msg = "Request lacks valid authentication credentials.\n\
+                           Detail:\n{\n  \"error\": \"unauthorized\"\n}".to_string();
+                assert_eq!(error.detail, Some(msg));
+                match error.kind {
+                    super::AuthenticationFailed => assert!(true),
+                    _ => panic!("Wrong kind of error!"),
+                };
+            }
+
+            #[test]
+            fn any_other_request() {
+                super::mock_endpoints();
+                let response = client().get("odd-endpoint").unwrap();
+                let tuple = APIClient::parse_response(response);
+                assert!(tuple.is_err());
+                let error = tuple.unwrap_err();
+                assert_eq!(
+                    error.detail,
+                    Some("Request returned: \'501 Not Implemented\'".to_string())
+                );
+                match error.kind {
+                    super::ApiError(code, _) => {
+                        assert_eq!(code, super::StatusCode::NotImplemented);
+                    },
+                    _ => panic!("Wrong kind of error!"),
+                };
+            }
+        }
     }
 }
