@@ -29,6 +29,8 @@ use serde_json;
 use serde_json::Value as SerdeJson;
 use std::io::prelude::*;
 use errors::{DeliveryError, Kind};
+use errors::Kind::{ApiError, EndpointNotFound, AuthenticationFailed,
+                   ForbiddenRequest, TokenExpired};
 use token::TokenStore;
 use utils::say::sayln;
 use config::Config;
@@ -147,6 +149,79 @@ impl APIClient {
         api_client
     }
 
+    /// Parse the HyperResponse coming from a APIClient Request that
+    /// the server sends back when hitting an endpoints. It will
+    /// interprete the response and return Ok() with a tuple inside:
+    ///
+    /// (StatusCode, Option<String>)
+    ///
+    /// Where:
+    ///     -> StatusCode:      The request response code
+    ///     -> Option<String>:  Optional content of the request
+    ///
+    /// Or throwing an Err() explaining the reason the request failed
+    ///
+    // NOTE: We consider a '409 Conflict' to be Ok() because this code
+    // is returned when we are trying to create something that already
+    // exist, so we do not want to explode in that case.
+    //
+    // If the caller needs to interprat that code as a failure it can
+    // easily do it as the following example:
+    //
+    // # Example:
+    //
+    // ```rust
+    // match try!(APIClient::parse_response(response)) {
+    //     (Conflict, _content) => {
+    //         sayln("error", "There was a conflict!");
+    //     },
+    //     (code, _content) => {
+    //         sayln("success", "All good.");
+    //     },
+    // }
+    // ```
+    pub fn parse_response(mut response: HyperResponse)
+                            -> DeliveryResult<(StatusCode, Option<String>)> {
+        use self::StatusCode::Ok as OkCode;
+        use self::StatusCode::{Created, Conflict, NoContent, Forbidden,
+                               NotFound, Unauthorized};
+        debug!("Parsing response with status: {:?}", response.status);
+        match response.status {
+            NoContent | Created | Conflict => {
+                Ok((response.status, None))
+            },
+            OkCode => {
+                let pretty_json = try!(APIClient::extract_pretty_json(&mut response));
+                Ok((response.status, Some(pretty_json)))
+            },
+            NotFound => {
+                let msg = format!("Unable to access endpoint: {}", response.url);
+                Err(DeliveryError::throw(EndpointNotFound, Some(msg)))
+            },
+            Forbidden => {
+                let msg = "The user is not authorized to perform this action.\nContact \
+                           an administrator to grant you with appropriate permissions to \
+                           proceed.".to_string();
+                Err(DeliveryError::throw(ForbiddenRequest, Some(msg)))
+            },
+            Unauthorized => {
+                let detail = try!(APIClient::extract_pretty_json(&mut response));
+                if TokenResponse::parse_token_expired(&detail) {
+                    return Err(DeliveryError::throw(TokenExpired, None))
+                }
+                let msg = format!("Request lacks valid authentication credentials.\n\
+                                  Detail:\n{}", detail);
+                Err(DeliveryError::throw(AuthenticationFailed, Some(msg)))
+            },
+            error_code @ _ => {
+                let msg = format!("Request returned: '{}'", error_code);
+                let mut detail = String::new();
+                let e = response.read_to_string(&mut detail).and(Ok(detail));
+                Err(DeliveryError::throw(ApiError(error_code, e), Some(msg)))
+            },
+        }
+    }
+
     fn new(proto: HProto, host: &str) -> APIClient {
         APIClient {
             api_version: None,
@@ -167,47 +242,6 @@ impl APIClient {
 
     pub fn set_api_version(&mut self, api_version: &str) {
         self.api_version = Some(String::from(api_version))
-    }
-
-    /// Parse the HyperResponse coming from a APIClient Request that
-    /// Delivery sends back when hitting an endpoints. It will
-    /// interprete the response by, either printing a message and
-    /// returning Ok() or throwing an Err() if we don't know it
-    pub fn parse_response(&self, mut response: HyperResponse) -> DeliveryResult<StatusCode> {
-        debug!("Parsing response with status: {:?}", response.status);
-        match response.status {
-            StatusCode::NoContent => Ok(response.status),
-            StatusCode::Created => {
-                debug!(" created");
-                Ok(response.status)
-            },
-            StatusCode::Conflict => {
-                debug!(" already exists.");
-                Ok(response.status)
-            },
-            StatusCode::Unauthorized => {
-                let detail = try!(APIClient::extract_pretty_json(&mut response));
-                if TokenResponse::parse_token_expired(&detail) {
-                    Err(DeliveryError{ kind: Kind::TokenExpired, detail: None})
-                } else {
-                    let mut msg = "API request returned 401\nDetails:\n".to_string();
-                    msg.push_str(&detail);
-                    Err(DeliveryError{ kind: Kind::AuthenticationFailed,
-                                       detail: Some(msg)})
-                }
-            },
-            error_code @ _ => {
-                let msg = format!("API request returned {}",
-                                  error_code);
-                let mut detail = String::new();
-                let e = match response.read_to_string(&mut detail) {
-                    Ok(_) => Ok(detail),
-                    Err(e) => Err(e)
-                };
-                Err(DeliveryError{ kind: Kind::ApiError(error_code, e),
-                                   detail: Some(msg)})
-            }
-        }
     }
 
     pub fn get_auth_from_home(&mut self, server: &str, ent: &str,
@@ -337,7 +371,7 @@ impl APIClient {
         // FIXME: we'd like to use the native struct->json stuff, but
         // seeing link issues.
         let payload = format!("{{\"name\":\"{}\"}}", proj);
-        self.parse_response(try!(self.post(&path, &payload)))
+        Self::parse_response(self.post(&path, &payload)?).map(|(code, _)| code)
     }
 
     pub fn create_github_project(&self, org: &str, proj: &str,
@@ -354,7 +388,7 @@ impl APIClient {
                                     \"verify_ssl\": {}\
                                 }}\
                               }}", proj, repo_name, git_org, pipe, ssl);
-        self.parse_response(try!(self.post(&path, &payload)))
+        Self::parse_response(self.post(&path, &payload)?).map(|(code, _)| code)
     }
 
     fn get_scm_server_config(&self, scm: &str) -> DeliveryResult<Vec<SerdeJson>> {
@@ -405,12 +439,7 @@ impl APIClient {
                                     \"pipeline_branch\":\"{}\"\
                                 }}\
                               }}", proj, repo_name, project_key, pipe);
-        // Sadly the endpoint returns a Status 204 NoContent instead of 201 Created
-        // therefore we need to hardcode the output of the sayln(" created)"
-        //
-        self.parse_response(try!(self.post(&path, &payload)))
-        // TODO: Fix the endpoint, delete this code and uncomment this line:
-        //self.parse_response(try!(self.post(&path, &payload)))
+        Self::parse_response(self.post(&path, &payload)?).map(|(code, _)| code)
     }
 
     pub fn create_pipeline(&self,
@@ -422,7 +451,7 @@ impl APIClient {
         let base_branch = base.unwrap_or("master");
         let payload = format!("{{\"name\":\"{}\",\"base\":\"{}\"}}", pipe, base_branch);
 
-        self.parse_response(try!(self.post(&path, &payload)))
+        Self::parse_response(self.post(&path, &payload)?).map(|(code, _)| code)
     }
 
     pub fn parse_json(result: Result<HyperResponse, HttpError>) -> DeliveryResult<SerdeJson> {

@@ -17,9 +17,11 @@
 
 use cli::api::ApiClapOptions;
 use types::{DeliveryResult, ExitCode};
-use errors::{DeliveryError, Kind};
+use errors::DeliveryError;
+use errors::Kind::UnsupportedHttpMethod;
+use hyper::status::StatusCode::Conflict;
+use utils::say::sayln;
 use http::APIClient;
-use hyper::status::StatusCode;
 use command::Command;
 use config::Config;
 
@@ -31,24 +33,27 @@ pub struct ApiCommand<'n> {
 impl<'n> Command for ApiCommand<'n> {
     fn run(&self) -> DeliveryResult<ExitCode> {
         let client = try!(APIClient::from_config(&self.config));
-        let mut result = match self.options.method {
-            "get" => try!(client.get(self.options.path)),
-            "post" => try!(client.post(self.options.path, self.options.data)),
-            "put" => try!(client.put(self.options.path, self.options.data)),
+        let response = match self.options.method {
+            "get"    => try!(client.get(self.options.path)),
+            "post"   => try!(client.post(self.options.path, self.options.data)),
+            "put"    => try!(client.put(self.options.path, self.options.data)),
             "delete" => try!(client.delete(self.options.path)),
-            _ => return Err(DeliveryError{ kind: Kind::UnsupportedHttpMethod,
-                                           detail: None })
+            _ => return Err(DeliveryError::throw(UnsupportedHttpMethod, None))
         };
-        match result.status {
-            StatusCode::NoContent => {},
-            StatusCode::InternalServerError => {
-                return Err(DeliveryError{ kind: Kind::InternalServerError, detail: None})
+
+        match try!(APIClient::parse_response(response)) {
+            // if the response returned some content, printed out
+            (_code, Some(content)) => {
+                sayln("white", &format!("{}", content));
             },
-            _ => {
-                let pretty_json = try!(APIClient::extract_pretty_json(&mut result));
-                println!("{}", pretty_json);
-            }
-        };
+            // but if there was a conflict, show it and exit with non_zero code
+            (Conflict, None) => {
+                sayln("error", &format!("{}", Conflict));
+                return Ok(1)
+            },
+            // finally if there was no content, just dont do anything.
+            (_code, None) => {},
+        }
         Ok(0)
     }
 }
