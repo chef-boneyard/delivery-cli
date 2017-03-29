@@ -106,6 +106,19 @@ pub struct DeliveryError {
 }
 
 impl DeliveryError {
+    /// Constructor
+    ///
+    /// Use this method to create a DeliveryError struct.
+    ///
+    /// # Example:
+    ///
+    /// ```rust
+    /// use delivery::errors::DeliveryError;
+    /// use delivery::errors::Kind::IoError;
+    ///
+    /// let e = DeliveryError::throw(IoError, None);
+    /// assert!(e.detail.is_none());
+    /// ```
     pub fn throw(kind: Kind, detail: Option<String>) -> Self {
         DeliveryError { kind: kind, detail: detail }
     }
@@ -290,10 +303,7 @@ mod tests {
         fn throw_without_detail() {
             let e = super::DeliveryError::throw(super::EndpointNotFound, None);
             assert!(e.detail.is_none());
-            match e.kind {
-                super::EndpointNotFound => assert!(true),
-                _ => assert!(false),
-            }
+            assert_enum!(e.kind, super::EndpointNotFound);
         }
 
         #[test]
@@ -303,10 +313,7 @@ mod tests {
             let e = super::DeliveryError::throw(super::JsonError, Some(msg.clone()));
             assert!(e.detail.is_some());
             assert_eq!(e.detail.unwrap(), msg);
-            match e.kind {
-                super::JsonError => assert!(true),
-                _ => assert!(false),
-            }
+            assert_enum!(e.kind, super::JsonError);
         }
     }
 }

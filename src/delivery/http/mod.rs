@@ -888,10 +888,7 @@ mod tests {
                     error.detail,
                     Some(format!("Unable to access endpoint: {}", client().api_url("not_found")))
                 );
-                match error.kind {
-                    super::EndpointNotFound => assert!(true),
-                    _ => panic!("Wrong kind of error!"),
-                };
+                assert_enum!(error.kind, super::EndpointNotFound);
             }
 
             #[test]
@@ -902,10 +899,7 @@ mod tests {
                 assert!(tuple.is_err());
                 let error = tuple.unwrap_err();
                 assert!(error.detail.is_none());
-                match error.kind {
-                    super::TokenExpired => assert!(true),
-                    _ => panic!("Wrong kind of error!"),
-                };
+                assert_enum!(error.kind, super::TokenExpired);
             }
 
             #[test]
@@ -918,10 +912,7 @@ mod tests {
                 let msg = "Request lacks valid authentication credentials.\n\
                            Detail:\n{\n  \"error\": \"unauthorized\"\n}".to_string();
                 assert_eq!(error.detail, Some(msg));
-                match error.kind {
-                    super::AuthenticationFailed => assert!(true),
-                    _ => panic!("Wrong kind of error!"),
-                };
+                assert_enum!(error.kind, super::AuthenticationFailed);
             }
 
             #[test]
