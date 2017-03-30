@@ -122,15 +122,10 @@ pub fn set(config: &Config,
                                detail: Some(msg)})
         },
         error_code @ _ => {
-            let msg = format!("API request returned {}",
-                              error_code);
+            let msg = format!("API request returned {}", error_code);
             let mut detail = String::new();
-            let e = match result.read_to_string(&mut detail) {
-                Ok(_) => Ok(detail),
-                Err(e) => Err(e)
-            };
-            Err(DeliveryError{ kind: Kind::ApiError(error_code, e),
-                               detail: Some(msg)})
+            let e = result.read_to_string(&mut detail).and(Ok(detail));
+            Err(DeliveryError::throw(Kind::ApiError(error_code, e),Some(msg)))
         }
     }
 }

@@ -33,7 +33,9 @@ pub enum Kind {
     PhaseFailed(ExitCode),
     LocalPhasesNotFound,
     AuthenticationFailed,
+    ForbiddenRequest,
     InternalServerError,
+    EndpointNotFound,
     NoMatchingCommand,
     ClapArgAliasOverlap,
     NotOnABranch,
@@ -104,6 +106,23 @@ pub struct DeliveryError {
 }
 
 impl DeliveryError {
+    /// Constructor
+    ///
+    /// Use this method to create a DeliveryError struct.
+    ///
+    /// # Example:
+    ///
+    /// ```rust
+    /// use delivery::errors::DeliveryError;
+    /// use delivery::errors::Kind::IoError;
+    ///
+    /// let e = DeliveryError::throw(IoError, None);
+    /// assert!(e.detail.is_none());
+    /// ```
+    pub fn throw(kind: Kind, detail: Option<String>) -> Self {
+        DeliveryError { kind: kind, detail: detail }
+    }
+
     pub fn detail(&self) -> Option<String> {
         self.detail.clone()
     }
@@ -168,8 +187,10 @@ impl error::Error for DeliveryError {
             Kind::TomlDecodeError => "Attempted to decode invalid TOML",
             Kind::IntParseError => "Attempted to parse invalid Int",
             Kind::OpenFailed => "Open command failed",
-            Kind::AuthenticationFailed => "Authentication failed",
-            Kind::InternalServerError => "There was an internal error on the server. Check the logson the Delivery server.",
+            Kind::AuthenticationFailed => "401: Authentication failed",
+            Kind::ForbiddenRequest => "403: Unauthorized request",
+            Kind::InternalServerError => "500: There was an internal error on the server.\nCheck the logs on the Automate server.",
+            Kind::EndpointNotFound => "404: Endpoint not found!",
             Kind::NoToken => "Missing API token. Try `delivery token` to create one",
             Kind::TokenExpired => "The API token has expired. Try `delivery token` to generate a new one",
             Kind::NoEditor => "Environment variable EDITOR not set",
@@ -268,6 +289,31 @@ impl From<string::FromUtf8Error> for DeliveryError {
         DeliveryError{
             kind: Kind::FromUtf8Error,
             detail: detail
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    pub use super::DeliveryError;
+    pub use super::Kind::{EndpointNotFound, JsonError};
+
+    mod constructor {
+        #[test]
+        fn throw_without_detail() {
+            let e = super::DeliveryError::throw(super::EndpointNotFound, None);
+            assert!(e.detail.is_none());
+            assert_enum!(e.kind, super::EndpointNotFound);
+        }
+
+        #[test]
+        fn throw_with_detail() {
+            let msg = "Your json looks funcky".to_string();
+            // We clone it because we actually take ownership of the message
+            let e = super::DeliveryError::throw(super::JsonError, Some(msg.clone()));
+            assert!(e.detail.is_some());
+            assert_eq!(e.detail.unwrap(), msg);
+            assert_enum!(e.kind, super::JsonError);
         }
     }
 }

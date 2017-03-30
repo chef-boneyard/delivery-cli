@@ -43,6 +43,20 @@ macro_rules! validate {
     )
 }
 
+// Adding a quick macro to assert enums, specifically to test
+// the error::Kind enum since we can't add #[derive(PartialEq)]
+// because hyper and other types doesn't implement it
+#[cfg(test)]
+#[macro_export]
+macro_rules! assert_enum {
+    ($enum1:expr, $enum2:pat) => (
+        match $enum1 {
+            $enum2 => true,
+            _ => false
+        }
+    )
+}
+
 pub mod errors;
 pub mod types;
 pub mod git;

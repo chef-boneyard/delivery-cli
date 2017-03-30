@@ -75,6 +75,17 @@ Given(/^I have a valid cli.toml file$/) do
   step %(a file named ".delivery/cli.toml" with:), valid_cli_toml
 end
 
+Given(/^I have a dummy cli.toml file$/) do
+  step %(a file named ".delivery/cli.toml" with:), dummy_cli_toml
+end
+
+Given(/^a dummy api-tokens file$/) do
+  step %(a file named ".delivery/api-tokens" with:),
+  """
+  localhost:8080,dummy,link|this_is_a_fake_token
+  """
+end
+
 Given(/^I have a valid cli\.toml file with with "([^"]*)":$/) do |append_str|
   step %(a file named ".delivery/cli.toml" with:), valid_cli_toml + "\n" + append_str
 end
@@ -437,6 +448,46 @@ Given(/^a dummy Delivery API server/) do
     post('/api/v0/e/dummy/orgs/dummy/github-projects') do
       status 201
       { "project" => "delivery-cli-init" }
+    end
+
+    desc 'Create an organization.'
+    params do
+      requires :name, type: String, desc: 'Org name'
+    end
+    post '/api/v0/e/dummy/orgs' do
+      if params[:name] == "new_org"
+	      status 201
+      elsif params[:name] == "existing_org"
+	      status 409
+      else
+	      status 500
+      end
+    end
+
+    desc 'Request a token for link user.'
+    post('/api/v0/e/dummy/users/link/get-token') do
+      status 200
+      {
+         "token" => "xOsqI8qiBrUCGGRttfFy768R8ZAMJ24RC+0UGyX9/II=",
+         "_links" => {
+           "revoke-user-token" => {
+             "href" => "/v0/e/bar/users/link/revoke-token"
+           }
+         }
+      }
+    end
+
+    desc 'Delete ganondorf organization'
+    delete('/api/v0/e/dummy/orgs/ganondorf') do
+      status 204
+    end
+    desc 'Invalid endpoint'
+    get('/api/v0/e/dummy/not_found') do
+      status 404
+    end
+    desc 'Endpoint with unknown status code'
+    get('/api/v0/e/dummy/endpoint_with_unknown_status_code') do
+      status 429
     end
   )
   step %(the Delivery API server on port "8080":), endpoints
