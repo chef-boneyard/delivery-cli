@@ -52,7 +52,10 @@ pub enum Kind {
     ProjectSCPNameMismatch,
     OptionConstraint,
     UnknownProjectType,
+    ProjectNotFound(String),
     GitFailed,
+    UnauthorizedAction,
+    MissingSshPubKey,
     EmptyGitCommit,
     GitSetupFailed,
     ConfigParse,
@@ -73,6 +76,7 @@ pub enum Kind {
     SupermarketFailed,
     MoveFailed,
     RemoveFailed,
+    CloneFailed,
     TarFailed,
     MissingBuildCookbookField,
     ChefServerFailed,
@@ -142,6 +146,8 @@ impl error::Error for DeliveryError {
             Kind::FailedToExecute => "Tried to fork a process, and failed",
             Kind::PushFailed => "Git Push failed!",
             Kind::GitFailed => "Git command failed!",
+            Kind::UnauthorizedAction => "You are not authorized to perform this action.",
+            Kind::MissingSshPubKey => "Missing SSH public key on the server side.",
             Kind::EmptyGitCommit => "Nothing to commit, working directory clean",
             Kind::GitSetupFailed => "Setup failed; you have already set up delivery.",
             Kind::BadGitOutputMatch => "A line of git porcelain did not match!",
@@ -154,6 +160,7 @@ impl error::Error for DeliveryError {
             Kind::ProjectSCPNameMismatch => "Project and repository name mismatch.",
             Kind::OptionConstraint => "Invalid option constraint",
             Kind::UnknownProjectType => "Unknown Project Type",
+            Kind::ProjectNotFound(_) => "Project Not Found!",
             Kind::ConfigParse => "Failed to parse the cli config file",
             Kind::DeliveryConfigParse => "Unable to parse the config.json file.",
             Kind::MissingConfig => "A configuration value is missing",
@@ -173,6 +180,7 @@ impl error::Error for DeliveryError {
             Kind::TarFailed => "Cannot untar a file",
             Kind::MoveFailed => "Cannot move a file",
             Kind::RemoveFailed => "Cannot remove a file or directory",
+            Kind::CloneFailed => "Unable to clone project.",
             Kind::MissingBuildCookbookField => "Missing a required field in your build_cookbook",
             Kind::ChefServerFailed => "Failed to download a cookbook from the Chef Server",
             Kind::ChefdkGenerateFailed => "Failed to execute 'chef generate'",
@@ -221,6 +229,7 @@ impl fmt::Display for DeliveryError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let msg = match self.kind {
             Kind::PhaseFailed(ref e) => format!("Phase failed with exit code ({})!", e),
+            Kind::ProjectNotFound(ref e) => format!("The project '{}' was not found.", e),
             _ => self.description().to_string(),
         };
         write!(f, "{}", msg)

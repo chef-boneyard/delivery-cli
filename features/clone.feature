@@ -77,3 +77,12 @@ Scenario: With a non-standard Git port
   When I successfully run `delivery clone phoenix_project`
   Then "git clone ssh://cukes@skunkworks@delivery.mycompany.com:2112/skunkworks/engineering/phoenix_project phoenix_project" should be run
   And "git remote add delivery ssh://cukes@skunkworks@delivery.mycompany.com:2112/skunkworks/engineering/phoenix_project" should be run
+
+Scenario: Trying to clone a project that already exists
+  Given a directory named "phoenix_project"
+  When I run `delivery clone phoenix_project`
+  Then the exit status should be 1
+  And the output should contain "Unable to clone project."
+  And the output should match /The destination path (.*)phoenix_project' already exists./
+  And "git clone" should not be run
+  And "git remote add" should not be run
