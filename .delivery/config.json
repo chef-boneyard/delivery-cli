@@ -7,6 +7,9 @@
   "job_dispatch": {
     "version": "v2",
     "filters": {
+      "default" : {
+        "os" : ["linux"]
+      },
       "unit": [
         {
           "platform_family": ["debian"],
