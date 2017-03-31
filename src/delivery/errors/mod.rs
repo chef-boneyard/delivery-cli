@@ -53,6 +53,7 @@ pub enum Kind {
     OptionConstraint,
     UnknownProjectType,
     ProjectNotFound(String),
+    UserNotFound(String),
     GitFailed,
     UnauthorizedAction,
     MissingSshPubKey,
@@ -161,6 +162,7 @@ impl error::Error for DeliveryError {
             Kind::OptionConstraint => "Invalid option constraint",
             Kind::UnknownProjectType => "Unknown Project Type",
             Kind::ProjectNotFound(_) => "Project Not Found!",
+            Kind::UserNotFound(_) => "User Not Found!",
             Kind::ConfigParse => "Failed to parse the cli config file",
             Kind::DeliveryConfigParse => "Unable to parse the config.json file.",
             Kind::MissingConfig => "A configuration value is missing",
@@ -230,6 +232,7 @@ impl fmt::Display for DeliveryError {
         let msg = match self.kind {
             Kind::PhaseFailed(ref e) => format!("Phase failed with exit code ({})!", e),
             Kind::ProjectNotFound(ref e) => format!("The project '{}' was not found.", e),
+            Kind::UserNotFound(ref e) => format!("The user '{}' was not found.", e),
             _ => self.description().to_string(),
         };
         write!(f, "{}", msg)

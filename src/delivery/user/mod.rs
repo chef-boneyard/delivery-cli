@@ -17,6 +17,8 @@
 
 use types::DeliveryResult;
 use http::APIClient;
+use errors::DeliveryError;
+use errors::Kind::UserNotFound;
 use config::Config;
 use serde_json;
 
@@ -54,12 +56,16 @@ impl User {
     // use delivery::user::User;
     //
     // let mine: User = User::load(&config, None);          <- Load user from config
-    // let dif:  User = User::load(&config, Some("link"));  <- Load user `link`
+    // let diff: User = User::load(&config, Some("link"));  <- Load user `link`
     // ```
-    pub fn load(config: &Config, user: Option<&str>) -> DeliveryResult<Self> {
-        let u = config.user()?;
-        let name = user.unwrap_or(u.as_str());
-        let mut raw_json = APIClient::from_config(config)?.get(&format!("users/{}", name))?;
+    pub fn load(config: &Config, username: Option<&str>) -> DeliveryResult<Self> {
+        let c_user = config.user()?;
+        let name = username.unwrap_or(c_user.as_str());
+        let client = APIClient::from_config(config)?;
+        if !client.user_exists(&name) {
+            return Err(DeliveryError::throw(UserNotFound(name.to_owned()), None))
+        }
+        let mut raw_json = client.get(&format!("users/{}", name))?;
         let json = APIClient::extract_pretty_json(&mut raw_json)?;
         let user: User = serde_json::from_str(&json)?;
         Ok(user)
