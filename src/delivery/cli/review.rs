@@ -35,6 +35,7 @@ pub struct ReviewClapOptions<'n> {
     pub fips: bool,
     pub fips_git_port: &'n str,
     pub fips_custom_cert_filename: &'n str,
+    pub user: &'n str,
 }
 impl<'n> Default for ReviewClapOptions<'n> {
     fn default() -> Self {
@@ -46,6 +47,7 @@ impl<'n> Default for ReviewClapOptions<'n> {
             fips: false,
             fips_git_port: "",
             fips_custom_cert_filename: "",
+            user: "",
         }
     }
 }
@@ -60,13 +62,15 @@ impl<'n> ReviewClapOptions<'n> {
             fips: matches.is_present("fips"),
             fips_git_port: value_of(&matches, "fips-git-port"),
             fips_custom_cert_filename: value_of(&matches, "fips-custom-cert-filename"),
+            user: value_of(&matches, "user"),
         }
     }
 }
 
 impl<'n> Options for ReviewClapOptions<'n> {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
-        let mut new_config = config.set_pipeline(&self.pipeline);
+        let mut new_config = config.set_pipeline(&self.pipeline)
+            .set_user(&self.user);
 
         if new_config.auto_bump.is_none() {
             new_config.auto_bump = Some(self.auto_bump);
@@ -88,4 +92,5 @@ pub fn clap_subcommand<'c>() -> App<'c, 'c> {
         .args_from_usage("-e --edit 'Edit change title and description'")
         .args(&pipeline_arg())
         .args(&project_specific_args())
+        .args_from_usage("-u --user=[user] 'Automate user name for authentication'")
 }
