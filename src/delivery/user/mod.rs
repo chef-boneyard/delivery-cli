@@ -28,8 +28,8 @@ pub struct User {
   pub last: String,
   pub name: String,
   pub email: String,
-  pub ssh_pub_key: String,
   pub user_type: String,
+  ssh_pub_key: String,
 }
 
 impl Default for User {
@@ -71,11 +71,8 @@ impl User {
         Ok(user)
     }
 
-    pub fn verify(&self) -> bool {
-        if self.ssh_pub_key.is_empty() {
-            return false
-        }
-        true
+    pub fn verify_pub_key(&self) -> bool {
+        !self.ssh_pub_key.is_empty()
     }
 
     pub fn set_ssh_pub_key(&mut self, key: &str) {
@@ -95,13 +92,13 @@ mod tests {
     }
 
     #[test]
-    fn user_verify() {
+    fn user_verify_pub_key() {
         // ssh_pub_key is not set by default
         let mut u = User::default();
-        assert!(!u.verify());
+        assert!(!u.verify_pub_key());
 
         // Setting ssh_pub_key, and then verifying
         u.set_ssh_pub_key("SECRET");
-        assert!(u.verify());
+        assert!(u.verify_pub_key());
     }
 }

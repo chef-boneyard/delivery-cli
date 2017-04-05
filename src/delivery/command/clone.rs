@@ -70,7 +70,7 @@ impl<'n> Command for CloneCommand<'n> {
 
             // Verify that the user is well configured
             let user = User::load(&self.config, None)?;
-            if !user.verify() {
+            if !user.verify_pub_key() {
                 let s = self.config.server()?;
                 let e = self.config.enterprise()?;
                 let link = format!("https://{}/e/{}/#/users", s, e);
