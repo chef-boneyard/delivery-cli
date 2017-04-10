@@ -45,14 +45,9 @@ impl Description {
     }
 
     pub fn parse_text(text: &str) -> Result<Description, DeliveryError> {
-        let mut items: Vec<&str> = text.lines().collect();
-        let title = items[0].to_string();
-        let desc = if items.len() > 1 {
-            items.remove(0);
-            items.join("\n").trim().to_string()
-        } else {
-            "".to_string()
-        };
+        let mut iter = text.lines();
+        let title = iter.find(|&l| !l.trim().is_empty()).unwrap_or("").trim().to_string();
+        let desc = iter.collect::<Vec<&str>>().join("\n").trim().to_string();
         Ok(Description{ title: title, description: desc })
     }
 }
@@ -181,6 +176,15 @@ mod tests {
     fn description_parse_text_3_test() {
         let text = "Just a title\n\nL1\nL2\nL3\n";
         let expect = Description{ title: "Just a title".to_string(),
+                                  description: "L1\nL2\nL3".to_string() };
+        let desc = Description::parse_text(text).unwrap();
+        assert_eq!(expect, desc);
+    }
+
+    #[test]
+    fn description_parse_text_4_test() {
+        let text = "\n  \nA title after some blank lines\n  \nL1\nL2\nL3\n";
+        let expect = Description{ title: "A title after some blank lines".to_string(),
                                   description: "L1\nL2\nL3".to_string() };
         let desc = Description::parse_text(text).unwrap();
         assert_eq!(expect, desc);
