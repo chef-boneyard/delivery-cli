@@ -2,6 +2,7 @@ extern crate delivery;
 #[macro_use]
 extern crate serde_json;
 extern crate tempdir;
+extern crate mockito;
 #[macro_use] extern crate log;
 
 // Thanks, Cargo.
@@ -31,3 +32,4 @@ mod config;
 mod cli;
 mod utils;
 mod delivery_config;
+mod user;

@@ -73,3 +73,4 @@ pub mod cli;
 pub mod command;
 pub mod fips;
 pub mod json;
+pub mod user;
