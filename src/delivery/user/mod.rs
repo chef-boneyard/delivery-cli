@@ -1,4 +1,6 @@
 //
+// Author: Salim Afiune (afiune@chef.io)
+//
 // Copyright:: Copyright (c) 2017 Chef Software, Inc.
 // License:: Apache License, Version 2.0
 //

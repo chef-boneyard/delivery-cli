@@ -51,6 +51,8 @@ pub struct Config {
     pub fips_custom_cert_filename: Option<String>,
 }
 
+pub mod url_format;
+
 impl Default for Config {
     fn default() -> Config {
         Config{

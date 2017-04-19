@@ -71,9 +71,7 @@ impl<'n> Command for CloneCommand<'n> {
             // Verify that the user is well configured
             let user = User::load(&self.config, None)?;
             if !user.verify_pub_key() {
-                let s = self.config.server()?;
-                let e = self.config.enterprise()?;
-                let link = format!("https://{}/e/{}/#/users", s, e);
+                let link = self.config.users_url()?;
                 let msg  = format!("The configured user '{}' does not have an ssh_pub_key.\
                             \nPlease login to the Automate server and configure your key \
                             at:\n\t{}", self.config.user()?, link);
@@ -84,17 +82,24 @@ impl<'n> Command for CloneCommand<'n> {
             let o = self.config.organization()?;
             let p = self.options.project;
             if !APIClient::from_config(&self.config)?.project_exists(&o, p) {
-                return Err(DeliveryError::throw(ProjectNotFound(p.to_string()), None))
+                let msg = format!("You can find the list of available projects \
+                                  at:\n\t{}", self.config.projects_url()?);
+                return Err(
+                    DeliveryError::throw(ProjectNotFound(p.to_string()), Some(msg))
+                )
             }
 
             // Is the user powerful enough to perform this action?
             if let Some(ref d) = e.detail {
                 if d.find("Unauthorized action").is_some() {
-                    return Err(DeliveryError::throw(UnauthorizedAction, None))
+                let link = self.config.users_url()?;
+                let msg = format!("Contact an administrator to grant you with appropriate \
+                           permissions at the following url:\n\t{}", link);
+                    return Err(DeliveryError::throw(UnauthorizedAction, Some(msg)))
                 }
             }
 
-            // We dont know what's the problem, throw the normal error.
+            // We dont know what's the problem, throw the normal error
             return Err(e)
         }
 
