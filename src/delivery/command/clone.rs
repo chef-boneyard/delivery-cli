@@ -66,7 +66,7 @@ impl<'n> Command for CloneCommand<'n> {
         if let Some(e) = git::clone(self.options.project, &clone_url).err() {
             debug!("Raw Clone Error: {:?}", e);
             sayln("red", &format!("Unable to clone project '{}'", self.options.project));
-            sayln("yellow", "Analyzing reason of failure...");
+            sayln("yellow", "Analyzing error:");
 
             // Verify that the user is well configured
             let user = User::load(&self.config, None)?;
