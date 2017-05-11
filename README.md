@@ -1,5 +1,7 @@
 # Delivery CLI
 
+[![Build Status](https://travis-ci.org/chef/delivery-cli.svg?branch=master)](https://travis-ci.org/chef/delivery-cli)
+
 A command line tool for continuous delivery workflow. The `delivery`
 command is a component of Chef Delivery. It can be used to setup and
 execute phase jobs as well as interact with a Chef Delivery server.
@@ -41,7 +43,7 @@ Make targets:
 + `make test` runs the unit and functional tests.
 + `make cucumber` will run the cucumber tests.
 + `make clean` will clean the state of the build.
-+ `make update_deps` will clean the project and update the `Cargo.lock` file, 
++ `make update_deps` will clean the project and update the `Cargo.lock` file,
   this should be run periodically to pull in new deps and at the very least when upgrading to a new version of Rust.
 + `make release` builds the project with the `--release` flag.
 + `make check` builds and runs unit tests.
@@ -57,16 +59,6 @@ to test the review command with your code in it.
 
 If, for whatever reason, you want to compile and test with cargo's `--release` flag,
 run `make release`, and use `target/release/delivery`, but it will take longer to compile.
-
-### Promoting to Github
-
-Currently, when you hit accept in the Delivery RFR UI, it will merge to delivery master,
-but not github master. That happens in delivered/functional.
-
-**TO SHIP YOUR CHANGES, YOU MUST DELIVER THEM AS WELL AS APPOVE THEM VIA THE DELIVERY UI**
-
-ChefDK builds pull from master of delivery-cli on github, so delivering your changes in
-the delivery project for delivery-cli will "ship" them to the next build of the ChefDK.
 
 ### Tips
 
@@ -190,13 +182,7 @@ so:
 delivery job verify "lint syntax unit"
 ```
 
-## Delivery Pipeline For This Project
-
-Omnibus build is how the CLI is built on Delivery build nodes. The omnibus build
-setup will use the default recipe of the build cookbook (see `cookbooks/delivery_rust/recipes/default.rb`)
-and omnibus builds may need sudo permissions for setup.
-
-### Node Attributes
+## Node Attributes
 
 Attributes specific to the project and change are made available for
 use in build cookbook recipes.
@@ -234,6 +220,10 @@ The contents of your `.delivery/config.json` file are made available to you in t
 
 ## Note for Git Bash + MinTTY Users
 If you're running `delivery token` on Windows in Git Bash with MintTTY you must include `winpty` before `delivery token` to avoid errors.
+
+## Contributing
+
+For information on contributing to this project see <https://github.com/chef/chef/blob/master/CONTRIBUTING.md>
 
 ## License & Authors
 
