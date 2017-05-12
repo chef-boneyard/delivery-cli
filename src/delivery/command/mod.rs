@@ -15,6 +15,15 @@
 // limitations under the License.
 //
 
+use std;
+use git;
+use project;
+use utils;
+use utils::say::say;
+use utils::{cwd, read_from_terminal};
+use types::{DeliveryResult, ExitCode};
+use config::Config;
+
 pub mod init;
 pub mod review;
 pub mod local;
@@ -28,10 +37,6 @@ pub mod job;
 pub mod status;
 pub mod pull;
 
-use std;
-use utils;
-use types::{DeliveryResult, ExitCode};
-
 pub trait Command: Sized {
     fn setup(&self, child_processes: &mut Vec<std::process::Child>) -> DeliveryResult<()> {
         let _ = child_processes;
@@ -43,4 +48,31 @@ pub trait Command: Sized {
     fn teardown(&self, child_processes: Vec<std::process::Child>) -> DeliveryResult<()> {
         utils::kill_child_processes(child_processes)
     }
+}
+
+// Common functions for Commands
+//
+// There will be cases where commands might need to share certain actions across
+// other commands that requires the user to interact by answering keystrokes. An
+// example could be when we detect that the delivery remote needs to be updated
+// and we need confirmation from the user to proceed.
+//
+// Once you have added the method, you can just call it with `super::foo()` from
+// within any command. (don't forget to make it public)
+pub fn verify_and_repair_git_remote(config: &Config) -> DeliveryResult<()> {
+    if project::verify_git_remote(config)? {
+        let p_path = project::project_path()?;
+        let c_path = Config::dot_delivery_cli_path(&cwd()).expect("Unable to find cli.toml");
+        let git_ssh_url = config.delivery_git_ssh_url()?;
+        let msg = &format!("The 'delivery' remote doesn't match with the default \
+                  configuration loaded from {:?}.\n\tcurrent: {}\n\tupdate:  {}\
+                  \n\nWould you like to update it? (y/n): ", c_path,
+                  &git::delivery_remote_from_repo(&p_path)?,
+                  &git_ssh_url);
+        say("yellow", msg);
+        if read_from_terminal()? == "y" {
+            try!(git::update_delivery_remote(&git_ssh_url, &p_path));
+        }
+    }
+    Ok(())
 }

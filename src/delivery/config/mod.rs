@@ -20,8 +20,7 @@ use errors::{DeliveryError, Kind};
 use types::DeliveryResult;
 use std::fs::File;
 use std::default::Default;
-use utils::say::{say, sayln};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use toml;
 use utils::{read_file, mkdir_recursive};
 use std::io::prelude::*;
@@ -161,7 +160,7 @@ impl Config {
     }
 
     pub fn load_config(cwd: &PathBuf) -> DeliveryResult<Self> {
-        let have_config = Config::have_dot_delivery_cli(cwd);
+        let have_config = Config::dot_delivery_cli_path(cwd);
         match have_config.as_ref() {
             Some(path) => {
                 let toml = read_file(path)?;
@@ -174,21 +173,17 @@ impl Config {
         }
     }
 
-    pub fn write_file(&self, path: &PathBuf) -> DeliveryResult<()> {
-        let write_dir = path.join_many(&[".delivery"]);
+    pub fn write_file<P>(&self, path: P) -> DeliveryResult<String>
+            where P: AsRef<Path> {
+        let write_dir = path.as_ref().join_many(&[".delivery"]);
         if !is_dir(&write_dir) {
             try!(mkdir_recursive(&write_dir));
         }
-        let write_path = path.join_many(&[".delivery", "cli.toml"]);
-        say("white", "Writing configuration to ");
-        sayln("yellow", &format!("{}", write_path.display()));
-        let mut f = try!(File::create(&write_path));
+        let write_file = write_dir.join_many(&["cli.toml"]);
+        let mut f = try!(File::create(&write_file));
         let toml_string = toml::to_string(self)?;
-        sayln("magenta", "New configuration");
-        sayln("magenta", "-----------------");
-        say("white", &toml_string);
         try!(f.write_all(toml_string.as_bytes()));
-        Ok(())
+        Ok(toml_string)
     }
 
     pub fn parse_config(toml_str: &str) -> DeliveryResult<Self> {
@@ -240,8 +235,9 @@ impl Config {
         is_file
     }
 
-    fn have_dot_delivery_cli(orig_path: &PathBuf) -> Option<PathBuf> {
-        let mut path = orig_path.clone();
+    pub fn dot_delivery_cli_path<P>(orig_path: P) -> Option<PathBuf>
+            where P: AsRef<Path> {
+        let mut path = orig_path.as_ref().to_owned();
         loop {
             let check_result: Option<PathBuf> = Config::check_dot_delivery_cli(path.clone());
             match check_result.as_ref() {

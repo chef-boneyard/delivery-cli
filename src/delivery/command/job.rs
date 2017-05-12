@@ -47,7 +47,7 @@ impl<'n> Command for JobCommand<'n> {
         // if that is the case, it should not initialize any project specific
         // command, like the remote.
         if project::project_path().is_ok() && !self.options.local {
-            try!(project::ensure_git_remote_up_to_date(&self.config));
+            try!(super::verify_and_repair_git_remote(&self.config));
         }
 
         if !self.options.local {

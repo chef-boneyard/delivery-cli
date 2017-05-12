@@ -144,12 +144,16 @@ pub fn create_delivery_project(client: &APIClient, org: &str,
     }
 }
 
-pub fn ensure_git_remote_up_to_date(config: &Config) -> DeliveryResult<()> {
-    try!(git::create_or_update_delivery_remote(&try!(config.delivery_git_ssh_url()),
-                                               &try!(project_path())
-    ));
-    Ok(())
+// Verify if the (Git) delivery remote needs to be updated
+//
+// This method will compare the Git ssh URL generated form the loaded
+// config and the remote that is configured on the local repository
+pub fn verify_git_remote(config: &Config) -> DeliveryResult<bool> {
+    let remote = config.delivery_git_ssh_url()?;
+    let current = git::delivery_remote_from_repo(&project_path()?)?;
+    Ok(remote != current)
 }
+
 
 // Push local content to the Delivery Server if no upstream commits.
 // Returns true if commits pushed, returns false if upstream commits found.

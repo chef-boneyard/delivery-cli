@@ -23,6 +23,7 @@ use std::env;
 use std::process;
 use std::fs::File;
 use std::process::Output as CmdOutput;
+use std::io;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use utils::path_join_many::PathJoinMany;
@@ -69,6 +70,22 @@ pub fn home_dir(to_append: &[&str]) -> Result<PathBuf, DeliveryError>
                               detail: Some(msg) })
        }
    }
+}
+
+// Read from STDIN
+//
+// Useful helper method to ask questions to the end-user
+//
+// Example:
+// ```
+// say("yellow", "How cool is the delivery-cli? [1-10] ");
+// let coolness = utils::read_from_terminal();
+// assert_eq!(coolness, 10);
+// ```
+pub fn read_from_terminal() -> DeliveryResult<String> {
+    let mut buff = String::new();
+    try!(io::stdin().read_line(&mut buff));
+    Ok(buff.trim().to_string())
 }
 
 /// Walk up a file hierarchy searching for `dir/target`.

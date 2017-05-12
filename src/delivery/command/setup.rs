@@ -17,7 +17,8 @@
 
 use cli::setup::SetupClapOptions;
 use types::{DeliveryResult, ExitCode};
-use utils::say::sayln;
+use utils::say::{say, sayln};
+use utils::path_join_many::PathJoinMany;
 use std::path::PathBuf;
 use config::Config;
 use command::Command;
@@ -31,7 +32,16 @@ pub struct SetupCommand<'n> {
 impl<'n> Command for SetupCommand<'n> {
     fn run(&self) -> DeliveryResult<ExitCode> {
         sayln("green", "Chef Delivery");
-        try!(self.config.write_file(self.config_path));
+
+        let toml_path = self.config_path.join_many(&[".delivery", "cli.toml"]);
+        say("white", "Writing configuration to ");
+        sayln("yellow", &format!("{}", toml_path.display()));
+
+        let pretty_toml = self.config.write_file(self.config_path)?;
+        sayln("magenta", "New configuration");
+        sayln("magenta", "-----------------");
+        say("white", &pretty_toml);
+
         Ok(0)
     }
 }

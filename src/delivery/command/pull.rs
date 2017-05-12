@@ -18,7 +18,6 @@
 use std;
 use fips;
 use git;
-use project;
 use errors;
 use cli::pull::PullClapOptions;
 use types::{DeliveryResult, ExitCode};
@@ -33,7 +32,7 @@ pub struct PullCommand<'n> {
 
 impl<'n> Command for PullCommand<'n> {
     fn setup(&self, child_processes: &mut Vec<std::process::Child>) -> DeliveryResult<()> {
-        try!(project::ensure_git_remote_up_to_date(&self.config));
+        try!(super::verify_and_repair_git_remote(&self.config));
         try!(fips::setup_and_start_stunnel_if_fips_mode(&self.config, child_processes));
         Ok(())
     }

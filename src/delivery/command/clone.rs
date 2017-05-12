@@ -23,8 +23,7 @@ use types::{DeliveryResult, ExitCode};
 use errors::DeliveryError;
 use errors::Kind::{MissingSshPubKey, CloneFailed, ProjectNotFound, UnauthorizedAction};
 use utils::say::{say, sayln};
-use utils::cwd;
-use utils::path_ext;
+use utils::{cwd, path_ext};
 use http::APIClient;
 use user::User;
 use command::Command;
@@ -103,8 +102,28 @@ impl<'n> Command for CloneCommand<'n> {
             return Err(e)
         }
 
-        try!(git::create_or_update_delivery_remote(&delivery_url,
-                                                   &project_root));
+        try!(git::update_delivery_remote(&delivery_url, &project_root));
+        sayln("success", "Your project was cloned successfully.");
+
+        // Should we autmatically generate a cli.toml inside project?
+        //
+        // We could have the clone comand to write the toml file inside
+        // the project so that any other command that depends on the config
+        // won't complain about it. But if we do that we need to consider:
+        //
+        // a) Should we notify the end-user that they have to add a
+        //    `cli.toml` entry to their `.gitignore`?
+        // b) Or should we just modify it automatically?
+        //    (I wouldn't like this)
+        // c) We could also add it to the chefdk generator.
+        //
+        // If we want to persue this option, uncomment the following lines:
+        //try!(self.config.write_file(&project_root));
+        //let gitignore = read_file(project_root.join(".gitignore"))?;
+        //if gitignore.find("cli.toml").is_none() {
+            //sayln("yellow", "Make sure you have a 'cli.toml' entry in your '.gitignore'");
+        //}
+
         Ok(0)
     }
 }
