@@ -28,7 +28,7 @@ Scenario: With all information specified in the configuration file
   """
   And "git clone ssh://cukes@skunkworks@delivery.mycompany.com:2828/skunkworks/engineering/phoenix_project ." should be run
   And 'git fetch origin _reviews/master/username/feature/branch/1' should be run
-  And 'git remote add delivery ssh://cukes@skunkworks@delivery.mycompany.com:2828/skunkworks/engineering/phoenix_project' should be run
+  And 'git remote add delivery ssh://cukes@skunkworks@delivery.mycompany.com:2828/skunkworks/engineering/phoenix_project' should not be run
 
 Scenario: Specifying the patchset branch explicitly
   When I successfully run `delivery job verify syntax --project phoenix_project --for master --change-id 822b0eee-5cfb-4b35-9331-c9bc6b49bdb2 --branch username/feature/branch`
@@ -39,7 +39,7 @@ Scenario: Specifying the patchset branch explicitly
   """
   And "git clone ssh://cukes@skunkworks@delivery.mycompany.com:2828/skunkworks/engineering/phoenix_project ." should be run
   And 'git fetch origin username/feature/branch' should be run
-  And 'git remote add delivery ssh://cukes@skunkworks@delivery.mycompany.com:2828/skunkworks/engineering/phoenix_project' should be run
+  And 'git remote add delivery ssh://cukes@skunkworks@delivery.mycompany.com:2828/skunkworks/engineering/phoenix_project' should not be run
 
 Scenario: A repo that has failing tests
   Given I have a repository with failing tests
@@ -51,7 +51,7 @@ Scenario: A repo that has failing tests
   """
   And "git clone ssh://cukes@skunkworks@delivery.mycompany.com:2828/skunkworks/engineering/phoenix_project ." should be run
   And 'git fetch origin username/feature/branch' should be run
-  And 'git remote add delivery ssh://cukes@skunkworks@delivery.mycompany.com:2828/skunkworks/engineering/phoenix_project' should be run
+  And 'git remote add delivery ssh://cukes@skunkworks@delivery.mycompany.com:2828/skunkworks/engineering/phoenix_project' should not be run
 
 Scenario: Executing a local job
   When I run `delivery job verify syntax -l`

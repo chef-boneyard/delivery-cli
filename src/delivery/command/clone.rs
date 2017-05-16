@@ -36,7 +36,9 @@ pub struct CloneCommand<'n> {
 
 impl<'n> Command for CloneCommand<'n> {
     fn setup(&self, child_processes: &mut Vec<std::process::Child>) -> DeliveryResult<()> {
-        try!(fips::setup_and_start_stunnel_if_fips_mode(&self.config, child_processes));
+        if self.config.fips.unwrap_or(false) {
+            try!(fips::setup_and_start_stunnel(&self.config, child_processes));
+        }
         Ok(())
     }
 

@@ -32,8 +32,10 @@ pub struct DiffCommand<'n> {
 impl<'n> Command for DiffCommand<'n> {
     fn setup(&self, child_processes: &mut Vec<std::process::Child>) -> DeliveryResult<()> {
         if !self.options.local {
-            try!(super::verify_and_repair_git_remote(&self.config));
-            try!(fips::setup_and_start_stunnel_if_fips_mode(&self.config, child_processes));
+            if self.config.fips.unwrap_or(false) {
+                try!(super::verify_and_repair_git_remote(&self.config));
+                try!(fips::setup_and_start_stunnel(&self.config, child_processes));
+            }
         }
 
         Ok(())

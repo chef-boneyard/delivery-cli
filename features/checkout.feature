@@ -24,4 +24,5 @@ Scenario: Happy Path Checkout
   Then the output should contain "awesome/feature"
   And "git fetch delivery" should be run
   And "git branch --track awesome/feature delivery/_reviews/master/awesome/feature/latest" should be run
+  And "git remote add delivery ssh://user@ent@server.test:8989/ent/org/project" should not be run
   And "git checkout awesome/feature" should be run

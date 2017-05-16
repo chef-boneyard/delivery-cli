@@ -25,22 +25,20 @@ use types::DeliveryResult;
 use errors::Kind;
 use config::Config;
 
-pub fn setup_and_start_stunnel_if_fips_mode(config: &Config, child_processes: &mut Vec<std::process::Child>) -> DeliveryResult<()> {
-    if let Some(fips) = config.fips {
-        if fips {
-            if !Path::new(&stunnel_path()).exists() {
-                return Err(DeliveryError{ kind: Kind::FipsNotSupportedForChefDKPlatform,
-                                          detail: None })
-            }
-
-            let server = validate!(config, server);
-            let fips_git_port = validate!(config, fips_git_port);
-
-            try!(generate_stunnel_config(&try!(stunnel_config_path()), &server, &fips_git_port,
-                                         config.fips_custom_cert_filename.clone()));
-            try!(start_stunnel(child_processes));
-        }
+pub fn setup_and_start_stunnel(config: &Config,
+                               child_processes: &mut Vec<std::process::Child>) -> DeliveryResult<()> {
+    if !Path::new(&stunnel_path()).exists() {
+        return Err(DeliveryError{
+            kind: Kind::FipsNotSupportedForChefDKPlatform,
+            detail: None
+        })
     }
+
+    let server = validate!(config, server);
+    let fips_git_port = validate!(config, fips_git_port);
+    try!(generate_stunnel_config(&try!(stunnel_config_path()), &server, &fips_git_port,
+                                 config.fips_custom_cert_filename.as_ref()));
+    try!(start_stunnel(child_processes));
     Ok(())
 }
 
@@ -103,10 +101,11 @@ fn stunnel_path() -> String {
     }
 }
 
-fn generate_stunnel_config(stunnel_config_path: &PathBuf,
-                           server: &str,
-                           fips_git_port: &str,
-                           fips_custom_cert_filename: Option<String>) -> Result<(), DeliveryError> {
+fn generate_stunnel_config<P, T>(stunnel_config_path: P,
+                           server: &str, fips_git_port: &str,
+                           fips_custom_cert_filename: Option<T>) -> Result<(), DeliveryError>
+            where P: AsRef<Path>,
+                  T: AsRef<str> {
     try!(std::fs::create_dir_all(try!(utils::home_dir(&[".chefdk/etc/"]))));
     try!(std::fs::create_dir_all(try!(utils::home_dir(&[".chefdk/log/"]))));
 
@@ -147,7 +146,7 @@ fn generate_stunnel_config(stunnel_config_path: &PathBuf,
     try!(conf_file.write_all(verify.as_bytes()));
 
     if let Some(cert_str) = fips_custom_cert_filename {
-        let ca_file = "CAfile = ".to_string() + &cert_str + newline_str;
+        let ca_file = "CAfile = ".to_string() + cert_str.as_ref() + newline_str;
         try!(conf_file.write_all(ca_file.as_bytes()));
     } else {
         let ca_file = "CAfile = ".to_string() + &utils::ca_path() + newline_str;
@@ -183,7 +182,8 @@ verify = 3
         expected += &format!("CAfile = {}\n",
                              utils::ca_path());
         let temp_conf_path = PathBuf::from("/tmp/test1.conf");
-        generate_stunnel_config(&temp_conf_path, "automate.test", "36534", None).unwrap();
+        let custom_cert: Option<String> = None;
+        generate_stunnel_config(&temp_conf_path, "automate.test", "36534", custom_cert).unwrap();
         let mut f = File::open(temp_conf_path).unwrap();
         let mut actual = String::new();
         f.read_to_string(&mut actual).unwrap();
