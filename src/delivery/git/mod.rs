@@ -283,9 +283,9 @@ pub fn create_repo(path: &PathBuf) -> Result<(), DeliveryError> {
 // Returns the (Git) delivery remote URL form the specified repository path
 //
 // ex.=> ssh://user@ent@delivery.example.com:8989/ent/organization/foo
-pub fn delivery_remote_from_repo<P>(path: &P) -> DeliveryResult<String>
+pub fn delivery_remote_from_repo<P>(path: P) -> DeliveryResult<String>
         where P: AsRef<Path> {
-    git_command(&["config", "--get", "remote.delivery.url"], path)
+    git_command(&["config", "--get", "remote.delivery.url"], path.as_ref())
         .map(|g| g.stdout.trim().to_string())
         // If there is no 'delivery' remote, return an empty String
         .or(Ok(String::from("")))

@@ -60,15 +60,14 @@ Scenario: When creating a delivery backed project when FIPS mode is enables and
           the delivery remote is different from the loaded configuration
   When I set up basic delivery and git configs
   And I successfully run `git remote add delivery fake`
-  And I run `delivery init --fips --fips-git-port 4321` interactively
-  And I type "y"
+  And I run `delivery init --fips --fips-git-port 4321`
   And I successfully run `git remote -v`
   # The address is 127.0.0.1:8080:8080 because the server is running on localhost:8080
   # and the git port is 8080. Not what you'd ever see irl.
-  Then the output should contain "The 'delivery' remote doesn't match with the default configuration loaded from"
+  Then the output should contain "Updating 'delivery' remote with the default configuration loaded from"
   Then the output should contain "current: fake"
   Then the output should contain "update:  ssh://dummy@dummy@localhost:4321/dummy/dummy/delivery-cli-init"
-  Then the output should contain "Would you like to update it? (y/n):"
+  Then the output should contain "delivery	ssh://dummy@dummy@localhost:4321/dummy/dummy/delivery-cli-init (fetch)"
 
 Scenario: When creating a delivery backed project that already has a .delivery/build_cookbook directory and .delivery/config.json
   When I already have a .delivery/config.json on disk

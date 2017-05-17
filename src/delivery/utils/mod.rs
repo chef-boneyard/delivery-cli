@@ -79,7 +79,7 @@ pub fn home_dir(to_append: &[&str]) -> Result<PathBuf, DeliveryError>
 // Example:
 // ```
 // say("yellow", "How cool is the delivery-cli? [1-10] ");
-// let coolness = utils::read_from_terminal();
+// let coolness = utils::read_from_terminal()?;
 // assert_eq!(coolness, 10);
 // ```
 pub fn read_from_terminal() -> DeliveryResult<String> {

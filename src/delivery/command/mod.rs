@@ -19,8 +19,8 @@ use std;
 use git;
 use project;
 use utils;
-use utils::say::say;
-use utils::{cwd, read_from_terminal};
+use utils::say::sayln;
+use utils::cwd;
 use types::{DeliveryResult, ExitCode};
 use config::Config;
 
@@ -64,15 +64,12 @@ pub fn verify_and_repair_git_remote(config: &Config) -> DeliveryResult<()> {
         let p_path = project::project_path()?;
         let c_path = Config::dot_delivery_cli_path(&cwd()).expect("Unable to find cli.toml");
         let git_ssh_url = config.delivery_git_ssh_url()?;
-        let msg = &format!("The 'delivery' remote doesn't match with the default \
-                  configuration loaded from {:?}.\n\tcurrent: {}\n\tupdate:  {}\
-                  \n\nWould you like to update it? (y/n): ", c_path,
+        let msg = &format!("Updating 'delivery' remote with the default configuration \
+                  loaded from {:?}.\n\tcurrent: {}\n\tupdate:  {}", c_path,
                   &git::delivery_remote_from_repo(&p_path)?,
                   &git_ssh_url);
-        say("yellow", msg);
-        if read_from_terminal()? == "y" {
-            try!(git::update_delivery_remote(&git_ssh_url, &p_path));
-        }
+        sayln("yellow", msg);
+        try!(git::update_delivery_remote(&git_ssh_url, &p_path));
     }
     Ok(())
 }
