@@ -215,13 +215,13 @@ pub fn kill_child_processes(child_processes: Vec<process::Child>) -> DeliveryRes
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::env;
+    use utils::test_paths::fixture_file;
     use std::path::PathBuf;
     use std::ffi::OsStr;
 
     #[test]
     fn traverse_up_for_dot_delivery_found() {
-        let p = env::current_dir().unwrap();
+        let p = fixture_file("test_repo");
         let result = walk_tree_for_path(&p, ".delivery");
         assert!(result.is_some());
         assert_eq!(Some(OsStr::new(".delivery")), result.unwrap().file_name());

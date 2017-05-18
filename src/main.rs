@@ -17,10 +17,10 @@
 
 extern crate regex;
 extern crate clap;
-#[macro_use] extern crate log;
+extern crate log;
 extern crate env_logger;
 extern crate term;
-#[macro_use] extern crate hyper;
+extern crate hyper;
 extern crate delivery;
 extern crate time;
 
