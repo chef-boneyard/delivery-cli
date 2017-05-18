@@ -1,6 +1,19 @@
-# Copyright 2015 Chef Software, Inc.
-#
-# Author: Jon Anderson (janderson@chef.io)
+##
+## Copyright:: Copyright (c) 2017 Chef Software, Inc.
+## License:: Apache License, Version 2.0
+##
+## Licensed under the Apache License, Version 2.0 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+##
+##      http://www.apache.org/licenses/LICENSE-2.0
+##
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+##
 
 RUST_VERSION ?= 1.15.0
 
@@ -13,6 +26,18 @@ CARGO_ENV += DELIV_CLI_VERSION="$(DELIV_CLI_VERSION)"
 CARGO_ENV += DELIV_CLI_GIT_SHA="$(DELIV_CLI_GIT_SHA)"
 CARGO_ENV += RUSTC_VERSION="$(RUSTC_VERSION)"
 CARGO_ENV += DELIV_CLI_TIME="$(DELIV_CLI_TIME)"
+CARGO_ENV += RUST_TEST_TASKS=1
+CARGO_ENV += RUST_BACKTRACE=1
+
+# We need to set some Git variables for cargo and cucumber
+# to consume them. Essentially because we run underneed
+# a few `git commit` commands.
+CARGO_ENV += GIT_COMMITTER_NAME="Chef CI"
+CARGO_ENV += GIT_AUTHER_NAME="Chef CI"
+CARGO_ENV += EMAIL="blackhole@chef.io"
+CUCUMBER_ENV += GIT_COMMITTER_NAME="Chef CI"
+CUCUMBER_ENV += GIT_AUTHER_NAME="Chef CI"
+CUCUMBER_ENV += EMAIL="blackhole@chef.io"
 
 UNAME = $(shell uname)
 
@@ -59,7 +84,7 @@ check:
 	$(MAKE) test
 
 test:
-	RUST_TEST_TASKS=1 RUST_BACKTRACE=1 GIT_COMMITTER_NAME="Chef CI" GIT_AUTHER_NAME="Chef CI"	EMAIL="blackhole@chef.io"	$(CARGO) $(CARGO_OPTS) test
+	$(CARGO) $(CARGO_OPTS) test
 
 travis:
 	export HOME=/home/travis
@@ -76,7 +101,7 @@ travis:
 # Depends on the target/release/delivery executable having been built
 cucumber: release
 	chef exec bundle install
-	GIT_COMMITTER_NAME="Chef CI" GIT_AUTHER_NAME="Chef CI" EMAIL="blackhole@chef.io" chef exec cucumber
+	$(CUCUMBER_ENV) chef exec cucumber
 
 openssl_check:
 	@ls $(OPENSSL_PREFIX) >> /dev/null || \
