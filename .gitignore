@@ -9,6 +9,8 @@ vendor/
 /omnibus/local/
 nodes/
 local-mode-cache
+Gemfile.lock
+.DS_Store
 
 # Cucumber Stuff
 tmp/

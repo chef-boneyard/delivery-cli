@@ -93,7 +93,7 @@ def project_toml
 [local_phases]
 unit = "echo 'This is a cool unit test'"
 lint = "cookstyle"
-syntax = "foodcritic ."
+syntax = "foodcritic . -t ~supermarket"
 provision = "echo 'Creating instances'"
 deploy = "echo 'Converging instances'"
 smoke = "echo 'Smoking tests'"

@@ -59,21 +59,24 @@ check:
 	$(MAKE) test
 
 test:
-	$(CARGO) $(CARGO_OPTS) test
+	RUST_TEST_TASKS=1 RUST_BACKTRACE=1 GIT_COMMITTER_NAME="Chef CI" GIT_AUTHER_NAME="Chef CI"	EMAIL="blackhole@chef.io"	$(CARGO) $(CARGO_OPTS) test
 
+travis:
+	export HOME=/home/travis
+	export USE_CHEFDK_LIBS=true
+	$(MAKE) test
+	$(MAKE) cucumber
 
-.PHONY: all build update_deps release clean check_deps check test
-
-bin/cucumber: Gemfile
-	bundle install --binstubs=bin --path=vendor/bundle
+.PHONY: all build update_deps release clean check_deps check test travis
 
 # Our fake api server generates its own self-signed certificate, and
 # outputs some noice on standard error; redirecting it to /dev/null
 # cleans up the output a little bit.
 #
 # Depends on the target/release/delivery executable having been built
-cucumber: release bin/cucumber
-	bin/cucumber 2>/dev/null && rm -rf features/tmp
+cucumber: release
+	chef exec bundle install
+	GIT_COMMITTER_NAME="Chef CI" GIT_AUTHER_NAME="Chef CI" EMAIL="blackhole@chef.io" chef exec cucumber
 
 openssl_check:
 	@ls $(OPENSSL_PREFIX) >> /dev/null || \

@@ -490,14 +490,6 @@ mod tests {
         use super::*;
 
         #[test]
-        fn from_delivery_cli() {
-            // This test is loading the config from `delivery-cli/.delivery/config.json`
-            let path = super::verify_config_get_build_cookbook_path(utils::cwd()).unwrap();
-            assert!(path.is_some());
-            assert_eq!(path.unwrap(), PathBuf::from("cookbooks/delivery_rust"));
-        }
-
-        #[test]
         fn from_fixtures_config_not_found() {
             // Using the home_dir to get a path that does not have a `config.json`
             let project_path = utils::home_dir(&["tmp"]).unwrap();
