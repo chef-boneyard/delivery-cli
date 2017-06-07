@@ -113,7 +113,9 @@ fn say_term(mut t: Box<term::StdoutTerminal>, color: &str, to_say: &str) {
         "cyan" => term::color::BRIGHT_CYAN,
         _ => term::color::WHITE
     };
-    t.fg(color_const).unwrap();
+    if t.supports_color() {
+        t.fg(color_const).unwrap();
+    }
     t.write_all(to_say.as_bytes()).unwrap();
     t.reset().unwrap();
     io::stdout().flush().ok().expect("Could not flush stdout");
