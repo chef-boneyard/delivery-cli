@@ -23,6 +23,7 @@ use std::env;
 use std::process;
 use std::fs::File;
 use std::process::Output as CmdOutput;
+use std::io;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use utils::path_join_many::PathJoinMany;
@@ -69,6 +70,22 @@ pub fn home_dir(to_append: &[&str]) -> Result<PathBuf, DeliveryError>
                               detail: Some(msg) })
        }
    }
+}
+
+// Read from STDIN
+//
+// Useful helper method to ask questions to the end-user
+//
+// Example:
+// ```
+// say("yellow", "How cool is the delivery-cli? [1-10] ");
+// let coolness = utils::read_from_terminal()?;
+// assert_eq!(coolness, 10);
+// ```
+pub fn read_from_terminal() -> DeliveryResult<String> {
+    let mut buff = String::new();
+    try!(io::stdin().read_line(&mut buff));
+    Ok(buff.trim().to_string())
 }
 
 /// Walk up a file hierarchy searching for `dir/target`.
@@ -198,13 +215,13 @@ pub fn kill_child_processes(child_processes: Vec<process::Child>) -> DeliveryRes
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::env;
+    use utils::test_paths::fixture_file;
     use std::path::PathBuf;
     use std::ffi::OsStr;
 
     #[test]
     fn traverse_up_for_dot_delivery_found() {
-        let p = env::current_dir().unwrap();
+        let p = fixture_file("test_repo");
         let result = walk_tree_for_path(&p, ".delivery");
         assert!(result.is_some());
         assert_eq!(Some(OsStr::new(".delivery")), result.unwrap().file_name());

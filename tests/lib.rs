@@ -1,9 +1,8 @@
 extern crate delivery;
-#[macro_use]
 extern crate serde_json;
 extern crate tempdir;
 extern crate mockito;
-#[macro_use] extern crate log;
+extern crate log;
 
 // Thanks, Cargo.
 macro_rules! test {

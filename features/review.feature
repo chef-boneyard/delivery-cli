@@ -52,7 +52,7 @@ Scenario: I want to target a different branch than the pipeline default using
   Then the output should contain "Review for change "
   And the output should not contain "is a cookbook"
   And "git push --porcelain --progress --verbose delivery foo:_for/staging/foo" should be run
-  And "git remote add delivery ssh://user@ent@server.test:8989/ent/org/project" should be run
+  And "git remote add delivery ssh://user@ent@server.test:8989/ent/org/project" should not be run
 
 Scenario: I want to target a different branch than the pipeline default using
           the --pipeline flag.
@@ -94,7 +94,7 @@ Scenario: I run a review on a directory with a different name than
   When I have a feature branch "foo" off of "master"
   And I successfully run `delivery review`
   Then the exit status should be 0
-  And "git remote add delivery ssh://user@ent@server.test:8989/ent/org/special" should be run
+  And "git remote add delivery ssh://user@ent@server.test:8989/ent/org/special" should not be run
 
 Scenario: I'm on the target branch I'm trying to push for review on
 

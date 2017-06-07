@@ -46,8 +46,10 @@ pub struct InitCommand<'n> {
 impl<'n> Command for InitCommand<'n> {
     fn setup(&self, child_processes: &mut Vec<std::process::Child>) -> DeliveryResult<()> {
         if !self.options.local {
-            try!(project::ensure_git_remote_up_to_date(&self.config));
-            try!(fips::setup_and_start_stunnel_if_fips_mode(&self.config, child_processes));
+            if self.config.fips.unwrap_or(false) {
+                try!(super::verify_and_repair_git_remote(&self.config));
+                try!(fips::setup_and_start_stunnel(&self.config, child_processes));
+            }
         }
         Ok(())
     }

@@ -28,6 +28,7 @@ use std::convert::AsRef;
 use std::error;
 use regex::Regex;
 use project::project_path;
+use types::DeliveryResult;
 
 fn cwd() -> PathBuf {
     env::current_dir().unwrap()
@@ -279,27 +280,38 @@ pub fn create_repo(path: &PathBuf) -> Result<(), DeliveryError> {
     }
 }
 
-pub fn create_or_update_delivery_remote(url: &str, path: &PathBuf) -> Result<bool, DeliveryError> {
-    let result = git_command(&["remote", "add", "delivery", &url], path);
-    match result {
-        Ok(_) => return Ok(true),
-        Err(e) => {
-            match e.detail.clone() {
-                Some(msg) => {
-                    if msg.contains("remote delivery already exists") {
-                        try!(git_command(&["remote", "rm", "delivery"], path));
-                        try!(git_command(&["remote", "add", "delivery", &url], path));
-                        return Ok(false)
-                    } else {
-                        return Err(e)
-                    }
-                },
-                None => {
-                    return Err(e)
-                }
+// Returns the (Git) delivery remote URL form the specified repository path
+//
+// ex.=> ssh://user@ent@delivery.example.com:8989/ent/organization/foo
+pub fn delivery_remote_from_repo<P>(path: P) -> DeliveryResult<String>
+        where P: AsRef<Path> {
+    git_command(&["config", "--get", "remote.delivery.url"], path.as_ref())
+        .map(|g| g.stdout.trim().to_string())
+        // If there is no 'delivery' remote, return an empty String
+        .or(Ok(String::from("")))
+}
+
+// Update the (Git) delivery remote
+//
+// Try to add the delivery remote and if it fails adding it, try to remove
+// it first and then add it. This way we ensure we are updating it with the
+// provided URL no mather if it already exists or not.
+pub fn update_delivery_remote<P, S>(url: S, path: P) -> DeliveryResult<()>
+        where P: AsRef<Path>,
+              S: AsRef<str> {
+    let path = path.as_ref();
+    let url  = url.as_ref();
+    git_command(&["remote", "add", "delivery", url], path)
+        .map(|_| ())
+        .or_else(|e| {
+            let msg = e.detail.clone().unwrap_or(String::from(""));
+            if msg.contains("remote delivery already exists") {
+                try!(git_command(&["remote", "rm", "delivery"], path));
+                try!(git_command(&["remote", "add", "delivery", url], path));
+                return Ok(())
             }
-        },
-    }
+            return Err(e)
+    })
 }
 
 pub fn checkout_branch_name(change: &str, patchset: &str) -> String {
@@ -460,7 +472,8 @@ pub fn git_commit(message: &str) -> Result<(), DeliveryError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{ReviewResult, PushResult, PushResultFlag, parse_git_push_output, parse_line_from_remote, check_repo_init};
+    use super::*;
+    use tempdir::TempDir;
     use std::path::PathBuf;
     use std::fs::DirBuilder;
 
@@ -487,6 +500,29 @@ mod tests {
             .recursive(true)
             .create(&full_path).unwrap();
         assert!(check_repo_init(&path).is_ok());
+    }
+
+    #[test]
+    fn test_when_delivery_remote_from_repo_exist() {
+        let tempdir = TempDir::new("repo").ok().expect("Temp repo dir failed");
+        let path = tempdir.path();
+        // Initialize the fake repo
+        assert!(git_command(&["init"], path).is_ok());
+        assert!(git_command(&["remote", "add", "delivery", "awesome"], path).is_ok());
+        let remote_url = delivery_remote_from_repo(&path);
+        // Returns the remote URL, in this case "awesome"
+        assert_eq!(String::from("awesome"), remote_url.unwrap());
+    }
+
+    #[test]
+    fn test_when_delivery_remote_from_repo_not_exist() {
+        let tempdir = TempDir::new("repo").ok().expect("Temp repo dir failed");
+        let path = tempdir.path();
+        // Initialize the fake repo
+        assert!(git_command(&["init"], path).is_ok());
+        let remote_url = delivery_remote_from_repo(&path);
+        // Returns empty string
+        assert_eq!(String::from(""), remote_url.unwrap());
     }
 
     #[test]
