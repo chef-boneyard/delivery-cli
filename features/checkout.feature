@@ -26,3 +26,9 @@ Scenario: Happy Path Checkout
   And "git branch --track awesome/feature delivery/_reviews/master/awesome/feature/latest" should be run
   And "git remote add delivery ssh://user@ent@server.test:8989/ent/org/project" should not be run
   And "git checkout awesome/feature" should be run
+
+Scenario: Checkout a change when FIPS mode is enabled
+  When I run `delivery checkout awesome/feature --fips --fips-git-port 1234`
+  Then the output should contain "Updating 'delivery' remote with the default configuration loaded from"
+  And the delivery remote should exist
+  And the output should contain "update:  ssh://user@ent@localhost:1234/ent/org/project"

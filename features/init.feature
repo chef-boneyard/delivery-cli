@@ -60,20 +60,6 @@ Scenario: When creating a delivery backed project and
   And the change has the default generated build_cookbook
   And the exit status should be 0
 
-Scenario: When creating a delivery backed project when FIPS mode is enables and
-          the delivery remote is different from the loaded configuration
-  When I set up basic delivery and git configs
-  And I successfully run `git remote add delivery fake`
-  And I run `delivery init --fips --fips-git-port 4321`
-  And I successfully run `git remote -v`
-  # The address is 127.0.0.1:8080:8080 because the server is running on localhost:8080
-  # and the git port is 8080. Not what you'd ever see irl.
-  Then the delivery remote should exist
-  And the output should contain "Updating 'delivery' remote with the default configuration loaded from"
-  And the output should contain "current: fake"
-  And the output should contain "update:  ssh://dummy@dummy@localhost:4321/dummy/dummy/delivery-cli-init"
-  And the output should contain "delivery	ssh://dummy@dummy@localhost:4321/dummy/dummy/delivery-cli-init (fetch)"
-
 Scenario: When creating a delivery backed project that already has a .delivery/build_cookbook directory and .delivery/config.json
   When I already have a .delivery/config.json on disk
   When I successfully run `mkdir .delivery/build_cookbook`

@@ -262,3 +262,15 @@ Scenario: Review with a V1 config
   Then the output should contain "Review for change "
   And the output should not contain "is a cookbook"
   And "git push --porcelain --progress --verbose delivery foo:_for/master/foo" should be run
+
+Scenario: Review a change that has FIPS mode enabled and has
+          a fake delivery git remote configured.
+
+  When I have a feature branch "foo" off of "master"
+  And I checkout the "foo" branch
+  And I successfully run `git remote add delivery fake`
+  And I run `delivery review --fips --fips-git-port 1234`
+  Then the output should contain "Updating 'delivery' remote with the default configuration loaded from"
+  And the delivery remote should exist
+  And the output should contain "current: fake"
+  And the output should contain "update:  ssh://user@ent@localhost:1234/ent/org/project"
