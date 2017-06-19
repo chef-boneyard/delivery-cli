@@ -146,12 +146,12 @@ pub fn create_delivery_project(client: &APIClient, org: &str,
 
 // Verify if the (Git) delivery remote needs to be updated
 //
-// This method will compare the Git ssh URL generated form the loaded
+// This method will compare the Git ssh URL generated from the loaded
 // config and the remote that is configured on the local repository
-pub fn verify_git_remote(config: &Config) -> DeliveryResult<bool> {
+pub fn git_remote_up_to_date(config: &Config) -> DeliveryResult<bool> {
     let remote = config.delivery_git_ssh_url()?;
     let current = git::delivery_remote_from_repo(&project_path()?)?;
-    Ok(remote != current)
+    Ok(remote == current)
 }
 
 

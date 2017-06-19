@@ -236,6 +236,10 @@ Given(/^a user tries to create a delivery backed project with a custom config an
   step %(I run `delivery init -c ../my_custom_config.json --generator #{tmp_expanded_path}/test-generator`)
 end
 
+Given (/^the delivery remote should exist$/) do
+  step %(I successfully run `git config --get remote.delivery.url`)
+end
+
 Given(/^a delivery project is created in delivery$/) do
   step %(the output should match /Delivery project named.*was created/)
 end

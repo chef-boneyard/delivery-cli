@@ -22,12 +22,14 @@ Scenario: When specifying a local build_cookbook generator
   When I already have a .delivery/config.json on disk
   And a user tries to create a delivery backed project with a custom generator
   Then a delivery project is created in delivery
+  And the delivery remote should exist
   And a custom build_cookbook is generated from "local_path"
   And the exit status should be 0
 
 Scenario: When creating a delivery backed project
   When a user creates a delivery backed project
   Then a delivery project is created in delivery
+  And the delivery remote should exist
   And a default config.json is created
   And the change has the default generated build_cookbook
   And the exit status should be 0
@@ -37,6 +39,7 @@ Scenario: When creating a delivery backed project
 Scenario: When running delivery review twice it should not fail
   When a user creates a delivery backed project
   Then a delivery project is created in delivery
+  And the delivery remote should exist
   And a default config.json is created
   And I set up basic delivery and git configs
   And the change has the default generated build_cookbook
@@ -52,28 +55,17 @@ Scenario: When creating a delivery backed project and
   When I set up basic delivery and git configs
   Then I successfully run `delivery init`
   Then a delivery project should not be created in delivery
+  And the delivery remote should exist
   And a default config.json is created
   And the change has the default generated build_cookbook
   And the exit status should be 0
-
-Scenario: When creating a delivery backed project when FIPS mode is enables and
-          the delivery remote is different from the loaded configuration
-  When I set up basic delivery and git configs
-  And I successfully run `git remote add delivery fake`
-  And I run `delivery init --fips --fips-git-port 4321`
-  And I successfully run `git remote -v`
-  # The address is 127.0.0.1:8080:8080 because the server is running on localhost:8080
-  # and the git port is 8080. Not what you'd ever see irl.
-  Then the output should contain "Updating 'delivery' remote with the default configuration loaded from"
-  Then the output should contain "current: fake"
-  Then the output should contain "update:  ssh://dummy@dummy@localhost:4321/dummy/dummy/delivery-cli-init"
-  Then the output should contain "delivery	ssh://dummy@dummy@localhost:4321/dummy/dummy/delivery-cli-init (fetch)"
 
 Scenario: When creating a delivery backed project that already has a .delivery/build_cookbook directory and .delivery/config.json
   When I already have a .delivery/config.json on disk
   When I successfully run `mkdir .delivery/build_cookbook`
   When a user creates a delivery backed project
   Then a delivery project is created in delivery
+  And the delivery remote should exist
   And a default config.json is created
   And the change does not have the default generated build_cookbook
   And the output should contain "Skipping: build cookbook already exists at .delivery/build_cookbook."
@@ -83,15 +75,16 @@ Scenario: When creating a delivery backed project that already has a .delivery/b
 
 Scenario: When creating a delivery backed project that has been git initalized but does not have a master branch
   When I successfully run `rm -rf .git`
-  When I successfully run `git init`
-  When I run `delivery init`
-  And the output should contain "A master branch does not exist locally."
+  And I successfully run `git init`
+  And I run `delivery init`
+  Then the output should contain "A master branch does not exist locally."
   And the exit status should be 1
 
 Scenario: When creating a delivery backed project that already has a .delivery/config.json directory and no custom config is requested
   When I already have a .delivery/config.json on disk
-  When a user creates a delivery backed project
+  And a user creates a delivery backed project
   Then a delivery project is created in delivery
+  And the delivery remote should exist
   And a change to the delivery config is not comitted
   And the change has the default generated build_cookbook
   And the exit status should be 0
@@ -101,6 +94,7 @@ Scenario: When creating a delivery backed project that already has a .delivery/c
 Scenario: When creating a bitbucket backed project
   When a user creates a bitbucket backed project
   Then a bitbucket project is created in delivery
+  And the delivery remote should exist
   And a default config.json is created
   And the change has the default generated build_cookbook
   And the exit status should be 0
@@ -110,6 +104,7 @@ Scenario: When creating a bitbucket backed project
 Scenario: When creating a github backed project
   When a user creates a github backed project
   Then a github project is created in delivery
+  And the delivery remote should exist
   And a default config.json is created
   And the change has the default generated build_cookbook
   And the exit status should be 0
@@ -118,9 +113,10 @@ Scenario: When creating a github backed project
 
 Scenario: When creating a github backed project with an initial origin remote set
   When I successfully run `git init`
-  When I successfully run `git remote add origin fake`
-  When a user creates a github backed project
+  And I successfully run `git remote add origin fake`
+  And a user creates a github backed project
   Then a github project is created in delivery
+  And the delivery remote should exist
   And a default config.json is created
   And the change has the default generated build_cookbook
   And the exit status should be 0
@@ -148,6 +144,7 @@ Scenario: When the directory name does not match the repo-name but I still want 
   When I run `delivery init --github chef --repo-name not-the-right-repo` interactively
   And I type "y"
   Then a github project is created in delivery
+  And the delivery remote should exist
   And a default config.json is created
   And the change has the default generated build_cookbook
   And I should be checked out to a feature branch named "initialize-delivery-pipeline"
@@ -158,8 +155,9 @@ Scenario: When the directory name does not match the repo-name but I still want 
 
 Scenario: When skipping the build_cookbook generator
   When I already have a .delivery/config.json on disk
-  When a user creates a delivery backed project with option "--skip-build-cookbook"
+  And a user creates a delivery backed project with option "--skip-build-cookbook"
   Then a delivery project is created in delivery
+  And the delivery remote should exist
   And no build_cookbook is generated
   And the exit status should be 0
   And I should be checked out to a feature branch named "initialize-delivery-pipeline"
@@ -167,9 +165,10 @@ Scenario: When skipping the build_cookbook generator
 
 Scenario: When specifying a GitRepo Url for the build_cookbook generator
   When a custom build cookbook is already downloaded in the cache
-  When I already have a .delivery/config.json on disk
-  When a user creates a delivery backed project with option "--generator https://github.com/afiune/test-generator"
+  And I already have a .delivery/config.json on disk
+  And a user creates a delivery backed project with option "--generator https://github.com/afiune/test-generator"
   Then a delivery project is created in delivery
+  And the delivery remote should exist
   And a custom build_cookbook is generated from "git_repo"
   And the exit status should be 0
   And I should be checked out to a feature branch named "add-delivery-config"
@@ -180,12 +179,14 @@ Scenario: When specifying a local build_cookbook generator with no config
   When I have a custom generator cookbook with no config generator
   When a custom config
   Then a user tries to create a delivery backed project with a custom config and custom generator
+  And the delivery remote should exist
   And the output should contain "Your new Delivery project is ready"
   And the exit status should be 0
 
 Scenario: When providing a custom config.json
   When a user creates a project with a custom config.json
   Then a custom config is generated
+  And the delivery remote should exist
   And the change has the default generated build_cookbook
   And a change configuring a custom delivery is created
   And the exit status should be 0
@@ -197,6 +198,7 @@ Scenario: When specifying both, generator and custom config we will expect
           and then the custom config provided would be overwritten
   When a user creates a project with both a custom generator and custom config
   Then a delivery project is created in delivery
+  And the delivery remote should exist
   And both a custom build_cookbook and custom config is generated
   And the change has the default generated build_cookbook
   And the exit status should be 0
@@ -216,6 +218,7 @@ Scenario: When creating a delivery backed project for a pipeline
   When I set up basic delivery and git configs
   And I successfully run `git checkout -b awesome`
   Then I run `delivery init --for awesome`
+  And the delivery remote should exist
   And the output should match /pushing local commits from branch awesome/
   And the exit status should be 0
 
@@ -225,6 +228,7 @@ Scenario: When creating a delivery backed project for a pipeline using --pipelin
   When I set up basic delivery and git configs
   And I successfully run `git checkout -b awesome`
   Then I run `delivery init --pipeline awesome`
+  And the delivery remote should exist
   And the output should match /pushing local commits from branch awesome/
   And the exit status should be 0
 
@@ -242,6 +246,7 @@ Scenario: When initializing a project that already have a custom config
   When I have a config where the build_cookbook comes from Supermarket
   When a user creates a delivery backed project
   Then a delivery project is created in delivery
+  And the delivery remote should exist
   And the change does not have the default generated build_cookbook
   And the output should contain "Skipping: build cookbook doesn't need to be generated locally."
   And the exit status should be 0
@@ -260,6 +265,7 @@ Scenario: When initializing a project that already have a custom config
   When I have already a custom config
   When a user creates a delivery backed project
   Then a delivery project is created in delivery
+  And the delivery remote should exist
   And the change has a generated build_cookbook called ".delivery/build_cookbook"
   And the output should contain "Build cookbook generated at .delivery/build_cookbook."
   And the exit status should be 0

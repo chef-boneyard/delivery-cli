@@ -47,7 +47,6 @@ impl<'n> Command for InitCommand<'n> {
     fn setup(&self, child_processes: &mut Vec<std::process::Child>) -> DeliveryResult<()> {
         if !self.options.local {
             if self.config.fips.unwrap_or(false) {
-                try!(super::verify_and_repair_git_remote(&self.config));
                 try!(fips::setup_and_start_stunnel(&self.config, child_processes));
             }
         }
@@ -243,6 +242,7 @@ fn create_on_server(config: &Config,
                                              created.", fancy_kind, proj));
                 }
             }
+            try!(create_or_update_git_remote(config));
             try!(push_project_content_to_delivery(&pipe));
         },
         // If the user isn't using an scp, just delivery itself.
@@ -255,6 +255,7 @@ fn create_on_server(config: &Config,
                 sayln("white",
                       &format!("  Skipping: Delivery project named {} already exists.", proj));
             }
+            try!(create_or_update_git_remote(config));
             try!(push_project_content_to_delivery(&pipe));
             try!(create_delivery_pipeline(&client, &org, &proj, &pipe));
         }
@@ -284,6 +285,26 @@ fn verify_config_get_build_cookbook_path<P>(p_path: P) -> DeliveryResult<Option<
     }
     // Getting here means that there is no config.json. Provide the default path.
     Ok(Some(PathBuf::from(".delivery/build_cookbook")))
+}
+
+// Create or update the delivery git remote
+//
+// This function first verify that the remote is up-to-date, and if it is not
+// then it will automatically create or update the remote.
+pub fn create_or_update_git_remote(config: &Config) -> DeliveryResult<()> {
+    sayln("cyan", "Setting up the 'delivery' git remote...");
+    let project_path = project::project_path()?;
+    if project::git_remote_up_to_date(config)? {
+        let git_remote = git::delivery_remote_from_repo(&project_path)?;
+        sayln("white", &format!("  Skipping: The delivery git remote is up-to-date. \
+                                 ({}).", &git_remote));
+    } else {
+        let git_ssh_url = config.delivery_git_ssh_url()?;
+        try!(git::update_delivery_remote(&git_ssh_url, &project_path));
+        sayln("green", &format!("  The delivery git remote has been configured \
+                                 to '{}'.", &git_ssh_url));
+    }
+    Ok(())
 }
 
 // Push content to Delivery if no upstream commits.
