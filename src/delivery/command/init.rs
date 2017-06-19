@@ -288,17 +288,21 @@ fn verify_config_get_build_cookbook_path<P>(p_path: P) -> DeliveryResult<Option<
 }
 
 // Create or update the delivery git remote
+//
+// This function first verify that the remote is up-to-date, and if it is not
+// then it will automatically create or update the remote.
 pub fn create_or_update_git_remote(config: &Config) -> DeliveryResult<()> {
     sayln("cyan", "Setting up the 'delivery' git remote...");
-    if project::verify_git_remote(config)? {
-        let p_path = project::project_path()?;
+    let project_path = project::project_path()?;
+    if project::git_remote_up_to_date(config)? {
+        let git_remote = git::delivery_remote_from_repo(&project_path)?;
+        sayln("white", &format!("  Skipping: The delivery git remote is up-to-date. \
+                                 ({}).", &git_remote));
+    } else {
         let git_ssh_url = config.delivery_git_ssh_url()?;
-        try!(git::update_delivery_remote(&git_ssh_url, &p_path));
+        try!(git::update_delivery_remote(&git_ssh_url, &project_path));
         sayln("green", &format!("  The delivery git remote has been configured \
                                  to '{}'.", &git_ssh_url));
-    } else {
-        sayln("white", &format!("  Skipping: The delivery git remote already \
-                                 exists and it is up-to-date."));
     }
     Ok(())
 }

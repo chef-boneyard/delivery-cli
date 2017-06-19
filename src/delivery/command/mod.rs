@@ -60,7 +60,7 @@ pub trait Command: Sized {
 // Once you have added the method, you can just call it with `super::foo()` from
 // within any command. (don't forget to make it public)
 pub fn verify_and_repair_git_remote(config: &Config) -> DeliveryResult<()> {
-    if project::verify_git_remote(config)? {
+    if !project::git_remote_up_to_date(config)? {
         let p_path = project::project_path()?;
         let c_path = Config::dot_delivery_cli_path(&cwd()).expect("Unable to find cli.toml");
         let git_ssh_url = config.delivery_git_ssh_url()?;
