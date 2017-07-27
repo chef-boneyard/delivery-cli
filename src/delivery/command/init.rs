@@ -448,7 +448,7 @@ fn trigger_review(config: &Config, scp: Option<project::SourceCodeProvider>,
     }
     match scp {
         Some(s) => sayln("green", &format!("  Review submitted to Delivery with {} \
-                                            intergration enabled.", try!(s.kind_to_fancy_str()))),
+                                            integration enabled.", try!(s.kind_to_fancy_str()))),
         None => sayln("green", "  Review submitted to Delivery.")
     }
     Ok(())
