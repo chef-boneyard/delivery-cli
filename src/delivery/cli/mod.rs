@@ -109,7 +109,7 @@ fn execute_command<C: Command>(matches: &ArgMatches, command: C) -> DeliveryResu
     // or crashes that aren't error handled.
     if command_panic_result.is_err() {
         if env::var_os("RUST_BACKTRACE").is_none() && env::var_os("RUST_LOG").is_none() {
-            let primary_error_str = "An unexpected error occured.\nIf issues persist, please re-run this command with extra debug info prepended to it and report output to Chef:\n";
+            let primary_error_str = "An unexpected error occurred.\nIf issues persist, please re-run this command with extra debug info prepended to it and report output to Chef:\n";
             let mut secondary_error_str = "RUST_LOG=debug RUST_BACKTRACE=1 ".to_string();
             for argument in std::env::args() {
                 secondary_error_str += &format!("{} ", argument);

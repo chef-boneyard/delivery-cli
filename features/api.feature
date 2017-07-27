@@ -78,6 +78,6 @@ Scenario: Submitting an unknown request
   And a dummy Delivery API server
   When I run `delivery api get endpoint_with_unknown_status_code`
   Then the exit status should be 1
-  And the output should contain "An API Error occured"
+  And the output should contain "An API Error occurred"
   And the output should contain "Request returned: '429 Too Many Requests'"
 
