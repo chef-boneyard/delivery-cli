@@ -134,7 +134,7 @@ Scenario: I review a cookbook without the auto_bump feature enabled
   By default, we do not enable the auto_bump feature, so if I submit a
   review of a change in a cookbook without enabling this functionality
   the delivery cli will behave normally without detecting or modifying
-  the cookobook itself.
+  the cookbook itself.
 
   Given a file named "metadata.rb" with:
     """

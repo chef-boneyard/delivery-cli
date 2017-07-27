@@ -93,7 +93,7 @@ pub fn make_command(cmd: &str) -> Command {
 /// Returns the absolute path for a given command, if it exists, by searching the `PATH`
 /// environment variable.
 ///
-/// If the command represents an absolute path, then the `PATH` seaching will not be performed.
+/// If the command represents an absolute path, then the `PATH` searching will not be performed.
 /// If no absolute path can be found for the command, then `None` is returned.
 pub fn find_command(command: &str) -> Option<PathBuf> {
     // If the command path is absolute and a file exists, then use that.

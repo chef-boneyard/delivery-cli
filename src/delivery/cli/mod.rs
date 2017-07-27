@@ -32,7 +32,7 @@ use utils::cwd;
 // Clap Arguments
 //
 // Encapsulated ClapArguments that will be share across commands including
-// the ClapAlias trait for arguments that we might depricate in the future
+// the ClapAlias trait for arguments that we might deprecate in the future
 #[macro_use]
 pub mod arguments;
 use cli::arguments::{non_interactive_arg, no_spinner_arg, no_color_arg};

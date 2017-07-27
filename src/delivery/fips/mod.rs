@@ -48,7 +48,7 @@ pub fn merge_fips_options_and_config(fips: bool, fips_git_port: &str, fips_custo
         config.fips = Some(fips);
     }
 
-    // Only override config default with option if user specfied something
+    // Only override config default with option if user specified something
     // other than the default of empty string.
     if fips_custom_cert_filename.len() > 0 {
         config.fips_custom_cert_filename = Some(String::from(fips_custom_cert_filename));

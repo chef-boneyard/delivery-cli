@@ -166,7 +166,7 @@ impl APIClient {
     // is returned when we are trying to create something that already
     // exist, so we do not want to explode in that case.
     //
-    // If the caller needs to interprat that code as a failure it can
+    // If the caller needs to interpret that code as a failure it can
     // easily do it as the following example:
     //
     // # Example:
@@ -658,7 +658,7 @@ mod tests {
         assert_eq!(true, write_result.is_ok());
 
         // Turning this test into a verification instead since `from_config`
-        // now validatates that the token extracted from the tstore is valid.
+        // now validates that the token extracted from the tstore is valid.
         // That means that it hits an endpoint and we can't mock it in this test.
         let client = APIClient::from_config(&config);
         assert!(client.is_err());

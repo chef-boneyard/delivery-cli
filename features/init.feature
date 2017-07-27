@@ -73,7 +73,7 @@ Scenario: When creating a delivery backed project that already has a .delivery/b
   And I should be checked out to a feature branch named "initialize-delivery-pipeline"
   And a change should be created for branch "initialize-delivery-pipeline"
 
-Scenario: When creating a delivery backed project that has been git initalized but does not have a master branch
+Scenario: When creating a delivery backed project that has been git initialized but does not have a master branch
   When I successfully run `rm -rf .git`
   And I successfully run `git init`
   And I run `delivery init`
@@ -85,7 +85,7 @@ Scenario: When creating a delivery backed project that already has a .delivery/c
   And a user creates a delivery backed project
   Then a delivery project is created in delivery
   And the delivery remote should exist
-  And a change to the delivery config is not comitted
+  And a change to the delivery config is not committed
   And the change has the default generated build_cookbook
   And the exit status should be 0
   And I should be checked out to a feature branch named "initialize-delivery-pipeline"
@@ -101,9 +101,9 @@ Scenario: When creating a bitbucket backed project
   And I should be checked out to a feature branch named "initialize-delivery-pipeline"
   And a change should be created for branch "initialize-delivery-pipeline"
 
-Scenario: When creating a github backed project
-  When a user creates a github backed project
-  Then a github project is created in delivery
+Scenario: When creating a GitHub backed project
+  When a user creates a GitHub backed project
+  Then a GitHub project is created in delivery
   And the delivery remote should exist
   And a default config.json is created
   And the change has the default generated build_cookbook
@@ -111,11 +111,11 @@ Scenario: When creating a github backed project
   And I should be checked out to a feature branch named "initialize-delivery-pipeline"
   And a change should be created for branch "initialize-delivery-pipeline"
 
-Scenario: When creating a github backed project with an initial origin remote set
+Scenario: When creating a GitHub backed project with an initial origin remote set
   When I successfully run `git init`
   And I successfully run `git remote add origin fake`
-  And a user creates a github backed project
-  Then a github project is created in delivery
+  And a user creates a GitHub backed project
+  Then a GitHub project is created in delivery
   And the delivery remote should exist
   And a default config.json is created
   And the change has the default generated build_cookbook
@@ -123,7 +123,7 @@ Scenario: When creating a github backed project with an initial origin remote se
   And I should be checked out to a feature branch named "initialize-delivery-pipeline"
   And a change should be created for branch "initialize-delivery-pipeline"
 
-Scenario: When trying to specify both github and bitbucket
+Scenario: When trying to specify both GitHub and bitbucket
   When I run `delivery init --github proj --bitbucket proj`
   Then the output should contain "specify just one Source Code Provider: delivery (default), github or bitbucket"
   And the exit status should be 1
@@ -143,7 +143,7 @@ Scenario: When the directory name does not match the repo-name but I still want 
           we should at least display a WARNING message
   When I run `delivery init --github chef --repo-name not-the-right-repo` interactively
   And I type "y"
-  Then a github project is created in delivery
+  Then a GitHub project is created in delivery
   And the delivery remote should exist
   And a default config.json is created
   And the change has the default generated build_cookbook

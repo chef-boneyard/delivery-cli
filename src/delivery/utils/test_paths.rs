@@ -18,7 +18,7 @@
 // executes init codeflow, handles user actionable errors, as well as UI output.
 //
 // Returns an integer exit code, handling all errors it knows how to
-// and panicing on unexpected errors.
+// and panicking on unexpected errors.
 //
 // mod test_paths
 //
