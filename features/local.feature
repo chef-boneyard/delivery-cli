@@ -124,7 +124,7 @@ Scenario: When local is run with a remote toml flag with erroneous url
   And I want to debug the pseudo tty command
   And I run my ptty command
   Then the ptty exit status should be 1
-  And the ptty output should contain "An HTTP Error occured"
+  And the ptty output should contain "An HTTP Error occurred"
 
 Scenario: Executing the Verify Stage that includes the lint,
           unit and syntax phases.

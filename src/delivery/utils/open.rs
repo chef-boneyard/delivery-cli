@@ -28,7 +28,7 @@
 ///
 /// # Notes
 /// As an operating system program is used, the open can fail.
-/// Therfore, you are advised to at least check the result with
+/// Therefore, you are advised to at least check the result with
 /// .is_err() and behave accordingly, e.g. by letting the user know
 /// what you tried to open, and failed.
 ///

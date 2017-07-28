@@ -105,9 +105,9 @@ impl Default for DeliveryConfig {
     }
 }
 
-// BuildCookbookLocation Enumarator
+// BuildCookbookLocation Enumerator
 //
-// The build_cokbook could be sourced from the following locations:
+// The build_cookbook could be sourced from the following locations:
 //   * Local       - On the project repo
 //   * Git         - From a git server. (url)
 //   * Supermarket - From a Supermarket Server

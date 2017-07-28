@@ -220,7 +220,7 @@ Given(/^a user creates a delivery backed project$/) do
   step %(I successfully run `delivery init`)
 end
 
-Given(/^a user creates a github backed project$/) do
+Given(/^a user creates a GitHub backed project$/) do
   step %(I successfully run `delivery init --github chef --repo-name delivery-cli-init`)
 end
 
@@ -253,7 +253,7 @@ Given(/^a bitbucket project is created in delivery$/) do
   step %(the output should match /Bitbucket backed Delivery project named .* created./)
 end
 
-Given(/^a github project is created in delivery$/) do
+Given(/^a GitHub project is created in delivery$/) do
   step %(the output should match /GitHub backed Delivery project named .* created./)
 end
 
@@ -269,7 +269,7 @@ Given(/^a default config.json is created$/) do
   step %(the file ".delivery/config.json" should contain:), %("dependencies": [])
 end
 
-Given(/^a change to the delivery config is not comitted$/) do
+Given(/^a change to the delivery config is not committed$/) do
   step %("git commit -m Adds Delivery config" should not be run)
 end
 

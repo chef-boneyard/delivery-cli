@@ -18,7 +18,7 @@
 /// Delivery Prototype
 ///
 /// This module is responsible for handling the .delivery/project.toml file
-/// that is currently a prototype for local phases executioin. This file can
+/// that is currently a prototype for local phases execution. This file can
 /// be configurable and it doesn't conflict with the existing config.json
 
 use errors::{DeliveryError, Kind};

@@ -178,7 +178,7 @@ pub fn missing_github_remote() -> DeliveryResult<bool> {
 /// Search for the project root directory
 ///
 /// We will walk through the provided path tree until we find the
-/// git config (`.git/config`) annd then we will extract the root
+/// git config (`.git/config`) and then we will extract the root
 /// directory.
 ///
 /// # Examples
@@ -237,7 +237,7 @@ pub fn project_or_from_cwd(proj: &str) -> DeliveryResult<String> {
 // Create the feature branch `add-delivery-config`
 //
 // This branch is created to start modifying the project repository
-// In the case of a failure, we could roll back fearly easy by checking
+// In the case of a failure, we could roll back fairly easy by checking
 // out master and deleting this feature branch.
 //
 // If feature branch created, return true, else return false.

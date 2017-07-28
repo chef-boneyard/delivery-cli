@@ -107,9 +107,9 @@ impl<'n> Command for CloneCommand<'n> {
         try!(git::update_delivery_remote(&delivery_url, &project_root));
         sayln("success", "Your project was cloned successfully.");
 
-        // Should we autmatically generate a cli.toml inside project?
+        // Should we automatically generate a cli.toml inside project?
         //
-        // We could have the clone comand to write the toml file inside
+        // We could have the clone command to write the toml file inside
         // the project so that any other command that depends on the config
         // won't complain about it. But if we do that we need to consider:
         //

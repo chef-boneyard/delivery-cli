@@ -336,7 +336,7 @@ fn create_delivery_pipeline(client: &APIClient, org: &str,
 
 // Handles the build_cookbook generation
 //
-// Use the provided custom generator, if it is not provided generate a build bookbook
+// Use the provided custom generator, if it is not provided generate a build cookbook
 // using the default generator from the ChefDK.
 //
 // If the project already has a config, get the path of the build cookbook and use it to
@@ -448,7 +448,7 @@ fn trigger_review(config: &Config, scp: Option<project::SourceCodeProvider>,
     }
     match scp {
         Some(s) => sayln("green", &format!("  Review submitted to Delivery with {} \
-                                            intergration enabled.", try!(s.kind_to_fancy_str()))),
+                                            integration enabled.", try!(s.kind_to_fancy_str()))),
         None => sayln("green", "  Review submitted to Delivery.")
     }
     Ok(())
