@@ -95,24 +95,16 @@ pub fn git_command<P>(args: &[&str], c: &P) -> Result<GitResult, DeliveryError>
         Some(path) => path,
         None => return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some("git executable not found".to_owned())}),
     };
-
-    let output ;
+    let mut command = Command::new(command_path);
+    command.args(args);
+    command.current_dir(cwd);
     if cfg!(target_os = "windows") {
-         output = Command::new(command_path)
-                     .args(args)
-                     .current_dir(cwd)
-                     .stderr(Stdio::inherit())
-                     .output()
-                     .expect("failed to execute process");
-    }else {
-        let mut command = Command::new(command_path);
-        command.args(args);
-        command.current_dir(cwd);
-        debug!("Git command: {:?}", command);
-        output = match command.output() {
-            Ok(o) => o,
-            Err(e) => { spinner.stop(); return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute git: {}", error::Error::description(&e)))}) },
-        };
+        command.stderr(Stdio::inherit());
+    }
+    debug!("Git command: {:?}", command);
+    let output = match command.output() {
+        Ok(o) => o,
+        Err(e) => { spinner.stop(); return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute git: {}", error::Error::description(&e)))}) },
     };
     debug!("Git exited: {}", output.status);
     spinner.stop();
