@@ -17,7 +17,7 @@
 
 pub use errors;
 
-use std::process::Command;
+use std::process::{ Command, Stdio };
 use utils::say::{say, sayln, Spinner};
 use utils::path_ext::{is_dir};
 use utils::{cmd_success_or_err, find_command};
@@ -98,6 +98,9 @@ pub fn git_command<P>(args: &[&str], c: &P) -> Result<GitResult, DeliveryError>
     let mut command = Command::new(command_path);
     command.args(args);
     command.current_dir(cwd);
+    if cfg!(target_os = "windows") {
+        command.stderr(Stdio::inherit());
+    }
     debug!("Git command: {:?}", command);
     let output = match command.output() {
         Ok(o) => o,
