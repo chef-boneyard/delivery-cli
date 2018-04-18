@@ -88,6 +88,17 @@ pub fn find_command(command: &str) -> Option<PathBuf> {
     if candidate.is_absolute() && candidate.is_file() {
         return Some(candidate);
     }
+
+    // For SSH based authentication, If git execution is required, 
+    // use the bash embedded in git\bin
+    // TODO: Check for SSH type authencation required
+    if command == "git" {
+        let exe_path = env::current_exe().unwrap();
+        let parent_path = exe_path.parent().unwrap();
+        let command_path = parent_path.to_path_buf().join("..\\embedded\\git\\bin\\bash");
+        return Some(command_path);
+    }
+
     // Find the command by checking each entry in `PATH`. If we still can't find it,
     // give up and return `None`.
     if let Some(paths) = env::var_os("PATH") {
