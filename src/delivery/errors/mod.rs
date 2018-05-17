@@ -15,16 +15,16 @@
 // limitations under the License.
 //
 
+use hyper;
+use hyper::error::Error as HttpError;
 use serde_json;
 use std::error::{self, Error};
-use std::num;
-use std::io;
 use std::fmt;
+use std::io;
+use std::num;
 use std::string;
-use hyper;
 use toml;
 use types::ExitCode;
-use hyper::error::Error as HttpError;
 
 #[derive(Debug)]
 pub enum Kind {
@@ -125,7 +125,10 @@ impl DeliveryError {
     /// assert!(e.detail.is_none());
     /// ```
     pub fn throw(kind: Kind, detail: Option<String>) -> Self {
-        DeliveryError { kind: kind, detail: detail }
+        DeliveryError {
+            kind: kind,
+            detail: detail,
+        }
     }
 
     pub fn detail(&self) -> Option<String> {
@@ -216,13 +219,11 @@ impl error::Error for DeliveryError {
     fn cause(&self) -> Option<&Error> {
         match self.kind {
             Kind::HttpError(ref e) => Some(e),
-            Kind::ApiError(_, ref e) => {
-                match *e {
-                    Ok(_) => None,
-                    Err(ref e) => Some(e)
-                }
+            Kind::ApiError(_, ref e) => match *e {
+                Ok(_) => None,
+                Err(ref e) => Some(e),
             },
-            _ => None
+            _ => None,
         }
     }
 }
@@ -241,18 +242,18 @@ impl fmt::Display for DeliveryError {
 
 impl From<serde_json::Error> for DeliveryError {
     fn from(err: serde_json::Error) -> DeliveryError {
-        DeliveryError{
+        DeliveryError {
             kind: Kind::JsonParseError,
-            detail: Some(format!("{}: {}", err.description().to_string(), err))
+            detail: Some(format!("{}: {}", err.description().to_string(), err)),
         }
     }
 }
 
 impl From<io::Error> for DeliveryError {
     fn from(err: io::Error) -> DeliveryError {
-        DeliveryError{
+        DeliveryError {
             kind: Kind::IoError,
-            detail: Some(format!("{}", err))
+            detail: Some(format!("{}", err)),
         }
     }
 }
@@ -260,9 +261,9 @@ impl From<io::Error> for DeliveryError {
 impl From<HttpError> for DeliveryError {
     fn from(err: HttpError) -> DeliveryError {
         let detail = Some(err.description().to_string());
-        DeliveryError{
+        DeliveryError {
             kind: Kind::HttpError(err),
-            detail: detail
+            detail: detail,
         }
     }
 }
@@ -270,27 +271,27 @@ impl From<HttpError> for DeliveryError {
 impl From<num::ParseIntError> for DeliveryError {
     fn from(err: num::ParseIntError) -> DeliveryError {
         let detail = Some(err.description().to_string());
-        DeliveryError{
+        DeliveryError {
             kind: Kind::IntParseError,
-            detail: detail
+            detail: detail,
         }
     }
 }
 
 impl From<toml::de::Error> for DeliveryError {
     fn from(err: toml::de::Error) -> DeliveryError {
-        DeliveryError{
+        DeliveryError {
             kind: Kind::TomlDecodeError,
-            detail: Some(format!("{}: {}", err.description().to_string(), err))
+            detail: Some(format!("{}: {}", err.description().to_string(), err)),
         }
     }
 }
 
 impl From<toml::ser::Error> for DeliveryError {
     fn from(err: toml::ser::Error) -> DeliveryError {
-        DeliveryError{
+        DeliveryError {
             kind: Kind::TomlDecodeError,
-            detail: Some(format!("{}: {}", err.description().to_string(), err))
+            detail: Some(format!("{}: {}", err.description().to_string(), err)),
         }
     }
 }
@@ -298,9 +299,9 @@ impl From<toml::ser::Error> for DeliveryError {
 impl From<string::FromUtf8Error> for DeliveryError {
     fn from(err: string::FromUtf8Error) -> DeliveryError {
         let detail = Some(err.description().to_string());
-        DeliveryError{
+        DeliveryError {
             kind: Kind::FromUtf8Error,
-            detail: detail
+            detail: detail,
         }
     }
 }

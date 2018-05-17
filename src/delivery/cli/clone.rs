@@ -14,13 +14,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-use project;
-use fips;
-use cli::arguments::{u_e_s_o_args, value_of, project_specific_args};
-use clap::{App, SubCommand, ArgMatches};
+use clap::{App, ArgMatches, SubCommand};
 use cli::Options;
-use types::DeliveryResult;
+use cli::arguments::{project_specific_args, u_e_s_o_args, value_of};
 use config::Config;
+use fips;
+use project;
+use types::DeliveryResult;
 
 pub const SUBCOMMAND_NAME: &'static str = "clone";
 
@@ -70,7 +70,8 @@ impl<'n> CloneClapOptions<'n> {
 
 impl<'n> Options for CloneClapOptions<'n> {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
-        let mut new_config = config.set_user(&self.user)
+        let mut new_config = config
+            .set_user(&self.user)
             .set_server(&self.server)
             .set_enterprise(&self.ent)
             .set_organization(&self.org)
@@ -80,8 +81,12 @@ impl<'n> Options for CloneClapOptions<'n> {
             new_config.project = project::project_from_cwd().ok();
         }
 
-        fips::merge_fips_options_and_config(self.fips, self.fips_git_port,
-                                            self.fips_custom_cert_filename, new_config)
+        fips::merge_fips_options_and_config(
+            self.fips,
+            self.fips_git_port,
+            self.fips_custom_cert_filename,
+            new_config,
+        )
     }
 }
 
@@ -91,7 +96,8 @@ pub fn clap_subcommand<'c>() -> App<'c, 'c> {
         .args_from_usage(
             "<project> 'Name of project to clone'
             -g --git-url=[url] \
-            'Git URL (-u -s -e -o ignored if used)'")
+            'Git URL (-u -s -e -o ignored if used)'",
+        )
         .args(&u_e_s_o_args())
         .args(&project_specific_args())
 }

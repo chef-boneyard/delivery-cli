@@ -36,5 +36,5 @@ pub struct BuilderCompat {
     pub repo: String,
     pub cache: String,
     pub build_id: String,
-    pub build_user: String
+    pub build_user: String,
 }

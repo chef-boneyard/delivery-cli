@@ -15,7 +15,6 @@
 // limitations under the License.
 //
 
-
 // Collection of structs representing the _status endpoint json.
 #[derive(Serialize, Deserialize)]
 pub struct ServerStatus {
@@ -27,14 +26,14 @@ pub struct ServerStatus {
 
 #[derive(Serialize, Deserialize)]
 pub struct Upstreams {
-   pub lsyncd: Lsyncd,
-   pub postgres: Postgres,
-   pub rabbitmq: Rabbitmq,
+    pub lsyncd: Lsyncd,
+    pub postgres: Postgres,
+    pub rabbitmq: Rabbitmq,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Lsyncd {
-   pub status: String,
+    pub status: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -56,5 +55,5 @@ pub struct NodeHealth {
 
 #[derive(Serialize, Deserialize)]
 pub struct VhostAliveness {
-    pub status: String
+    pub status: String,
 }

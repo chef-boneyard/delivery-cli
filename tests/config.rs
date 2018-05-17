@@ -1,11 +1,13 @@
 extern crate delivery;
 extern crate log;
 
-use delivery::config::{Config};
-use support::paths::fixture_file;
+use delivery::config::Config;
 use std::path::PathBuf;
+use support::paths::fixture_file;
 
-fn setup() { }
+macro_rules! setup {
+    () => {};
+}
 
 fn _load_test_config_file() -> Config {
     let config_path = fixture_file("config");
@@ -29,4 +31,3 @@ test!(load_config_returns_defaults_on_failure {
     assert_eq!(config.user, None);
     assert_eq!(config.git_port, Some("8989".to_string()));
 });
-

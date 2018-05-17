@@ -17,32 +17,32 @@
 // limitations under the License.
 //
 
-use types::DeliveryResult;
-use http::APIClient;
+use config::Config;
 use errors::DeliveryError;
 use errors::Kind::UserNotFound;
-use config::Config;
+use http::APIClient;
 use serde_json;
+use types::DeliveryResult;
 
 #[derive(Deserialize, Debug)]
 pub struct User {
-  pub first: String,
-  pub last: String,
-  pub name: String,
-  pub email: String,
-  pub user_type: String,
-  ssh_pub_key: String,
+    pub first: String,
+    pub last: String,
+    pub name: String,
+    pub email: String,
+    pub user_type: String,
+    ssh_pub_key: String,
 }
 
 impl Default for User {
     fn default() -> Self {
         User {
-          first: String::from(""),
-          last: String::from(""),
-          name: String::from(""),
-          email: String::from(""),
-          ssh_pub_key: String::from(""),
-          user_type: String::from("internal"),
+            first: String::from(""),
+            last: String::from(""),
+            name: String::from(""),
+            email: String::from(""),
+            ssh_pub_key: String::from(""),
+            user_type: String::from("internal"),
         }
     }
 }
@@ -65,7 +65,7 @@ impl User {
         let name = username.unwrap_or(c_user.as_str());
         let client = APIClient::from_config(config)?;
         if !client.user_exists(&name) {
-            return Err(DeliveryError::throw(UserNotFound(name.to_owned()), None))
+            return Err(DeliveryError::throw(UserNotFound(name.to_owned()), None));
         }
         let mut raw_json = client.get(&format!("users/{}", name))?;
         let json = APIClient::extract_pretty_json(&mut raw_json)?;

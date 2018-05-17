@@ -17,18 +17,18 @@
 
 pub use errors;
 
-use std::process::{Command, Stdio};
-use utils::say::{say, sayln, Spinner};
-use utils::path_ext::{is_dir};
-use utils::{cmd_success_or_err, find_command};
 use errors::{DeliveryError, Kind};
-use std::env;
-use std::path::{Path, PathBuf};
-use std::convert::AsRef;
-use std::error;
-use regex::Regex;
 use project::project_path;
+use regex::Regex;
+use std::convert::AsRef;
+use std::env;
+use std::error;
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 use types::DeliveryResult;
+use utils::path_ext::is_dir;
+use utils::say::{say, sayln, Spinner};
+use utils::{cmd_success_or_err, find_command};
 
 fn cwd() -> PathBuf {
     env::current_dir().unwrap()
@@ -46,15 +46,23 @@ fn parse_get_head(stdout: &str) -> Result<String, DeliveryError> {
         let caps_result = r.captures(line);
         let caps = match caps_result {
             Some(caps) => caps,
-            None => { return Err(DeliveryError{ kind: Kind::BadGitOutputMatch, detail: Some(format!("Failed to match: {}", line)) }) }
+            None => {
+                return Err(DeliveryError {
+                    kind: Kind::BadGitOutputMatch,
+                    detail: Some(format!("Failed to match: {}", line)),
+                })
+            }
         };
-        let token = caps.at(1).unwrap();
+        let token = caps.get(1).unwrap().as_str();
         if token == "*" {
-            let branch = caps.at(2).unwrap();
+            let branch = caps.get(2).unwrap().as_str();
             return Ok(String::from(branch));
         }
     }
-    return Err(DeliveryError{ kind: Kind::NotOnABranch, detail: None });
+    return Err(DeliveryError {
+        kind: Kind::NotOnABranch,
+        detail: None,
+    });
 }
 
 #[test]
@@ -73,14 +81,14 @@ fn test_parse_get_head() {
     match result {
         Ok(branch) => {
             assert_eq!(&branch[..], "master");
-        },
-        Err(_) => panic!("No result")
+        }
+        Err(_) => panic!("No result"),
     };
 }
 
 pub struct GitResult {
     pub stdout: String,
-    pub stderr: String
+    pub stderr: String,
 }
 
 // What is this crazy type signature, you ask? Let me explain!
@@ -88,36 +96,52 @@ pub struct GitResult {
 // Where <P: ?Sized> == Any Type (Sized or Unsized)
 // Where P: AsRef<Path> == Any type that implements the AsRef<Path> trait
 pub fn git_command<P>(args: &[&str], c: &P) -> Result<GitResult, DeliveryError>
-        where P: AsRef<Path> + ?Sized {
+where
+    P: AsRef<Path> + ?Sized,
+{
     let cwd = c.as_ref();
     let spinner = Spinner::start();
     let command_path = match find_command("git") {
         Some(path) => path,
-        None => return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some("git executable not found".to_owned())}),
+        None => {
+            return Err(DeliveryError {
+                kind: Kind::FailedToExecute,
+                detail: Some("git executable not found".to_owned()),
+            })
+        }
     };
     let mut command = Command::new(command_path);
 
     // SSH Agent is required on windows Hence,
-    // Rebuilding the command in a way; that 
+    // Rebuilding the command in a way; that
     // Invoke an agent; Run the SSH Command and kill the agent then and there
     // Pattern: \embedded\git\bash -c 'eval `ssh-agent` && ssh-add && <COMMAND> ; ssh-agent -k'
     // TODO: Check for SSH type authencation may be required
-    if cfg!(target_os = "windows"){
-      command.arg("-c");
-      let agent_setup = "eval `ssh-agent` && ssh-add && git";
-      let agent_kill = "; ssh-agent -k";
-      let cmd_args = args.join(" ");
-      let command_ars = &[ &[agent_setup, &cmd_args, agent_kill].join(" ") ];
-      command.args(command_ars);
-      command.stderr(Stdio::inherit());
+    if cfg!(target_os = "windows") {
+        command.arg("-c");
+        let agent_setup = "eval `ssh-agent` && ssh-add && git";
+        let agent_kill = "; ssh-agent -k";
+        let cmd_args = args.join(" ");
+        let command_ars = &[&[agent_setup, &cmd_args, agent_kill].join(" ")];
+        command.args(command_ars);
+        command.stderr(Stdio::inherit());
     } else {
-      command.args(args);
+        command.args(args);
     }
     command.current_dir(cwd);
     debug!("Git command: {:?}", command);
     let output = match command.output() {
         Ok(o) => o,
-        Err(e) => { spinner.stop(); return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some(format!("failed to execute git: {}", error::Error::description(&e)))}) },
+        Err(e) => {
+            spinner.stop();
+            return Err(DeliveryError {
+                kind: Kind::FailedToExecute,
+                detail: Some(format!(
+                    "failed to execute git: {}",
+                    error::Error::description(&e)
+                )),
+            });
+        }
     };
     debug!("Git exited: {}", output.status);
     spinner.stop();
@@ -126,17 +150,24 @@ pub fn git_command<P>(args: &[&str], c: &P) -> Result<GitResult, DeliveryError>
     debug!("Git stdout: {}", stdout);
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
     debug!("Git stderr: {}", stderr);
-    Ok(GitResult{ stdout: stdout, stderr: stderr })
+    Ok(GitResult {
+        stdout: stdout,
+        stderr: stderr,
+    })
 }
 
-pub fn git_push_review(branch: &str,
-                       target: &str) -> Result<ReviewResult, DeliveryError> {
-    let gitr = try!(git_command(&["push",
-                                  "--porcelain", "--progress",
-                                  "--verbose", "delivery",
-                                  &format!("{}:_for/{}/{}",
-                                           branch, target, branch)],
-                                &cwd()));
+pub fn git_push_review(branch: &str, target: &str) -> Result<ReviewResult, DeliveryError> {
+    let gitr = try!(git_command(
+        &[
+            "push",
+            "--porcelain",
+            "--progress",
+            "--verbose",
+            "delivery",
+            &format!("{}:_for/{}/{}", branch, target, branch),
+        ],
+        &cwd()
+    ));
     parse_git_push_output(&gitr.stdout, &gitr.stderr)
 }
 
@@ -150,7 +181,7 @@ pub enum PushResultFlag {
     UpToDate,
 }
 
-impl Copy for PushResultFlag { }
+impl Copy for PushResultFlag {}
 
 /// Returned by `git_push_review`. The `push_results` field is a
 /// vector of `PushResult` each indicating a `PushResultFalg` and a
@@ -164,15 +195,17 @@ pub struct ReviewResult {
     pub push_results: Vec<PushResult>,
     pub messages: Vec<String>,
     pub url: Option<String>,
-    pub change_id: Option<String>
+    pub change_id: Option<String>,
 }
 
 impl Default for ReviewResult {
     fn default() -> ReviewResult {
-        ReviewResult { push_results: Vec::new(),
-                       messages: Vec::new(),
-                       url: None,
-                       change_id: None }
+        ReviewResult {
+            push_results: Vec::new(),
+            messages: Vec::new(),
+            url: None,
+            change_id: None,
+        }
     }
 }
 
@@ -180,11 +213,13 @@ impl Default for ReviewResult {
 pub struct PushResult {
     flag: PushResultFlag,
     summary: String,
-    reason: Option<String>
+    reason: Option<String>,
 }
 
-pub fn parse_git_push_output(push_output: &str,
-                             push_error: &str) -> Result<ReviewResult, DeliveryError> {
+pub fn parse_git_push_output(
+    push_output: &str,
+    push_error: &str,
+) -> Result<ReviewResult, DeliveryError> {
     let mut review_result = ReviewResult::default();
     for line in push_error.lines() {
         debug!("error: {}", line);
@@ -194,7 +229,7 @@ pub fn parse_git_push_output(push_output: &str,
     }
     for line in push_output.lines() {
         debug!("output: {}", line);
-        if line.starts_with("To") ||  line.starts_with("Done") {
+        if line.starts_with("To") || line.starts_with("Done") {
             continue;
         }
         let r = Regex::new(r"^(.)\t(.*):(.+)\t(?:\[(.+)\]|([^ ]+))(?: \((.+)\))?$").unwrap();
@@ -203,11 +238,13 @@ pub fn parse_git_push_output(push_output: &str,
             Some(caps) => caps,
             None => {
                 let detail = Some(format!("Failed to match: {}", line));
-                return Err(DeliveryError{ kind: Kind::BadGitOutputMatch,
-                                          detail: detail })
+                return Err(DeliveryError {
+                    kind: Kind::BadGitOutputMatch,
+                    detail: detail,
+                });
             }
         };
-        let result_flag = match caps.at(1).unwrap() {
+        let result_flag = match caps.get(1).unwrap().as_str() {
             " " => PushResultFlag::SuccessfulFastForward,
             "+" => PushResultFlag::SuccessfulForcedUpdate,
             "-" => PushResultFlag::SuccessfulDeletedRef,
@@ -215,28 +252,28 @@ pub fn parse_git_push_output(push_output: &str,
             "!" => PushResultFlag::Rejected,
             "=" => PushResultFlag::UpToDate,
             _ => {
-                return Err(DeliveryError{
+                return Err(DeliveryError {
                     kind: Kind::BadGitOutputMatch,
-                    detail: Some(format!("Unknown result flag"))})
+                    detail: Some(format!("Unknown result flag")),
+                })
             }
         };
         // if it contains a space, it's in [...] (capture #4),
         // if not (e.g. "oldref..newref"), it's not in [...] (capture #5)
-        let summary = match (caps.at(4), caps.at(5)) {
-            (Some(str), _) => String::from(str),
-            (_, Some(str)) => String::from(str),
-            (None, None) => "".to_string()
+        let summary = match (caps.get(4), caps.get(5)) {
+            (Some(str), _) => String::from(str.as_str()),
+            (_, Some(str)) => String::from(str.as_str()),
+            (None, None) => "".to_string(),
         };
-        let reason = match caps.at(6) {
+        let reason = match caps.get(6) {
             None => None,
-            Some(str) => Some(String::from(str))
+            Some(str) => Some(String::from(str.as_str())),
         };
-        review_result.push_results.push(
-            PushResult{
-                flag: result_flag,
-                summary: summary,
-                reason: reason
-            })
+        review_result.push_results.push(PushResult {
+            flag: result_flag,
+            summary: summary,
+            reason: reason,
+        })
     }
     Ok(review_result)
 }
@@ -250,17 +287,20 @@ fn parse_line_from_remote(line: &str, review_result: &mut ReviewResult) -> () {
     let caps_result = r.captures(line);
     match caps_result {
         Some(caps) => {
-            let cap = caps.at(1).unwrap();
+            let cap = caps.get(1).unwrap().as_str();
             if cap.starts_with("http") {
                 let change_url = cap.trim().to_string();
                 review_result.url = Some(change_url.clone());
-                let change_id_regex = Regex::new(r"/([a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12})").unwrap();
+                let change_id_regex =
+                    Regex::new(r"/([a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12})").unwrap();
                 let change_id_match = change_id_regex.captures(&change_url);
-                review_result.change_id = Some(String::from(change_id_match.unwrap().at(1).unwrap()));
+                review_result.change_id = Some(String::from(
+                    change_id_match.unwrap().get(1).unwrap().as_str(),
+                ));
             } else {
                 review_result.messages.push(cap.to_string());
             }
-         },
+        }
         None => {}
     }
 }
@@ -274,10 +314,16 @@ pub fn check_repo_init(path: &PathBuf) -> Result<(), DeliveryError> {
 
     if is_dir(git_dir.as_path()) {
         sayln("white", "yes");
-        return Ok(())
+        return Ok(());
     } else {
-        sayln("red", "no. Run 'git init' here and then 'delivery init' again.");
-        return Err(DeliveryError{ kind: Kind::GitSetupFailed, detail: None })
+        sayln(
+            "red",
+            "no. Run 'git init' here and then 'delivery init' again.",
+        );
+        return Err(DeliveryError {
+            kind: Kind::GitSetupFailed,
+            detail: None,
+        });
     }
 }
 
@@ -291,8 +337,8 @@ pub fn create_repo(path: &PathBuf) -> Result<(), DeliveryError> {
         Ok(_) => {
             sayln("white", "'git init' done.");
             return Ok(());
-        },
-        Err(e) => return Err(e)
+        }
+        Err(e) => return Err(e),
     }
 }
 
@@ -300,7 +346,9 @@ pub fn create_repo(path: &PathBuf) -> Result<(), DeliveryError> {
 //
 // ex.=> ssh://user@ent@delivery.example.com:8989/ent/organization/foo
 pub fn delivery_remote_from_repo<P>(path: P) -> DeliveryResult<String>
-        where P: AsRef<Path> {
+where
+    P: AsRef<Path>,
+{
     git_command(&["config", "--get", "remote.delivery.url"], path.as_ref())
         .map(|g| g.stdout.trim().to_string())
         // If there is no 'delivery' remote, return an empty String
@@ -313,10 +361,12 @@ pub fn delivery_remote_from_repo<P>(path: P) -> DeliveryResult<String>
 // it first and then add it. This way we ensure we are updating it with the
 // provided URL no mather if it already exists or not.
 pub fn update_delivery_remote<P, S>(url: S, path: P) -> DeliveryResult<()>
-        where P: AsRef<Path>,
-              S: AsRef<str> {
+where
+    P: AsRef<Path>,
+    S: AsRef<str>,
+{
     let path = path.as_ref();
-    let url  = url.as_ref();
+    let url = url.as_ref();
     git_command(&["remote", "add", "delivery", url], path)
         .map(|_| ())
         .or_else(|e| {
@@ -324,10 +374,10 @@ pub fn update_delivery_remote<P, S>(url: S, path: P) -> DeliveryResult<()>
             if msg.contains("remote delivery already exists") {
                 try!(git_command(&["remote", "rm", "delivery"], path));
                 try!(git_command(&["remote", "add", "delivery", url], path));
-                return Ok(())
+                return Ok(());
             }
-            return Err(e)
-    })
+            return Err(e);
+        })
 }
 
 pub fn checkout_branch_name(change: &str, patchset: &str) -> String {
@@ -338,13 +388,26 @@ pub fn checkout_branch_name(change: &str, patchset: &str) -> String {
     }
 }
 
-pub fn diff(change: &str, patchset: &str, pipeline: &str, local: &bool) -> Result<(), DeliveryError> {
+pub fn diff(
+    change: &str,
+    patchset: &str,
+    pipeline: &str,
+    local: &bool,
+) -> Result<(), DeliveryError> {
     try!(git_command(&["fetch", "delivery"], &cwd()));
     let mut first_branch = format!("delivery/{}", pipeline);
     if *local {
         first_branch = String::from("HEAD");
     }
-    let diff = try!(git_command(&["diff", "--color=always", &first_branch, &format!("delivery/_reviews/{}/{}/{}", pipeline, change, patchset)], &cwd()));
+    let diff = try!(git_command(
+        &[
+            "diff",
+            "--color=always",
+            &first_branch,
+            &format!("delivery/_reviews/{}/{}/{}", pipeline, change, patchset),
+        ],
+        &cwd()
+    ));
     say("white", "\n");
     sayln("white", &diff.stdout);
     Ok(())
@@ -358,29 +421,36 @@ pub fn clone(project: &str, git_url: &str) -> Result<(), DeliveryError> {
 pub fn checkout_review(change: &str, patchset: &str, pipeline: &str) -> Result<(), DeliveryError> {
     try!(git_command(&["fetch", "delivery"], &cwd()));
     let branchname = checkout_branch_name(change, patchset);
-    let result = git_command(&["branch", "--track", &branchname, &format!("delivery/_reviews/{}/{}/{}", pipeline, change, patchset)], &cwd());
+    let result = git_command(
+        &[
+            "branch",
+            "--track",
+            &branchname,
+            &format!("delivery/_reviews/{}/{}/{}", pipeline, change, patchset),
+        ],
+        &cwd(),
+    );
     match result {
         Ok(_) => {
             try!(git_command(&["checkout", &branchname], &cwd()));
-            return Ok(())
-        },
-        Err(e) => {
-            match e.detail {
-                Some(msg) => {
-                    if msg.contains("already exists.") {
-                        try!(git_command(&["checkout", &branchname], &cwd()));
-                        sayln("white", "Branch already exists, checking it out.");
-                        let r = try!(git_command(&["status"], &cwd()));
-                        sayln("white", &r.stdout);
-                        return Ok(())
-                    } else {
-                        return Err(DeliveryError{kind: Kind::GitFailed, detail: Some(msg)});
-                    }
-                },
-                None => {
-                    return Err(e)
+            return Ok(());
+        }
+        Err(e) => match e.detail {
+            Some(msg) => {
+                if msg.contains("already exists.") {
+                    try!(git_command(&["checkout", &branchname], &cwd()));
+                    sayln("white", "Branch already exists, checking it out.");
+                    let r = try!(git_command(&["status"], &cwd()));
+                    sayln("white", &r.stdout);
+                    return Ok(());
+                } else {
+                    return Err(DeliveryError {
+                        kind: Kind::GitFailed,
+                        detail: Some(msg),
+                    });
                 }
             }
+            None => return Err(e),
         },
     }
 }
@@ -391,12 +461,12 @@ pub fn server_content(pipeline: &str) -> Result<bool, DeliveryError> {
     match git_command(&["ls-remote", "delivery", p_ref], &cwd()) {
         Ok(msg) => {
             if msg.stdout.contains(p_ref) {
-                return Ok(true)
+                return Ok(true);
             } else {
-                return Ok(false)
+                return Ok(false);
             }
-        },
-        Err(e) => return Err(e)
+        }
+        Err(e) => return Err(e),
     }
 }
 
@@ -406,11 +476,13 @@ pub fn git_pull(branch: &str, rebase: bool) -> Result<GitResult, DeliveryError> 
     match git_command(&["ls-remote", "--heads", "delivery"], &cwd()) {
         Ok(result) => {
             if !result.stdout.contains(&format!("refs/heads/{}", branch)) {
-                return Err(DeliveryError{ kind: Kind::BranchNotFoundOnDeliveryRemote,
-                                          detail: None})
+                return Err(DeliveryError {
+                    kind: Kind::BranchNotFoundOnDeliveryRemote,
+                    detail: None,
+                });
             }
-        },
-        Err(err) => return Err(err)
+        }
+        Err(err) => return Err(err),
     }
 
     if rebase {
@@ -421,9 +493,7 @@ pub fn git_pull(branch: &str, rebase: bool) -> Result<GitResult, DeliveryError> 
 }
 
 pub fn git_current_sha() -> Result<String, DeliveryError> {
-    git_command(&["rev-parse", "HEAD"], &cwd()).and_then(|msg| {
-        Ok(msg.stdout)
-    })
+    git_command(&["rev-parse", "HEAD"], &cwd()).and_then(|msg| Ok(msg.stdout))
 }
 
 // Push pipeline content to the Server
@@ -436,34 +506,75 @@ pub fn git_push(pipeline: &str) -> Result<(), DeliveryError> {
     match git_command(&["branch"], &cwd()) {
         Ok(msg) => {
             if !msg.stdout.contains(pipeline) {
-                sayln("red", &format!("A {} branch does not exist locally.", pipeline));
-                sayln("red", &format!("A {} branch with commits is needed to create the {} \
-                                      pipeline.\n", pipeline, pipeline));
-                sayln("red", &format!("If your project already has git history, you should \
-                                      pull it into {} locally.", pipeline));
-                sayln("red", &format!("For example, if your remote is named origin, and your \
-                                      git history is in {} run:\n", pipeline));
+                sayln(
+                    "red",
+                    &format!("A {} branch does not exist locally.", pipeline),
+                );
+                sayln(
+                    "red",
+                    &format!(
+                        "A {} branch with commits is needed to create the {} \
+                         pipeline.\n",
+                        pipeline, pipeline
+                    ),
+                );
+                sayln(
+                    "red",
+                    &format!(
+                        "If your project already has git history, you should \
+                         pull it into {} locally.",
+                        pipeline
+                    ),
+                );
+                sayln(
+                    "red",
+                    &format!(
+                        "For example, if your remote is named origin, and your \
+                         git history is in {} run:\n",
+                        pipeline
+                    ),
+                );
                 sayln("red", &format!("git pull origin {}\n", pipeline));
-                sayln("red", "However, if this is a brand new project, make an initial commit by running:\n");
+                sayln(
+                    "red",
+                    "However, if this is a brand new project, make an initial commit by running:\n",
+                );
                 sayln("red", &format!("git checkout -b {}", pipeline));
                 sayln("red", "git commit --allow-empty -m 'Initial commit.'\n");
-                sayln("red", &format!("Once you have commits on the {} branch, run `delivery \
-                                      init` again.", pipeline));
-                return Err(DeliveryError{ kind: Kind::GitFailed, detail: None });
+                sayln(
+                    "red",
+                    &format!(
+                        "Once you have commits on the {} branch, run `delivery \
+                         init` again.",
+                        pipeline
+                    ),
+                );
+                return Err(DeliveryError {
+                    kind: Kind::GitFailed,
+                    detail: None,
+                });
             }
             true
-        },
-        Err(e) => return Err(e)
+        }
+        Err(e) => return Err(e),
     };
 
     // Master branch exists with commits on it, push it up so the master pipeline can be made.
-    match git_command(&["push", "--set-upstream",
-                        "--porcelain", "--progress",
-                        "--verbose", "delivery", pipeline],
-                      &cwd()) {
+    match git_command(
+        &[
+            "push",
+            "--set-upstream",
+            "--porcelain",
+            "--progress",
+            "--verbose",
+            "delivery",
+            pipeline,
+        ],
+        &cwd(),
+    ) {
         Ok(_) => return Ok(()),
         // Not expecting any errors at this point.
-        Err(e) => return Err(e)
+        Err(e) => return Err(e),
     }
 }
 
@@ -474,24 +585,33 @@ pub fn git_push(pipeline: &str) -> Result<(), DeliveryError> {
 // more specific one. (Ex. If we try to commit when nothing has changed)
 pub fn git_commit(message: &str) -> Result<(), DeliveryError> {
     match git_command(&["commit", "-m", message], &try!(project_path())) {
-        Err(DeliveryError{ kind, detail: Some(output) }) => {
+        Err(DeliveryError {
+            kind,
+            detail: Some(output),
+        }) => {
             if output.contains("nothing to commit") {
-              return Err(DeliveryError{ kind: Kind::EmptyGitCommit, detail: None });
+                return Err(DeliveryError {
+                    kind: Kind::EmptyGitCommit,
+                    detail: None,
+                });
             }
 
-            Err(DeliveryError{kind: kind, detail: Some(output)})
-        },
+            Err(DeliveryError {
+                kind: kind,
+                detail: Some(output),
+            })
+        }
         Err(e) => Err(e),
-        Ok(_) => Ok(())
+        Ok(_) => Ok(()),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempdir::TempDir;
-    use std::path::PathBuf;
     use std::fs::DirBuilder;
+    use std::path::PathBuf;
+    use tempdir::TempDir;
 
     #[test]
     fn test_check_repo_init_with_invalid_path() {
@@ -502,9 +622,7 @@ mod tests {
     #[test]
     fn test_check_repo_init_with_valid_path_no_git() {
         let path = PathBuf::from("/tmp/real1");
-        DirBuilder::new()
-            .recursive(true)
-            .create(&path).unwrap();
+        DirBuilder::new().recursive(true).create(&path).unwrap();
         assert!(check_repo_init(&path).is_err());
     }
 
@@ -514,7 +632,8 @@ mod tests {
         let full_path = path.join(".git");
         DirBuilder::new()
             .recursive(true)
-            .create(&full_path).unwrap();
+            .create(&full_path)
+            .unwrap();
         assert!(check_repo_init(&path).is_ok());
     }
 
@@ -559,7 +678,10 @@ mod tests {
 
         // a change URL line
         let change_id = "4bc3f44f-d81f-48a5-bd38-2c7963cb6d94";
-        let change_url = format!("https://delivery.shd.chef.co/e/Chef/#/organizations/sandbox/projects/radar/changes/{}", change_id);
+        let change_url = format!(
+            "https://delivery.shd.chef.co/e/Chef/#/organizations/sandbox/projects/radar/changes/{}",
+            change_id
+        );
         let line2 = format!("remote: {}{}", change_url, remote_msg_eol);
         parse_line_from_remote(&line2, &mut review_result);
         assert_eq!(change_url, review_result.url.unwrap());
@@ -572,9 +694,11 @@ mod tests {
         let stdout = "To ssh://tester@cd@localhost:8989/cd/test/test_proj17914\n \t\
                       refs/heads/baz:refs/heads/_for/master/baz\t6f7b537..228c615\n\
                       Done\n";
-        let ffwd = PushResult{flag: PushResultFlag::SuccessfulFastForward,
-                              summary: "6f7b537..228c615".to_string(),
-                              reason: None};
+        let ffwd = PushResult {
+            flag: PushResultFlag::SuccessfulFastForward,
+            summary: "6f7b537..228c615".to_string(),
+            reason: None,
+        };
         test_parse_git_push_output(stdout, ffwd);
     }
 
@@ -583,9 +707,11 @@ mod tests {
         let stdout = "To git@github.com:chef/delivery-cli\n\
                       +\trefs/heads/foo:refs/heads/foo\td3a8697...3d42f51 (forced update)\n\
                       Done\n";
-        let force_pushed = PushResult{flag: PushResultFlag::SuccessfulForcedUpdate,
-                                      summary: "d3a8697...3d42f51".to_string(),
-                                      reason: Some("forced update".to_string())};
+        let force_pushed = PushResult {
+            flag: PushResultFlag::SuccessfulForcedUpdate,
+            summary: "d3a8697...3d42f51".to_string(),
+            reason: Some("forced update".to_string()),
+        };
         test_parse_git_push_output(stdout, force_pushed);
     }
 
@@ -594,9 +720,11 @@ mod tests {
         let stdout = "To ssh://tester@cd@localhost:8989/cd/test/test_proj17914\n\
                       *\trefs/heads/baz:refs/heads/_for/master/baz\t[new branch]\n\
                       Done\n";
-        let new_branch = PushResult{flag: PushResultFlag::SuccessfulPushedNewRef,
-                                    summary: "new branch".to_string(),
-                                    reason: None};
+        let new_branch = PushResult {
+            flag: PushResultFlag::SuccessfulPushedNewRef,
+            summary: "new branch".to_string(),
+            reason: None,
+        };
         test_parse_git_push_output(stdout, new_branch);
     }
 
@@ -605,9 +733,11 @@ mod tests {
         let stdout = "To git@github.com:srenatus/delivery-cli\n\
                       -\t:refs/heads/deleteme\t[deleted]\n\
                       Done\n";
-        let deleted_refs = PushResult{flag: PushResultFlag::SuccessfulDeletedRef,
-                                      summary: "deleted".to_string(),
-                                      reason: None};
+        let deleted_refs = PushResult {
+            flag: PushResultFlag::SuccessfulDeletedRef,
+            summary: "deleted".to_string(),
+            reason: None,
+        };
         test_parse_git_push_output(stdout, deleted_refs);
     }
 
@@ -616,9 +746,11 @@ mod tests {
         let stdout = "To git@github.com:chef/delivery-cli\n\
                       =\trefs/heads/foo:refs/heads/foo\t[up to date]\n\
                       Done\n";
-        let up_to_date = PushResult{flag: PushResultFlag::UpToDate,
-                                    summary: "up to date".to_string(),
-                                    reason: None};
+        let up_to_date = PushResult {
+            flag: PushResultFlag::UpToDate,
+            summary: "up to date".to_string(),
+            reason: None,
+        };
         test_parse_git_push_output(stdout, up_to_date);
     }
 
@@ -627,9 +759,11 @@ mod tests {
         let stdout = "To git@github.com:chef/delivery-cli\n\
                       !\trefs/heads/foo:refs/heads/foo\t[rejected] (non-fast-forward)\n\
                       Done\n";
-        let rejected = PushResult{flag: PushResultFlag::Rejected,
-                                  summary: "rejected".to_string(),
-                                  reason: Some("non-fast-forward".to_string())};
+        let rejected = PushResult {
+            flag: PushResultFlag::Rejected,
+            summary: "rejected".to_string(),
+            reason: Some("non-fast-forward".to_string()),
+        };
         test_parse_git_push_output(stdout, rejected);
     }
 
@@ -640,15 +774,21 @@ mod tests {
                       !\trefs/heads/foo:refs/heads/foo\t[rejected] (non-fast-forward)\n\
                       =\trefs/heads/bar:refs/heads/bar\t[up to date]\n\
                       Done\n";
-        let new_branch = PushResult{flag: PushResultFlag::SuccessfulPushedNewRef,
-                                    summary: "new branch".to_string(),
-                                    reason: None};
-        let rejected = PushResult{flag: PushResultFlag::Rejected,
-                                  summary: "rejected".to_string(),
-                                  reason: Some("non-fast-forward".to_string())};
-        let up_to_date = PushResult{flag: PushResultFlag::UpToDate,
-                                    summary: "up to date".to_string(),
-                                    reason: None};
+        let new_branch = PushResult {
+            flag: PushResultFlag::SuccessfulPushedNewRef,
+            summary: "new branch".to_string(),
+            reason: None,
+        };
+        let rejected = PushResult {
+            flag: PushResultFlag::Rejected,
+            summary: "rejected".to_string(),
+            reason: Some("non-fast-forward".to_string()),
+        };
+        let up_to_date = PushResult {
+            flag: PushResultFlag::UpToDate,
+            summary: "up to date".to_string(),
+            reason: None,
+        };
         let mut expected = ReviewResult::default();
         expected.push_results.push(new_branch);
         expected.push_results.push(rejected);
@@ -656,17 +796,16 @@ mod tests {
 
         match parse_git_push_output(&stdout, "") {
             Err(_) => assert!(false),
-            Ok(result) => assert_eq!(expected, result)
+            Ok(result) => assert_eq!(expected, result),
         }
     }
 
-    fn test_parse_git_push_output(stdout: &str,
-                                  push_result: PushResult) {
+    fn test_parse_git_push_output(stdout: &str, push_result: PushResult) {
         let mut expected = ReviewResult::default();
         expected.push_results.push(push_result);
         match parse_git_push_output(&stdout, "") {
             Err(_) => assert!(false),
-            Ok(result) => assert_eq!(expected, result)
+            Ok(result) => assert_eq!(expected, result),
         }
     }
 }

@@ -15,15 +15,15 @@
 // limitations under the License.
 //
 
-use std;
+use cli::pull::PullClapOptions;
+use command::Command;
+use config::Config;
+use errors;
 use fips;
 use git;
-use errors;
-use cli::pull::PullClapOptions;
+use std;
 use types::{DeliveryResult, ExitCode};
-use utils::say::{sayln, say};
-use config::Config;
-use command::Command;
+use utils::say::{say, sayln};
 
 pub struct PullCommand<'n> {
     pub options: &'n PullClapOptions<'n>,
@@ -41,27 +41,41 @@ impl<'n> Command for PullCommand<'n> {
 
     fn run(&self) -> DeliveryResult<ExitCode> {
         sayln("green", "Chef Delivery");
-        let verb = if self.options.rebase { "Rebasing" } else { "Merging" };
-        sayln("white", &format!("{} local HEAD on remote version of {}",
-                                verb, self.options.pipeline)
+        let verb = if self.options.rebase {
+            "Rebasing"
+        } else {
+            "Merging"
+        };
+        sayln(
+            "white",
+            &format!(
+                "{} local HEAD on remote version of {}",
+                verb, self.options.pipeline
+            ),
         );
 
         match git::git_pull(self.options.pipeline, self.options.rebase) {
             Ok(_) => {
-                say("white", &format!("HEAD is now on {}", try!(git::git_current_sha())));
+                say(
+                    "white",
+                    &format!("HEAD is now on {}", try!(git::git_current_sha())),
+                );
                 Ok(0)
-            },
-            Err(errors::DeliveryError{
-                kind: errors::Kind::BranchNotFoundOnDeliveryRemote, ..
+            }
+            Err(errors::DeliveryError {
+                kind: errors::Kind::BranchNotFoundOnDeliveryRemote,
+                ..
             }) => {
-                sayln("error", &format!("A pipeline or branch named {} was not found on the delivery remote",
-                                      self.options.pipeline)
+                sayln(
+                    "error",
+                    &format!(
+                        "A pipeline or branch named {} was not found on the delivery remote",
+                        self.options.pipeline
+                    ),
                 );
                 Ok(1)
-            },
-            Err(err) => {
-                Err(err)
             }
+            Err(err) => Err(err),
         }
     }
 }

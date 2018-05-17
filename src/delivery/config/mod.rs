@@ -17,16 +17,16 @@
 
 pub use errors;
 use errors::{DeliveryError, Kind};
-use types::DeliveryResult;
-use std::fs::File;
+use std::clone::Clone;
 use std::default::Default;
+use std::fs::File;
+use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use toml;
-use utils::{read_file, mkdir_recursive};
-use std::io::prelude::*;
-use utils::path_join_many::PathJoinMany;
+use types::DeliveryResult;
 use utils::path_ext::{is_dir, is_file};
-use std::clone::Clone;
+use utils::path_join_many::PathJoinMany;
+use utils::{mkdir_recursive, read_file};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Config {
@@ -54,7 +54,7 @@ pub mod url_format;
 
 impl Default for Config {
     fn default() -> Config {
-        Config{
+        Config {
             server: None,
             api_port: None,
             api_protocol: Some(String::from("https")),
@@ -78,15 +78,15 @@ impl Default for Config {
 }
 
 macro_rules! config_accessor_for {
-    ($name:ident, $set_name:ident, $err_msg:expr) => (
+    ($name:ident, $set_name:ident, $err_msg:expr) => {
         impl Config {
             pub fn $name(&self) -> DeliveryResult<String> {
                 match self.$name {
                     Some(ref v) => Ok(v.clone()),
-                    None => Err(DeliveryError{
+                    None => Err(DeliveryError {
                         kind: Kind::MissingConfig,
-                        detail: Some(String::from($err_msg))
-                    })
+                        detail: Some(String::from($err_msg)),
+                    }),
                 }
             }
 
@@ -97,21 +97,69 @@ macro_rules! config_accessor_for {
                 self
             }
         }
-    )
+    };
 }
 
-config_accessor_for!(server, set_server, "Server not set; try --server or set it in your .toml config file");
-config_accessor_for!(api_port, set_api_port, "API port not set; try --api-port or set it in your .toml config file");
-config_accessor_for!(api_protocol, set_api_protocol, "api_protocol not set; set it in your cli.toml");
-config_accessor_for!(user, set_user, "User not set; try --user or set it in your .toml config file");
-config_accessor_for!(enterprise, set_enterprise, "Enterprise not set; try --ent or set it in your .toml config file");
-config_accessor_for!(organization, set_organization, "Organization not set; try --org or set it in your .toml config file");
-config_accessor_for!(project, set_project, "Project not set; try --project or set it in your .toml config file");
-config_accessor_for!(git_port, set_git_port, "Git Port not set; please set it in your .toml config file");
-config_accessor_for!(pipeline, set_pipeline, "Pipeline not set; try --for or set it in your .toml config file");
-config_accessor_for!(token_file, set_token_file, "token_file not set; set it in your cli.toml");
-config_accessor_for!(generator, set_generator, "build_cookbook generator not set; set it in your cli.toml");
-config_accessor_for!(config_json, set_config_json, "config_json not set; set it in your cli.toml");
+config_accessor_for!(
+    server,
+    set_server,
+    "Server not set; try --server or set it in your .toml config file"
+);
+config_accessor_for!(
+    api_port,
+    set_api_port,
+    "API port not set; try --api-port or set it in your .toml config file"
+);
+config_accessor_for!(
+    api_protocol,
+    set_api_protocol,
+    "api_protocol not set; set it in your cli.toml"
+);
+config_accessor_for!(
+    user,
+    set_user,
+    "User not set; try --user or set it in your .toml config file"
+);
+config_accessor_for!(
+    enterprise,
+    set_enterprise,
+    "Enterprise not set; try --ent or set it in your .toml config file"
+);
+config_accessor_for!(
+    organization,
+    set_organization,
+    "Organization not set; try --org or set it in your .toml config file"
+);
+config_accessor_for!(
+    project,
+    set_project,
+    "Project not set; try --project or set it in your .toml config file"
+);
+config_accessor_for!(
+    git_port,
+    set_git_port,
+    "Git Port not set; please set it in your .toml config file"
+);
+config_accessor_for!(
+    pipeline,
+    set_pipeline,
+    "Pipeline not set; try --for or set it in your .toml config file"
+);
+config_accessor_for!(
+    token_file,
+    set_token_file,
+    "token_file not set; set it in your cli.toml"
+);
+config_accessor_for!(
+    generator,
+    set_generator,
+    "build_cookbook generator not set; set it in your cli.toml"
+);
+config_accessor_for!(
+    config_json,
+    set_config_json,
+    "config_json not set; set it in your cli.toml"
+);
 config_accessor_for!(fips_git_port, set_fips_git_port, "You did not set the fips_git_port. Set this value in your cli.toml or pass --fips-git-port.\nIt should be set to any port that is free and open on localhost (i.e. `fips_git_port = \"36534\"` in your cli.toml).");
 
 impl Config {
@@ -124,7 +172,7 @@ impl Config {
         let s = try!(self.server());
         return Ok(match self.api_port {
             Some(ref p) => format!("{}:{}", s, p),
-            None    => s
+            None => s,
         });
     }
 
@@ -141,13 +189,16 @@ impl Config {
         let s = try!(self.server());
         let host_and_port = match self.git_port {
             Some(ref p) => format!("{}:{}", s, p),
-            None    => s // TODO: Currently we *always* have a git port
+            None => s, // TODO: Currently we *always* have a git port
         };
         let u = try!(self.user());
         let e = try!(self.enterprise());
         let o = try!(self.organization());
         let p = try!(self.project());
-        Ok(format!("ssh://{}@{}@{}/{}/{}/{}", u, e, host_and_port, e, o, p))
+        Ok(format!(
+            "ssh://{}@{}@{}/{}/{}/{}",
+            u, e, host_and_port, e, o, p
+        ))
     }
 
     fn delivery_git_fips_enabled_url(&self) -> DeliveryResult<String> {
@@ -156,7 +207,10 @@ impl Config {
         let e = try!(self.enterprise());
         let o = try!(self.organization());
         let p = try!(self.project());
-        Ok(format!("ssh://{}@{}@{}/{}/{}/{}", u, e, host_and_port, e, o, p))
+        Ok(format!(
+            "ssh://{}@{}@{}/{}/{}/{}",
+            u, e, host_and_port, e, o, p
+        ))
     }
 
     pub fn load_config(cwd: &PathBuf) -> DeliveryResult<Self> {
@@ -166,15 +220,17 @@ impl Config {
                 let toml = read_file(path)?;
                 match Config::parse_config(&toml) {
                     Ok(c) => return Ok(c),
-                    Err(_) => return Ok(Default::default())
+                    Err(_) => return Ok(Default::default()),
                 }
-            },
-            None => return Ok(Default::default())
+            }
+            None => return Ok(Default::default()),
         }
     }
 
     pub fn write_file<P>(&self, path: P) -> DeliveryResult<String>
-            where P: AsRef<Path> {
+    where
+        P: AsRef<Path>,
+    {
         let write_dir = path.as_ref().join_many(&[".delivery"]);
         if !is_dir(&write_dir) {
             try!(mkdir_recursive(&write_dir));
@@ -204,24 +260,60 @@ impl Config {
         // fields, but for now this is good enough.
         //
         // If the `config` has some new config, override `self`
-        if config.server.is_some() { self.server = config.server }
-        if config.api_port.is_some() { self.api_port = config.api_port }
-        if config.pipeline.is_some() { self.pipeline = config.pipeline }
-        if config.project.is_some() { self.project = config.project }
-        if config.enterprise.is_some() { self.enterprise = config.enterprise }
-        if config.organization.is_some() { self.organization = config.organization }
-        if config.user.is_some() { self.user = config.user }
-        if config.git_port.is_some() { self.git_port = config.git_port }
-        if config.token_file.is_some() { self.token_file = config.token_file }
-        if config.generator.is_some() { self.generator = config.generator }
-        if config.non_interactive.is_some() { self.non_interactive = config.non_interactive }
-        if config.auto_bump.is_some() { self.auto_bump = config.auto_bump }
-        if config.config_json.is_some() { self.config_json = config.config_json }
-        if config.saml.is_some() { self.saml = config.saml }
-        if config.fips.is_some() { self.fips = config.fips }
-        if config.fips_git_port.is_some() { self.fips_git_port = config.fips_git_port }
-        if config.fips_custom_cert_filename.is_some() { self.fips_custom_cert_filename = config.fips_custom_cert_filename }
-        if config.api_protocol.is_some() { self.api_protocol = config.api_protocol }
+        if config.server.is_some() {
+            self.server = config.server
+        }
+        if config.api_port.is_some() {
+            self.api_port = config.api_port
+        }
+        if config.pipeline.is_some() {
+            self.pipeline = config.pipeline
+        }
+        if config.project.is_some() {
+            self.project = config.project
+        }
+        if config.enterprise.is_some() {
+            self.enterprise = config.enterprise
+        }
+        if config.organization.is_some() {
+            self.organization = config.organization
+        }
+        if config.user.is_some() {
+            self.user = config.user
+        }
+        if config.git_port.is_some() {
+            self.git_port = config.git_port
+        }
+        if config.token_file.is_some() {
+            self.token_file = config.token_file
+        }
+        if config.generator.is_some() {
+            self.generator = config.generator
+        }
+        if config.non_interactive.is_some() {
+            self.non_interactive = config.non_interactive
+        }
+        if config.auto_bump.is_some() {
+            self.auto_bump = config.auto_bump
+        }
+        if config.config_json.is_some() {
+            self.config_json = config.config_json
+        }
+        if config.saml.is_some() {
+            self.saml = config.saml
+        }
+        if config.fips.is_some() {
+            self.fips = config.fips
+        }
+        if config.fips_git_port.is_some() {
+            self.fips_git_port = config.fips_git_port
+        }
+        if config.fips_custom_cert_filename.is_some() {
+            self.fips_custom_cert_filename = config.fips_custom_cert_filename
+        }
+        if config.api_protocol.is_some() {
+            self.api_protocol = config.api_protocol
+        }
     }
 
     fn check_dot_delivery_cli(path: PathBuf) -> Option<PathBuf> {
@@ -236,17 +328,22 @@ impl Config {
     }
 
     pub fn dot_delivery_cli_path<P>(orig_path: P) -> Option<PathBuf>
-            where P: AsRef<Path> {
+    where
+        P: AsRef<Path>,
+    {
         let mut path = orig_path.as_ref().to_owned();
         loop {
             let check_result: Option<PathBuf> = Config::check_dot_delivery_cli(path.clone());
             match check_result.as_ref() {
-                Some(_) => { return check_result.clone() }
+                Some(_) => return check_result.clone(),
                 None => {
-                    if path.pop() { } else { return check_result.clone() }
+                    if path.pop() {
+                    } else {
+                        return check_result.clone();
+                    }
                 }
             }
-        };
+        }
     }
 }
 
@@ -279,10 +376,8 @@ mod tests {
                 assert_eq!(None, config.saml);
                 assert_eq!(None, config.fips);
                 assert_eq!(None, config.fips_git_port);
-            },
-            Err(e) => {
-                panic!("Failed to parse: {:?}", e.detail)
             }
+            Err(e) => panic!("Failed to parse: {:?}", e.detail),
         }
     }
 
@@ -314,34 +409,35 @@ mod tests {
                 assert_eq!(None, config.organization);
                 assert_eq!(Some(true), config.non_interactive);
                 assert_eq!(Some(true), config.auto_bump);
-                assert_eq!(Some("/path/to/my/custom/config.json".to_string()),
-                          config.config_json);
+                assert_eq!(
+                    Some("/path/to/my/custom/config.json".to_string()),
+                    config.config_json
+                );
                 assert_eq!(Some(true), config.saml);
                 assert_eq!(Some(true), config.fips);
                 assert_eq!(Some("55555".to_string()), config.fips_git_port);
-            },
-            Err(e) => {
-                panic!("Failed to parse: {:?}", e.detail)
             }
+            Err(e) => panic!("Failed to parse: {:?}", e.detail),
         }
     }
 
     #[test]
     fn test_api_url_with_port() {
-        let mut conf  = Config::default();
-        conf.server   = Some("127.0.0.1".to_string());
+        let mut conf = Config::default();
+        conf.server = Some("127.0.0.1".to_string());
         conf.api_port = Some("2112".to_string());
-        assert_eq!("127.0.0.1:2112".to_string(),
-                   conf.api_host_and_port().unwrap());
+        assert_eq!(
+            "127.0.0.1:2112".to_string(),
+            conf.api_host_and_port().unwrap()
+        );
     }
 
     #[test]
     fn test_api_url_without_port() {
         let mut conf = Config::default();
-        conf.server  = Some("127.0.0.1".to_string());
+        conf.server = Some("127.0.0.1".to_string());
         assert!(conf.api_port.is_none());
-        assert_eq!("127.0.0.1".to_string(),
-                   conf.api_host_and_port().unwrap());
+        assert_eq!("127.0.0.1".to_string(), conf.api_host_and_port().unwrap());
     }
 
     #[test]
@@ -353,27 +449,31 @@ mod tests {
 
     #[test]
     fn test_git_url_with_default_port() {
-        let mut conf      = Config::default();
-        conf.server       = Some("127.0.0.1".to_string());
-        conf.user         = Some("user".to_string());
-        conf.enterprise   = Some("ent".to_string());
+        let mut conf = Config::default();
+        conf.server = Some("127.0.0.1".to_string());
+        conf.user = Some("user".to_string());
+        conf.enterprise = Some("ent".to_string());
         conf.organization = Some("org".to_string());
-        conf.project      = Some("proj".to_string());
-        assert_eq!("ssh://user@ent@127.0.0.1:8989/ent/org/proj".to_string(),
-                   conf.delivery_git_ssh_url().unwrap());
+        conf.project = Some("proj".to_string());
+        assert_eq!(
+            "ssh://user@ent@127.0.0.1:8989/ent/org/proj".to_string(),
+            conf.delivery_git_ssh_url().unwrap()
+        );
     }
 
     #[test]
     fn test_git_url_with_port() {
-        let mut conf      = Config::default();
-        conf.server       = Some("127.0.0.1".to_string());
-        conf.user         = Some("user".to_string());
-        conf.enterprise   = Some("ent".to_string());
+        let mut conf = Config::default();
+        conf.server = Some("127.0.0.1".to_string());
+        conf.user = Some("user".to_string());
+        conf.enterprise = Some("ent".to_string());
         conf.organization = Some("org".to_string());
-        conf.project      = Some("proj".to_string());
-        conf.git_port     = Some("2112".to_string());
-        assert_eq!("ssh://user@ent@127.0.0.1:2112/ent/org/proj".to_string(),
-                   conf.delivery_git_ssh_url().unwrap());
+        conf.project = Some("proj".to_string());
+        conf.git_port = Some("2112".to_string());
+        assert_eq!(
+            "ssh://user@ent@127.0.0.1:2112/ent/org/proj".to_string(),
+            conf.delivery_git_ssh_url().unwrap()
+        );
     }
 
     #[test]

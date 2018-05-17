@@ -15,20 +15,20 @@
 // limitations under the License.
 //
 
-use std;
-use fips;
 use cli::review::ReviewClapOptions;
+use command::Command;
 use config::Config;
-use utils;
-use utils::say::{sayln, say};
-use errors::DeliveryError;
-use types::{DeliveryResult, ExitCode};
 use cookbook;
+use delivery_config::DeliveryConfig;
+use errors::DeliveryError;
+use fips;
 use git::{self, ReviewResult};
 use http;
-use delivery_config::DeliveryConfig;
-use command::Command;
 use project;
+use std;
+use types::{DeliveryResult, ExitCode};
+use utils;
+use utils::say::{say, sayln};
 
 pub struct ReviewCommand<'n> {
     pub options: &'n ReviewClapOptions<'n>,
@@ -51,7 +51,7 @@ impl<'n> Command for ReviewCommand<'n> {
         let target = validate!(config_ref, pipeline);
         if let Some(should_bump) = self.config.auto_bump {
             if should_bump {
-                let project =  validate!(config_ref, project);
+                let project = validate!(config_ref, project);
                 let project_root = try!(project::root_dir(&utils::cwd()));
                 try!(DeliveryConfig::validate_config_file(&project_root));
                 try!(cookbook::bump_version(&project_root, &target, &project))
@@ -74,34 +74,36 @@ impl<'n> Command for ReviewCommand<'n> {
         }
 
         match project::handle_review_result(&review, &self.options.no_open) {
-            Ok(result) => {
-                match result {
-                    Some(url) => {sayln("magenta", &url)},
-                    None => {}
-                }
+            Ok(result) => match result {
+                Some(url) => sayln("magenta", &url),
+                None => {}
             },
             Err(_) => {
-                sayln("yellow", "We could not open the review in the browser for you.");
-                sayln("yellow", "Make sure there is a program that can open HTML files in your path \
-                                 or pass --no-open to bypass attempting to open this review in a browser.");
+                sayln(
+                    "yellow",
+                    "We could not open the review in the browser for you.",
+                );
+                sayln(
+                    "yellow",
+                    "Make sure there is a program that can open HTML files in your path \
+                     or pass --no-open to bypass attempting to open this review in a browser.",
+                );
             }
         }
         Ok(0)
     }
 }
 
-fn edit_change(config: &Config,
-               review: &ReviewResult) -> Result<(), DeliveryError> {
+fn edit_change(config: &Config, review: &ReviewResult) -> Result<(), DeliveryError> {
     let proj = try!(config.project());
     match review.change_id {
         Some(ref change_id) => {
             let change0 = try!(http::change::get(&config, &change_id));
-            let text0 = format!("{}\n\n{}\n",
-                                change0.title, change0.description);
+            let text0 = format!("{}\n\n{}\n", change0.title, change0.description);
             let text1 = try!(utils::open::edit_str(&proj, &text0));
             let change1 = try!(http::change::Description::parse_text(&text1));
             Ok(try!(http::change::set(&config, &change_id, &change1)))
-        },
-        None => Ok(())
+        }
+        None => Ok(()),
     }
 }

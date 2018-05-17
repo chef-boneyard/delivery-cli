@@ -15,6 +15,6 @@
 // limitations under the License.
 //
 
-pub mod workspace;
 pub mod change;
 pub mod dna;
+pub mod workspace;

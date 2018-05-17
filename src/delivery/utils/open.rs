@@ -15,6 +15,7 @@
 // limitations under the License.
 //
 
+use errors::{DeliveryError, Kind};
 /// Use this library to open a path or URL using the program
 /// configured on the system.
 ///
@@ -40,11 +41,10 @@
 /// * Windows: start
 ///
 use std::env;
-use std::process::{Command, Output};
-use errors::{DeliveryError, Kind};
-use tempdir::TempDir;
-use std::io::prelude::*;
 use std::fs::File;
+use std::io::prelude::*;
+use std::process::{Command, Output};
+use tempdir::TempDir;
 use utils::path_join_many::PathJoinMany;
 
 // The MIT License (MIT)
@@ -85,17 +85,24 @@ pub fn item(path: &str) -> Result<(), DeliveryError> {
 
 #[cfg(target_os = "windows")]
 pub fn item(path: &str) -> Result<(), DeliveryError> {
-    process_response("start", try!(Command::new("cmd.exe")
-                                    .arg("/c")
-                                    .arg("start")
-                                    .arg(path)
-                                    .output()))
+    process_response(
+        "start",
+        try!(
+            Command::new("cmd.exe")
+                .arg("/c")
+                .arg("start")
+                .arg(path)
+                .output()
+        ),
+    )
 }
 
 #[cfg(not(target_os = "windows"))]
 fn item_for_cmds(path: &str, cmds: &[&str]) -> Result<(), DeliveryError> {
-    let mut res = Err(DeliveryError { kind: Kind::OpenFailed,
-                                      detail: None});
+    let mut res = Err(DeliveryError {
+        kind: Kind::OpenFailed,
+        detail: None,
+    });
     for cmd in cmds {
         res = item_for_cmd(path, cmd);
         match res {
@@ -117,12 +124,13 @@ fn process_response(cmd: &str, res: Output) -> Result<(), DeliveryError> {
     } else {
         let code = match res.status.code() {
             Some(c) => format!("{}", c),
-            None => format!("{}", "terminated by signal")
+            None => format!("{}", "terminated by signal"),
         };
-        let msg = format!("Command '{}' failed with code {}",
-                          cmd, code);
-        Err(DeliveryError { kind: Kind::OpenFailed,
-                            detail: Some(msg) })
+        let msg = format!("Command '{}' failed with code {}", cmd, code);
+        Err(DeliveryError {
+            kind: Kind::OpenFailed,
+            detail: Some(msg),
+        })
     }
 }
 
@@ -141,7 +149,12 @@ pub fn edit_path(path: &str) -> Result<(), DeliveryError> {
     debug!("{}", "in edit!");
     let editor_env = match env::var("EDITOR") {
         Ok(e) => e,
-        Err(_) => return Err(DeliveryError{ kind: Kind::NoEditor, detail: None })
+        Err(_) => {
+            return Err(DeliveryError {
+                kind: Kind::NoEditor,
+                detail: None,
+            })
+        }
     };
     // often, EDITOR has args provided
     let split = editor_env.trim().split(" ");
@@ -164,8 +177,7 @@ pub fn edit_path(path: &str) -> Result<(), DeliveryError> {
 /// in the editor defined in the `EDITOR` environment variable.  The
 /// contents of the file are returned as a string after the external
 /// editor completes.
-pub fn edit_str(name: &str,
-                content: &str) -> Result<String, DeliveryError> {
+pub fn edit_str(name: &str, content: &str) -> Result<String, DeliveryError> {
     let tempdir = try!(TempDir::new("delivery-edit"));
     let tfile_path = tempdir.path().join_many(&[name]);
     let tfile_str = tfile_path.to_str().unwrap();

@@ -16,11 +16,11 @@
 //
 
 use cli::token::TokenClapOptions;
-use types::{DeliveryResult, ExitCode};
-use utils::say::{turn_on_output, turn_off_output, sayln};
-use token::TokenStore;
-use config::Config;
 use command::Command;
+use config::Config;
+use token::TokenStore;
+use types::{DeliveryResult, ExitCode};
+use utils::say::{sayln, turn_off_output, turn_on_output};
 
 pub struct TokenCommand<'n> {
     pub options: &'n TokenClapOptions<'n>,
@@ -29,7 +29,6 @@ pub struct TokenCommand<'n> {
 
 impl<'n> Command for TokenCommand<'n> {
     fn run(&self) -> DeliveryResult<ExitCode> {
-
         // If we want the raw token, we wont print any output
         // during the token request so we will disable it
         if self.options.raw {

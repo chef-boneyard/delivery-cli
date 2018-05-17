@@ -18,52 +18,57 @@
 //
 
 extern crate delivery;
-use mockito::{SERVER_ADDRESS, mock};
 use delivery::config::Config;
-use delivery::user::User;
 use delivery::errors::Kind;
-use tempdir::TempDir;
+use delivery::user::User;
+use mockito::{mock, SERVER_ADDRESS};
 use std::env;
 use std::fs;
-use std::path::Path;
 use std::fs::File;
 use std::io::Write;
+use std::path::Path;
+use tempdir::TempDir;
 
-fn setup() {
-    let user = r#"
-{
-    "email": "link@zelda.io",
-    "first": "Link",
-    "last": "Hylian",
-    "name": "link",
-    "ssh_pub_key": "ssh-rsa SECRET",
-    "user_type": "internal"
-}
-"#;
-    mock("GET", "/api/v0/e/ent/users/link")
-        .with_status(200)
-        .match_header("Content-Type", "application/json")
-        .with_body(&user)
-        .create();
-    mock("GET", "/api/v0/e/ent/users/ganon")
-        .with_status(404)
-        .create();
-    mock("GET", "/api/v0/e/ent/users/bad")
-        .with_status(200)
-        .match_header("Content-Type", "application/json")
-        .with_body("{\"name\": \"bad\"}")
-        .create();
-    mock("GET", "/api/v0/e/ent/orgs")
-        .with_status(200)
-        .match_header("Content-Type", "application/json")
-        .with_body("{}")
-        .create();
+macro_rules! setup {
+    () => {
+        let user = r#"
+                                {
+                                    "email": "link@zelda.io",
+                                    "first": "Link",
+                                    "last": "Hylian",
+                                    "name": "link",
+                                    "ssh_pub_key": "ssh-rsa SECRET",
+                                    "user_type": "internal"
+                                }
+                                "#;
+        let _m1 = mock("GET", "/api/v0/e/ent/users/link")
+            .with_status(200)
+            .match_header("Content-Type", "application/json")
+            .with_body(&user)
+            .create();
+        let _m2 = mock("GET", "/api/v0/e/ent/users/ganon")
+            .with_status(404)
+            .create();
+        let _m3 = mock("GET", "/api/v0/e/ent/users/bad")
+            .with_status(200)
+            .match_header("Content-Type", "application/json")
+            .with_body("{\"name\": \"bad\"}")
+            .create();
+        let _m4 = mock("GET", "/api/v0/e/ent/orgs")
+            .with_status(200)
+            .match_header("Content-Type", "application/json")
+            .with_body("{}")
+            .create();
+    };
 }
 
 // This tests require to mock the api-tokens file, in order to do so we
 // will generate a "temporal directory" and point the HOME Env variable
 // to that directory, only for the specific calls we need to.
-fn assert_user_with_mocked_home<F>(home: &Path, closure: F) where F: Fn() {
+fn assert_user_with_mocked_home<F>(home: &Path, closure: F)
+where
+    F: Fn(),
+{
     let saved_home = env::var("HOME").expect("Missin HOME env var");
     env::set_var("HOME", home);
     closure();
@@ -73,13 +78,15 @@ fn assert_user_with_mocked_home<F>(home: &Path, closure: F) where F: Fn() {
 // Mocking api-tokens file and returning the temp directory
 fn mock_api_tokens() -> TempDir {
     // Mock the api-tokens store
-    let mock_tokens = "0.0.0.0:1234,ent,link|this_is_a_fake_token";
+    let mock_tokens = format!("{},ent,link|this_is_a_fake_token", SERVER_ADDRESS);
     let tmpdir = TempDir::new("mock-delivery-api-tokens").expect("Unable to create tmp dir");
     let delivery_dir = tmpdir.path().join(".delivery");
     let api_tokens_path = delivery_dir.join("api-tokens");
     fs::create_dir(&delivery_dir).expect("Unable to create .delivery dir");
     let mut api_tokens = File::create(&api_tokens_path).expect("Unable to create api-tokens file");
-    api_tokens.write_all(mock_tokens.as_bytes()).expect("Unable to write api-tokens file");
+    api_tokens
+        .write_all(mock_tokens.as_bytes())
+        .expect("Unable to write api-tokens file");
     tmpdir
 }
 

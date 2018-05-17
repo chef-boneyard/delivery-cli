@@ -15,27 +15,27 @@
 // limitations under the License.
 //
 
-use std;
+use config::Config;
 use git;
 use project;
-use utils;
-use utils::say::sayln;
-use utils::cwd;
+use std;
 use types::{DeliveryResult, ExitCode};
-use config::Config;
+use utils;
+use utils::cwd;
+use utils::say::sayln;
 
-pub mod init;
-pub mod review;
-pub mod local;
-pub mod setup;
-pub mod token;
-pub mod checkout;
-pub mod diff;
-pub mod clone;
 pub mod api;
+pub mod checkout;
+pub mod clone;
+pub mod diff;
+pub mod init;
 pub mod job;
-pub mod status;
+pub mod local;
 pub mod pull;
+pub mod review;
+pub mod setup;
+pub mod status;
+pub mod token;
 
 pub trait Command: Sized {
     fn setup(&self, child_processes: &mut Vec<std::process::Child>) -> DeliveryResult<()> {
@@ -64,10 +64,13 @@ pub fn verify_and_repair_git_remote(config: &Config) -> DeliveryResult<()> {
         let p_path = project::project_path()?;
         let c_path = Config::dot_delivery_cli_path(&cwd()).expect("Unable to find cli.toml");
         let git_ssh_url = config.delivery_git_ssh_url()?;
-        let msg = &format!("Updating 'delivery' remote with the default configuration \
-                  loaded from {:?}.\n\tcurrent: {}\n\tupdate:  {}", c_path,
-                  &git::delivery_remote_from_repo(&p_path)?,
-                  &git_ssh_url);
+        let msg = &format!(
+            "Updating 'delivery' remote with the default configuration \
+             loaded from {:?}.\n\tcurrent: {}\n\tupdate:  {}",
+            c_path,
+            &git::delivery_remote_from_repo(&p_path)?,
+            &git_ssh_url
+        );
         sayln("yellow", msg);
         try!(git::update_delivery_remote(&git_ssh_url, &p_path));
     }

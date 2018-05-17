@@ -179,7 +179,7 @@ Scenario: when server knows about fips but it is disabled
     get('/api/_status') do
       {
         "configuration_mode": "standalone",
-        "fips_mode": "false",
+        "fips_mode": false,
         "status": "pong",
         "upstreams": [
           {
@@ -230,7 +230,7 @@ Scenario: when server knows about fips but it is enabled
     get('/api/_status') do
       {
         "configuration_mode": "standalone",
-        "fips_mode": "true",
+        "fips_mode": true,
         "status": "pong",
         "upstreams": [
           {

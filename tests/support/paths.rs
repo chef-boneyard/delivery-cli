@@ -1,6 +1,6 @@
+use delivery::utils::path_join_many::PathJoinMany;
 use std::env;
 use std::path::PathBuf;
-use delivery::utils::path_join_many::PathJoinMany;
 
 pub fn exe_path() -> PathBuf {
     env::current_exe().unwrap()
@@ -8,10 +8,10 @@ pub fn exe_path() -> PathBuf {
 
 pub fn root() -> PathBuf {
     let mut exe = exe_path(); // support
-    exe.pop();                // tests/
-    exe.pop();                // debug/
-    exe.pop();                // target/
-    exe.pop();                // delivery-cli/
+    exe.pop(); // tests/
+    exe.pop(); // debug/
+    exe.pop(); // target/
+    exe.pop(); // delivery-cli/
     exe.join("tests")
 }
 
@@ -22,4 +22,3 @@ pub fn fixtures() -> PathBuf {
 pub fn fixture_file(names: &str) -> PathBuf {
     fixtures().join_many(&[names])
 }
-

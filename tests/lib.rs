@@ -1,34 +1,32 @@
 extern crate delivery;
+extern crate log;
+extern crate mockito;
 extern crate serde_json;
 extern crate tempdir;
-extern crate mockito;
-extern crate log;
 
 // Thanks, Cargo.
 macro_rules! test {
-    ($name:ident $expr:expr) => (
+    ($name:ident $expr:expr) => {
         #[test]
         fn $name() {
-            setup();
+            setup!();
             $expr;
         }
-    )
+    };
 }
 
 macro_rules! panic_on_error {
-    ($expr:expr) => (
+    ($expr:expr) => {
         match $expr {
             Ok(val) => val,
-            Err(e) => {
-                panic!("{:?}", e)
-            }
+            Err(e) => panic!("{:?}", e),
         }
-    )
+    };
 }
 
-mod support;
-mod config;
 mod cli;
-mod utils;
+mod config;
 mod delivery_config;
+mod support;
 mod user;
+mod utils;

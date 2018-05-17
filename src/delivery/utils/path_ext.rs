@@ -25,11 +25,14 @@ use std::path::Path;
 ///
 /// Will also return false if the file doesn't exist, or if the user doesn't
 /// have permission to see the file.
-pub fn is_file<P: ?Sized>(path: &P) -> bool where P: AsRef<Path> {
+pub fn is_file<P: ?Sized>(path: &P) -> bool
+where
+    P: AsRef<Path>,
+{
     let meta = match fs::metadata(path) {
         Ok(meta) => meta,
         // We either don't exist, or we don't have permission to even see the file
-        Err(_e) => return false
+        Err(_e) => return false,
     };
     meta.is_file()
 }
@@ -38,11 +41,14 @@ pub fn is_file<P: ?Sized>(path: &P) -> bool where P: AsRef<Path> {
 ///
 /// Will also return false if the path doesn't exist, or if the user doesn't
 /// have permission to see the path.
-pub fn is_dir<P: ?Sized>(path: &P) -> bool where P: AsRef<Path> {
+pub fn is_dir<P: ?Sized>(path: &P) -> bool
+where
+    P: AsRef<Path>,
+{
     let meta = match fs::metadata(path) {
         Ok(meta) => meta,
         // We either don't exist, or we don't have permission to even see the file
-        Err(_e) => return false
+        Err(_e) => return false,
     };
     meta.is_dir()
 }

@@ -15,14 +15,13 @@
 // limitations under the License.
 //
 
-use project;
-use fips;
-use cli::arguments::{pipeline_arg, no_open_arg,
-                     value_of, auto_bump, project_specific_args};
-use clap::{App, SubCommand, ArgMatches};
-use config::Config;
-use types::DeliveryResult;
+use clap::{App, ArgMatches, SubCommand};
 use cli::Options;
+use cli::arguments::{auto_bump, no_open_arg, pipeline_arg, project_specific_args, value_of};
+use config::Config;
+use fips;
+use project;
+use types::DeliveryResult;
 
 pub const SUBCOMMAND_NAME: &'static str = "review";
 
@@ -69,8 +68,7 @@ impl<'n> ReviewClapOptions<'n> {
 
 impl<'n> Options for ReviewClapOptions<'n> {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
-        let mut new_config = config.set_pipeline(&self.pipeline)
-            .set_user(&self.user);
+        let mut new_config = config.set_pipeline(&self.pipeline).set_user(&self.user);
 
         if new_config.auto_bump.is_none() {
             new_config.auto_bump = Some(self.auto_bump);
@@ -80,8 +78,12 @@ impl<'n> Options for ReviewClapOptions<'n> {
             new_config.project = project::project_from_cwd().ok();
         }
 
-        fips::merge_fips_options_and_config(self.fips, self.fips_git_port,
-                                            self.fips_custom_cert_filename, new_config)
+        fips::merge_fips_options_and_config(
+            self.fips,
+            self.fips_git_port,
+            self.fips_custom_cert_filename,
+            new_config,
+        )
     }
 }
 

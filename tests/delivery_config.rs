@@ -1,12 +1,12 @@
 extern crate delivery;
 
-use delivery::delivery_config::{DeliveryConfigV1,
-                                DeliveryConfig,
-                                BuildCookbookLocation};
+use delivery::delivery_config::{BuildCookbookLocation, DeliveryConfig, DeliveryConfigV1};
 use std::collections::HashMap;
 use support::paths::fixture_file;
 
-fn setup() { }
+macro_rules! setup {
+    () => {};
+}
 
 mod v1 {
     use super::*;
@@ -80,7 +80,6 @@ mod v2 {
         let source_dir = fixture_file("test_bug_repo");
         assert!(DeliveryConfig::load_config(&source_dir).is_err());
     });
-
 
     test!(validate_config_file {
         let source_dir = fixture_file("test_repo");

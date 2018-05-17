@@ -25,13 +25,15 @@ use config::Config;
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, PartialOrd)]
 pub struct Description {
     pub title: String,
-    pub description: String
+    pub description: String,
 }
 
 impl Description {
     pub fn payload(title: &str, desc: &str) -> Result<String, DeliveryError> {
-        let desc = Description{ title: String::from(title),
-                                description: String::from(desc) };
+        let desc = Description {
+            title: String::from(title),
+            description: String::from(desc),
+        };
         desc.to_json()
     }
 
@@ -46,20 +48,27 @@ impl Description {
 
     pub fn parse_text(text: &str) -> Result<Description, DeliveryError> {
         let mut iter = text.lines();
-        let title = iter.find(|&l| !l.trim().is_empty()).unwrap_or("").trim().to_string();
+        let title = iter.find(|&l| !l.trim().is_empty())
+            .unwrap_or("")
+            .trim()
+            .to_string();
         let desc = iter.collect::<Vec<&str>>().join("\n").trim().to_string();
-        Ok(Description{ title: title, description: desc })
+        Ok(Description {
+            title: title,
+            description: desc,
+        })
     }
 }
 
 /// Fetch the description for a change
-pub fn get(config: &Config,
-           change: &str) -> Result<Description, DeliveryError> {
+pub fn get(config: &Config, change: &str) -> Result<Description, DeliveryError> {
     let org = try!(config.organization());
     let proj = try!(config.project());
     let client = try!(APIClient::from_config(&config));
-    let path = format!("orgs/{}/projects/{}/changes/{}/description",
-                       org, proj, change);
+    let path = format!(
+        "orgs/{}/projects/{}/changes/{}/description",
+        org, proj, change
+    );
     debug!("description path: {}", path);
     let mut result = try!(client.get(&path));
     match result.status {
@@ -68,7 +77,7 @@ pub fn get(config: &Config,
             let _x = try!(result.read_to_string(&mut body_string));
             let description = try!(Description::parse_json(&body_string));
             Ok(description)
-        },
+        }
         StatusCode::NotFound => {
             let msg1 = "API request returned 404 (not found) while trying to fetch this change's description.\n".to_string();
             let msg2 = "This is usually because the Delivery organization in your config does not match the organization for this project.\n";
@@ -76,51 +85,61 @@ pub fn get(config: &Config,
             let msg4 = &org;
             let msg5 = "\n\nTo fix this, try editing your cli.toml file's organization setting to match the organization this project resides in.";
             let err_msg = msg1 + msg2 + msg3 + msg4 + msg5;
-            Err(DeliveryError{ kind: Kind::ChangeNotFound,
-                               detail: Some(err_msg)})
-        },
+            Err(DeliveryError {
+                kind: Kind::ChangeNotFound,
+                detail: Some(err_msg),
+            })
+        }
         StatusCode::Unauthorized => {
             let msg = "API request returned 401 (unauthorized)".to_string();
-            Err(DeliveryError{ kind: Kind::AuthenticationFailed,
-                               detail: Some(msg)})
-        },
+            Err(DeliveryError {
+                kind: Kind::AuthenticationFailed,
+                detail: Some(msg),
+            })
+        }
         error_code @ _ => {
-            let msg = format!("API request returned {}",
-                              error_code);
+            let msg = format!("API request returned {}", error_code);
             let mut detail = String::new();
             let e = match result.read_to_string(&mut detail) {
                 Ok(_) => Ok(detail),
-                Err(e) => Err(e)
+                Err(e) => Err(e),
             };
-            Err(DeliveryError{ kind: Kind::ApiError(error_code, e),
-                               detail: Some(msg)})
+            Err(DeliveryError {
+                kind: Kind::ApiError(error_code, e),
+                detail: Some(msg),
+            })
         }
     }
 }
 
 /// Set the description for a change
-pub fn set(config: &Config,
-           change: &str,
-           description: &Description) -> Result<(), DeliveryError> {
+pub fn set(config: &Config, change: &str, description: &Description) -> Result<(), DeliveryError> {
     let org = try!(config.organization());
     let proj = try!(config.project());
     let client = try!(APIClient::from_config(&config));
-    let path = format!("orgs/{}/projects/{}/changes/{}/description",
-                       org, proj, change);
+    let path = format!(
+        "orgs/{}/projects/{}/changes/{}/description",
+        org, proj, change
+    );
     let payload = try!(description.to_json());
     let mut result = try!(client.put(&path, &payload));
     match result.status {
         StatusCode::NoContent => Ok(()),
         StatusCode::Unauthorized => {
             let msg = "API request returned 401".to_string();
-            Err(DeliveryError{ kind: Kind::AuthenticationFailed,
-                               detail: Some(msg)})
-        },
+            Err(DeliveryError {
+                kind: Kind::AuthenticationFailed,
+                detail: Some(msg),
+            })
+        }
         error_code @ _ => {
             let msg = format!("API request returned {}", error_code);
             let mut detail = String::new();
             let e = result.read_to_string(&mut detail).and(Ok(detail));
-            Err(DeliveryError::throw(Kind::ApiError(error_code, e),Some(msg)))
+            Err(DeliveryError::throw(
+                Kind::ApiError(error_code, e),
+                Some(msg),
+            ))
         }
     }
 }
@@ -138,8 +157,10 @@ mod tests {
 
     #[test]
     fn description_to_json_test() {
-        let desc = Description { title: "a title".to_string(),
-                                 description: "so descriptive!".to_string() };
+        let desc = Description {
+            title: "a title".to_string(),
+            description: "so descriptive!".to_string(),
+        };
         let payload = desc.to_json().unwrap();
         let expect = "{\"title\":\"a title\",\"description\":\"so descriptive!\"}";
         assert_eq!(expect, payload);
@@ -148,8 +169,10 @@ mod tests {
     #[test]
     fn description_parse_json_test() {
         let response = "{\"title\":\"a title\",\"description\":\"so descriptive!\"}";
-        let expect = Description{ title: "a title".to_string(),
-                                  description: "so descriptive!".to_string()};
+        let expect = Description {
+            title: "a title".to_string(),
+            description: "so descriptive!".to_string(),
+        };
         let description = Description::parse_json(response).unwrap();
         assert_eq!(expect, description);
     }
@@ -157,8 +180,10 @@ mod tests {
     #[test]
     fn description_parse_text_1_test() {
         let text = "Just a title";
-        let expect = Description{ title: text.to_string(),
-                                  description: "".to_string() };
+        let expect = Description {
+            title: text.to_string(),
+            description: "".to_string(),
+        };
         let desc = Description::parse_text(text).unwrap();
         assert_eq!(expect, desc);
     }
@@ -166,8 +191,10 @@ mod tests {
     #[test]
     fn description_parse_text_2_test() {
         let text = "Just a title\n\nWith some description";
-        let expect = Description{ title: "Just a title".to_string(),
-                                  description: "With some description".to_string() };
+        let expect = Description {
+            title: "Just a title".to_string(),
+            description: "With some description".to_string(),
+        };
         let desc = Description::parse_text(text).unwrap();
         assert_eq!(expect, desc);
     }
@@ -175,8 +202,10 @@ mod tests {
     #[test]
     fn description_parse_text_3_test() {
         let text = "Just a title\n\nL1\nL2\nL3\n";
-        let expect = Description{ title: "Just a title".to_string(),
-                                  description: "L1\nL2\nL3".to_string() };
+        let expect = Description {
+            title: "Just a title".to_string(),
+            description: "L1\nL2\nL3".to_string(),
+        };
         let desc = Description::parse_text(text).unwrap();
         assert_eq!(expect, desc);
     }
@@ -184,8 +213,10 @@ mod tests {
     #[test]
     fn description_parse_text_4_test() {
         let text = "\n  \nA title after some blank lines\n  \nL1\nL2\nL3\n";
-        let expect = Description{ title: "A title after some blank lines".to_string(),
-                                  description: "L1\nL2\nL3".to_string() };
+        let expect = Description {
+            title: "A title after some blank lines".to_string(),
+            description: "L1\nL2\nL3".to_string(),
+        };
         let desc = Description::parse_text(text).unwrap();
         assert_eq!(expect, desc);
     }

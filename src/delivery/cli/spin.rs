@@ -14,8 +14,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+use clap::{App, ArgMatches, SubCommand};
 use cli::arguments::value_of;
-use clap::{App, SubCommand, ArgMatches};
 
 pub const SUBCOMMAND_NAME: &'static str = "spin";
 
@@ -25,9 +25,7 @@ pub struct SpinClapOptions {
 }
 impl Default for SpinClapOptions {
     fn default() -> Self {
-        SpinClapOptions {
-            time: 5,
-        }
+        SpinClapOptions { time: 5 }
     }
 }
 

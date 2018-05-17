@@ -14,15 +14,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-use cli::arguments::{pipeline_arg, config_path_arg, no_open_arg, project_arg,
-          local_arg, config_project_arg, u_e_s_o_args, scp_args,
-          value_of, project_specific_args};
-use clap::{App, SubCommand, ArgMatches};
+use clap::{App, ArgMatches, SubCommand};
 use cli::Options;
-use types::DeliveryResult;
+use cli::arguments::{config_path_arg, config_project_arg, local_arg, no_open_arg, pipeline_arg,
+                     project_arg, project_specific_args, scp_args, u_e_s_o_args, value_of};
 use config::Config;
-use project;
 use fips;
+use project;
+use types::DeliveryResult;
 
 pub const SUBCOMMAND_NAME: &'static str = "init";
 
@@ -102,7 +101,8 @@ impl<'n> Options for InitClapOptions<'n> {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
         let project = try!(project::project_or_from_cwd(&self.project));
 
-        let new_config = config.set_user(&self.user)
+        let new_config = config
+            .set_user(&self.user)
             .set_server(&self.server)
             .set_enterprise(&self.ent)
             .set_organization(&self.org)
@@ -111,22 +111,33 @@ impl<'n> Options for InitClapOptions<'n> {
             .set_generator(&self.generator)
             .set_config_json(&self.config_json);
 
-        fips::merge_fips_options_and_config(self.fips, self.fips_git_port,
-                                            self.fips_custom_cert_filename, new_config)
+        fips::merge_fips_options_and_config(
+            self.fips,
+            self.fips_git_port,
+            self.fips_custom_cert_filename,
+            new_config,
+        )
     }
-
 }
 
 pub fn clap_subcommand<'c>() -> App<'c, 'c> {
     SubCommand::with_name(SUBCOMMAND_NAME)
-        .about("Initialize a Delivery project \
-                (and lots more!)")
-        .args(&vec![config_path_arg(), no_open_arg(), project_arg(),
-                local_arg(), config_project_arg()])
+        .about(
+            "Initialize a Delivery project \
+             (and lots more!)",
+        )
+        .args(&vec![
+            config_path_arg(),
+            no_open_arg(),
+            project_arg(),
+            local_arg(),
+            config_project_arg(),
+        ])
         .args_from_usage(
             "--generator=[generator] 'Local path or Git repo URL to a \
              custom ChefDK build_cookbook generator (default:github)'
-            --skip-build-cookbook 'Do not create a build cookbook'")
+            --skip-build-cookbook 'Do not create a build cookbook'",
+        )
         .args(&u_e_s_o_args())
         .args(&scp_args())
         .args(&pipeline_arg())

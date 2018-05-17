@@ -15,19 +15,19 @@
 // limitations under the License.
 //
 
+use clap::{App, AppSettings, ArgMatches};
+use config::Config;
+use delivery_config::project::ProjectToml;
+use errors::DeliveryError;
 use std;
 use std::env;
+use std::path::PathBuf;
 use std::process;
 use std::time::Duration;
-use std::path::PathBuf;
-use utils;
-use utils::say::{self, sayln, print_error};
-use errors::DeliveryError;
 use types::{DeliveryResult, ExitCode};
-use config::Config;
-use clap::{App, ArgMatches, AppSettings};
-use delivery_config::project::ProjectToml;
+use utils;
 use utils::cwd;
+use utils::say::{self, print_error, sayln};
 
 // Clap Arguments
 //
@@ -35,23 +35,23 @@ use utils::cwd;
 // the ClapAlias trait for arguments that we might deprecate in the future
 #[macro_use]
 pub mod arguments;
-use cli::arguments::{non_interactive_arg, no_spinner_arg, no_color_arg};
+use cli::arguments::{no_color_arg, no_spinner_arg, non_interactive_arg};
 
 // Modules for setting up clap subcommand including their options and defaults,
 // as well as advanced subcommand match parsing (see local for an example).
 pub mod api;
-pub mod review;
 pub mod checkout;
 pub mod clone;
 pub mod diff;
 pub mod init;
 pub mod job;
-pub mod token;
-pub mod setup;
 pub mod local;
-pub mod status;
 pub mod pull;
+pub mod review;
+pub mod setup;
 mod spin;
+pub mod status;
+pub mod token;
 
 // Implemented sub-commands. Should handle everything after args have
 // been parsed, including running the command, error handling, and UI outputting.
@@ -61,13 +61,13 @@ use command::checkout::CheckoutCommand;
 use command::clone::CloneCommand;
 use command::diff::DiffCommand;
 use command::init::InitCommand;
-use command::job::{JobCommand, run_docker_job};
+use command::job::{run_docker_job, JobCommand};
 use command::local::LocalCommand;
+use command::pull::PullCommand;
 use command::review::ReviewCommand;
 use command::setup::SetupCommand;
-use command::token::TokenCommand;
 use command::status::StatusCommand;
-use command::pull::PullCommand;
+use command::token::TokenCommand;
 
 pub trait Options {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config>;
@@ -84,7 +84,7 @@ pub fn run() {
         // error handling if you handled an error and returned non-zero.
         Ok(exit_status) => process::exit(exit_status),
         // Handles DeliveryError and exits 1.
-        Err(e) => exit_with(e, 1)
+        Err(e) => exit_with(e, 1),
     }
 }
 
@@ -121,61 +121,87 @@ fn execute_command<C: Command>(matches: &ArgMatches, command: C) -> DeliveryResu
     command_result
 }
 
-
-fn match_command_and_start(app_matches: &ArgMatches, build_version: &str) -> DeliveryResult<ExitCode> {
+fn match_command_and_start(
+    app_matches: &ArgMatches,
+    build_version: &str,
+) -> DeliveryResult<ExitCode> {
     let cmd_result = match app_matches.subcommand() {
         (api::SUBCOMMAND_NAME, Some(matches)) => {
             let options = api::ApiClapOptions::new(&matches);
             let config = try!(load_config_and_merge_with_options(&options));
-            let command = ApiCommand{options: &options, config: &config};
+            let command = ApiCommand {
+                options: &options,
+                config: &config,
+            };
             execute_command(&matches, command)
-        },
+        }
         (checkout::SUBCOMMAND_NAME, Some(matches)) => {
             let options = checkout::CheckoutClapOptions::new(&matches);
             let config = try!(load_config_and_merge_with_options(&options));
-            let command = CheckoutCommand{options: &options, config: &config};
+            let command = CheckoutCommand {
+                options: &options,
+                config: &config,
+            };
             execute_command(&matches, command)
-        },
+        }
         (clone::SUBCOMMAND_NAME, Some(matches)) => {
             let options = clone::CloneClapOptions::new(&matches);
             let config = try!(load_config_and_merge_with_options(&options));
-            let command = CloneCommand{options: &options, config: &config};
+            let command = CloneCommand {
+                options: &options,
+                config: &config,
+            };
             execute_command(&matches, command)
-        },
+        }
         (diff::SUBCOMMAND_NAME, Some(matches)) => {
             let options = diff::DiffClapOptions::new(&matches);
             let config = try!(load_config_and_merge_with_options(&options));
-            let command = DiffCommand{options: &options, config: &config};
+            let command = DiffCommand {
+                options: &options,
+                config: &config,
+            };
             execute_command(&matches, command)
-        },
+        }
         (init::SUBCOMMAND_NAME, Some(matches)) => {
             let options = init::InitClapOptions::new(&matches);
             let config = try!(load_config_and_merge_with_options(&options));
-            let command = InitCommand{options: &options, config: &config};
+            let command = InitCommand {
+                options: &options,
+                config: &config,
+            };
             execute_command(&matches, command)
-        },
+        }
         (job::SUBCOMMAND_NAME, Some(matches)) => {
             let options = job::JobClapOptions::new(&matches);
             let config = try!(load_config_and_merge_with_options(&options));
-            let command = JobCommand{options: &options, config: &config};
+            let command = JobCommand {
+                options: &options,
+                config: &config,
+            };
             if !options.docker_image.is_empty() {
                 run_docker_job(&options)
             } else {
                 execute_command(&matches, command)
             }
-        },
+        }
         (local::SUBCOMMAND_NAME, Some(matches)) => {
             let options = local::LocalClapOptions::new(&matches);
             let config = try!(ProjectToml::load_toml(options.remote_toml));
-            let command = LocalCommand{options: &options, config: &config};
+            let command = LocalCommand {
+                options: &options,
+                config: &config,
+            };
             execute_command(&matches, command)
-        },
+        }
         (review::SUBCOMMAND_NAME, Some(matches)) => {
             let options = review::ReviewClapOptions::new(&matches);
             let config = try!(load_config_and_merge_with_options(&options));
-            let command = ReviewCommand{options: &options, config: &config};
+            let command = ReviewCommand {
+                options: &options,
+                config: &config,
+            };
             execute_command(&matches, command)
-        },
+        }
         (setup::SUBCOMMAND_NAME, Some(matches)) => {
             let options = setup::SetupClapOptions::new(&matches);
             let config_path = if options.path.is_empty() {
@@ -184,31 +210,40 @@ fn match_command_and_start(app_matches: &ArgMatches, build_version: &str) -> Del
                 PathBuf::from(options.path)
             };
             let config = try!(load_config_and_merge_with_options(&options));
-            let command = SetupCommand{
+            let command = SetupCommand {
                 options: &options,
                 config: &config,
                 config_path: &config_path,
             };
             execute_command(&matches, command)
-        },
+        }
         (token::SUBCOMMAND_NAME, Some(matches)) => {
             let options = token::TokenClapOptions::new(&matches);
             let config = try!(load_config_and_merge_with_options(&options));
-            let command = TokenCommand{options: &options, config: &config};
+            let command = TokenCommand {
+                options: &options,
+                config: &config,
+            };
             execute_command(&matches, command)
-        },
+        }
         (status::SUBCOMMAND_NAME, Some(matches)) => {
             let options = status::StatusClapOptions::new(&matches);
             let config = try!(load_config_and_merge_with_options(&options));
-            let command = StatusCommand{options: &options, config: &config};
+            let command = StatusCommand {
+                options: &options,
+                config: &config,
+            };
             execute_command(&matches, command)
-        },
+        }
         (pull::SUBCOMMAND_NAME, Some(matches)) => {
             let options = pull::PullClapOptions::new(&matches);
             let config = try!(load_config_and_merge_with_options(&options));
-            let command = PullCommand{options: &options, config: &config};
+            let command = PullCommand {
+                options: &options,
+                config: &config,
+            };
             execute_command(&matches, command)
-        },
+        }
         (spin::SUBCOMMAND_NAME, Some(matches)) => {
             handle_global_flags(&matches);
             let spin_opts = spin::SpinClapOptions::new(&matches);
@@ -218,7 +253,7 @@ fn match_command_and_start(app_matches: &ArgMatches, build_version: &str) -> Del
             spinner.stop();
             handle_global_flags(&matches);
             Ok(0)
-        },
+        }
         _ => {
             // ownership issue with use of above defined app
             // so for now...
@@ -291,16 +326,28 @@ fn build_git_sha() -> String {
 #[cfg(test)]
 mod tests {
     use cli;
-    use cli::{api, review, clone, checkout, diff, init, job, spin, token, setup};
+    use cli::{api, checkout, clone, diff, init, job, review, setup, spin, token};
 
     #[test]
     fn test_clap_api_options() {
         let build_version = format!("{} {}", cli::version(), cli::build_git_sha());
         let app = cli::make_app(&build_version);
-        let matches = app.get_matches_from(vec!["delivery", "api", "get", "endpoint",
-                                           "--data", "\"name\":\"n\",\"value\":\"d\"",
-                                           "-e", "starwars", "-u", "vader", "-s",
-                                           "death-star", "--api-port", "9999"]);
+        let matches = app.get_matches_from(vec![
+            "delivery",
+            "api",
+            "get",
+            "endpoint",
+            "--data",
+            "\"name\":\"n\",\"value\":\"d\"",
+            "-e",
+            "starwars",
+            "-u",
+            "vader",
+            "-s",
+            "death-star",
+            "--api-port",
+            "9999",
+        ]);
         assert_eq!(Some("api"), matches.subcommand_name());
         let api_matches = matches.subcommand_matches(api::SUBCOMMAND_NAME).unwrap();
         let api_opts = api::ApiClapOptions::new(&api_matches);
@@ -317,8 +364,15 @@ mod tests {
     fn test_clap_review_options() {
         let build_version = format!("{} {}", cli::version(), cli::build_git_sha());
         let app = cli::make_app(&build_version);
-        let matches = app.get_matches_from(vec!["delivery", "review", "--auto-bump",
-                                           "--no-open", "--edit", "-f", "custom-pipe"]);
+        let matches = app.get_matches_from(vec![
+            "delivery",
+            "review",
+            "--auto-bump",
+            "--no-open",
+            "--edit",
+            "-f",
+            "custom-pipe",
+        ]);
         assert_eq!(Some("review"), matches.subcommand_name());
         let review_matches = matches.subcommand_matches(review::SUBCOMMAND_NAME).unwrap();
         let review_opts = review::ReviewClapOptions::new(&review_matches);
@@ -332,10 +386,19 @@ mod tests {
     fn test_clap_checkout_options() {
         let build_version = format!("{} {}", cli::version(), cli::build_git_sha());
         let app = cli::make_app(&build_version);
-        let matches = app.get_matches_from(vec!["delivery", "checkout", "change_the_force",
-                                           "-P", "p4tchs3t", "-f", "custom-pipe"]);
+        let matches = app.get_matches_from(vec![
+            "delivery",
+            "checkout",
+            "change_the_force",
+            "-P",
+            "p4tchs3t",
+            "-f",
+            "custom-pipe",
+        ]);
         assert_eq!(Some("checkout"), matches.subcommand_name());
-        let checkout_matches = matches.subcommand_matches(checkout::SUBCOMMAND_NAME).unwrap();
+        let checkout_matches = matches
+            .subcommand_matches(checkout::SUBCOMMAND_NAME)
+            .unwrap();
         let checkout_opts = checkout::CheckoutClapOptions::new(&checkout_matches);
         assert_eq!(checkout_opts.pipeline, "custom-pipe");
         assert_eq!(checkout_opts.change, "change_the_force");
@@ -346,10 +409,21 @@ mod tests {
     fn test_clap_clone_options() {
         let build_version = format!("{} {}", cli::version(), cli::build_git_sha());
         let app = cli::make_app(&build_version);
-        let matches = app.get_matches_from(vec!["delivery", "clone", "minecraft",
-                                           "-e", "world", "-o", "coolest", "-u",
-                                           "dummy", "-s", "m.craft.com", "-g",
-                                           "ssh://another.world.com:123/awesome"]);
+        let matches = app.get_matches_from(vec![
+            "delivery",
+            "clone",
+            "minecraft",
+            "-e",
+            "world",
+            "-o",
+            "coolest",
+            "-u",
+            "dummy",
+            "-s",
+            "m.craft.com",
+            "-g",
+            "ssh://another.world.com:123/awesome",
+        ]);
         assert_eq!(Some("clone"), matches.subcommand_name());
         let clone_matches = matches.subcommand_matches(clone::SUBCOMMAND_NAME).unwrap();
         let clone_opts = clone::CloneClapOptions::new(&clone_matches);
@@ -365,8 +439,16 @@ mod tests {
     fn test_clap_diff_options() {
         let build_version = format!("{} {}", cli::version(), cli::build_git_sha());
         let app = cli::make_app(&build_version);
-        let matches = app.get_matches_from(vec!["delivery", "diff", "change-me", "-l",
-                                           "-P", "p4tchs3t", "-f", "coolest"]);
+        let matches = app.get_matches_from(vec![
+            "delivery",
+            "diff",
+            "change-me",
+            "-l",
+            "-P",
+            "p4tchs3t",
+            "-f",
+            "coolest",
+        ]);
         assert_eq!(Some("diff"), matches.subcommand_name());
         let diff_matches = matches.subcommand_matches(diff::SUBCOMMAND_NAME).unwrap();
         let diff_opts = diff::DiffClapOptions::new(&diff_matches);
@@ -380,11 +462,36 @@ mod tests {
     fn test_clap_init_options() {
         let build_version = format!("{} {}", cli::version(), cli::build_git_sha());
         let app = cli::make_app(&build_version);
-        let init_cmd = vec!["delivery", "init", "-l", "-p", "frijol", "-u", "concha",
-                        "-s", "cocina.central.com", "-e", "mexicana", "-o", "oaxaca",
-                        "-f", "postres", "-c", "receta.json", "--generator", "/original",
-                        "--github", "git-mx", "--bitbucket", "bit-mx", "-r", "antojitos",
-                        "--no-verify-ssl", "--skip-build-cookbook", "-n"];
+        let init_cmd = vec![
+            "delivery",
+            "init",
+            "-l",
+            "-p",
+            "frijol",
+            "-u",
+            "concha",
+            "-s",
+            "cocina.central.com",
+            "-e",
+            "mexicana",
+            "-o",
+            "oaxaca",
+            "-f",
+            "postres",
+            "-c",
+            "receta.json",
+            "--generator",
+            "/original",
+            "--github",
+            "git-mx",
+            "--bitbucket",
+            "bit-mx",
+            "-r",
+            "antojitos",
+            "--no-verify-ssl",
+            "--skip-build-cookbook",
+            "-n",
+        ];
         let matches = app.get_matches_from(init_cmd);
         assert_eq!(Some("init"), matches.subcommand_name());
         let init_matches = matches.subcommand_matches(init::SUBCOMMAND_NAME).unwrap();
@@ -410,11 +517,42 @@ mod tests {
     fn test_clap_job_options() {
         let build_version = format!("{} {}", cli::version(), cli::build_git_sha());
         let app = cli::make_app(&build_version);
-        let job_cmd = vec!["delivery", "job", "anime", "ninja", "-C", "rasengan",
-                        "-u", "naruto", "-s", "manga.com", "-e", "shippuden", "-o",
-                        "akatsuki", "-f", "sharingan", "-j", "/path", "-p", "uchiha",
-                        "-P", "latest", "--change-id", "super-cool-id", "-g", "powerful-url",
-                        "-S", "SHA", "-b", "evil", "--skip-default", "-l", "--docker", "uzumaki"];
+        let job_cmd = vec![
+            "delivery",
+            "job",
+            "anime",
+            "ninja",
+            "-C",
+            "rasengan",
+            "-u",
+            "naruto",
+            "-s",
+            "manga.com",
+            "-e",
+            "shippuden",
+            "-o",
+            "akatsuki",
+            "-f",
+            "sharingan",
+            "-j",
+            "/path",
+            "-p",
+            "uchiha",
+            "-P",
+            "latest",
+            "--change-id",
+            "super-cool-id",
+            "-g",
+            "powerful-url",
+            "-S",
+            "SHA",
+            "-b",
+            "evil",
+            "--skip-default",
+            "-l",
+            "--docker",
+            "uzumaki",
+        ];
         let matches = app.get_matches_from(job_cmd);
         assert_eq!(Some("job"), matches.subcommand_name());
         let job_matches = matches.subcommand_matches(job::SUBCOMMAND_NAME).unwrap();
@@ -454,9 +592,20 @@ mod tests {
     fn test_clap_token_options() {
         let build_version = format!("{} {}", cli::version(), cli::build_git_sha());
         let app = cli::make_app(&build_version);
-        let matches = app.get_matches_from(vec!["delivery", "token", "-e", "fellowship",
-                                           "-u", "gandalf", "-s", "lord.of.the.rings.com",
-                                           "--api-port", "1111", "--verify", "--saml=true"]);
+        let matches = app.get_matches_from(vec![
+            "delivery",
+            "token",
+            "-e",
+            "fellowship",
+            "-u",
+            "gandalf",
+            "-s",
+            "lord.of.the.rings.com",
+            "--api-port",
+            "1111",
+            "--verify",
+            "--saml=true",
+        ]);
         assert_eq!(Some("token"), matches.subcommand_name());
         let token_matches = matches.subcommand_matches(token::SUBCOMMAND_NAME).unwrap();
         let token_opts = token::TokenClapOptions::new(&token_matches);
@@ -472,9 +621,22 @@ mod tests {
     fn test_clap_setup_options() {
         let build_version = format!("{} {}", cli::version(), cli::build_git_sha());
         let app = cli::make_app(&build_version);
-        let matches = app.get_matches_from(vec!["delivery", "setup", "-e", "e", "-u", "u",
-                                           "-s", "s", "--config-path", "/my/config/cli.toml",
-                                           "-f", "p", "-o", "good"]);
+        let matches = app.get_matches_from(vec![
+            "delivery",
+            "setup",
+            "-e",
+            "e",
+            "-u",
+            "u",
+            "-s",
+            "s",
+            "--config-path",
+            "/my/config/cli.toml",
+            "-f",
+            "p",
+            "-o",
+            "good",
+        ]);
         assert_eq!(Some("setup"), matches.subcommand_name());
         let setup_matches = matches.subcommand_matches(setup::SUBCOMMAND_NAME).unwrap();
         let setup_opts = setup::SetupClapOptions::new(&setup_matches);

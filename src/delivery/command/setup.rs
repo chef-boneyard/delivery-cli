@@ -16,12 +16,12 @@
 //
 
 use cli::setup::SetupClapOptions;
-use types::{DeliveryResult, ExitCode};
-use utils::say::{say, sayln};
-use utils::path_join_many::PathJoinMany;
-use std::path::PathBuf;
-use config::Config;
 use command::Command;
+use config::Config;
+use std::path::PathBuf;
+use types::{DeliveryResult, ExitCode};
+use utils::path_join_many::PathJoinMany;
+use utils::say::{say, sayln};
 
 pub struct SetupCommand<'n> {
     pub options: &'n SetupClapOptions<'n>,

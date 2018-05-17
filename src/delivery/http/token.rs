@@ -15,23 +15,25 @@
 // limitations under the License.
 //
 
+use config::Config;
 use errors::{DeliveryError, Kind};
-use token::TokenStore;
 use http::*;
 use hyper::status::StatusCode;
 use serde_json;
-use config::Config;
+use token::TokenStore;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TokenRequest {
     username: String,
-    password: String
+    password: String,
 }
 
 impl TokenRequest {
     pub fn payload(user: &str, pass: &str) -> Result<String, DeliveryError> {
-        let treq = TokenRequest{  username: String::from(user),
-                                  password: String::from(pass) };
+        let treq = TokenRequest {
+            username: String::from(user),
+            password: String::from(pass),
+        };
         let payload = serde_json::to_string(&treq)?;
         Ok(payload)
     }
@@ -39,7 +41,7 @@ impl TokenRequest {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TokenResponse {
-    token: String
+    token: String,
 }
 
 impl TokenResponse {
@@ -50,7 +52,7 @@ impl TokenResponse {
     pub fn parse_token_expired(content: &str) -> bool {
         match content.find("token_expired") {
             Some(_) => true,
-            None => false
+            None => false,
         }
     }
 }
@@ -65,14 +67,16 @@ pub fn verify(config: &Config) -> Result<bool, DeliveryError> {
     let ent = try!(config.enterprise());
     let user = try!(config.user());
     let tstore = try!(TokenStore::from_home());
-    let auth = try!(APIAuth::from_token_store(tstore, &api_server, &ent, &user).or_else(|e| {
-        debug!("Ignoring {:?}\nRequesting token from config", e);
-        APIAuth::from_token_request(&config)
-    }));
-    let client = try!(APIClient::from_config_no_auth(config).and_then((|mut c| {
+    let auth = try!(
+        APIAuth::from_token_store(tstore, &api_server, &ent, &user).or_else(|e| {
+            debug!("Ignoring {:?}\nRequesting token from config", e);
+            APIAuth::from_token_request(&config)
+        })
+    );
+    let client = try!(APIClient::from_config_no_auth(config).and_then(|mut c| {
         c.set_auth(auth);
         Ok(c)
-    })));
+    }));
     let mut response = try!(client.get("orgs"));
     match response.status {
         StatusCode::Ok => Ok(true),
@@ -80,11 +84,13 @@ pub fn verify(config: &Config) -> Result<bool, DeliveryError> {
             let content = try!(APIClient::extract_pretty_json(&mut response));
             // Send verify(false) if the token has expired
             Ok(!TokenResponse::parse_token_expired(&content))
-        },
+        }
         _ => {
             let pretty_json = try!(APIClient::extract_pretty_json(&mut response));
-            Err(DeliveryError{ kind: Kind::AuthenticationFailed,
-                               detail: Some(pretty_json)})
+            Err(DeliveryError {
+                kind: Kind::AuthenticationFailed,
+                detail: Some(pretty_json),
+            })
         }
     }
 }
@@ -102,20 +108,25 @@ pub fn request(config: &Config, pass: &str) -> Result<String, DeliveryError> {
             try!(result.read_to_string(&mut body_string));
             let token = try!(TokenResponse::parse_token(&body_string));
             Ok(token)
-        },
+        }
         StatusCode::Unauthorized => {
             let ent = try!(config.enterprise());
             let server = try!(config.server());
-            let msg = format!("Details: server={}, enterprise={}, user={}",
-                              &server, &ent, &user);
-            Err(DeliveryError{ kind: Kind::AuthenticationFailed,
-                               detail: Some(msg)})
-        },
+            let msg = format!(
+                "Details: server={}, enterprise={}, user={}",
+                &server, &ent, &user
+            );
+            Err(DeliveryError {
+                kind: Kind::AuthenticationFailed,
+                detail: Some(msg),
+            })
+        }
         error_code @ _ => {
-            let msg = format!("token request returned {}",
-                              error_code);
-            Err(DeliveryError{ kind: Kind::AuthenticationFailed,
-                               detail: Some(msg)})
+            let msg = format!("token request returned {}", error_code);
+            Err(DeliveryError {
+                kind: Kind::AuthenticationFailed,
+                detail: Some(msg),
+            })
         }
     }
 }

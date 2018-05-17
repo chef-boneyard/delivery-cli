@@ -14,11 +14,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-use cli::arguments::{api_port_arg, value_of, u_e_s_o_args};
-use clap::{Arg, App, SubCommand, ArgMatches};
+use clap::{App, Arg, ArgMatches, SubCommand};
 use cli::Options;
-use types::DeliveryResult;
+use cli::arguments::{api_port_arg, u_e_s_o_args, value_of};
 use config::Config;
+use types::DeliveryResult;
 
 pub const SUBCOMMAND_NAME: &'static str = "token";
 
@@ -57,9 +57,9 @@ impl<'n> TokenClapOptions<'n> {
             verify: matches.is_present("verify"),
             raw: matches.is_present("raw"),
             saml: match value_of(&matches, "saml") {
-              "true" => Some(true),
-              "false" => Some(false),
-              _ => None,
+                "true" => Some(true),
+                "false" => Some(false),
+                _ => None,
             },
         }
     }
@@ -67,7 +67,8 @@ impl<'n> TokenClapOptions<'n> {
 
 impl<'n> Options for TokenClapOptions<'n> {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
-        let mut new_config = config.set_server(&self.server)
+        let mut new_config = config
+            .set_server(&self.server)
             .set_api_port(&self.port)
             .set_enterprise(&self.ent)
             .set_user(&self.user);
@@ -88,5 +89,6 @@ pub fn clap_subcommand<'c>() -> App<'c, 'c> {
         .args(&make_arg_vec![
             "--raw 'Output only the raw token string'",
             "--verify 'Verify the Token has expired'",
-            "--saml=[true/false] 'Use SAML authentication (overrides Delivery server)'"])
+            "--saml=[true/false] 'Use SAML authentication (overrides Delivery server)'"
+        ])
 }

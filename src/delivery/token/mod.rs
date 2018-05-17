@@ -24,26 +24,26 @@
 //! and will immediately rewrite the backing file. Find an existing
 //! token using `lookup`.
 //!
-use std::io;
-use std::io::prelude::*;
-use std::io::BufReader;
-use std::path::PathBuf;
-use std::fs::{File, OpenOptions};
-use std::collections::BTreeMap;
+use config::Config;
 use errors::DeliveryError;
+use http;
+use rpassword;
+use std::collections::BTreeMap;
+use std::fs::{File, OpenOptions};
+use std::io;
+use std::io::BufReader;
+use std::io::prelude::*;
+use std::path::PathBuf;
 use types::DeliveryResult;
 use utils;
 use utils::path_join_many::PathJoinMany;
-use config::Config;
-use http;
-use utils::say::{sayln,say};
-use utils::{home_dir, env_variable};
-use rpassword;
+use utils::say::{say, sayln};
+use utils::{env_variable, home_dir};
 
 #[derive(Debug)]
 pub struct TokenStore {
     tokens: BTreeMap<String, String>,
-    path: PathBuf
+    path: PathBuf,
 }
 
 impl TokenStore {
@@ -56,7 +56,10 @@ impl TokenStore {
 
     pub fn from_file(path: &PathBuf) -> Result<TokenStore, DeliveryError> {
         let tokens = try!(TokenStore::read_config(&path));
-        let tstore = TokenStore {path: path.clone(), tokens: tokens};
+        let tstore = TokenStore {
+            path: path.clone(),
+            tokens: tokens,
+        };
         Ok(tstore)
     }
 
@@ -64,51 +67,51 @@ impl TokenStore {
         self.path.clone()
     }
 
-    pub fn lookup(&self,
-                  server: &str, ent: &str, user: &str) -> Option<&String> {
+    pub fn lookup(&self, server: &str, ent: &str, user: &str) -> Option<&String> {
         let key = TokenStore::key(server, ent, user);
         self.tokens.get(&key)
     }
 
-    pub fn write_token(&mut self,
-                       server: &str,
-                       ent: &str,
-                       user: &str,
-                       token: &str) -> Result<Option<String>, DeliveryError> {
-
+    pub fn write_token(
+        &mut self,
+        server: &str,
+        ent: &str,
+        user: &str,
+        token: &str,
+    ) -> Result<Option<String>, DeliveryError> {
         let result = self.set_token(server, ent, user, token);
         match self.write_config() {
             Ok(_) => Ok(result),
-            Err(e) => Err(e)
+            Err(e) => Err(e),
         }
     }
 
-    pub fn verify_token(config: &Config) -> DeliveryResult<String>  {
-      let server = try!(config.api_host_and_port());
-      let ent = try!(config.enterprise());
-      let user = try!(config.user());
-      let tstore = try!(TokenStore::from_home());
-      match tstore.lookup(&server, &ent, &user) {
-        Some(token) => {
-            sayln("magenta", &format!("token: {}", &token));
-            say("yellow", "Verifying Token: ");
-            match http::token::verify(&config) {
-                Err(e) => return Err(e),
-                Ok(valid) => {
-                    if valid {
-                        sayln("green", "valid");
-                        return Ok(token.clone())
-                    } else {
-                        sayln("red", "expired");
+    pub fn verify_token(config: &Config) -> DeliveryResult<String> {
+        let server = try!(config.api_host_and_port());
+        let ent = try!(config.enterprise());
+        let user = try!(config.user());
+        let tstore = try!(TokenStore::from_home());
+        match tstore.lookup(&server, &ent, &user) {
+            Some(token) => {
+                sayln("magenta", &format!("token: {}", &token));
+                say("yellow", "Verifying Token: ");
+                match http::token::verify(&config) {
+                    Err(e) => return Err(e),
+                    Ok(valid) => {
+                        if valid {
+                            sayln("green", "valid");
+                            return Ok(token.clone());
+                        } else {
+                            sayln("red", "expired");
+                        }
                     }
                 }
             }
-          },
-          None => {
-              sayln("red", "Token not found");
-          }
-      }
-      TokenStore::request_token(&config)
+            None => {
+                sayln("red", "Token not found");
+            }
+        }
+        TokenStore::request_token(&config)
     }
 
     pub fn request_token(config: &Config) -> DeliveryResult<String> {
@@ -124,7 +127,10 @@ impl TokenStore {
         };
         let token = if saml {
             let mut enter = String::new();
-            say("red", "Press Enter to open a browser window to retrieve a new token.");
+            say(
+                "red",
+                "Press Enter to open a browser window to retrieve a new token.",
+            );
             try!(io::stdin().read_line(&mut enter));
             sayln("white", "Launching browser..");
             try!(TokenStore::initate_saml_auth(&config));
@@ -139,13 +145,16 @@ impl TokenStore {
             // we will still ask for it
             let pass: String = match env_variable("AUTOMATE_PASSWORD") {
                 Some(p) => p,
-                None => try!(rpassword::prompt_password_stdout("Automate password: "))
+                None => try!(rpassword::prompt_password_stdout("Automate password: ")),
             };
             try!(http::token::request(&config, &pass))
         };
         sayln("magenta", &format!("token: {}", &token));
         try!(tstore.write_token(&api_server, &ent, &user, &token));
-        sayln("green", &format!("saved API token to: {}", tstore.path().display()));
+        sayln(
+            "green",
+            &format!("saved API token to: {}", tstore.path().display()),
+        );
         if saml {
             try!(TokenStore::verify_token(&config));
         };
@@ -161,8 +170,7 @@ impl TokenStore {
     }
 
     fn format_web_token_url(host: &str, ent: &str, proto: &str, path: &str) -> String {
-        format!("{}://{}/e/{}/{}",
-            proto, host, ent, path)
+        format!("{}://{}/e/{}/{}", proto, host, ent, path)
     }
 
     fn initate_saml_auth(config: &Config) -> Result<(), DeliveryError> {
@@ -174,9 +182,7 @@ impl TokenStore {
         format!("{},{},{}", server, ent, user)
     }
 
-    fn set_token(&mut self,
-                 server: &str, ent: &str, user: &str,
-                 token: &str) -> Option<String> {
+    fn set_token(&mut self, server: &str, ent: &str, user: &str, token: &str) -> Option<String> {
         let key = TokenStore::key(server, ent, user);
         self.tokens.insert(key, token.to_string())
     }
@@ -214,18 +220,17 @@ impl TokenStore {
         }
         Ok(map)
     }
-
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use config::Config;
     use std::fs::File;
     use tempdir::TempDir;
     use utils::path_join_many::PathJoinMany;
-    use config::Config;
 
-     #[test]
+    #[test]
     fn create_from_empty_test() {
         let tempdir = TempDir::new("t1").ok().expect("TempDir failed");
         let path = tempdir.path();
@@ -234,11 +239,12 @@ mod tests {
         let mut tstore = TokenStore::from_file(&tfile).ok().expect("no create");
         println!("got: {:?}", tstore);
         assert_eq!(None, tstore.lookup("127.0.0.1", "acme", "bob"));
-        let write_result = tstore.write_token("127.0.0.1", "acme", "bob",
-                                              "beefbeef");
+        let write_result = tstore.write_token("127.0.0.1", "acme", "bob", "beefbeef");
         assert_eq!(true, write_result.is_ok());
-        assert_eq!(&"beefbeef", tstore.lookup("127.0.0.1",
-                                             "acme", "bob").unwrap());
+        assert_eq!(
+            &"beefbeef",
+            tstore.lookup("127.0.0.1", "acme", "bob").unwrap()
+        );
         // why doesn't this work in this context?
         // let mut f = try!(File::open(&tfile));
         let mut f = File::open(&tfile).ok().expect("tfile open error");

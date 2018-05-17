@@ -21,11 +21,13 @@ impl APIClient {
     // Verify if the provided user exists
     pub fn user_exists(&self, user: &str) -> bool {
         let path = format!("users/{}", user);
-        self.get(&path).and_then(|response| {
-            if let StatusCode::Ok = response.status {
-                return Ok(true)
-            }
-            Ok(false)
-        }).unwrap_or(false)
+        self.get(&path)
+            .and_then(|response| {
+                if let StatusCode::Ok = response.status {
+                    return Ok(true);
+                }
+                Ok(false)
+            })
+            .unwrap_or(false)
     }
 }

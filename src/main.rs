@@ -15,18 +15,18 @@
 // limitations under the License.
 //
 
-extern crate regex;
 extern crate clap;
-extern crate log;
-extern crate env_logger;
-extern crate term;
-extern crate hyper;
 extern crate delivery;
+extern crate env_logger;
+extern crate hyper;
+extern crate log;
+extern crate regex;
+extern crate term;
 extern crate time;
 
 use delivery::cli;
 
 fn main() {
-    env_logger::init().unwrap();
+    env_logger::init();
     cli::run();
 }

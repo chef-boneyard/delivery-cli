@@ -19,11 +19,11 @@ use cli::status::StatusClapOptions;
 use command::Command;
 use config::Config;
 use http;
+use json::server_status::*;
 use serde_json;
+use std::time::Instant;
 use types::{DeliveryResult, ExitCode};
 use utils::say::{say, sayln};
-use std::time::Instant;
-use json::server_status::*;
 
 pub struct StatusCommand<'n> {
     pub options: &'n StatusClapOptions<'n>,
@@ -32,12 +32,15 @@ pub struct StatusCommand<'n> {
 
 impl<'n> Command for StatusCommand<'n> {
     fn run(&self) -> DeliveryResult<ExitCode> {
-        let client = try!(http::APIClient::from_config_with_basic_routing(&self.config));
+        let client = try!(http::APIClient::from_config_with_basic_routing(
+            &self.config
+        ));
 
         let start = Instant::now();
         let mut result = try!(client.get("api/_status"));
         let elapsed = start.elapsed();
-        let elapsed_milli = (elapsed.as_secs() * 1_000) + (elapsed.subsec_nanos() / 1_000_000) as u64;
+        let elapsed_milli =
+            (elapsed.as_secs() * 1_000) + (elapsed.subsec_nanos() / 1_000_000) as u64;
 
         let mut json_string = try!(http::APIClient::extract_pretty_json(&mut result));
         // Backwards compat: A few versions of the server shipped with a
@@ -46,33 +49,57 @@ impl<'n> Command for StatusCommand<'n> {
 
         if self.options.json {
             sayln("white", json_string.as_ref());
-            return Ok(0)
+            return Ok(0);
         }
 
         // Closures to display status with the right color
-        let say_status   = |s: &str| if s == "up" { say("success", s) } else { say("error", s) };
-        let sayln_status = |s: &str| if s == "up" { sayln("success", s) } else { sayln("error", s) };
+        let say_status = |s: &str| {
+            if s == "up" {
+                say("success", s)
+            } else {
+                say("error", s)
+            }
+        };
+        let sayln_status = |s: &str| {
+            if s == "up" {
+                sayln("success", s)
+            } else {
+                sayln("error", s)
+            }
+        };
 
         // Replace "pong" with "up" because it is more human friendly word.
         json_string = json_string.replace("pong", "up");
 
         let s: ServerStatus = serde_json::from_str(&json_string)?;
 
-        sayln("white", &format!(
+        sayln(
+            "white",
+            &format!(
                 "Status information for Automate server {}...\n",
                 self.config.api_host_and_port()?
-        ));
+            ),
+        );
 
         say("white", "Status: ");
         say_status(&s.status);
 
         if s.status == "up" {
-            sayln("success", &format!(" (request took {} ms)", &elapsed_milli.to_string()));
+            sayln(
+                "success",
+                &format!(" (request took {} ms)", &elapsed_milli.to_string()),
+            );
         } else {
-            sayln("error", &format!(" (request took {} ms)", &elapsed_milli.to_string()));
-	}
+            sayln(
+                "error",
+                &format!(" (request took {} ms)", &elapsed_milli.to_string()),
+            );
+        }
 
-        sayln("white", &format!("Configuration Mode: {}", s.configuration_mode));
+        sayln(
+            "white",
+            &format!("Configuration Mode: {}", s.configuration_mode),
+        );
 
         // Backward compat: fips_mode was added later so it is an optional field.
         if let Some(fips) = s.fips_mode {
@@ -86,30 +113,30 @@ impl<'n> Command for StatusCommand<'n> {
         say("white", "    status: ");
         sayln_status(&u.lsyncd.status);
         sayln("white", "  PostgreSQL:");
-        say("white",   "    status: ");
+        say("white", "    status: ");
         sayln_status(&u.postgres.status);
         sayln("white", "  RabbitMQ:");
-        say("white",   "    status: ");
+        say("white", "    status: ");
         sayln_status(&u.rabbitmq.status);
 
         if let Some(ref node_health) = u.rabbitmq.node_health {
             sayln("white", "    node_health:");
-            say("white",   "      status: ");
+            say("white", "      status: ");
             sayln_status(&node_health.status);
         }
 
         if let Some(ref vhost_aliveness) = u.rabbitmq.vhost_aliveness {
             sayln("white", "    vhost_aliveness:");
-            say("white",   "      status: ");
+            say("white", "      status: ");
             sayln_status(&vhost_aliveness.status);
         }
 
         if let Some(fips) = s.fips_mode {
             if fips {
                 let msg = "\nYour Automate Server is configured in FIPS mode.\n\
-                    Please add the following to your cli.toml to enable Automate FIPS \
-                    mode on your machine:\n\nfips = true\nfips_git_port = \"OPEN_PORT\"\n\n\
-                    Replace OPEN_PORT with any port that is free on your machine.";
+                           Please add the following to your cli.toml to enable Automate FIPS \
+                           mode on your machine:\n\nfips = true\nfips_git_port = \"OPEN_PORT\"\n\n\
+                           Replace OPEN_PORT with any port that is free on your machine.";
                 sayln("white", msg);
             }
         }

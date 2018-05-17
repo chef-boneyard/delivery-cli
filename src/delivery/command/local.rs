@@ -16,14 +16,14 @@
 //
 
 use cli::local::LocalClapOptions;
-use types::{DeliveryResult, ExitCode};
-use utils::say::{sayln, say};
-use std::process::{Stdio};
+use command::Command;
 use delivery_config::project::{Phase, ProjectToml};
 use errors::{DeliveryError, Kind};
 use project;
+use std::process::Stdio;
+use types::{DeliveryResult, ExitCode};
 use utils;
-use command::Command;
+use utils::say::{say, sayln};
 
 pub struct LocalCommand<'n> {
     pub options: &'n LocalClapOptions<'n>,
@@ -42,10 +42,12 @@ impl<'n> Command for LocalCommand<'n> {
             for phase in stage.phases().into_iter() {
                 match try!(exec_phase(&self.config.clone(), Some(phase))) {
                     0 => continue,
-                    exit_code => return Err(DeliveryError {
-                        kind: Kind::PhaseFailed(exit_code),
-                        detail: None
-                    }),
+                    exit_code => {
+                        return Err(DeliveryError {
+                            kind: Kind::PhaseFailed(exit_code),
+                            detail: None,
+                        })
+                    }
                 }
             }
             Ok(0)
@@ -64,9 +66,15 @@ fn exec_phase(project_toml: &ProjectToml, phase: Option<Phase>) -> DeliveryResul
         exec_command(&phase_cmd)
     } else {
         let p = phase.unwrap();
-        sayln("red", &format!("Unable to execute an empty phase.\nPlease verify that \
+        sayln(
+            "red",
+            &format!(
+                "Unable to execute an empty phase.\nPlease verify that \
                               your project.toml has a {} phase configured as follows:
-                              \n[local_phases]\n{} = \"insert script here\"", p, p));
+                              \n[local_phases]\n{} = \"insert script here\"",
+                p, p
+            ),
+        );
         Ok(1)
     }
 }
@@ -78,17 +86,17 @@ fn exec_command(cmd: &str) -> DeliveryResult<ExitCode> {
     let mut split_cmd = cmd.split_whitespace();
     let c = split_cmd.next().unwrap();
     let args_vec = split_cmd.collect::<Vec<&str>>();
-    let output  = utils::make_command(c)
+    let output = utils::make_command(c)
         .args(&args_vec)
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .current_dir(try!(project::project_path()))
         .output()
-        .unwrap_or_else(|e| { panic!("Unexpected error: Failed to execute process: {}", e) });
+        .unwrap_or_else(|e| panic!("Unexpected error: Failed to execute process: {}", e));
 
     let return_code = match output.status.code() {
         Some(code) => code,
-        _ => 1
+        _ => 1,
     };
     Ok(return_code)
 }
