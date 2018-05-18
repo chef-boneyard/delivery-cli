@@ -109,12 +109,11 @@ pub fn git_command<P>(args: &[&str], c: &P) -> Result<GitResult, DeliveryError>
       let cmd_args = args.join(" ");
       let command_ars = &[ &[agent_setup, &cmd_args, agent_kill].join(" ") ];
       command.args(command_ars);
+      command.stderr(Stdio::inherit());
     } else {
       command.args(args);
     }
-
     command.current_dir(cwd);
-    command.stderr(Stdio::inherit());
     debug!("Git command: {:?}", command);
     let output = match command.output() {
         Ok(o) => o,
