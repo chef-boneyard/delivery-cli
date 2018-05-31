@@ -17,7 +17,7 @@
 
 pub use errors;
 
-use std::process::Command;
+use std::process::{Command, Stdio};
 use utils::say::{say, sayln, Spinner};
 use utils::path_ext::{is_dir};
 use utils::{cmd_success_or_err, find_command};
@@ -96,7 +96,23 @@ pub fn git_command<P>(args: &[&str], c: &P) -> Result<GitResult, DeliveryError>
         None => return Err(DeliveryError{ kind: Kind::FailedToExecute, detail: Some("git executable not found".to_owned())}),
     };
     let mut command = Command::new(command_path);
-    command.args(args);
+
+    // SSH Agent is required on windows Hence,
+    // Rebuilding the command in a way; that 
+    // Invoke an agent; Run the SSH Command and kill the agent then and there
+    // Pattern: \embedded\git\bash -c 'eval `ssh-agent` && ssh-add && <COMMAND> ; ssh-agent -k'
+    // TODO: Check for SSH type authencation may be required
+    if cfg!(target_os = "windows"){
+      command.arg("-c");
+      let agent_setup = "eval `ssh-agent` && ssh-add && git";
+      let agent_kill = "; ssh-agent -k";
+      let cmd_args = args.join(" ");
+      let command_ars = &[ &[agent_setup, &cmd_args, agent_kill].join(" ") ];
+      command.args(command_ars);
+      command.stderr(Stdio::inherit());
+    } else {
+      command.args(args);
+    }
     command.current_dir(cwd);
     debug!("Git command: {:?}", command);
     let output = match command.output() {
