@@ -15,14 +15,14 @@
 // limitations under the License.
 //
 
-use std;
-use fips;
-use git;
 use cli::diff::DiffClapOptions;
-use types::{DeliveryResult, ExitCode};
-use utils::say::{say, sayln};
 use command::Command;
 use config::Config;
+use fips;
+use git;
+use std;
+use types::{DeliveryResult, ExitCode};
+use utils::say::{say, sayln};
 
 pub struct DiffCommand<'n> {
     pub options: &'n DiffClapOptions<'n>,
@@ -56,7 +56,12 @@ impl<'n> Command for DiffCommand<'n> {
             say("white", " at patchset ");
             sayln("yellow", self.options.patchset);
         }
-        try!(git::diff(self.options.change, self.options.patchset, &target, &self.options.local));
+        try!(git::diff(
+            self.options.change,
+            self.options.patchset,
+            &target,
+            &self.options.local
+        ));
         Ok(0)
     }
 }

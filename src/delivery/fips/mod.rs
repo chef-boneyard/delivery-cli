@@ -15,35 +15,45 @@
 // limitations under the License.
 //
 
-use std;
-use utils;
-use std::fs::File;
-use std::path::{Path, PathBuf};
-use std::io::Write;
-use errors::DeliveryError;
-use types::DeliveryResult;
-use errors::Kind;
 use config::Config;
+use errors::DeliveryError;
+use errors::Kind;
+use std;
+use std::fs::File;
+use std::io::Write;
+use std::path::{Path, PathBuf};
+use types::DeliveryResult;
+use utils;
 
-pub fn setup_and_start_stunnel(config: &Config,
-                               child_processes: &mut Vec<std::process::Child>) -> DeliveryResult<()> {
+pub fn setup_and_start_stunnel(
+    config: &Config,
+    child_processes: &mut Vec<std::process::Child>,
+) -> DeliveryResult<()> {
     if !Path::new(&stunnel_path()).exists() {
-        return Err(DeliveryError{
+        return Err(DeliveryError {
             kind: Kind::FipsNotSupportedForChefDKPlatform,
-            detail: None
-        })
+            detail: None,
+        });
     }
 
     let server = validate!(config, server);
     let fips_git_port = validate!(config, fips_git_port);
-    try!(generate_stunnel_config(&try!(stunnel_config_path()), &server, &fips_git_port,
-                                 config.fips_custom_cert_filename.as_ref()));
+    try!(generate_stunnel_config(
+        &try!(stunnel_config_path()),
+        &server,
+        &fips_git_port,
+        config.fips_custom_cert_filename.as_ref()
+    ));
     try!(start_stunnel(child_processes));
     Ok(())
 }
 
-pub fn merge_fips_options_and_config(fips: bool, fips_git_port: &str, fips_custom_cert_filename: &str,
-                                     mut config: Config) -> DeliveryResult<Config> {
+pub fn merge_fips_options_and_config(
+    fips: bool,
+    fips_git_port: &str,
+    fips_custom_cert_filename: &str,
+    mut config: Config,
+) -> DeliveryResult<Config> {
     if config.fips.is_none() {
         config.fips = Some(fips);
     }
@@ -62,25 +72,35 @@ fn start_stunnel(child_processes: &mut Vec<std::process::Child>) -> DeliveryResu
     // On windows, stunnel behaves very differently, so we need to run it as a service,
     // instead of starting and stopping as a child process via rust as we do in unix.
     if cfg!(target_os = "windows") {
-        try!(utils::generate_command_from_string(&format!("{stunnel_path} -install -quiet",
-                                                          stunnel_path=stunnel_path())).output());
+        try!(
+            utils::generate_command_from_string(&format!(
+                "{stunnel_path} -install -quiet",
+                stunnel_path = stunnel_path()
+            )).output()
+        );
 
-        try!(utils::generate_command_from_string(&format!("{stunnel_path} -start -quiet",
-                                                          stunnel_path=stunnel_path())).output());
+        try!(
+            utils::generate_command_from_string(&format!(
+                "{stunnel_path} -start -quiet",
+                stunnel_path = stunnel_path()
+            )).output()
+        );
 
-        try!(utils::generate_command_from_string(&format!("{stunnel_path} -reload -quiet",
-                                                          stunnel_path=stunnel_path())).output());
-
+        try!(
+            utils::generate_command_from_string(&format!(
+                "{stunnel_path} -reload -quiet",
+                stunnel_path = stunnel_path()
+            )).output()
+        );
     } else {
         let unix_stunnel_config_path = try!(stunnel_config_path()).to_str().unwrap().to_string();
-        let mut stunnel_command =
-            utils::generate_command_from_string(&format!("{stunnel_path} {config}",
-                                                         stunnel_path=stunnel_path(),
-                                                         config=unix_stunnel_config_path)
-            );
+        let mut stunnel_command = utils::generate_command_from_string(&format!(
+            "{stunnel_path} {config}",
+            stunnel_path = stunnel_path(),
+            config = unix_stunnel_config_path
+        ));
         child_processes.push(try!(stunnel_command.spawn()));
     };
-
 
     Ok(())
 }
@@ -101,15 +121,28 @@ fn stunnel_path() -> String {
     }
 }
 
-fn generate_stunnel_config<P, T>(stunnel_config_path: P,
-                           server: &str, fips_git_port: &str,
-                           fips_custom_cert_filename: Option<T>) -> Result<(), DeliveryError>
-            where P: AsRef<Path>,
-                  T: AsRef<str> {
-    try!(std::fs::create_dir_all(try!(utils::home_dir(&[".chefdk/etc/"]))));
-    try!(std::fs::create_dir_all(try!(utils::home_dir(&[".chefdk/log/"]))));
+fn generate_stunnel_config<P, T>(
+    stunnel_config_path: P,
+    server: &str,
+    fips_git_port: &str,
+    fips_custom_cert_filename: Option<T>,
+) -> Result<(), DeliveryError>
+where
+    P: AsRef<Path>,
+    T: AsRef<str>,
+{
+    try!(std::fs::create_dir_all(try!(utils::home_dir(&[
+        ".chefdk/etc/"
+    ]))));
+    try!(std::fs::create_dir_all(try!(utils::home_dir(&[
+        ".chefdk/log/"
+    ]))));
 
-    let newline_str = if cfg!(target_os = "windows") { "\r\n" } else { "\n" };
+    let newline_str = if cfg!(target_os = "windows") {
+        "\r\n"
+    } else {
+        "\n"
+    };
 
     let mut conf_file = try!(File::create(&stunnel_config_path));
 
@@ -120,7 +153,10 @@ fn generate_stunnel_config<P, T>(stunnel_config_path: P,
     try!(conf_file.write_all(client.as_bytes()));
 
     let output = "output = ".to_string();
-    let output_conf = output + try!(utils::home_dir(&[".chefdk/log/stunnel.log"])).to_str().unwrap() + newline_str;
+    let output_conf = output
+        + try!(utils::home_dir(&[".chefdk/log/stunnel.log"]))
+            .to_str()
+            .unwrap() + newline_str;
     try!(conf_file.write_all(output_conf.as_bytes()));
 
     if !cfg!(target_os = "windows") {
@@ -167,8 +203,13 @@ mod tests {
 client = yes
 "#;
         let mut expected = init.to_string();
-        expected += &format!("output = {}",
-                             utils::home_dir(&[".chefdk/log/stunnel.log\n"]).unwrap().to_str().unwrap());
+        expected += &format!(
+            "output = {}",
+            utils::home_dir(&[".chefdk/log/stunnel.log\n"])
+                .unwrap()
+                .to_str()
+                .unwrap()
+        );
         if !cfg!(target_os = "windows") {
             expected += "foreground = quiet\n";
         }
@@ -179,8 +220,7 @@ checkHost = automate.test
 verifyChain = yes
 verify = 3
 "#;
-        expected += &format!("CAfile = {}\n",
-                             utils::ca_path());
+        expected += &format!("CAfile = {}\n", utils::ca_path());
         let temp_conf_path = PathBuf::from("/tmp/test1.conf");
         let custom_cert: Option<String> = None;
         generate_stunnel_config(&temp_conf_path, "automate.test", "36534", custom_cert).unwrap();
@@ -198,8 +238,13 @@ verify = 3
 client = yes
 "#;
         let mut expected = init.to_string();
-        expected += &format!("output = {}",
-                             utils::home_dir(&[".chefdk/log/stunnel.log\n"]).unwrap().to_str().unwrap());
+        expected += &format!(
+            "output = {}",
+            utils::home_dir(&[".chefdk/log/stunnel.log\n"])
+                .unwrap()
+                .to_str()
+                .unwrap()
+        );
         if !cfg!(target_os = "windows") {
             expected += "foreground = quiet\n";
         }
@@ -210,11 +255,14 @@ checkHost = automate.test
 verifyChain = yes
 verify = 3
 "#;
-        expected += &format!("CAfile = {}\n",
-                             ca_path);
+        expected += &format!("CAfile = {}\n", ca_path);
         let temp_conf_path = PathBuf::from("/tmp/test2.conf");
-        generate_stunnel_config(&temp_conf_path, "automate.test", "36534",
-                                Some(String::from(ca_path))).unwrap();
+        generate_stunnel_config(
+            &temp_conf_path,
+            "automate.test",
+            "36534",
+            Some(String::from(ca_path)),
+        ).unwrap();
         let mut f = File::open(temp_conf_path).unwrap();
         let mut actual = String::new();
         f.read_to_string(&mut actual).unwrap();

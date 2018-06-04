@@ -1,21 +1,23 @@
 use delivery::git::git_command;
 use delivery::utils::copy_recursive;
+use delivery::utils::path_join_many::PathJoinMany;
 use delivery::utils::say;
-use std::io::prelude::*;
-use tempdir::TempDir;
-use std::fs::File;
-use std::path::Path;
-use support::paths::fixture_file;
-use std::process::{Command, Output};
-use std::env;
 use serde_json;
 use serde_json::Value;
-use delivery::utils::path_join_many::PathJoinMany;
+use std::env;
+use std::fs::File;
+use std::io::prelude::*;
+use std::path::Path;
+use std::process::{Command, Output};
+use support::paths::fixture_file;
+use tempdir::TempDir;
 
 // ** Functions used in tests **
 
-fn setup() {
-    say::turn_off_spinner();
+macro_rules! setup {
+    () => {
+        say::turn_off_spinner();
+    };
 }
 
 /// Sets up a mock delivery git project from the test_repo fixture.
@@ -24,13 +26,31 @@ fn setup() {
 fn setup_mock_delivery_project_git(dot_config: &str) -> TempDir {
     let tmpdir = TempDir::new("mock-delivery-remote").unwrap();
     let test_repo_path = fixture_file("test_repo");
-    panic_on_error!(copy_recursive(&test_repo_path.join(".delivery"), &tmpdir.path().to_path_buf()));
-    panic_on_error!(copy_recursive(&test_repo_path.join("README.md"), &tmpdir.path().to_path_buf()));
-    panic_on_error!(copy_recursive(&test_repo_path.join("cookbooks"), &tmpdir.path().to_path_buf()));
-    panic_on_error!(copy_recursive(&fixture_file(dot_config), &tmpdir.path().join_many(&[".delivery", "config.json"])));
-    panic_on_error!(git_command(&["init", tmpdir.path().to_str().unwrap()], tmpdir.path()));
+    panic_on_error!(copy_recursive(
+        &test_repo_path.join(".delivery"),
+        &tmpdir.path().to_path_buf()
+    ));
+    panic_on_error!(copy_recursive(
+        &test_repo_path.join("README.md"),
+        &tmpdir.path().to_path_buf()
+    ));
+    panic_on_error!(copy_recursive(
+        &test_repo_path.join("cookbooks"),
+        &tmpdir.path().to_path_buf()
+    ));
+    panic_on_error!(copy_recursive(
+        &fixture_file(dot_config),
+        &tmpdir.path().join_many(&[".delivery", "config.json"])
+    ));
+    panic_on_error!(git_command(
+        &["init", tmpdir.path().to_str().unwrap()],
+        tmpdir.path()
+    ));
     panic_on_error!(git_command(&["add", "."], tmpdir.path()));
-    panic_on_error!(git_command(&["commit", "-a", "-m", "Initial Commit"], tmpdir.path()));
+    panic_on_error!(git_command(
+        &["commit", "-a", "-m", "Initial Commit"],
+        tmpdir.path()
+    ));
     tmpdir
 }
 
@@ -39,27 +59,44 @@ fn setup_mock_delivery_project_git(dot_config: &str) -> TempDir {
 fn setup_build_cookbook_project(tmpdir: &Path) {
     let build_cookbook_path = fixture_file("delivery_test");
     panic_on_error!(copy_recursive(&build_cookbook_path, &tmpdir.to_path_buf()));
-    panic_on_error!(git_command(&["init", tmpdir.join("delivery_test").to_str().unwrap()], &tmpdir.join("delivery_test")));
+    panic_on_error!(git_command(
+        &["init", tmpdir.join("delivery_test").to_str().unwrap()],
+        &tmpdir.join("delivery_test")
+    ));
     panic_on_error!(git_command(&["add", "."], &tmpdir.join("delivery_test")));
-    panic_on_error!(git_command(&["commit", "-a", "-m", "Initial Commit"], &tmpdir.join("delivery_test")));
+    panic_on_error!(git_command(
+        &["commit", "-a", "-m", "Initial Commit"],
+        &tmpdir.join("delivery_test")
+    ));
 }
 
 /// Clones a mock delivery git project to a local copy, as if it was
 /// on a workstation.
 fn setup_local_project_clone(delivery_project_git: &Path) -> TempDir {
     let tmpdir = TempDir::new("local-project").unwrap();
-    panic_on_error!(git_command(&["clone",
-                                  delivery_project_git.to_str().unwrap(),
-                                  tmpdir.path().to_str().unwrap()
-                                 ], tmpdir.path()));
+    panic_on_error!(git_command(
+        &[
+            "clone",
+            delivery_project_git.to_str().unwrap(),
+            tmpdir.path().to_str().unwrap()
+        ],
+        tmpdir.path()
+    ));
     let mut command = delivery_cmd();
-    command.arg("setup")
-           .arg("--user").arg("cavalera")
-           .arg("--server").arg("localhost")
-           .arg("--ent").arg("family")
-           .arg("--org").arg("sepultura")
-           .arg("--for").arg("master")
-           .arg("--config-path").arg(tmpdir.path().to_str().unwrap());
+    command
+        .arg("setup")
+        .arg("--user")
+        .arg("cavalera")
+        .arg("--server")
+        .arg("localhost")
+        .arg("--ent")
+        .arg("family")
+        .arg("--org")
+        .arg("sepultura")
+        .arg("--for")
+        .arg("master")
+        .arg("--config-path")
+        .arg(tmpdir.path().to_str().unwrap());
     assert_command_successful(&mut command, &tmpdir.path());
     tmpdir
 }
@@ -84,10 +121,16 @@ fn setup_change(tmpdir: &Path, branch: &str, filename: &str) {
 /// Returns the result
 fn assert_command_successful(command: &mut Command, dir: &Path) -> Output {
     let result = panic_on_error!(command.current_dir(&dir).output());
-    if ! result.status.success() {
+    if !result.status.success() {
         let output = String::from_utf8_lossy(&result.stdout);
         let error = String::from_utf8_lossy(&result.stderr);
-        panic!("Failed command {:?}\nOUT: {}\nERR: {}\nPath: {}", command, &output, &error, dir.to_str().unwrap());
+        panic!(
+            "Failed command {:?}\nOUT: {}\nERR: {}\nPath: {}",
+            command,
+            &output,
+            &error,
+            dir.to_str().unwrap()
+        );
     };
     result
 }
@@ -99,7 +142,13 @@ fn assert_command_failed(command: &mut Command, dir: &Path) -> Output {
     if result.status.success() {
         let output = String::from_utf8_lossy(&result.stdout);
         let error = String::from_utf8_lossy(&result.stderr);
-        panic!("Command {:?} should have failed!\nOUT: {}\nERR: {}\nPath: {}", command, &output, &error, dir.to_str().unwrap());
+        panic!(
+            "Command {:?} should have failed!\nOUT: {}\nERR: {}\nPath: {}",
+            command,
+            &output,
+            &error,
+            dir.to_str().unwrap()
+        );
     };
     result
 }
@@ -107,18 +156,24 @@ fn assert_command_failed(command: &mut Command, dir: &Path) -> Output {
 /// Builds the command to run delivery review
 fn delivery_review_command(pipeline: &str) -> Command {
     let mut command = delivery_cmd();
-    command.arg("review").arg("--no-open").arg("--for").arg(pipeline);
+    command
+        .arg("review")
+        .arg("--no-open")
+        .arg("--for")
+        .arg(pipeline);
     command
 }
 
 /// Builds the command to run a sample job
 fn delivery_verify_command(job_root: &Path) -> Command {
     let mut command = delivery_cmd();
-    command.arg("job")
-           .arg("verify")
-           .arg("lint")
-           .arg("--no-spinner")
-           .arg("--job-root").arg(job_root.to_str().unwrap());
+    command
+        .arg("job")
+        .arg("verify")
+        .arg("lint")
+        .arg("--no-spinner")
+        .arg("--job-root")
+        .arg(job_root.to_str().unwrap());
     command
 }
 

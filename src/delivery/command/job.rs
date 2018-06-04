@@ -15,24 +15,24 @@
 // limitations under the License.
 //
 
-use git;
-use std;
-use fips;
-use std::env;
-use std::process;
-use std::io::prelude::*;
-use std::path::PathBuf;
 use cli::job::JobClapOptions;
-use job::workspace::{Workspace, Privilege};
-use job::change::Change;
-use types::{DeliveryResult, ExitCode};
-use errors::{DeliveryError, Kind};
-use utils::say::{say, sayln};
-use utils::path_join_many::PathJoinMany;
-use utils::{self, cwd, privileged_process};
 use command::Command;
 use config::Config;
+use errors::{DeliveryError, Kind};
+use fips;
+use git;
+use job::change::Change;
+use job::workspace::{Privilege, Workspace};
 use project;
+use std;
+use std::env;
+use std::io::prelude::*;
+use std::path::PathBuf;
+use std::process;
+use types::{DeliveryResult, ExitCode};
+use utils::path_join_many::PathJoinMany;
+use utils::say::{say, sayln};
+use utils::{self, cwd, privileged_process};
 
 pub struct JobCommand<'n> {
     pub options: &'n JobClapOptions<'n>,
@@ -84,7 +84,12 @@ impl<'n> Command for JobCommand<'n> {
             } else {
                 PathBuf::from(path).join_many(&[".delivery"])
             },
-            None => return Err(DeliveryError{ kind: Kind::NoHomedir, detail: None })
+            None => {
+                return Err(DeliveryError {
+                    kind: Kind::NoHomedir,
+                    detail: None,
+                })
+            }
         };
         debug!("Workspace Path: {}", ws_path.display());
         let job_root_path = if self.options.job_root.is_empty() {
@@ -94,7 +99,10 @@ impl<'n> Command for JobCommand<'n> {
             PathBuf::from(self.options.job_root)
         };
         let ws = Workspace::new(&job_root_path);
-        sayln("white", &format!("Creating workspace in {}", job_root_path.to_string_lossy()));
+        sayln(
+            "white",
+            &format!("Creating workspace in {}", job_root_path.to_string_lossy()),
+        );
         try!(ws.build());
         say("white", "Cloning repository, and merging");
         let mut local_change = false;
@@ -103,13 +111,13 @@ impl<'n> Command for JobCommand<'n> {
         } else {
             self.options.patchset
         };
-        let c = if ! self.options.branch.is_empty() {
+        let c = if !self.options.branch.is_empty() {
             say("yellow", &format!(" {}", &self.options.branch));
             String::from(self.options.branch)
-        } else if ! self.options.change.is_empty() {
+        } else if !self.options.change.is_empty() {
             say("yellow", &format!(" {}", &self.options.change));
             format!("_reviews/{}/{}/{}", pi, self.options.change, patch)
-        } else if ! self.options.shasum.is_empty() {
+        } else if !self.options.shasum.is_empty() {
             say("yellow", &format!(" {}", self.options.shasum));
             String::new()
         } else {
@@ -144,7 +152,7 @@ impl<'n> Command for JobCommand<'n> {
             sha: self.options.shasum.to_string(),
             patchset_branch: c.to_string(),
             change_id: self.options.change_id.to_string(),
-            patchset_number: patch.to_string()
+            patchset_number: patch.to_string(),
         };
         try!(ws.setup_chef_for_job(&self.config, change, &ws_path));
         sayln("white", "Running the job");
@@ -160,12 +168,11 @@ impl<'n> Command for JobCommand<'n> {
             try!(ws.run_job("default", &Privilege::NoDrop, &local_change));
         }
 
-        let phase_msg = if phases.len() > 1 {
-            "phases"
-        } else {
-            "phase"
-        };
-        sayln("magenta", &format!("Running {} {}", phase_msg, phases.join(", ")));
+        let phase_msg = if phases.len() > 1 { "phases" } else { "phase" };
+        sayln(
+            "magenta",
+            &format!("Running {} {}", phase_msg, phases.join(", ")),
+        );
         try!(ws.run_job(self.options.phases, &privilege_drop, &local_change));
         Ok(0)
     }
@@ -191,26 +198,30 @@ pub fn run_docker_job(opts: &JobClapOptions) -> DeliveryResult<ExitCode> {
         .arg(opts.docker_image)
         .arg("delivery").arg("job").arg(opts.stage).arg(opts.phases);
 
-    let flags_with_values = vec![("--change", opts.change),
-                                 ("--for", opts.pipeline),
-                                 ("--job-root", opts.job_root),
-                                 ("--project", opts.project),
-                                 ("--user", opts.user),
-                                 ("--server", opts.server),
-                                 ("--ent", opts.ent),
-                                 ("--org", opts.org),
-                                 ("--patchset", opts.patchset),
-                                 ("--change_id", opts.change_id),
-                                 ("--git-url", opts.git_url),
-                                 ("--shasum", opts.shasum),
-                                 ("--branch", opts.branch)];
+    let flags_with_values = vec![
+        ("--change", opts.change),
+        ("--for", opts.pipeline),
+        ("--job-root", opts.job_root),
+        ("--project", opts.project),
+        ("--user", opts.user),
+        ("--server", opts.server),
+        ("--ent", opts.ent),
+        ("--org", opts.org),
+        ("--patchset", opts.patchset),
+        ("--change_id", opts.change_id),
+        ("--git-url", opts.git_url),
+        ("--shasum", opts.shasum),
+        ("--branch", opts.branch),
+    ];
 
     for (flag, value) in flags_with_values {
         maybe_add_flag_value(&mut docker, flag, value);
     }
 
-    let flags = vec![("--skip-default", &opts.skip_default),
-                     ("--local", &opts.local)];
+    let flags = vec![
+        ("--skip-default", &opts.skip_default),
+        ("--local", &opts.local),
+    ];
 
     for (flag, value) in flags {
         maybe_add_flag(&mut docker, flag, value);
@@ -221,32 +232,36 @@ pub fn run_docker_job(opts: &JobClapOptions) -> DeliveryResult<ExitCode> {
 
     debug!("command: {:?}", docker);
     let mut child = try!(docker.spawn());
-    let mut c_stdout = match child.stdout {
+    let c_stdout = match child.stdout {
         Some(ref mut s) => s,
-    None => {
-    let msg = "failed to execute docker".to_string();
-    let docker_err = DeliveryError { kind: Kind::FailedToExecute,
-                                     detail: Some(msg) };
-    return Err(docker_err);
-}
-};
-let mut line = String::with_capacity(256);
-loop {
-    let mut buf = [0u8; 1]; // Our byte buffer
-    let len = try!(c_stdout.read(&mut buf));
-    match len {
-        0 => { // 0 == EOF, so stop writing and finish progress
-        break;
-    },
-    _ => { // Write the buffer to the BufWriter on the Heap
-    let buf_vec = buf[0 .. len].to_vec();
-    let buf_string = String::from_utf8(buf_vec).unwrap();
-    line.push_str(&buf_string);
-    if line.contains("\n") {
-        print!("{}", line);
-        line = String::with_capacity(256);
-    }
-}
+        None => {
+            let msg = "failed to execute docker".to_string();
+            let docker_err = DeliveryError {
+                kind: Kind::FailedToExecute,
+                detail: Some(msg),
+            };
+            return Err(docker_err);
+        }
+    };
+    let mut line = String::with_capacity(256);
+    loop {
+        let mut buf = [0u8; 1]; // Our byte buffer
+        let len = try!(c_stdout.read(&mut buf));
+        match len {
+            0 => {
+                // 0 == EOF, so stop writing and finish progress
+                break;
+            }
+            _ => {
+                // Write the buffer to the BufWriter on the Heap
+                let buf_vec = buf[0..len].to_vec();
+                let buf_string = String::from_utf8(buf_vec).unwrap();
+                line.push_str(&buf_string);
+                if line.contains("\n") {
+                    print!("{}", line);
+                    line = String::with_capacity(256);
+                }
+            }
         }
     }
     return Ok(0);
@@ -263,4 +278,3 @@ fn maybe_add_flag(cmd: &mut process::Command, flag: &str, value: &bool) {
         cmd.arg(flag);
     }
 }
-

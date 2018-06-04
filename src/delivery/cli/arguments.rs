@@ -34,11 +34,11 @@ macro_rules! make_arg_vec {
 }
 
 macro_rules! fn_arg {
-    ( $fn_name:ident, $usage:expr ) => (
+    ($fn_name:ident, $usage:expr) => {
         pub fn $fn_name<'a>() -> Arg<'a, 'a> {
             Arg::from_usage($usage)
         }
-    )
+    };
 }
 
 pub fn u_e_s_o_args<'a>() -> Vec<Arg<'a, 'a>> {
@@ -46,7 +46,8 @@ pub fn u_e_s_o_args<'a>() -> Vec<Arg<'a, 'a>> {
         "-u --user=[user] 'User name for Delivery authentication'",
         "-e --ent=[ent] 'The enterprise in which the project lives'",
         "-o --org=[org] 'The organization in which the project lives'",
-        server_arg_str()]
+        server_arg_str()
+    ]
 }
 
 // Defines all the options shared between commands that
@@ -68,9 +69,10 @@ pub fn scp_args<'a>() -> Vec<Arg<'a, 'a>> {
 }
 
 pub fn pipeline_arg<'a>() -> Vec<Arg<'a, 'a>> {
-    vec![Arg::from_usage(
-            "-f --pipeline=[pipeline] 'Target pipeline for change (default: master)'"
-        ).visible_alias("for")]
+    vec![
+        Arg::from_usage("-f --pipeline=[pipeline] 'Target pipeline for change (default: master)'")
+            .visible_alias("for"),
+    ]
 }
 
 pub fn server_arg_str<'a>() -> &'a str {
@@ -85,52 +87,78 @@ fn_arg!(server_arg, server_arg_str());
 
 fn_arg!(api_port_arg, api_port_arg_str());
 
-fn_arg!(config_project_arg,
-       "-c --config-json=[config-json] 'Path of a custom config.json file'");
+fn_arg!(
+    config_project_arg,
+    "-c --config-json=[config-json] 'Path of a custom config.json file'"
+);
 
-fn_arg!(patchset_arg,
-       "-P --patchset=[patchset] 'A patchset number (default: latest)'");
+fn_arg!(
+    patchset_arg,
+    "-P --patchset=[patchset] 'A patchset number (default: latest)'"
+);
 
-fn_arg!(project_arg,
-       "-p --project=[project] 'The project name'");
+fn_arg!(project_arg, "-p --project=[project] 'The project name'");
 
-fn_arg!(config_path_arg,
-        "--config-path=[dir] 'Directory to read/write your config file \
-         (cli.toml) from'");
+fn_arg!(
+    config_path_arg,
+    "--config-path=[dir] 'Directory to read/write your config file \
+     (cli.toml) from'"
+);
 
 fn_arg!(local_arg, "-l --local 'Operate without a Delivery server'");
 
-fn_arg!(no_open_arg, "-n --no-open 'Do not open the change in a browser'");
+fn_arg!(
+    no_open_arg,
+    "-n --no-open 'Do not open the change in a browser'"
+);
 
-fn_arg!(auto_bump, "-a --auto-bump 'Automatic cookbook version bump'");
+fn_arg!(
+    auto_bump,
+    "-a --auto-bump 'Automatic cookbook version bump'"
+);
 
 fn_arg!(no_spinner_arg, "--no-spinner 'Disable the spinner'");
 
 fn_arg!(no_color_arg, "--no-color 'Disable colors in terminal'");
 
-fn_arg!(non_interactive_arg, "--non-interactive 'Disable command line interactions'");
+fn_arg!(
+    non_interactive_arg,
+    "--non-interactive 'Disable command line interactions'"
+);
 
 #[cfg(test)]
 mod tests {
-    use cli;
     use super::value_of;
+    use cli;
 
     #[test]
     fn test_value_of_trait() {
         let build_version = format!("{} {}", cli::version(), cli::build_git_sha());
 
-        let matches = cli::make_app(&build_version).get_matches_from(
-            vec!["delivery", "checkout", "branch", "--for", "griffindor"]
-        );
-        let cmd_matches = matches.subcommand_matches(cli::checkout::SUBCOMMAND_NAME).unwrap();
+        let matches = cli::make_app(&build_version).get_matches_from(vec![
+            "delivery",
+            "checkout",
+            "branch",
+            "--for",
+            "griffindor",
+        ]);
+        let cmd_matches = matches
+            .subcommand_matches(cli::checkout::SUBCOMMAND_NAME)
+            .unwrap();
         // A simple argument
         assert_eq!("griffindor", value_of(&cmd_matches, "pipeline"));
         assert_eq!("", value_of(&cmd_matches, "not_for"));
 
-        let matches = cli::make_app(&build_version).get_matches_from(
-            vec!["delivery", "checkout", "branch", "--pipeline", "hufflepuff"]
-        );
-        let cmd_matches = matches.subcommand_matches(cli::checkout::SUBCOMMAND_NAME).unwrap();
+        let matches = cli::make_app(&build_version).get_matches_from(vec![
+            "delivery",
+            "checkout",
+            "branch",
+            "--pipeline",
+            "hufflepuff",
+        ]);
+        let cmd_matches = matches
+            .subcommand_matches(cli::checkout::SUBCOMMAND_NAME)
+            .unwrap();
         // A simple argument
         assert_eq!("hufflepuff", value_of(&cmd_matches, "pipeline"));
         assert_eq!("", value_of(&cmd_matches, "not_pipeline"));

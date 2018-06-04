@@ -24,7 +24,7 @@
 use std::os::raw::c_char;
 
 #[cfg(not(target_os = "windows"))]
-use std::ffi::{CString, CStr};
+use std::ffi::{CStr, CString};
 
 #[cfg(not(target_os = "windows"))]
 use std::str;
@@ -33,12 +33,12 @@ use std::str;
 use std::char;
 
 #[cfg(not(target_os = "windows"))]
-extern {
+extern "C" {
     fn getpass(pass: *const c_char) -> *const c_char;
 }
 
 #[cfg(target_os = "windows")]
-extern {
+extern "C" {
     fn getch() -> c_char;
 }
 

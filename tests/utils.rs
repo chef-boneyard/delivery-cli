@@ -2,13 +2,15 @@ extern crate delivery;
 extern crate log;
 
 use delivery::utils;
+use delivery::utils::path_join_many::PathJoinMany;
 use std::fs;
 use std::path::Path;
 use support::paths::fixture_file;
 use tempdir::TempDir;
-use delivery::utils::path_join_many::PathJoinMany;
 
-fn setup() { }
+macro_rules! setup {
+    () => {};
+}
 
 test!(copy_recursive {
     let source_dir = fixture_file("test_repo");
@@ -42,7 +44,10 @@ test!(remove_recursive {
 
     assert!(!file_exists(&cookbooks_dir));
 });
-   
-fn file_exists<P: ?Sized>(f: &P) -> bool where P: AsRef<Path> {
+
+fn file_exists<P: ?Sized>(f: &P) -> bool
+where
+    P: AsRef<Path>,
+{
     fs::metadata(f).is_ok()
 }

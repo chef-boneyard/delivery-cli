@@ -15,51 +15,63 @@
 // limitations under the License.
 //
 
-use std::process::Command;
+use errors::{DeliveryError, Kind};
+use std::convert::AsRef;
 use std::env;
 use std::fs;
 use std::io;
-use errors::{DeliveryError, Kind};
 use std::path::{Path, PathBuf};
-use std::convert::AsRef;
+use std::process::Command;
 
 pub fn copy_recursive<A, B>(f: &A, t: &B) -> Result<(), DeliveryError>
-        where A: AsRef<Path> + ?Sized,
-              B: AsRef<Path> + ?Sized {
+where
+    A: AsRef<Path> + ?Sized,
+    B: AsRef<Path> + ?Sized,
+{
     let from = f.as_ref();
     let to = t.as_ref();
-    let result = try!(make_command("Copy-Item")
-                      .arg("-recurse")
-                      .arg("-Force")
-                      .arg(from.to_str().unwrap())
-                      .arg(to.to_str().unwrap())
-                      .output());
+    let result = try!(
+        make_command("Copy-Item")
+            .arg("-recurse")
+            .arg("-Force")
+            .arg(from.to_str().unwrap())
+            .arg(to.to_str().unwrap())
+            .output()
+    );
     super::cmd_success_or_err(&result, Kind::CopyFailed)
 }
 
 pub fn remove_recursive<P: ?Sized>(path: &P) -> Result<(), DeliveryError>
-    where P: AsRef<Path>
+where
+    P: AsRef<Path>,
 {
     match fs::metadata(path) {
         Ok(_) => {
             // only remove if there is something there
-            let result = try!(make_command("Remove-Item")
-                              .arg("-recurse")
-                              .arg("-force")
-                              .arg(path.as_ref().to_str().unwrap())
-                              .output());
+            let result = try!(
+                make_command("Remove-Item")
+                    .arg("-recurse")
+                    .arg("-force")
+                    .arg(path.as_ref().to_str().unwrap())
+                    .output()
+            );
             super::cmd_success_or_err(&result, Kind::RemoveFailed)
-        },
+        }
         Err(ref e) if e.kind() == io::ErrorKind::NotFound => {
             // probably should get specific. Re-raise unless this is
             // not found
             Ok(())
-        },
+        }
         Err(e) => {
-            let detail = format!("remove_recursive of '{}' failed: {}",
-                                 path.as_ref().to_str().unwrap(), e);
-            Err(DeliveryError{ kind: Kind::RemoveFailed,
-                               detail: Some(detail) })
+            let detail = format!(
+                "remove_recursive of '{}' failed: {}",
+                path.as_ref().to_str().unwrap(),
+                e
+            );
+            Err(DeliveryError {
+                kind: Kind::RemoveFailed,
+                detail: Some(detail),
+            })
         }
     }
 }
@@ -67,10 +79,7 @@ pub fn remove_recursive<P: ?Sized>(path: &P) -> Result<(), DeliveryError>
 pub fn make_command(cmd: &str) -> Command {
     // could do "cmd.exe /c cmd" instead and less overhead.
     let mut c = Command::new("powershell.exe");
-    c.arg("-noprofile")
-        .arg("-nologo")
-        .arg("-command")
-        .arg(cmd);
+    c.arg("-noprofile").arg("-nologo").arg("-command").arg(cmd);
     c
 }
 
@@ -105,10 +114,10 @@ pub fn find_command(command: &str) -> Option<PathBuf> {
         for path in env::split_paths(&paths) {
             let candidate = PathBuf::from(&path).join(command);
             if candidate.is_file() {
-                return Some(candidate)
+                return Some(candidate);
             }
             if let Some(command) = find_command_with_pathext(&candidate) {
-                return Some(command)
+                return Some(command);
             }
         }
     }
@@ -121,9 +130,8 @@ pub fn find_command(command: &str) -> Option<PathBuf> {
 fn find_command_with_pathext(candidate: &PathBuf) -> Option<PathBuf> {
     if candidate.extension().is_none() {
         if let Some(pathexts) = env::var_os("PATHEXT") {
-            let pathexts = env::split_paths(&pathexts).filter_map(|e| {
-                e.to_str().map(|s| String::from(s))
-            });
+            let pathexts =
+                env::split_paths(&pathexts).filter_map(|e| e.to_str().map(|s| String::from(s)));
             for pathext in pathexts {
                 let candidate = candidate.with_extension(pathext.trim_matches('.'));
                 if candidate.is_file() {
@@ -149,15 +157,14 @@ pub fn ca_path() -> String {
 //
 #[allow(unused_variables)]
 pub fn chmod<P: ?Sized>(path: &P, setting: &str) -> Result<(), DeliveryError>
-    where P: AsRef<Path>
+where
+    P: AsRef<Path>,
 {
     Ok(())
 }
 
 #[allow(unused_variables)]
-pub fn chown_all<P: AsRef<Path>>(who: &str,
-                            paths: &[P]) ->  Result<(), DeliveryError>
-{
+pub fn chown_all<P: AsRef<Path>>(who: &str, paths: &[P]) -> Result<(), DeliveryError> {
     Ok(())
 }
 

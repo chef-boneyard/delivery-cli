@@ -16,14 +16,14 @@
 //
 
 use cli::api::ApiClapOptions;
-use types::{DeliveryResult, ExitCode};
-use errors::DeliveryError;
-use errors::Kind::UnsupportedHttpMethod;
-use hyper::status::StatusCode::Conflict;
-use utils::say::sayln;
-use http::APIClient;
 use command::Command;
 use config::Config;
+use errors::DeliveryError;
+use errors::Kind::UnsupportedHttpMethod;
+use http::APIClient;
+use hyper::status::StatusCode::Conflict;
+use types::{DeliveryResult, ExitCode};
+use utils::say::sayln;
 
 pub struct ApiCommand<'n> {
     pub options: &'n ApiClapOptions<'n>,
@@ -34,25 +34,25 @@ impl<'n> Command for ApiCommand<'n> {
     fn run(&self) -> DeliveryResult<ExitCode> {
         let client = try!(APIClient::from_config(&self.config));
         let response = match self.options.method {
-            "get"    => try!(client.get(self.options.path)),
-            "post"   => try!(client.post(self.options.path, self.options.data)),
-            "put"    => try!(client.put(self.options.path, self.options.data)),
+            "get" => try!(client.get(self.options.path)),
+            "post" => try!(client.post(self.options.path, self.options.data)),
+            "put" => try!(client.put(self.options.path, self.options.data)),
             "delete" => try!(client.delete(self.options.path)),
-            _ => return Err(DeliveryError::throw(UnsupportedHttpMethod, None))
+            _ => return Err(DeliveryError::throw(UnsupportedHttpMethod, None)),
         };
 
         match try!(APIClient::parse_response(response)) {
             // if the response returned some content, printed out
             (_code, Some(content)) => {
                 sayln("white", &format!("{}", content));
-            },
+            }
             // but if there was a conflict, show it and exit with non_zero code
             (Conflict, None) => {
                 sayln("error", &format!("{}", Conflict));
-                return Ok(1)
-            },
+                return Ok(1);
+            }
             // finally if there was no content, just dont do anything.
-            (_code, None) => {},
+            (_code, None) => {}
         }
         Ok(0)
     }

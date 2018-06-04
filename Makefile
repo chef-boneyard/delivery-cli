@@ -15,7 +15,7 @@
 ## limitations under the License.
 ##
 
-RUST_VERSION ?= 1.15.0
+RUST_VERSION ?= 1.26.0
 
 CARGO_OPTS ?=
 DELIV_CLI_VERSION = $(shell git describe --abbrev=0 --tags)
@@ -101,7 +101,7 @@ travis:
 # Depends on the target/release/delivery executable having been built
 cucumber: release
 	chef exec bundle install
-	$(CUCUMBER_ENV) chef exec cucumber
+	$(CUCUMBER_ENV) chef exec bundle exec cucumber
 
 openssl_check:
 	@ls $(OPENSSL_PREFIX) >> /dev/null || \

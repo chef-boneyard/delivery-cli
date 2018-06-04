@@ -20,14 +20,13 @@
 /// This module is responsible for handling the .delivery/project.toml file
 /// that is currently a prototype for local phases execution. This file can
 /// be configurable and it doesn't conflict with the existing config.json
-
 use errors::{DeliveryError, Kind};
 use hyper::Client as HyperClient;
 use project;
 use std::default::Default;
+use std::fmt::{Display, Error, Formatter};
 use std::io::Read;
 use std::path::PathBuf;
-use std::fmt::{Display, Formatter, Error};
 use toml;
 use types::DeliveryResult;
 use utils;
@@ -36,7 +35,7 @@ use utils::path_join_many::PathJoinMany;
 #[derive(Deserialize, Clone, Debug)]
 pub struct ProjectToml {
     pub remote_file: Option<String>,
-    pub local_phases: Option<LocalPhases>
+    pub local_phases: Option<LocalPhases>,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -73,7 +72,7 @@ pub enum Stage {
 // Modify how we display this enum so we can print the phases
 // with lowercases instead of capital letter, see command/local.rs
 impl Display for Phase {
-    fn fmt(&self, f:&mut Formatter) -> Result<(), Error> {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
         match *self {
             Phase::Unit => write!(f, "unit"),
             Phase::Lint => write!(f, "lint"),
@@ -88,7 +87,7 @@ impl Display for Phase {
 }
 
 impl Display for Stage {
-    fn fmt(&self, f:&mut Formatter) -> Result<(), Error> {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
         match *self {
             Stage::Verify => write!(f, "Verify"),
             Stage::Acceptance => write!(f, "Acceptance"),
@@ -100,11 +99,7 @@ impl Display for Stage {
 impl Stage {
     pub fn phases(&self) -> Vec<Phase> {
         match *self {
-            Stage::Verify => vec![
-                Phase::Lint,
-                Phase::Syntax,
-                Phase::Unit,
-            ],
+            Stage::Verify => vec![Phase::Lint, Phase::Syntax, Phase::Unit],
             Stage::Acceptance => vec![
                 Phase::Provision,
                 Phase::Deploy,
@@ -138,8 +133,8 @@ impl Default for ProjectToml {
                 deploy: None,
                 smoke: None,
                 functional: None,
-                cleanup: None
-            })
+                cleanup: None,
+            }),
         }
     }
 }
@@ -148,7 +143,7 @@ impl ProjectToml {
     pub fn load_toml(remote_toml: Option<&str>) -> DeliveryResult<ProjectToml> {
         if remote_toml.is_some() {
             let url = remote_toml.unwrap().clone();
-            return ProjectToml::load_toml_remote(url)
+            return ProjectToml::load_toml_remote(url);
         }
 
         let path = ProjectToml::toml_file_path(project::project_path()?);
@@ -156,7 +151,7 @@ impl ProjectToml {
 
         match project_toml.remote_file {
             Some(url) => ProjectToml::load_toml_remote(&url),
-            None => Ok(project_toml)
+            None => Ok(project_toml),
         }
     }
 
@@ -176,36 +171,38 @@ impl ProjectToml {
                 resp.read_to_string(&mut toml)?;
                 debug!("Content Remote project.toml: {:?}", toml);
                 ProjectToml::parse_config(&toml)
-            },
-            Err(e) => {
-                Err(DeliveryError{
-                    kind: Kind::HttpError(e),
-                    detail: None
-                })
             }
+            Err(e) => Err(DeliveryError {
+                kind: Kind::HttpError(e),
+                detail: None,
+            }),
         }
     }
 
     pub fn local_phase(&self, phase: Option<Phase>) -> DeliveryResult<Option<String>> {
-        if let Some(p) = phase { 
+        if let Some(p) = phase {
             match self.local_phases {
-                Some(ref phases) => {
-                    match p {
-                        Phase::Unit       => Ok(phases.unit.clone()),
-                        Phase::Lint       => Ok(phases.lint.clone()),
-                        Phase::Syntax     => Ok(phases.syntax.clone()),
-                        Phase::Provision  => Ok(phases.provision.clone()),
-                        Phase::Deploy     => Ok(phases.deploy.clone()),
-                        Phase::Smoke      => Ok(phases.smoke.clone()),
-                        Phase::Functional => Ok(phases.functional.clone()),
-                        Phase::Cleanup    => Ok(phases.cleanup.clone()),
-                    }
+                Some(ref phases) => match p {
+                    Phase::Unit => Ok(phases.unit.clone()),
+                    Phase::Lint => Ok(phases.lint.clone()),
+                    Phase::Syntax => Ok(phases.syntax.clone()),
+                    Phase::Provision => Ok(phases.provision.clone()),
+                    Phase::Deploy => Ok(phases.deploy.clone()),
+                    Phase::Smoke => Ok(phases.smoke.clone()),
+                    Phase::Functional => Ok(phases.functional.clone()),
+                    Phase::Cleanup => Ok(phases.cleanup.clone()),
                 },
-                None => Err(DeliveryError{ kind: Kind::LocalPhasesNotFound, detail: None })
+                None => Err(DeliveryError {
+                    kind: Kind::LocalPhasesNotFound,
+                    detail: None,
+                }),
             }
         } else {
-            Err(DeliveryError{ kind: Kind::PhaseNotFound, detail: None })
-       }
+            Err(DeliveryError {
+                kind: Kind::PhaseNotFound,
+                detail: None,
+            })
+        }
     }
 
     fn toml_file_path(proj_path: PathBuf) -> PathBuf {
@@ -221,26 +218,25 @@ impl ProjectToml {
         if toml_path.exists() {
             Ok(())
         } else {
-            Err(DeliveryError{ 
+            Err(DeliveryError {
                 kind: Kind::MissingConfigFile,
-                detail: Some(
-                    format!("The .delivery/project.toml file was not found.\n\n\
-                            You can generate this file using the command:\n\
-                            \tchef generate build-cookbook [NAME]")
-                )
+                detail: Some(format!(
+                    "The .delivery/project.toml file was not found.\n\n\
+                     You can generate this file using the command:\n\
+                     \tchef generate build-cookbook [NAME]"
+                )),
             })
         }
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    pub use super::{ProjectToml, Phase, Stage};
+    pub use super::{Phase, ProjectToml, Stage};
 
     #[test]
     fn test_project_toml_with_defaults_plus_overrides() {
-        let p_toml= ProjectToml::default();
+        let p_toml = ProjectToml::default();
         let unit = "mvn test".to_string();
         p_toml.local_phases.map(|mut phases| {
             // default is empty phases
@@ -253,7 +249,7 @@ mod tests {
 
     #[test]
     fn test_parse_config_that_could_be_empty() {
-        let  toml = r#"
+        let toml = r#"
 # Now everything is optional so we can have an empty file
 "#;
         let project_toml = ProjectToml::parse_config(toml);
@@ -262,12 +258,14 @@ mod tests {
 
     #[test]
     fn test_local_phase_accessor() {
-        let p_toml= ProjectToml::default();
+        let p_toml = ProjectToml::default();
         // Test failure - When None it must throw an Err()
         assert!(p_toml.local_phase(None).is_err());
         // If one works all of them does :)
-        assert_eq!(p_toml.local_phase(Some(Phase::Unit)).unwrap(),
-                   p_toml.local_phases.unwrap().unit);
+        assert_eq!(
+            p_toml.local_phase(Some(Phase::Unit)).unwrap(),
+            p_toml.local_phases.unwrap().unit
+        );
     }
 
     #[test]
@@ -296,7 +294,7 @@ mod tests {
     }
 
     mod when_project_toml {
-        pub use super::{ProjectToml, Phase};
+        pub use super::{Phase, ProjectToml};
         mod is_well_configured {
             fn toml<'a>() -> &'a str {
                 r#"
@@ -320,29 +318,37 @@ mod tests {
                         p_toml.local_phases.map(|phases| {
                             assert_eq!("rspec spec/".to_string(), phases.unit.unwrap());
                             assert_eq!("cookstyle".to_string(), phases.lint.unwrap());
-                            assert_eq!("foodcritic . --exclude spec -f any".to_string(),
-                                        phases.syntax.unwrap());
-                            assert_eq!("chef exec kitchen create".to_string(),
-                                        phases.provision.unwrap());
-                            assert_eq!("chef exec kitchen converge".to_string(),
-                                        phases.deploy.unwrap());
-                            assert_eq!("chef exec kitchen verify".to_string(),
-                                        phases.smoke.unwrap());
+                            assert_eq!(
+                                "foodcritic . --exclude spec -f any".to_string(),
+                                phases.syntax.unwrap()
+                            );
+                            assert_eq!(
+                                "chef exec kitchen create".to_string(),
+                                phases.provision.unwrap()
+                            );
+                            assert_eq!(
+                                "chef exec kitchen converge".to_string(),
+                                phases.deploy.unwrap()
+                            );
+                            assert_eq!(
+                                "chef exec kitchen verify".to_string(),
+                                phases.smoke.unwrap()
+                            );
                             assert_eq!(None, phases.functional);
-                            assert_eq!("chef exec kitchen destroy".to_string(),
-                                        phases.cleanup.unwrap());
+                            assert_eq!(
+                                "chef exec kitchen destroy".to_string(),
+                                phases.cleanup.unwrap()
+                            );
                         });
-                    },
-                    Err(e) => {
-                        panic!("Failed to parse: {:?}", e.detail)
                     }
+                    Err(e) => panic!("Failed to parse: {:?}", e.detail),
                 }
             }
         }
 
         mod is_partially_configured {
             fn toml<'a>() -> &'a str {
-                 r#"
+                r#"
                 # Here we just define three phases
                 [local_phases]
                 unit = "rspec spec/"
@@ -368,10 +374,8 @@ mod tests {
                             assert!(phases.functional.is_none());
                             assert!(phases.cleanup.is_none());
                         });
-                    },
-                    Err(e) => {
-                        panic!("Failed to parse: {:?}", e.detail)
                     }
+                    Err(e) => panic!("Failed to parse: {:?}", e.detail),
                 }
             }
         }
@@ -393,21 +397,18 @@ mod tests {
                         assert_eq!("url".to_string(), p_toml.remote_file.unwrap());
                         // local_phases should be defined as None
                         assert!(p_toml.local_phases.is_none());
-                    },
-                    Err(e) => {
-                        panic!("Failed to parse: {:?}", e.detail)
                     }
+                    Err(e) => panic!("Failed to parse: {:?}", e.detail),
                 }
             }
         }
 
-        mod is_misconfigured {
-        }
+        mod is_misconfigured {}
     }
 
     mod toml_file_path {
-        pub use super::{ProjectToml};
-        use std::path::{PathBuf};
+        pub use super::ProjectToml;
+        use std::path::PathBuf;
 
         #[test]
         fn returns_path_to_toml() {
@@ -419,10 +420,10 @@ mod tests {
     }
 
     mod load_toml_file {
-        pub use super::{ProjectToml};
-        use std::path::{PathBuf};
+        pub use super::ProjectToml;
         use std::fs::File;
         use std::io::Write;
+        use std::path::PathBuf;
 
         #[test]
         fn returns_toml_from_path() {
@@ -440,15 +441,19 @@ cleanup = "echo local-cleanup"
 "#;
 
             let mut file = File::create(&path).expect("Unable to create local toml file");
-            file.write_all(toml.as_bytes()).expect("Unable to write local toml file");
+            file.write_all(toml.as_bytes())
+                .expect("Unable to write local toml file");
 
             let local_toml = ProjectToml::load_toml_file(path).unwrap();
-            assert_eq!("echo local-unit".to_string(), local_toml.local_phases.unwrap().unit.unwrap());
+            assert_eq!(
+                "echo local-unit".to_string(),
+                local_toml.local_phases.unwrap().unit.unwrap()
+            );
         }
     }
 
     mod load_toml_remote {
-        pub use super::{ProjectToml};
+        pub use super::ProjectToml;
         use mockito::mock;
 
         #[test]
@@ -466,15 +471,17 @@ functional = "echo remote-functional"
 cleanup = "echo remote-cleanup"
 "#;
 
-            mock("GET", "/toml-url")
+            let _m1 = mock("GET", "/toml-url")
                 .with_status(200)
                 .with_header("content-type", "text/plain")
                 .with_body(toml)
                 .create();
 
             let remote_toml = ProjectToml::load_toml_remote(url).unwrap();
-            assert_eq!("echo remote-unit".to_string(),
-                       remote_toml.local_phases.unwrap().unit.unwrap());
+            assert_eq!(
+                "echo remote-unit".to_string(),
+                remote_toml.local_phases.unwrap().unit.unwrap()
+            );
         }
     }
 }

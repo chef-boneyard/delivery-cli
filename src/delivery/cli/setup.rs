@@ -14,12 +14,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-use cli::arguments::{pipeline_arg, config_path_arg, u_e_s_o_args,
-            project_arg, value_of};
-use clap::{App, SubCommand, ArgMatches};
+use clap::{App, ArgMatches, SubCommand};
 use cli::Options;
-use types::DeliveryResult;
+use cli::arguments::{config_path_arg, pipeline_arg, project_arg, u_e_s_o_args, value_of};
 use config::Config;
+use types::DeliveryResult;
 
 pub const SUBCOMMAND_NAME: &'static str = "setup";
 
@@ -64,7 +63,8 @@ impl<'n> SetupClapOptions<'n> {
 
 impl<'n> Options for SetupClapOptions<'n> {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
-        let new_config = config.set_server(&self.server)
+        let new_config = config
+            .set_server(&self.server)
             .set_user(&self.user)
             .set_enterprise(&self.ent)
             .set_organization(&self.org)

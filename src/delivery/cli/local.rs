@@ -14,9 +14,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-use clap::{App, SubCommand, ArgMatches, Arg};
-use delivery_config::project::{Stage, Phase};
+use clap::{App, Arg, ArgMatches, SubCommand};
 use cli::arguments::value_of;
+use delivery_config::project::{Phase, Stage};
 
 pub const SUBCOMMAND_NAME: &'static str = "local";
 
@@ -24,7 +24,7 @@ pub const SUBCOMMAND_NAME: &'static str = "local";
 pub struct LocalClapOptions<'n> {
     pub phase: Option<Phase>,
     pub stage: Option<Stage>,
-    pub remote_toml: Option<&'n str>
+    pub remote_toml: Option<&'n str>,
 }
 
 impl<'n> Default for LocalClapOptions<'n> {
@@ -32,7 +32,7 @@ impl<'n> Default for LocalClapOptions<'n> {
         LocalClapOptions {
             phase: None,
             stage: None,
-            remote_toml: None
+            remote_toml: None,
         }
     }
 }
@@ -58,13 +58,13 @@ impl<'n> LocalClapOptions<'n> {
 
         let url = match value_of(&matches, "remote-project-toml") {
             "" => None,
-            u => Some(u)
+            u => Some(u),
         };
 
         LocalClapOptions {
             phase: phase,
             stage: stage,
-            remote_toml: url
+            remote_toml: url,
         }
     }
 }
@@ -72,18 +72,32 @@ impl<'n> LocalClapOptions<'n> {
 pub fn clap_subcommand<'c>() -> App<'c, 'c> {
     SubCommand::with_name(SUBCOMMAND_NAME)
         .about("Run Delivery phases on your local workstation.")
-        .arg(Arg::with_name("stage_phase")
-             .takes_value(false)
-             .required(true)
-             .possible_values(&["unit", "lint", "syntax", "provision",
-                                "deploy", "smoke", "functional", "cleanup",
-                                // Stages
-                                "verify", "acceptance", "all"])
-            .help("Automate phase or stage to execute locally.\n\nAvailable phases: [unit, \
-                  lint, syntax, provision, deploy, smoke, functional, cleanup]\n\nStages \
-                  will execute a series of phases in the following order:\nverify: [unit, \
-                  lint, syntax]\nacceptance: [provision, deploy, smoke, functional, \
-                  cleanup]\nall: [unit, lint, syntax, provision, deploy, smoke, functional, \
-                  cleanup]\n\n"))
+        .arg(
+            Arg::with_name("stage_phase")
+                .takes_value(false)
+                .required(true)
+                .possible_values(&[
+                    "unit",
+                    "lint",
+                    "syntax",
+                    "provision",
+                    "deploy",
+                    "smoke",
+                    "functional",
+                    "cleanup",
+                    // Stages
+                    "verify",
+                    "acceptance",
+                    "all",
+                ])
+                .help(
+                    "Automate phase or stage to execute locally.\n\nAvailable phases: [unit, \
+                     lint, syntax, provision, deploy, smoke, functional, cleanup]\n\nStages \
+                     will execute a series of phases in the following order:\nverify: [unit, \
+                     lint, syntax]\nacceptance: [provision, deploy, smoke, functional, \
+                     cleanup]\nall: [unit, lint, syntax, provision, deploy, smoke, functional, \
+                     cleanup]\n\n",
+                ),
+        )
         .args_from_usage("-r --remote-project-toml=[remote-url] 'URL for remote project.toml'")
 }

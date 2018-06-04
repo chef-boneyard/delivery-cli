@@ -15,37 +15,37 @@
 // limitations under the License.
 //
 
-use std::fmt;
-use std::env;
-use std::path::PathBuf;
-use hyper;
-use hyper::status::StatusCode;
-use hyper::client::response::Response as HyperResponse;
-use hyper::error::Error as HttpError;
+use config::Config;
+use errors::Kind::{ApiError, AuthenticationFailed, EndpointNotFound, ForbiddenRequest,
+                   TokenExpired};
+use errors::{DeliveryError, Kind};
 use http;
 use http::token::TokenResponse;
-use mime;
+use hyper;
+use hyper::client::response::Response as HyperResponse;
+use hyper::error::Error as HttpError;
+use hyper::mime;
+use hyper::status::StatusCode;
 use serde_json;
 use serde_json::Value as SerdeJson;
+use std::env;
+use std::fmt;
 use std::io::prelude::*;
-use errors::{DeliveryError, Kind};
-use errors::Kind::{ApiError, EndpointNotFound, AuthenticationFailed,
-                   ForbiddenRequest, TokenExpired};
+use std::path::PathBuf;
 use token::TokenStore;
-use utils::say::sayln;
-use config::Config;
 use types::DeliveryResult;
+use utils::say::sayln;
 
-mod headers;
-pub mod token;
 pub mod change;
+mod headers;
 pub mod saml;
+pub mod token;
 pub mod user;
 
 #[derive(Debug)]
 enum HProto {
     HTTP,
-    HTTPS
+    HTTPS,
 }
 
 impl HProto {
@@ -56,8 +56,10 @@ impl HProto {
             "https" => Ok(HProto::HTTPS),
             _ => {
                 let msg = format!("unknown protocal: {}", p);
-                Err(DeliveryError{ kind: Kind::UnsupportedProtocol,
-                               detail: Some(msg) })
+                Err(DeliveryError {
+                    kind: Kind::UnsupportedProtocol,
+                    detail: Some(msg),
+                })
             }
         }
     }
@@ -67,7 +69,7 @@ impl fmt::Display for HProto {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         let s = match self {
             &HProto::HTTP => "http",
-            &HProto::HTTPS => "https"
+            &HProto::HTTPS => "https",
         };
         write!(f, "{}", s)
     }
@@ -78,7 +80,7 @@ enum HTTPMethod {
     GET,
     PUT,
     POST,
-    DELETE
+    DELETE,
 }
 
 #[derive(Debug)]
@@ -87,7 +89,7 @@ pub struct APIClient {
     api_version: Option<String>,
     proto: HProto,
     host: String,
-    auth: Option<APIAuth>
+    auth: Option<APIAuth>,
 }
 
 impl APIClient {
@@ -109,8 +111,7 @@ impl APIClient {
     /// data associated with it. The call will read `server`,
     /// `api_port`, and `enterprise` from the specified config and
     /// raise an error if any of these values are unset.
-    pub fn from_config_no_auth(config: &Config)
-                               -> DeliveryResult<APIClient> {
+    pub fn from_config_no_auth(config: &Config) -> DeliveryResult<APIClient> {
         APIClient::from_config_with_basic_routing(config).and_then(|mut c| {
             let ent = try!(config.enterprise());
             c.set_enterprise(&ent);
@@ -124,8 +125,7 @@ impl APIClient {
     // your routes with the enterprise or API version.
     // Use to make unauthenticated requests where you specify
     // the full route.
-    pub fn from_config_with_basic_routing(config: &Config)
-                                          -> DeliveryResult<APIClient> {
+    pub fn from_config_with_basic_routing(config: &Config) -> DeliveryResult<APIClient> {
         let host = try!(config.api_host_and_port());
         let proto_str = try!(config.api_protocol());
         let proto = try!(HProto::from_str(&proto_str));
@@ -181,45 +181,47 @@ impl APIClient {
     //     },
     // }
     // ```
-    pub fn parse_response(mut response: HyperResponse)
-                            -> DeliveryResult<(StatusCode, Option<String>)> {
+    pub fn parse_response(
+        mut response: HyperResponse,
+    ) -> DeliveryResult<(StatusCode, Option<String>)> {
         use self::StatusCode::Ok as OkCode;
-        use self::StatusCode::{Created, Conflict, NoContent, Forbidden,
-                               NotFound, Unauthorized};
+        use self::StatusCode::{Conflict, Created, Forbidden, NoContent, NotFound, Unauthorized};
         debug!("Parsing response with status: {:?}", response.status);
         match response.status {
-            NoContent | Created | Conflict => {
-                Ok((response.status, None))
-            },
+            NoContent | Created | Conflict => Ok((response.status, None)),
             OkCode => {
                 let pretty_json = try!(APIClient::extract_pretty_json(&mut response));
                 Ok((response.status, Some(pretty_json)))
-            },
+            }
             NotFound => {
                 let msg = format!("Unable to access endpoint: {}", response.url);
                 Err(DeliveryError::throw(EndpointNotFound, Some(msg)))
-            },
+            }
             Forbidden => {
                 let msg = "The user is not authorized to perform this action.\nContact \
                            an administrator to grant you with appropriate permissions to \
-                           proceed.".to_string();
+                           proceed."
+                    .to_string();
                 Err(DeliveryError::throw(ForbiddenRequest, Some(msg)))
-            },
+            }
             Unauthorized => {
                 let detail = try!(APIClient::extract_pretty_json(&mut response));
                 if TokenResponse::parse_token_expired(&detail) {
-                    return Err(DeliveryError::throw(TokenExpired, None))
+                    return Err(DeliveryError::throw(TokenExpired, None));
                 }
-                let msg = format!("Request lacks valid authentication credentials.\n\
-                                  Detail:\n{}", detail);
+                let msg = format!(
+                    "Request lacks valid authentication credentials.\n\
+                     Detail:\n{}",
+                    detail
+                );
                 Err(DeliveryError::throw(AuthenticationFailed, Some(msg)))
-            },
+            }
             error_code @ _ => {
                 let msg = format!("Request returned: '{}'", error_code);
                 let mut detail = String::new();
                 let e = response.read_to_string(&mut detail).and(Ok(detail));
                 Err(DeliveryError::throw(ApiError(error_code, e), Some(msg)))
-            },
+            }
         }
     }
 
@@ -229,7 +231,7 @@ impl APIClient {
             proto: proto,
             host: String::from(host),
             enterprise: None,
-            auth: None
+            auth: None,
         }
     }
 
@@ -245,13 +247,15 @@ impl APIClient {
         self.api_version = Some(String::from(api_version))
     }
 
-    pub fn get_auth_from_home(&mut self, server: &str, ent: &str,
-                              user: &str) -> DeliveryResult<APIAuth> {
+    pub fn get_auth_from_home(
+        &mut self,
+        server: &str,
+        ent: &str,
+        user: &str,
+    ) -> DeliveryResult<APIAuth> {
         match TokenStore::from_home() {
-            Ok(tstore) => {
-                APIAuth::from_token_store(tstore, server, ent, user)
-            },
-            Err(e) => Err(e)
+            Ok(tstore) => APIAuth::from_token_store(tstore, server, ent, user),
+            Err(e) => Err(e),
         }
     }
 
@@ -279,13 +283,11 @@ impl APIClient {
         self.req_with_body(HTTPMethod::DELETE, path, "")
     }
 
-    pub fn put(&self, path: &str,
-               payload: &str) -> Result<HyperResponse, HttpError> {
+    pub fn put(&self, path: &str, payload: &str) -> Result<HyperResponse, HttpError> {
         self.req_with_body(HTTPMethod::PUT, path, payload)
     }
 
-    pub fn post(&self, path: &str,
-                payload: &str) -> Result<HyperResponse, HttpError> {
+    pub fn post(&self, path: &str, payload: &str) -> Result<HyperResponse, HttpError> {
         self.req_with_body(HTTPMethod::POST, path, payload)
     }
 
@@ -293,28 +295,32 @@ impl APIClient {
     /// an empty string, no request body will be sent. This could be an
     /// `Options<String>` but (I think) keeping the simple `&str`
     /// avoids an allocation.
-    fn req_with_body(&self,
-                     http_method: HTTPMethod,
-                     path: &str,
-                     payload: &str) -> Result<HyperResponse, HttpError> {
+    fn req_with_body(
+        &self,
+        http_method: HTTPMethod,
+        path: &str,
+        payload: &str,
+    ) -> Result<HyperResponse, HttpError> {
         let url = self.api_url(path);
         let client = hyper::Client::new();
         let req = match http_method {
-            HTTPMethod::GET    => client.get(&url),
-            HTTPMethod::PUT    => client.put(&url),
-            HTTPMethod::POST   => client.post(&url),
-            HTTPMethod::DELETE => client.delete(&url)
+            HTTPMethod::GET => client.get(&url),
+            HTTPMethod::PUT => client.put(&url),
+            HTTPMethod::POST => client.post(&url),
+            HTTPMethod::DELETE => client.delete(&url),
         };
         let req = req.header(self.json_content());
         let req = match self.auth {
             Some(ref auth) => {
                 let (deliv_user, deliv_token) = auth.auth_headers();
                 req.header(deliv_user).header(deliv_token)
-            },
-            None => req
+            }
+            None => req,
         };
-        debug!("Request: {:?} Path: {:?} Payload: {:?}",
-                http_method, path, payload);
+        debug!(
+            "Request: {:?} Path: {:?} Payload: {:?}",
+            http_method, path, payload
+        );
         if payload.is_empty() {
             req.send()
         } else {
@@ -322,18 +328,15 @@ impl APIClient {
         }
     }
 
-    pub fn pipeline_exists(&self,
-                          org: &str, proj: &str, pipe: &str) -> bool {
+    pub fn pipeline_exists(&self, org: &str, proj: &str, pipe: &str) -> bool {
         let path = format!("orgs/{}/projects/{}/pipelines/{}", org, proj, pipe);
         match self.get(&path) {
-            Ok(res) => {
-                match res.status {
-                    StatusCode::Ok => {
-                        return true;
-                    },
-                    _ => {
-                        return false;
-                    }
+            Ok(res) => match res.status {
+                StatusCode::Ok => {
+                    return true;
+                }
+                _ => {
+                    return false;
                 }
             },
             Err(e) => {
@@ -343,20 +346,15 @@ impl APIClient {
         }
     }
 
-    pub fn project_exists(&self,
-                          org: &str,
-                          proj: &str) -> bool {
-
+    pub fn project_exists(&self, org: &str, proj: &str) -> bool {
         let path = format!("orgs/{}/projects/{}", org, proj);
         match self.get(&path) {
-            Ok(res) => {
-                match res.status {
-                    StatusCode::Ok => {
-                        return true;
-                    },
-                    _ => {
-                        return false;
-                    }
+            Ok(res) => match res.status {
+                StatusCode::Ok => {
+                    return true;
+                }
+                _ => {
+                    return false;
                 }
             },
             Err(e) => {
@@ -366,8 +364,7 @@ impl APIClient {
         }
     }
 
-    pub fn create_delivery_project(&self, org: &str,
-                                   proj: &str) -> DeliveryResult<StatusCode> {
+    pub fn create_delivery_project(&self, org: &str, proj: &str) -> DeliveryResult<StatusCode> {
         let path = format!("orgs/{}/projects", org);
         // FIXME: we'd like to use the native struct->json stuff, but
         // seeing link issues.
@@ -375,20 +372,29 @@ impl APIClient {
         Self::parse_response(self.post(&path, &payload)?).map(|(code, _)| code)
     }
 
-    pub fn create_github_project(&self, org: &str, proj: &str,
-                                repo_name: &str, git_org: &str, pipe: &str,
-                                ssl: bool) -> DeliveryResult<StatusCode> {
+    pub fn create_github_project(
+        &self,
+        org: &str,
+        proj: &str,
+        repo_name: &str,
+        git_org: &str,
+        pipe: &str,
+        ssl: bool,
+    ) -> DeliveryResult<StatusCode> {
         let path = format!("orgs/{}/github-projects", org);
-        let payload = format!("{{\
-                                \"name\":\"{}\",\
-                                \"scm\":{{\
-                                    \"type\":\"github\",\
-                                    \"project\":\"{}\",\
-                                    \"organization\":\"{}\",\
-                                    \"branch\":\"{}\",\
-                                    \"verify_ssl\": {}\
-                                }}\
-                              }}", proj, repo_name, git_org, pipe, ssl);
+        let payload = format!(
+            "{{\
+             \"name\":\"{}\",\
+             \"scm\":{{\
+             \"type\":\"github\",\
+             \"project\":\"{}\",\
+             \"organization\":\"{}\",\
+             \"branch\":\"{}\",\
+             \"verify_ssl\": {}\
+             }}\
+             }}",
+            proj, repo_name, git_org, pipe, ssl
+        );
         Self::parse_response(self.post(&path, &payload)?).map(|(code, _)| code)
     }
 
@@ -400,22 +406,27 @@ impl APIClient {
                 if let Some(scp) = obj.as_object() {
                     let name = scp.get("name")
                         .expect("Missing 'name' field for /scm-providers endpoint")
-                        .as_str().unwrap();
+                        .as_str()
+                        .unwrap();
                     if name == scm {
                         debug!("Found SCM {} config: {:?}", scm, scp);
                         let scp_config = scp.get("scmSetupConfigs")
                             .expect("Missing 'scmSetupConfigs' field for /scm-providers endpoint")
-                            .as_array().unwrap();
+                            .as_array()
+                            .unwrap();
                         debug!("scmSetupConfigs: {:?}", scp_config);
-                        return Ok(scp_config.clone())
+                        return Ok(scp_config.clone());
                     }
                 }
             }
         }
         Err(DeliveryError {
             kind: Kind::ExpectedJsonString,
-            detail: Some(format!("Unable to find {:?} SCM Config in Delivery Server.\n\
-                                 JSON Output: {:?}", scm, json))
+            detail: Some(format!(
+                "Unable to find {:?} SCM Config in Delivery Server.\n\
+                 JSON Output: {:?}",
+                scm, json
+            )),
         })
     }
 
@@ -427,25 +438,37 @@ impl APIClient {
         self.get_scm_server_config("Bitbucket")
     }
 
-    pub fn create_bitbucket_project(&self, org: &str, proj: &str,
-                                    repo_name: &str, project_key: &str,
-                                    pipe: &str) -> DeliveryResult<StatusCode> {
+    pub fn create_bitbucket_project(
+        &self,
+        org: &str,
+        proj: &str,
+        repo_name: &str,
+        project_key: &str,
+        pipe: &str,
+    ) -> DeliveryResult<StatusCode> {
         let path = format!("orgs/{}/bitbucket-projects", org);
-        let payload = format!("{{\
-                                \"name\":\"{}\",\
-                                \"scm\":{{\
-                                    \"type\":\"bitbucket\",\
-                                    \"repo_name\":\"{}\",\
-                                    \"project_key\":\"{}\",\
-                                    \"pipeline_branch\":\"{}\"\
-                                }}\
-                              }}", proj, repo_name, project_key, pipe);
+        let payload = format!(
+            "{{\
+             \"name\":\"{}\",\
+             \"scm\":{{\
+             \"type\":\"bitbucket\",\
+             \"repo_name\":\"{}\",\
+             \"project_key\":\"{}\",\
+             \"pipeline_branch\":\"{}\"\
+             }}\
+             }}",
+            proj, repo_name, project_key, pipe
+        );
         Self::parse_response(self.post(&path, &payload)?).map(|(code, _)| code)
     }
 
-    pub fn create_pipeline(&self,
-                           org: &str, proj: &str,
-                           pipe: &str, base: Option<&str>) -> DeliveryResult<StatusCode> {
+    pub fn create_pipeline(
+        &self,
+        org: &str,
+        proj: &str,
+        pipe: &str,
+        base: Option<&str>,
+    ) -> DeliveryResult<StatusCode> {
         let path = format!("orgs/{}/projects/{}/pipelines", org, proj);
 
         // We unwrap the provided base branch, if None we default to `master`
@@ -461,40 +484,45 @@ impl APIClient {
                 let mut body_string = String::new();
                 let _x = try!(b.read_to_string(&mut body_string));
                 body_string
-            },
-            Err(e) => return Err(DeliveryError{kind: Kind::HttpError(e),
-                                               detail: None})
+            }
+            Err(e) => {
+                return Err(DeliveryError {
+                    kind: Kind::HttpError(e),
+                    detail: None,
+                })
+            }
         };
         Ok(serde_json::from_str(&body)?)
     }
 
     pub fn extract_pretty_json(resp: &mut HyperResponse) -> DeliveryResult<String> {
-            let mut body = String::new();
-            resp.read_to_string(&mut body)?;
-            debug!("Status: {:?} Body: {:?}", resp.status, body);
-            let json: SerdeJson = serde_json::from_str(&body)?;
-            Ok(serde_json::to_string_pretty(&json)?)
+        let mut body = String::new();
+        resp.read_to_string(&mut body)?;
+        debug!("Status: {:?} Body: {:?}", resp.status, body);
+        let json: SerdeJson = serde_json::from_str(&body)?;
+        Ok(serde_json::to_string_pretty(&json)?)
     }
 
     fn json_content(&self) -> hyper::header::ContentType {
-        let mime = mime::Mime(mime::TopLevel::Application,
-                              mime::SubLevel::Json, vec![]);
+        let mime = mime::Mime(mime::TopLevel::Application, mime::SubLevel::Json, vec![]);
         hyper::header::ContentType(mime)
     }
-
 }
 
 #[derive(Debug)]
 pub struct APIAuth {
     user: String,
-    token: String
+    token: String,
 }
 
 impl APIAuth {
     pub fn from_env() -> APIAuth {
         let token = env::var("TOKEN").ok().expect("env missing TOKEN");
         let user = env::var("DEL_USER").ok().expect("env missing DEL_USER");
-        APIAuth { user: user, token: token }
+        APIAuth {
+            user: user,
+            token: token,
+        }
     }
 
     /// Create an `APIAuth` struct from the specified `Config`
@@ -505,14 +533,14 @@ impl APIAuth {
     pub fn from_config(config: &Config) -> DeliveryResult<APIAuth> {
         if !try!(http::token::verify(&config)) {
             sayln("red", "Token expired");
-            return APIAuth::from_token_request(config)
+            return APIAuth::from_token_request(config);
         }
         let tstore = match config.token_file {
             Some(ref f) => {
                 let file = PathBuf::from(f);
                 try!(TokenStore::from_file(&file))
-            },
-            None => try!(TokenStore::from_home())
+            }
+            None => try!(TokenStore::from_home()),
         };
         let api_server = try!(config.api_host_and_port());
         let ent = try!(config.enterprise());
@@ -523,21 +551,27 @@ impl APIAuth {
         })
     }
 
-    pub fn from_token_store(tstore: TokenStore,
-                            server: &str, ent: &str,
-                            user: &str) -> DeliveryResult<APIAuth> {
+    pub fn from_token_store(
+        tstore: TokenStore,
+        server: &str,
+        ent: &str,
+        user: &str,
+    ) -> DeliveryResult<APIAuth> {
         match tstore.lookup(server, ent, user) {
             Some(token) => {
                 debug!("Token found");
-                Ok(APIAuth{ user: String::from(user),
-                            token: token.clone()})
-            },
+                Ok(APIAuth {
+                    user: String::from(user),
+                    token: token.clone(),
+                })
+            }
             None => {
                 debug!("Token not found");
-                let msg = format!("server: {}, ent: {}, user: {}",
-                                  server, ent, user);
-                Err(DeliveryError{ kind: Kind::NoToken,
-                                   detail: Some(msg)})
+                let msg = format!("server: {}, ent: {}, user: {}", server, ent, user);
+                Err(DeliveryError {
+                    kind: Kind::NoToken,
+                    detail: Some(msg),
+                })
             }
         }
     }
@@ -548,11 +582,19 @@ impl APIAuth {
         if interactive {
             let token = try!(TokenStore::request_token(&config));
             debug!("APIAuth from_token_request: {:?}@{:?}", user, token);
-            Ok(APIAuth{ user: user.clone(), token: token.clone()})
+            Ok(APIAuth {
+                user: user.clone(),
+                token: token.clone(),
+            })
         } else {
-            let msg = format!("Unable to request token due to --no-interactive \
-                               flag.\nTry `delivery token` to create one");
-            Err(DeliveryError{ kind: Kind::NoToken, detail: Some(msg)})
+            let msg = format!(
+                "Unable to request token due to --no-interactive \
+                 flag.\nTry `delivery token` to create one"
+            );
+            Err(DeliveryError {
+                kind: Kind::NoToken,
+                detail: Some(msg),
+            })
         }
     }
 
@@ -564,28 +606,28 @@ impl APIAuth {
         self.token.clone()
     }
 
-    pub fn auth_headers(&self) -> (headers::ChefDeliveryUser,
-                                   headers::ChefDeliveryToken) {
-        (headers::ChefDeliveryUser(self.user.clone()),
-         headers::ChefDeliveryToken(self.token.clone()))
+    pub fn auth_headers(&self) -> (headers::ChefDeliveryUser, headers::ChefDeliveryToken) {
+        (
+            headers::ChefDeliveryUser(self.user.clone()),
+            headers::ChefDeliveryToken(self.token.clone()),
+        )
     }
 }
 
 #[cfg(test)]
 mod tests {
     pub use super::*;
-    use token::TokenStore;
+    use config::Config;
     use std::env;
     use tempdir::TempDir;
+    use token::TokenStore;
     use utils::path_join_many::PathJoinMany;
-    use config::Config;
 
     #[test]
     fn api_auth() {
         fake_test_env();
         let auth = APIAuth::from_env();
-        println!("got auth user: {}, token: {}",
-                 auth.user, auth.token);
+        println!("got auth user: {}, token: {}", auth.user, auth.token);
         assert_eq!("pete", auth.user);
         assert!(auth.token.len() > 4);
     }
@@ -615,8 +657,7 @@ mod tests {
 
     #[test]
     fn from_config_with_basic_routing_test() {
-        let config = Config::default()
-            .set_server("earth");
+        let config = Config::default().set_server("earth");
         let client = APIClient::from_config_with_basic_routing(&config).unwrap();
         let url = client.api_url("api/_status");
         assert_eq!("https://earth/api/_status", url)
@@ -633,11 +674,13 @@ mod tests {
             Ok(_) => assert!(false),
             Err(e) => {
                 let m = e.detail().unwrap();
-                assert_eq!("User not set; try --user or set it in your \
-                           .toml config file", &m);
+                assert_eq!(
+                    "User not set; try --user or set it in your \
+                     .toml config file",
+                    &m
+                );
             }
         };
-
     }
 
     #[test]
@@ -653,8 +696,7 @@ mod tests {
         config.non_interactive = Some(true);
 
         let mut tstore = TokenStore::from_file(&token_file).ok().expect("tstore sad");
-        let write_result = tstore.write_token("earth", "ncc-1701", "kirk",
-                                              "cafecafe");
+        let write_result = tstore.write_token("earth", "ncc-1701", "kirk", "cafecafe");
         assert_eq!(true, write_result.is_ok());
 
         // Turning this test into a verification instead since `from_config`
@@ -671,8 +713,7 @@ mod tests {
 
     #[test]
     fn http_api_url_test() {
-        let mut client = APIClient::new_http("localhost:4343",
-                                         "Chef");
+        let mut client = APIClient::new_http("localhost:4343", "Chef");
         fake_test_env();
         let auth = APIAuth::from_env();
         client.set_auth(auth);
@@ -682,8 +723,7 @@ mod tests {
 
     #[test]
     fn https_api_url_test() {
-        let mut client = APIClient::new_https("localhost:4343",
-                                          "Chef");
+        let mut client = APIClient::new_https("localhost:4343", "Chef");
         fake_test_env();
         let auth = APIAuth::from_env();
         client.set_auth(auth);
@@ -704,14 +744,18 @@ mod tests {
         let tstore = TokenStore::from_file(&tfile).ok().expect("tstore sad");
 
         // token store is empty so we expect an Err()
-        let from_empty = APIAuth::from_token_store(tstore,
-                                                   "127.0.0.1", "acme", "bob");
+        let from_empty = APIAuth::from_token_store(tstore, "127.0.0.1", "acme", "bob");
 
-        assert_eq!(true, from_empty.or_else(|e| {
-            let msg = "server: 127.0.0.1, ent: acme, user: bob";
-            assert_eq!(msg, e.detail().unwrap());
-            Err(e)
-        }).is_err());
+        assert_eq!(
+            true,
+            from_empty
+                .or_else(|e| {
+                    let msg = "server: 127.0.0.1, ent: acme, user: bob";
+                    assert_eq!(msg, e.detail().unwrap());
+                    Err(e)
+                })
+                .is_err()
+        );
     }
 
     #[test]
@@ -720,16 +764,17 @@ mod tests {
         let path = tempdir.path();
         let tfile = path.join_many(&["api-tokens"]);
         let mut tstore = TokenStore::from_file(&tfile).ok().expect("tstore sad");
-        let write_result = tstore.write_token("127.0.0.1", "acme", "bob",
-                                              "beefbeef");
+        let write_result = tstore.write_token("127.0.0.1", "acme", "bob", "beefbeef");
         assert_eq!(true, write_result.is_ok());
         let auth = APIAuth::from_token_store(tstore, "127.0.0.1", "acme", "bob");
-        assert_eq!(true,
-                   auth.and_then(|a| {
-                       assert_eq!("bob", a.user());
-                       assert_eq!("beefbeef", a.token());
-                       Ok(a)
-                   }).is_ok());
+        assert_eq!(
+            true,
+            auth.and_then(|a| {
+                assert_eq!("bob", a.user());
+                assert_eq!("beefbeef", a.token());
+                Ok(a)
+            }).is_ok()
+        );
     }
 
     #[test]
@@ -745,8 +790,7 @@ mod tests {
         config.non_interactive = Some(true);
 
         let mut tstore = TokenStore::from_file(&token_file).ok().expect("tstore sad");
-        let write_result = tstore.write_token("earth", "ncc-1701", "kirk",
-                                              "cafecafe");
+        let write_result = tstore.write_token("earth", "ncc-1701", "kirk", "cafecafe");
         assert_eq!(true, write_result.is_ok());
 
         let auth = APIAuth::from_config(&config);
@@ -758,12 +802,16 @@ mod tests {
 
         // Instead we use `from_token_store` that doesn't validate the token
         let auth_from_tstore = APIAuth::from_token_store(tstore, "earth", "ncc-1701", "kirk");
-        assert_eq!(true,
-                   auth_from_tstore.and_then(|a| {
-                       assert_eq!("kirk", a.user());
-                       assert_eq!("cafecafe", a.token());
-                       Ok(a)
-                   }).is_ok());
+        assert_eq!(
+            true,
+            auth_from_tstore
+                .and_then(|a| {
+                    assert_eq!("kirk", a.user());
+                    assert_eq!("cafecafe", a.token());
+                    Ok(a)
+                })
+                .is_ok()
+        );
     }
 
     #[test]
@@ -780,61 +828,66 @@ mod tests {
         // env::set_var("HOME", path);
 
         let auth = APIAuth::from_config(&config);
-        assert_eq!(true,
-                   auth.or_else(|e| {
-                       println!("e: {:?}", e);
-                       let detail = &e.detail.unwrap();
-                       let expect = "User not set; try --user or set it in \
-                                     your .toml config file";
-                       assert_eq!(expect, detail);
-                       Err(1)
-                   }).is_err());
+        assert_eq!(
+            true,
+            auth.or_else(|e| {
+                println!("e: {:?}", e);
+                let detail = &e.detail.unwrap();
+                let expect = "User not set; try --user or set it in \
+                              your .toml config file";
+                assert_eq!(expect, detail);
+                Err(1)
+            }).is_err()
+        );
     }
 
     mod http_request {
         use super::*;
-        use mockito::{SERVER_ADDRESS, mock};
+        use mockito::SERVER_ADDRESS;
 
         fn client() -> APIClient {
             APIClient::new_http(SERVER_ADDRESS, "gamer")
         }
 
-        fn mock_endpoints() {
-            mock("GET", "/api/v0/e/gamer/orgs")
-                .with_status(200)
-                .match_header("Content-Type", "application/json")
-                .with_body("{}")
-                .create();
-            mock("GET", "/api/v0/e/gamer/not_found")
-                .with_status(404)
-                .create();
-            mock("POST", "/api/v0/e/gamer/orgs")
-                .with_status(201)
-                .create();
-            mock("POST", "/api/v0/e/gamer/orgs/zelda/projects")
-                .with_status(409)
-                .create();
-            mock("DELETE", "/api/v0/e/gamer/orgs/ganondorf")
-                .with_status(204)
-                .create();
-            mock("GET", "/api/v0/e/gamer/users")
-                .with_status(401)
-                .match_header("Content-Type", "application/json")
-                .with_body("{\"error\": \"unauthorized\"}")
-                .create();
-            mock("POST", "/api/v0/e/gamer/internal-users")
-                .with_status(401)
-                .match_header("Content-Type", "application/json")
-                .with_body("{\"error\": \"token_expired\"}")
-                .create();
+        macro_rules! mock_endpoints {
+            () => {
+                let _m1 = mock("GET", "/api/v0/e/gamer/orgs")
+                    .with_status(200)
+                    .match_header("Content-Type", "application/json")
+                    .with_body("{}")
+                    .create();
+                let _m2 = mock("GET", "/api/v0/e/gamer/not_found")
+                    .with_status(404)
+                    .create();
+                let _m3 = mock("POST", "/api/v0/e/gamer/orgs")
+                    .with_status(201)
+                    .create();
+                let _m4 = mock("POST", "/api/v0/e/gamer/orgs/zelda/projects")
+                    .with_status(409)
+                    .create();
+                let _m5 = mock("DELETE", "/api/v0/e/gamer/orgs/ganondorf")
+                    .with_status(204)
+                    .create();
+                let _m6 = mock("GET", "/api/v0/e/gamer/users")
+                    .with_status(401)
+                    .match_header("Content-Type", "application/json")
+                    .with_body("{\"error\": \"unauthorized\"}")
+                    .create();
+                let _m7 = mock("POST", "/api/v0/e/gamer/internal-users")
+                    .with_status(401)
+                    .match_header("Content-Type", "application/json")
+                    .with_body("{\"error\": \"token_expired\"}")
+                    .create();
+            };
         }
 
         mod parse_response {
             use super::{client, APIClient};
+            use mockito::mock;
 
             #[test]
             fn ok() {
-                super::mock_endpoints();
+                mock_endpoints!();
                 let response = client().get("orgs").unwrap();
                 let tuple = APIClient::parse_response(response);
                 assert!(tuple.is_ok());
@@ -846,7 +899,7 @@ mod tests {
 
             #[test]
             fn no_content() {
-                super::mock_endpoints();
+                mock_endpoints!();
                 let response = client().delete("orgs/ganondorf").unwrap();
                 let tuple = APIClient::parse_response(response);
                 assert!(tuple.is_ok());
@@ -857,7 +910,7 @@ mod tests {
 
             #[test]
             fn created() {
-                super::mock_endpoints();
+                mock_endpoints!();
                 let response = client().post("orgs", "name: zelda").unwrap();
                 let tuple = APIClient::parse_response(response);
                 assert!(tuple.is_ok());
@@ -868,8 +921,10 @@ mod tests {
 
             #[test]
             fn conflict_that_we_consider_as_ok() {
-                super::mock_endpoints();
-                let response = client().post("orgs/zelda/projects", "name: already_exist").unwrap();
+                mock_endpoints!();
+                let response = client()
+                    .post("orgs/zelda/projects", "name: already_exist")
+                    .unwrap();
                 let tuple = APIClient::parse_response(response);
                 assert!(tuple.is_ok());
                 let (code, content) = tuple.unwrap();
@@ -877,24 +932,26 @@ mod tests {
                 assert_eq!(code, super::StatusCode::Conflict);
             }
 
-
             #[test]
             fn not_found() {
-                super::mock_endpoints();
+                mock_endpoints!();
                 let response = client().get("not_found").unwrap();
                 let tuple = APIClient::parse_response(response);
                 assert!(tuple.is_err());
                 let error = tuple.unwrap_err();
                 assert_eq!(
                     error.detail,
-                    Some(format!("Unable to access endpoint: {}", client().api_url("not_found")))
+                    Some(format!(
+                        "Unable to access endpoint: {}",
+                        client().api_url("not_found")
+                    ))
                 );
                 assert_enum!(error.kind, super::EndpointNotFound);
             }
 
             #[test]
             fn unauthorized_token_expired() {
-                super::mock_endpoints();
+                mock_endpoints!();
                 let response = client().post("internal-users", "name: link").unwrap();
                 let tuple = APIClient::parse_response(response);
                 assert!(tuple.is_err());
@@ -905,20 +962,21 @@ mod tests {
 
             #[test]
             fn unauthorized() {
-                super::mock_endpoints();
+                mock_endpoints!();
                 let response = client().get("users").unwrap();
                 let tuple = APIClient::parse_response(response);
                 assert!(tuple.is_err());
                 let error = tuple.unwrap_err();
                 let msg = "Request lacks valid authentication credentials.\n\
-                           Detail:\n{\n  \"error\": \"unauthorized\"\n}".to_string();
+                           Detail:\n{\n  \"error\": \"unauthorized\"\n}"
+                    .to_string();
                 assert_eq!(error.detail, Some(msg));
                 assert_enum!(error.kind, super::AuthenticationFailed);
             }
 
             #[test]
             fn any_other_request() {
-                super::mock_endpoints();
+                mock_endpoints!();
                 let response = client().get("odd-endpoint").unwrap();
                 let tuple = APIClient::parse_response(response);
                 assert!(tuple.is_err());
@@ -930,7 +988,7 @@ mod tests {
                 match error.kind {
                     super::ApiError(code, _) => {
                         assert_eq!(code, super::StatusCode::NotImplemented);
-                    },
+                    }
                     _ => panic!("Wrong kind of error!"),
                 };
             }

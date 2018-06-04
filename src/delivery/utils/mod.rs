@@ -16,22 +16,22 @@
 //
 
 use errors::{DeliveryError, Kind};
-use types::DeliveryResult;
 use std::convert::AsRef;
-use std::fs;
 use std::env;
-use std::process;
+use std::fs;
 use std::fs::File;
-use std::process::Output as CmdOutput;
 use std::io;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
+use std::process;
+use std::process::Output as CmdOutput;
+use types::DeliveryResult;
 use utils::path_join_many::PathJoinMany;
 
-pub mod say;
-pub mod path_join_many;
-pub mod path_ext;
 pub mod open;
+pub mod path_ext;
+pub mod path_join_many;
+pub mod say;
 #[cfg(test)]
 pub mod test_paths;
 
@@ -55,21 +55,25 @@ pub fn env_variable(key: &str) -> Option<String> {
     env::var(key).ok()
 }
 
-pub fn mkdir_recursive<P: ?Sized>(path: &P) -> Result<(), DeliveryError> where P: AsRef<Path> {
+pub fn mkdir_recursive<P: ?Sized>(path: &P) -> Result<(), DeliveryError>
+where
+    P: AsRef<Path>,
+{
     try!(fs::create_dir_all(path.as_ref()));
     Ok(())
 }
 
-pub fn home_dir(to_append: &[&str]) -> Result<PathBuf, DeliveryError>
-{
-   match env::home_dir() {
-       Some(home) => Ok(home.join_many(to_append)),
-       None => {
-           let msg = "unable to find home dir".to_string();
-           Err(DeliveryError{ kind: Kind::NoHomedir,
-                              detail: Some(msg) })
-       }
-   }
+pub fn home_dir(to_append: &[&str]) -> Result<PathBuf, DeliveryError> {
+    match env::home_dir() {
+        Some(home) => Ok(home.join_many(to_append)),
+        None => {
+            let msg = "unable to find home dir".to_string();
+            Err(DeliveryError {
+                kind: Kind::NoHomedir,
+                detail: Some(msg),
+            })
+        }
+    }
 }
 
 // Read from STDIN
@@ -90,17 +94,19 @@ pub fn read_from_terminal() -> DeliveryResult<String> {
 
 /// Walk up a file hierarchy searching for `dir/target`.
 pub fn walk_tree_for_path<P>(dir: P, target: &str) -> Option<PathBuf>
-        where P: AsRef<Path> {
+where
+    P: AsRef<Path>,
+{
     let mut current = dir.as_ref();
     loop {
         let candidate = current.join(target);
         if fs::metadata(&candidate).is_ok() {
             let ans = PathBuf::from(candidate);
-            return Some(ans)
+            return Some(ans);
         }
         match current.parent() {
             Some(p) => current = p,
-            None => return None
+            None => return None,
         }
     }
 }
@@ -112,8 +118,7 @@ pub fn path_to_string<P: AsRef<Path>>(p: P) -> String {
     match path.to_str() {
         Some(s) => s.to_string(),
         None => {
-            let s = format!("invalid path (non-unicode): {}",
-                            path.to_string_lossy());
+            let s = format!("invalid path (non-unicode): {}", path.to_string_lossy());
             panic!(s)
         }
     }
@@ -140,7 +145,9 @@ pub fn path_to_string<P: AsRef<Path>>(p: P) -> String {
 /// remove_file("foo.txt");
 /// ```
 pub fn read_file<P>(path: P) -> DeliveryResult<String>
-        where P: AsRef<Path> {
+where
+    P: AsRef<Path>,
+{
     let mut buffer = String::new();
     let mut f = try!(File::open(path));
     try!(f.read_to_string(&mut buffer));
@@ -155,10 +162,12 @@ pub fn cwd() -> PathBuf {
 // Returns true if dest_f doesn't exist or has content different from source_f,
 // returns false if dest_f exist but contains the exact content as source_f.
 pub fn file_needs_updated<A, B>(source_f: A, dest_f: B) -> DeliveryResult<bool>
-        where A: AsRef<Path>,
-              B: AsRef<Path> {
+where
+    A: AsRef<Path>,
+    B: AsRef<Path>,
+{
     if dest_f.as_ref().exists() {
-        let mut md5_source = Md5::new();            
+        let mut md5_source = Md5::new();
         let mut source_f = try!(File::open(&source_f));
         let mut source_str = String::new();
         try!(source_f.read_to_string(&mut source_str));
@@ -173,7 +182,7 @@ pub fn file_needs_updated<A, B>(source_f: A, dest_f: B) -> DeliveryResult<bool>
         // If the md5 sun matches, return None to signify that
         // the file was not copied because they match exactly.
         if md5_source.result_str() == md5_dest.result_str() {
-            return Ok(false)
+            return Ok(false);
         }
     }
     Ok(true)
@@ -183,15 +192,15 @@ pub fn file_needs_updated<A, B>(source_f: A, dest_f: B) -> DeliveryResult<bool>
 // was executed successfully, otherwise return the provided
 // error and printing the STDOUT & STDERR
 pub fn cmd_success_or_err(out: &CmdOutput, e_kind: Kind) -> DeliveryResult<()> {
-    if ! out.status.success() {
-        return Err(DeliveryError{
+    if !out.status.success() {
+        return Err(DeliveryError {
             kind: e_kind,
-            detail: Some(
-                format!("STDOUT: {}\nSTDERR: {}\n",
+            detail: Some(format!(
+                "STDOUT: {}\nSTDERR: {}\n",
                 String::from_utf8_lossy(&out.stdout),
-                String::from_utf8_lossy(&out.stderr))
-            )
-        })
+                String::from_utf8_lossy(&out.stderr)
+            )),
+        });
     }
     Ok(())
 }
@@ -215,9 +224,9 @@ pub fn kill_child_processes(child_processes: Vec<process::Child>) -> DeliveryRes
 #[cfg(test)]
 mod tests {
     use super::*;
-    use utils::test_paths::fixture_file;
-    use std::path::PathBuf;
     use std::ffi::OsStr;
+    use std::path::PathBuf;
+    use utils::test_paths::fixture_file;
 
     #[test]
     fn traverse_up_for_dot_delivery_found() {
@@ -266,8 +275,8 @@ mod test_find_command {
     }
 
     mod without_pathext_set {
-        use super::{setup_path, setup_empty_pathext};
         pub use super::find_command;
+        use super::{setup_empty_pathext, setup_path};
 
         fn setup_environment() {
             setup_path();
@@ -275,7 +284,7 @@ mod test_find_command {
         }
 
         mod argument_without_extension {
-            use super::{setup_environment, find_command};
+            use super::{find_command, setup_environment};
 
             #[test]
             fn command_exists() {
@@ -300,8 +309,8 @@ mod test_find_command {
         }
 
         mod argument_with_extension {
+            use super::{find_command, setup_environment};
             use std::fs::canonicalize;
-            use super::{setup_environment, find_command};
 
             #[test]
             fn command_exists() {
@@ -335,12 +344,12 @@ mod test_find_command {
         }
     }
 
-    #[cfg(target_os="windows")]
+    #[cfg(target_os = "windows")]
     mod with_pathext_set {
+        pub use super::find_command;
+        use super::setup_path;
         use std::env;
         use std::path::PathBuf;
-        use super::{setup_path};
-        pub use super::find_command;
 
         fn setup_pathext() {
             let path_bufs = vec![PathBuf::from(".COM"), PathBuf::from(".EXE")];
@@ -354,7 +363,7 @@ mod test_find_command {
         }
 
         mod argument_without_extension {
-            use super::{setup_environment, find_command};
+            use super::{find_command, setup_environment};
 
             #[test]
             fn command_exists() {
@@ -386,8 +395,8 @@ mod test_find_command {
         }
 
         mod argument_with_extension {
+            use super::{find_command, setup_environment};
             use std::fs::canonicalize;
-            use super::{setup_environment, find_command};
 
             #[test]
             fn command_exists() {

@@ -17,30 +17,33 @@
 
 // #![feature(plugin, path_ext, convert)]
 extern crate regex;
-#[macro_use] extern crate log;
-extern crate term;
-extern crate toml;
-extern crate time;
+#[macro_use]
+extern crate log;
 extern crate serde;
+extern crate term;
+extern crate time;
+extern crate toml;
 #[macro_use]
 extern crate serde_derive;
+extern crate libc;
+extern crate rpassword;
 #[macro_use]
 extern crate serde_json;
-extern crate rpassword;
-extern crate libc;
 extern crate tempdir;
 extern crate uuid;
-#[macro_use] extern crate hyper;
-extern crate mime;
+#[macro_use]
+extern crate hyper;
 extern crate clap;
 extern crate crypto;
-#[cfg(test)] extern crate mockito;
+extern crate mime;
+#[cfg(test)]
+extern crate mockito;
 
 #[macro_export]
 macro_rules! validate {
-    ($config:ident, $value:ident) => (
+    ($config:ident, $value:ident) => {
         try!($config.$value());
-    )
+    };
 }
 
 // Adding a quick macro to assert enums, specifically to test
@@ -49,28 +52,28 @@ macro_rules! validate {
 #[cfg(test)]
 #[macro_export]
 macro_rules! assert_enum {
-    ($enum1:expr, $enum2:pat) => (
+    ($enum1:expr, $enum2:pat) => {
         match $enum1 {
             $enum2 => true,
-            _ => false
+            _ => false,
         }
-    )
+    };
 }
 
-pub mod errors;
-pub mod types;
-pub mod git;
-pub mod utils;
-pub mod config;
-pub mod delivery_config;
-pub mod job;
-pub mod getpass;
-pub mod token;
-pub mod http;
-pub mod project;
-pub mod cookbook;
 pub mod cli;
 pub mod command;
+pub mod config;
+pub mod cookbook;
+pub mod delivery_config;
+pub mod errors;
 pub mod fips;
+pub mod getpass;
+pub mod git;
+pub mod http;
+pub mod job;
 pub mod json;
+pub mod project;
+pub mod token;
+pub mod types;
 pub mod user;
+pub mod utils;

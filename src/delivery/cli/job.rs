@@ -15,14 +15,14 @@
 // limitations under the License.
 //
 
-use fips;
-use cli::arguments::{pipeline_arg, project_arg, local_arg, patchset_arg,
-                     project_specific_args, u_e_s_o_args, value_of};
-use clap::{Arg, App, SubCommand, ArgMatches};
+use clap::{App, Arg, ArgMatches, SubCommand};
 use cli::Options;
-use types::DeliveryResult;
+use cli::arguments::{local_arg, patchset_arg, pipeline_arg, project_arg, project_specific_args,
+                     u_e_s_o_args, value_of};
 use config::Config;
+use fips;
 use project;
+use types::DeliveryResult;
 
 pub const SUBCOMMAND_NAME: &'static str = "job";
 
@@ -111,15 +111,20 @@ impl<'n> Options for JobClapOptions<'n> {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
         let project = try!(project::project_or_from_cwd(&self.project));
 
-        let new_config = config.set_pipeline(&self.pipeline)
+        let new_config = config
+            .set_pipeline(&self.pipeline)
             .set_user(with_default(&self.user, "you", &&self.local))
             .set_server(with_default(&self.server, "localhost", &&self.local))
             .set_enterprise(with_default(&self.ent, "local", &&self.local))
             .set_organization(with_default(&self.org, "workstation", &&self.local))
             .set_project(&project);
 
-        fips::merge_fips_options_and_config(self.fips, self.fips_git_port,
-                                            self.fips_custom_cert_filename, new_config)
+        fips::merge_fips_options_and_config(
+            self.fips,
+            self.fips_git_port,
+            self.fips_custom_cert_filename,
+            new_config,
+        )
     }
 }
 
@@ -143,9 +148,12 @@ pub fn clap_subcommand<'c>() -> App<'c, 'c> {
             "-S --shasum=[gitsha] 'Git SHA of change'",
             "--change-id=[id] 'The change ID'",
             "--skip-default 'skip default'",
-            "--docker=[image] 'Docker image'"])
-        .args_from_usage("<stage> 'Stage for the run'
-                          <phases> 'One or more phases'")
+            "--docker=[image] 'Docker image'"
+        ])
+        .args_from_usage(
+            "<stage> 'Stage for the run'
+                          <phases> 'One or more phases'",
+        )
         .args(&u_e_s_o_args())
         .args(&pipeline_arg())
         .args(&project_specific_args())

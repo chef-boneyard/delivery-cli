@@ -15,7 +15,7 @@
 // limitations under the License.
 //
 
-use job::change::{Change, BuilderCompat};
+use job::change::{BuilderCompat, Change};
 use serde_json::Value as SerdeJson;
 
 #[derive(Serialize)]
@@ -45,7 +45,7 @@ pub struct Top {
 #[derive(Serialize)]
 pub struct DNA {
     pub delivery: Top,
-    pub delivery_builder: BuilderCompat
+    pub delivery_builder: BuilderCompat,
 }
 
 #[derive(Serialize)]
@@ -54,5 +54,5 @@ pub struct WorkspaceCompat {
     pub chef: String,
     pub cache: String,
     pub repo: String,
-    pub ssh_wrapper: String
+    pub ssh_wrapper: String,
 }

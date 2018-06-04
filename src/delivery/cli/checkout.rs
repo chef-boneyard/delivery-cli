@@ -14,12 +14,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-use project;
-use fips;
-use cli::arguments::{pipeline_arg, patchset_arg, value_of, project_specific_args};
-use clap::{App, SubCommand, ArgMatches};
+use clap::{App, ArgMatches, SubCommand};
 use cli::Options;
+use cli::arguments::{patchset_arg, pipeline_arg, project_specific_args, value_of};
 use config::Config;
+use fips;
+use project;
 use types::DeliveryResult;
 
 pub const SUBCOMMAND_NAME: &'static str = "checkout";
@@ -68,8 +68,12 @@ impl<'n> Options for CheckoutClapOptions<'n> {
             new_config.project = project::project_from_cwd().ok();
         }
 
-        fips::merge_fips_options_and_config(self.fips, self.fips_git_port,
-                                            self.fips_custom_cert_filename, new_config)
+        fips::merge_fips_options_and_config(
+            self.fips,
+            self.fips_git_port,
+            self.fips_custom_cert_filename,
+            new_config,
+        )
     }
 }
 

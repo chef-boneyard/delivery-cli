@@ -14,11 +14,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-use cli::arguments::{api_port_arg, config_path_arg, value_of, u_e_s_o_args};
-use clap::{Arg, App, SubCommand, ArgMatches};
+use clap::{App, Arg, ArgMatches, SubCommand};
 use cli::Options;
-use types::DeliveryResult;
+use cli::arguments::{api_port_arg, config_path_arg, u_e_s_o_args, value_of};
 use config::Config;
+use types::DeliveryResult;
 
 pub const SUBCOMMAND_NAME: &'static str = "api";
 
@@ -42,7 +42,7 @@ impl<'n> Default for ApiClapOptions<'n> {
             server: "",
             api_port: "",
             ent: "",
-            user: ""
+            user: "",
         }
     }
 }
@@ -55,14 +55,15 @@ impl<'n> ApiClapOptions<'n> {
             server: value_of(&matches, "server"),
             api_port: value_of(&matches, "api-port"),
             ent: value_of(&matches, "ent"),
-            user: value_of(&matches, "user")
+            user: value_of(&matches, "user"),
         }
     }
 }
 
 impl<'n> Options for ApiClapOptions<'n> {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
-        let new_config = config.set_user(&self.user)
+        let new_config = config
+            .set_user(&self.user)
             .set_server(&self.server)
             .set_api_port(&self.api_port)
             .set_enterprise(&self.ent);
@@ -75,18 +76,21 @@ pub fn clap_subcommand<'c>() -> App<'c, 'c> {
         .about("Helper to call Delivery's HTTP API")
         .arg(api_port_arg())
         .args(&vec![config_path_arg()])
-        .arg(Arg::from_usage("<method> 'HTTP method for the request'")
-             .takes_value(false)
-             .possible_values(&["get", "put", "post", "delete"]))
-        .args_from_usage(
-            "<path> 'Path for request URL'")
-        .arg(Arg::with_name("data")
-             .long("data")
-             .short("d")
-             .help("Data to send for PUT/POST request")
-             .takes_value(true)
-             .multiple(false)
-             .number_of_values(1)
-             .use_delimiter(false))
+        .arg(
+            Arg::from_usage("<method> 'HTTP method for the request'")
+                .takes_value(false)
+                .possible_values(&["get", "put", "post", "delete"]),
+        )
+        .args_from_usage("<path> 'Path for request URL'")
+        .arg(
+            Arg::with_name("data")
+                .long("data")
+                .short("d")
+                .help("Data to send for PUT/POST request")
+                .takes_value(true)
+                .multiple(false)
+                .number_of_values(1)
+                .use_delimiter(false),
+        )
         .args(&u_e_s_o_args())
 }

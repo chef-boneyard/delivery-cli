@@ -15,29 +15,32 @@
 // limitations under the License.
 //
 
-use term;
-use std::sync::mpsc::{Sender, Receiver};
-use std::sync::mpsc::channel;
-use std::thread::{self, JoinHandle};
-use std::io::prelude::*;
 use std::io;
+use std::io::prelude::*;
+use std::sync::mpsc::channel;
+use std::sync::mpsc::{Receiver, Sender};
+use std::thread::{self, JoinHandle};
 use std::time::Duration;
+use term;
 
 /// Because sometimes, you just want a global variable.
 static mut SHOW_SPINNER: bool = true;
-static mut SHOW_OUTPUT:  bool = true;
-static mut COLORIZE:     bool = true;
+static mut SHOW_OUTPUT: bool = true;
+static mut COLORIZE: bool = true;
 
 pub struct Spinner {
     tx: Sender<isize>,
-    guard: JoinHandle<()>
+    guard: JoinHandle<()>,
 }
 
 impl Spinner {
     pub fn start() -> Spinner {
         let (tx, rx) = channel::<isize>();
-        let spinner = thread::spawn(move|| { Spinner::spin(rx) });
-        Spinner{ tx: tx, guard: spinner }
+        let spinner = thread::spawn(move || Spinner::spin(rx));
+        Spinner {
+            tx: tx,
+            guard: spinner,
+        }
     }
 
     pub fn stop(self) {
@@ -62,7 +65,7 @@ impl Spinner {
                         }
                     }
                     break;
-                },
+                }
                 Err(_) => {
                     thread::sleep(Duration::from_millis(100));
                     unsafe {
@@ -111,7 +114,7 @@ fn say_term(mut t: Box<term::StdoutTerminal>, color: &str, to_say: &str) {
         "magenta" => term::color::BRIGHT_MAGENTA,
         "white" => term::color::WHITE,
         "cyan" => term::color::BRIGHT_CYAN,
-        _ => term::color::WHITE
+        _ => term::color::WHITE,
     };
     t.fg(color_const).unwrap();
     t.write_all(to_say.as_bytes()).unwrap();
@@ -121,17 +124,15 @@ fn say_term(mut t: Box<term::StdoutTerminal>, color: &str, to_say: &str) {
 
 pub fn say(color: &str, to_say: &str) {
     match term::stdout() {
-        Some(t) => {
-            unsafe {
-                if SHOW_OUTPUT {
-                    if COLORIZE {
-                        say_term(t, color, to_say)
-                    } else {
-                        print!("{}", to_say)
-                    }
+        Some(t) => unsafe {
+            if SHOW_OUTPUT {
+                if COLORIZE {
+                    say_term(t, color, to_say)
                 } else {
-                    debug!("{}", to_say)
+                    print!("{}", to_say)
                 }
+            } else {
+                debug!("{}", to_say)
             }
         },
         None => {

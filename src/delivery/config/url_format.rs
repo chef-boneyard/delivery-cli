@@ -24,7 +24,6 @@ use config::Config;
 use types::DeliveryResult;
 
 impl Config {
-
     // Users url
     //
     // The url we use to manage users. (ssh-pub-key, permissions, etc.)
@@ -63,29 +62,35 @@ mod tests {
 
     #[test]
     fn test_users_url() {
-        let mut conf    = Config::default();
-        conf.server     = Some("automate.example.com".to_string());
+        let mut conf = Config::default();
+        conf.server = Some("automate.example.com".to_string());
         conf.enterprise = Some("test".to_string());
-        assert_eq!("https://automate.example.com/e/test/#/users".to_string(),
-                   conf.users_url().unwrap());
+        assert_eq!(
+            "https://automate.example.com/e/test/#/users".to_string(),
+            conf.users_url().unwrap()
+        );
     }
 
     #[test]
     fn test_organizations_url() {
-        let mut conf    = Config::default();
-        conf.server     = Some("automate.example.com".to_string());
+        let mut conf = Config::default();
+        conf.server = Some("automate.example.com".to_string());
         conf.enterprise = Some("test".to_string());
-        assert_eq!("https://automate.example.com/e/test/#/organizations".to_string(),
-                   conf.organizations_url().unwrap());
+        assert_eq!(
+            "https://automate.example.com/e/test/#/organizations".to_string(),
+            conf.organizations_url().unwrap()
+        );
     }
 
     #[test]
     fn test_projects_url() {
-        let mut conf      = Config::default();
-        conf.server       = Some("server".to_string());
-        conf.enterprise   = Some("test".to_string());
+        let mut conf = Config::default();
+        conf.server = Some("server".to_string());
+        conf.enterprise = Some("test".to_string());
         conf.organization = Some("org".to_string());
-        assert_eq!("https://server/e/test/#/organizations/org".to_string(),
-                   conf.projects_url().unwrap());
+        assert_eq!(
+            "https://server/e/test/#/organizations/org".to_string(),
+            conf.projects_url().unwrap()
+        );
     }
 }

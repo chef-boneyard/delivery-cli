@@ -15,36 +15,36 @@
 // limitations under the License.
 //
 
+use config::Config;
+use delivery_config::{BuildCookbookLocation, DeliveryConfig};
 use errors::{DeliveryError, Kind};
-use types::DeliveryResult;
 use git;
+use job::change::{BuilderCompat, Change};
+use job::dna::{Top, WorkspaceCompat, DNA};
 use serde_json;
-use delivery_config::{DeliveryConfig, BuildCookbookLocation};
-use job::dna::{Top, DNA, WorkspaceCompat};
-use job::change::{Change, BuilderCompat};
-use std::process::{Command, Stdio};
-use std::path::PathBuf;
+use std::error;
 use std::fs::File;
 use std::io::prelude::*;
+use std::path::PathBuf;
+use std::process::{Command, Stdio};
+use types::DeliveryResult;
 use utils;
-use utils::path_to_string;
+use utils::path_ext::{is_dir, is_file};
 use utils::path_join_many::PathJoinMany;
-use utils::path_ext::{is_file, is_dir};
-use std::error;
-use config::Config;
+use utils::path_to_string;
 
 pub struct Workspace {
     pub root: PathBuf,
     pub chef: PathBuf,
     pub cache: PathBuf,
     pub repo: PathBuf,
-    pub ssh_wrapper: PathBuf
+    pub ssh_wrapper: PathBuf,
 }
 
 #[derive(Debug)]
 pub enum Privilege {
     Drop,
-    NoDrop
+    NoDrop,
 }
 
 // Here's the config.rb we render for the chef-zero runs.
@@ -68,12 +68,12 @@ end
 
 impl Workspace {
     pub fn new(root: &PathBuf) -> Workspace {
-        Workspace{
+        Workspace {
             root: root.clone(),
             chef: root.join("chef"),
             cache: root.join("cache"),
             repo: root.join("repo"),
-            ssh_wrapper: root.join("bin").join("git_ssh")
+            ssh_wrapper: root.join("bin").join("git_ssh"),
         }
     }
 
@@ -94,13 +94,16 @@ impl Workspace {
     // will merge the old attributes with the new ones of the
     // coming change.
     pub fn clean_chef_nodes(&self) -> Result<(), DeliveryError> {
-       try!(utils::remove_recursive(&self.chef.join("nodes")));
-       Ok(())
+        try!(utils::remove_recursive(&self.chef.join("nodes")));
+        Ok(())
     }
 
     fn reset_repo(&self, git_ref: &str) -> Result<(), DeliveryError> {
         try!(git::git_command(&["reset", "--hard", git_ref], &self.repo));
-        try!(git::git_command(&["clean", "-x", "-f", "-d", "-q"], &self.repo));
+        try!(git::git_command(
+            &["clean", "-x", "-f", "-d", "-q"],
+            &self.repo
+        ));
         Ok(())
     }
 
@@ -108,47 +111,49 @@ impl Workspace {
         utils::copy_recursive(path, &self.chef.join("build_cookbook"))
     }
 
-    fn setup_build_cookbook_from_git(&self,
-                        config: &DeliveryConfig) -> DeliveryResult<()> {
+    fn setup_build_cookbook_from_git(&self, config: &DeliveryConfig) -> DeliveryResult<()> {
         let git_url = config.build_cookbook_get("git")?;
-        let branch = config.build_cookbook_get("branch").unwrap_or("master".to_owned());
+        let branch = config
+            .build_cookbook_get("branch")
+            .unwrap_or("master".to_owned());
         let build_cookbook_path = &self.chef.join("build_cookbook");
-        git::git_command(&["clone", &git_url,
-                         &path_to_string(build_cookbook_path)],
-                         &self.chef)?;
+        git::git_command(
+            &["clone", &git_url, &path_to_string(build_cookbook_path)],
+            &self.chef,
+        )?;
         git::git_command(&["checkout", &branch], build_cookbook_path)?;
         Ok(())
     }
 
     // This will need a windows implementation, and probably won't work on non-gnu tar systems
     // either.
-    fn setup_build_cookbook_from_supermarket(&self,
-                        config: &DeliveryConfig) -> DeliveryResult<()> {
+    fn setup_build_cookbook_from_supermarket(&self, config: &DeliveryConfig) -> DeliveryResult<()> {
         let name = config.build_cookbook_name()?;
-        let site = config.build_cookbook_get("site")
-                        .unwrap_or("https://supermarket.chef.io".to_owned());
+        let site = config
+            .build_cookbook_get("site")
+            .unwrap_or("https://supermarket.chef.io".to_owned());
         let result = utils::make_command("knife")
-             .arg("supermarket")
-             .arg("download")
-             .arg(&name)
-             .arg("-m")
-             .arg(&site)
-             .arg("-f")
-             .arg(&path_to_string(&self.chef.join("build_cookbook.tgz")))
-             .current_dir(&self.root)
-             .output()?;
+            .arg("supermarket")
+            .arg("download")
+            .arg(&name)
+            .arg("-m")
+            .arg(&site)
+            .arg("-f")
+            .arg(&path_to_string(&self.chef.join("build_cookbook.tgz")))
+            .current_dir(&self.root)
+            .output()?;
         utils::cmd_success_or_err(&result, Kind::SupermarketFailed)?;
         let tar_result = utils::make_command("tar")
-             .arg("zxf")
-             .arg(&path_to_string(&self.chef.join("build_cookbook.tgz")))
-             .current_dir(&self.chef)
-             .output()?;
+            .arg("zxf")
+            .arg(&path_to_string(&self.chef.join("build_cookbook.tgz")))
+            .current_dir(&self.chef)
+            .output()?;
         utils::cmd_success_or_err(&tar_result, Kind::TarFailed)?;
         let mv_result = utils::make_command("mv")
-             .arg(&path_to_string(&self.chef.join(name)))
-             .arg(&path_to_string(&self.chef.join("build_cookbook")))
-             .current_dir(&self.chef)
-             .output()?;
+            .arg(&path_to_string(&self.chef.join(name)))
+            .arg(&path_to_string(&self.chef.join("build_cookbook")))
+            .current_dir(&self.chef)
+            .output()?;
         utils::cmd_success_or_err(&mv_result, Kind::MoveFailed)?;
         Ok(())
     }
@@ -156,60 +161,72 @@ impl Workspace {
     fn setup_build_cookbook_from_chef_server(&self, name: &str) -> DeliveryResult<()> {
         utils::mkdir_recursive(&self.chef.join("tmp_cookbook"))?;
         let result = utils::make_command("knife")
-                        .arg("download")
-                        .arg(&format!("/cookbooks/{}", &name))
-                        .arg("--chef-repo-path")
-                        .arg(&path_to_string(&self.chef.join("tmp_cookbook")))
-                        .current_dir(&self.root)
-                        .output()?;
+            .arg("download")
+            .arg(&format!("/cookbooks/{}", &name))
+            .arg("--chef-repo-path")
+            .arg(&path_to_string(&self.chef.join("tmp_cookbook")))
+            .current_dir(&self.root)
+            .output()?;
         utils::cmd_success_or_err(&result, Kind::ChefServerFailed)?;
         let mv_result = utils::make_command("mv")
-                            .arg(&path_to_string(&self.chef.join_many(&["tmp_cookbook",
-                                                                      "cookbooks", &name])))
-                            .arg(&path_to_string(&self.chef.join("build_cookbook")))
-                            .current_dir(&self.chef)
-                            .output()?;
+            .arg(&path_to_string(&self.chef.join_many(&[
+                "tmp_cookbook",
+                "cookbooks",
+                &name,
+            ])))
+            .arg(&path_to_string(&self.chef.join("build_cookbook")))
+            .current_dir(&self.chef)
+            .output()?;
         utils::cmd_success_or_err(&mv_result, Kind::MoveFailed)?;
         Ok(())
     }
 
-    fn setup_build_cookbook_from_workflow(&self,
-                                          config: &DeliveryConfig,
-                                          toml_config: &Config) -> DeliveryResult<()> {
+    fn setup_build_cookbook_from_workflow(
+        &self,
+        config: &DeliveryConfig,
+        toml_config: &Config,
+    ) -> DeliveryResult<()> {
         let name = config.build_cookbook_name()?;
         let ent = config.build_cookbook_get("enterprise")?;
         let org = config.build_cookbook_get("organization")?;
-        let build_cookbook_config = toml_config.clone().set_enterprise(&ent)
-                                                       .set_organization(&org)
-                                                       .set_project(&name);
+        let build_cookbook_config = toml_config
+            .clone()
+            .set_enterprise(&ent)
+            .set_organization(&org)
+            .set_project(&name);
         let url = build_cookbook_config.delivery_git_ssh_url()?;
         git::git_command(
-            &["clone", &url, self.chef.join("build_cookbook").to_str().unwrap()],
-            &self.chef
+            &[
+                "clone",
+                &url,
+                self.chef.join("build_cookbook").to_str().unwrap(),
+            ],
+            &self.chef,
         )?;
         Ok(())
     }
 
-    fn setup_build_cookbook(&self, toml_config: &Config,
-                            config: &DeliveryConfig) -> DeliveryResult<()> {
+    fn setup_build_cookbook(
+        &self,
+        toml_config: &Config,
+        config: &DeliveryConfig,
+    ) -> DeliveryResult<()> {
         match config.build_cookbook_location()? {
             BuildCookbookLocation::Local => {
                 let ab_path = self.repo.join(config.build_cookbook_get("path")?);
                 self.setup_build_cookbook_from_path(&ab_path)
-            },
-            BuildCookbookLocation::Git => {
-                self.setup_build_cookbook_from_git(config)
-            },
+            }
+            BuildCookbookLocation::Git => self.setup_build_cookbook_from_git(config),
             BuildCookbookLocation::Supermarket => {
                 self.setup_build_cookbook_from_supermarket(config)
-            },
+            }
             BuildCookbookLocation::Workflow => {
                 self.setup_build_cookbook_from_workflow(config, toml_config)
-            },
+            }
             BuildCookbookLocation::ChefServer => {
                 let name = config.build_cookbook_name()?;
                 self.setup_build_cookbook_from_chef_server(&name)
-            },
+            }
         }
     }
 
@@ -224,12 +241,17 @@ impl Workspace {
             let output = match command.output() {
                 Ok(o) => o,
                 Err(e) => {
-                    let d = format!("failed to execute 'berks vendor {}' from '{}': {}",
-                                    &path_to_string(&self.chef.join("cookbooks")),
-                                    &path_to_string(&self.chef.join("build_cookbook")),
-                                    error::Error::description(&e));
-                    return Err(DeliveryError{ kind: Kind::FailedToExecute,
-                                                      detail: Some(d)}) },
+                    let d = format!(
+                        "failed to execute 'berks vendor {}' from '{}': {}",
+                        &path_to_string(&self.chef.join("cookbooks")),
+                        &path_to_string(&self.chef.join("build_cookbook")),
+                        error::Error::description(&e)
+                    );
+                    return Err(DeliveryError {
+                        kind: Kind::FailedToExecute,
+                        detail: Some(d),
+                    });
+                }
             };
             utils::cmd_success_or_err(&output, Kind::BerksFailed)?;
             let stdout = String::from_utf8_lossy(&output.stdout).to_string();
@@ -240,10 +262,10 @@ impl Workspace {
             debug!("No Berksfile found; simply moving the cookbook");
             try!(utils::mkdir_recursive(&self.chef.join("cookbooks")));
             let mv_result = Command::new("mv")
-                                .arg(&path_to_string(&self.chef.join("build_cookbook")))
-                                .arg(&path_to_string(&self.chef.join_many(&["cookbooks", bc_name])))
-                                .current_dir(&self.chef)
-                                .output()?;
+                .arg(&path_to_string(&self.chef.join("build_cookbook")))
+                .arg(&path_to_string(&self.chef.join_many(&["cookbooks", bc_name])))
+                .current_dir(&self.chef)
+                .output()?;
             utils::cmd_success_or_err(&mv_result, Kind::MoveFailed)?;
         }
         Ok(())
@@ -251,30 +273,38 @@ impl Workspace {
 
     /// This sets permissions in the workspace repo and cache directories.
     pub fn set_drop_permissions(&self) -> Result<(), DeliveryError> {
-        let paths_to_chown = &[&self.repo,
-                               &self.chef.join("cookbooks"),
-                               &self.chef.join("nodes"),
-                               &self.cache];
+        let paths_to_chown = &[
+            &self.repo,
+            &self.chef.join("cookbooks"),
+            &self.chef.join("nodes"),
+            &self.cache,
+        ];
         utils::chown_all("dbuild:dbuild", paths_to_chown)
     }
 
-    pub fn run_job(&self, phase_arg: &str,
-                    drop_privilege: &Privilege,
-                    local_change: &bool) -> DeliveryResult<()> {
+    pub fn run_job(
+        &self,
+        phase_arg: &str,
+        drop_privilege: &Privilege,
+        local_change: &bool,
+    ) -> DeliveryResult<()> {
         let config = DeliveryConfig::load_config(&self.repo)?;
         let bc_name = config.build_cookbook_name()?;
         let run_list = {
-            let phases: Vec<String> = phase_arg.split(" ")
-                .map(|p| format!("{}::{}", bc_name, p)).collect();
+            let phases: Vec<String> = phase_arg
+                .split(" ")
+                .map(|p| format!("{}::{}", bc_name, p))
+                .collect();
             phases.join(",")
         };
         let mut command = utils::make_command("chef-client");
         command.arg("-z").arg("--force-formatter");
         try!(self.handle_privilege_drop(drop_privilege, &mut command));
-        if ! local_change {
-          command.env("HOME", &path_to_string(&self.cache));
+        if !local_change {
+            command.env("HOME", &path_to_string(&self.cache));
         }
-        command.arg("-j")
+        command
+            .arg("-j")
             .arg(&path_to_string(&self.chef.join("dna.json")))
             .arg("-c")
             .arg(&path_to_string(&self.chef.join("config.rb")))
@@ -285,36 +315,36 @@ impl Workspace {
             .current_dir(&self.repo);
         match phase_arg {
             "default" => command.env("DELIVERY_BUILD_SETUP", "TRUE"),
-            _ => command.env("DELIVERY_BUILD_SETUP", "FALSE")
+            _ => command.env("DELIVERY_BUILD_SETUP", "FALSE"),
         };
         debug!("Job Command: {:?}", command);
         let output = match command.output() {
             Ok(o) => o,
             Err(e) => {
-                return Err(DeliveryError{
+                return Err(DeliveryError {
                     kind: Kind::FailedToExecute,
-                    detail: Some(
-                        format!("failed to execute chef-client: {}",
-                        error::Error::description(&e))
-                    )
+                    detail: Some(format!(
+                        "failed to execute chef-client: {}",
+                        error::Error::description(&e)
+                    )),
                 })
-            },
+            }
         };
         utils::cmd_success_or_err(&output, Kind::ChefFailed)?;
         Ok(())
     }
 
     #[cfg(not(target_os = "windows"))]
-    fn handle_privilege_drop(&self, privilege: &Privilege,
-                             cmd: &mut Command) -> Result<(), DeliveryError> {
+    fn handle_privilege_drop(
+        &self,
+        privilege: &Privilege,
+        cmd: &mut Command,
+    ) -> Result<(), DeliveryError> {
         match privilege {
             &Privilege::Drop => {
                 try!(self.set_drop_permissions());
-                cmd.arg("--user")
-                    .arg("dbuild")
-                    .arg("--group")
-                    .arg("dbuild");
-            },
+                cmd.arg("--user").arg("dbuild").arg("--group").arg("dbuild");
+            }
             _ => {}
         }
         Ok(())
@@ -322,14 +352,20 @@ impl Workspace {
 
     #[cfg(target_os = "windows")]
     #[allow(unused_variables)]
-    fn handle_privilege_drop(&self, privilege: &Privilege,
-                             cmd: &mut Command) -> Result<(), DeliveryError> {
+    fn handle_privilege_drop(
+        &self,
+        privilege: &Privilege,
+        cmd: &mut Command,
+    ) -> Result<(), DeliveryError> {
         Ok(())
     }
 
-    pub fn setup_chef_for_job(&self,
-                              toml_config: &Config, change: Change,
-                              ws_path: &PathBuf) -> Result<(), DeliveryError> {
+    pub fn setup_chef_for_job(
+        &self,
+        toml_config: &Config,
+        change: Change,
+        ws_path: &PathBuf,
+    ) -> Result<(), DeliveryError> {
         let config_rb_path = &self.chef.join("config.rb");
         debug!("Writing content of chef/config.rb");
         let mut config_rb = File::create(config_rb_path)?;
@@ -340,14 +376,14 @@ impl Workspace {
         self.setup_build_cookbook(toml_config, &config)?;
         let build_cb_name = config.build_cookbook_name()?;
         self.berks_vendor(&build_cb_name)?;
-        let workspace_data = WorkspaceCompat{
+        let workspace_data = WorkspaceCompat {
             root: path_to_string(&self.root),
             chef: path_to_string(&self.chef),
             cache: path_to_string(&self.cache),
             repo: path_to_string(&self.repo),
             ssh_wrapper: path_to_string(&self.ssh_wrapper),
         };
-        let top = Top{
+        let top = Top {
             workspace_path: path_to_string(ws_path),
             workspace: workspace_data,
             change: change,
@@ -357,16 +393,16 @@ impl Workspace {
             // config: config.attributes
             config: DeliveryConfig::load_raw_config(&self.repo)?,
         };
-        let compat = BuilderCompat{
+        let compat = BuilderCompat {
             workspace: path_to_string(&self.root),
             repo: path_to_string(&self.repo),
             cache: path_to_string(&self.cache),
             build_id: "deprecated".to_string(),
-            build_user: "dbuild".to_string()
+            build_user: "dbuild".to_string(),
         };
-        let dna = DNA{
+        let dna = DNA {
             delivery: top,
-            delivery_builder: compat
+            delivery_builder: compat,
         };
         debug!("Writing content of chef/dna.json");
         let dna_json_path = &self.chef.join("dna.json");
@@ -377,9 +413,14 @@ impl Workspace {
         Ok(())
     }
 
-    pub fn setup_repo_for_change(&self, git_url: &str, change_branch: &str,
-                                 pipeline: &str, sha: &str) -> DeliveryResult<()> {
-        if ! is_dir(&self.repo.join(".git")) {
+    pub fn setup_repo_for_change(
+        &self,
+        git_url: &str,
+        change_branch: &str,
+        pipeline: &str,
+        sha: &str,
+    ) -> DeliveryResult<()> {
+        if !is_dir(&self.repo.join(".git")) {
             try!(git::git_command(&["clone", git_url, "."], &self.repo));
         }
         try!(git::git_command(&["fetch", "origin"], &self.repo));
@@ -387,23 +428,28 @@ impl Workspace {
         try!(git::git_command(&["checkout", pipeline], &self.repo));
         try!(self.reset_repo(&format!("remotes/origin/{}", pipeline)));
         if sha.is_empty() {
-            try!(git::git_command(&["fetch", "origin", change_branch], &self.repo));
-            try!(git::git_command(&["merge", "--strategy", "resolve", "FETCH_HEAD"], &self.repo));
+            try!(git::git_command(
+                &["fetch", "origin", change_branch],
+                &self.repo
+            ));
+            try!(git::git_command(
+                &["merge", "--strategy", "resolve", "FETCH_HEAD"],
+                &self.repo
+            ));
         } else {
             try!(self.reset_repo(sha))
         }
         Ok(())
     }
-
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
     use std::fs::File;
+    use std::path::PathBuf;
     use utils;
     use utils::path_ext::{is_dir, is_file};
-    use std::path::PathBuf;
 
     #[test]
     fn test_workspace_new() {

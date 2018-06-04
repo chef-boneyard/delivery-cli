@@ -25,9 +25,9 @@
 // The main purpose of this module is to provide methods to access
 // the paths that the tests/ directory has inside. The module won't
 // be loaded unless we are running the tests suits with `cargo test`
+use super::path_join_many::PathJoinMany;
 use std::env;
 use std::path::PathBuf;
-use super::path_join_many::PathJoinMany;
 
 // Return the path of the generated delivery-cli executable
 // => delivery-cli/target/debug/deps/delivery-*
@@ -39,11 +39,11 @@ pub fn exe_path() -> PathBuf {
 // => delivery-cli/tests
 pub fn root() -> PathBuf {
     let mut exe = exe_path(); // delivery-*/
-    exe.pop();                // deps/
-    exe.pop();                // debug/
-    exe.pop();                // target/
-    exe.pop();                // delivery-cli/
-    exe.join("tests")         // tests/
+    exe.pop(); // deps/
+    exe.pop(); // debug/
+    exe.pop(); // target/
+    exe.pop(); // delivery-cli/
+    exe.join("tests") // tests/
 }
 
 // Return the fixtures path inside the tests folder:
@@ -59,4 +59,3 @@ pub fn fixture_file(names: &str) -> PathBuf {
 pub fn join_many(v: &Vec<&str>) -> PathBuf {
     root().join_many(v)
 }
-

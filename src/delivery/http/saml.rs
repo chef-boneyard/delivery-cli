@@ -15,15 +15,15 @@
 // limitations under the License.
 //
 
+use config::Config;
 use errors::{DeliveryError, Kind};
 use http::*;
 use hyper::status::StatusCode;
 use serde_json;
-use config::Config;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LookupResponse {
-    enabled: bool
+    enabled: bool,
 }
 
 impl LookupResponse {
@@ -43,21 +43,23 @@ pub fn is_enabled(config: &Config) -> Result<bool, DeliveryError> {
             try!(result.read_to_string(&mut body_string));
             let resp = try!(LookupResponse::parse_saml_enabled(&body_string));
             Ok(resp)
-        },
-        StatusCode::NotFound => { // 404 received if API does not exist
+        }
+        StatusCode::NotFound => {
+            // 404 received if API does not exist
             debug!("endpoint 'saml/enabled' not found");
             Ok(false)
-        },
+        }
         error_code @ _ => {
-            let msg = format!("lookup of SAML authentication returned {}",
-                              error_code);
+            let msg = format!("lookup of SAML authentication returned {}", error_code);
             let mut detail = String::new();
             let e = match result.read_to_string(&mut detail) {
                 Ok(_) => Ok(detail),
-                Err(e) => Err(e)
+                Err(e) => Err(e),
             };
-            Err(DeliveryError{ kind: Kind::ApiError(error_code, e),
-                               detail: Some(msg)})
+            Err(DeliveryError {
+                kind: Kind::ApiError(error_code, e),
+                detail: Some(msg),
+            })
         }
     }
 }

@@ -15,51 +15,60 @@
 // limitations under the License.
 //
 
-use std::process::Command;
-use std::env;
 use errors::{DeliveryError, Kind};
 use libc;
-use utils::path_to_string;
-use std::path::{Path, PathBuf};
 use std::convert::AsRef;
+use std::env;
 use std::error;
+use std::path::{Path, PathBuf};
+use std::process::Command;
+use utils::path_to_string;
 
 pub fn copy_recursive<A, B>(f: &A, t: &B) -> Result<(), DeliveryError>
-        where A: AsRef<Path> + ?Sized,
-              B: AsRef<Path> + ?Sized {
+where
+    A: AsRef<Path> + ?Sized,
+    B: AsRef<Path> + ?Sized,
+{
     let from = f.as_ref();
     let to = t.as_ref();
-    let result = try!(Command::new("cp")
-         .arg("-R")
-         .arg("-a")
-         .arg(from.to_str().unwrap())
-         .arg(to.to_str().unwrap())
-         .output());
+    let result = try!(
+        Command::new("cp")
+            .arg("-R")
+            .arg("-a")
+            .arg(from.to_str().unwrap())
+            .arg(to.to_str().unwrap())
+            .output()
+    );
     super::cmd_success_or_err(&result, Kind::CopyFailed)
 }
 
 pub fn remove_recursive<P: ?Sized>(path: &P) -> Result<(), DeliveryError>
-    where P: AsRef<Path>
+where
+    P: AsRef<Path>,
 {
-    try!(Command::new("rm")
-         .arg("-rf")
-         .arg(path.as_ref().to_str().unwrap())
-         .output());
+    try!(
+        Command::new("rm")
+            .arg("-rf")
+            .arg(path.as_ref().to_str().unwrap())
+            .output()
+    );
     Ok(())
 }
 
 pub fn chmod<P: ?Sized>(path: &P, setting: &str) -> Result<(), DeliveryError>
-    where P: AsRef<Path>
+where
+    P: AsRef<Path>,
 {
-    let result = try!(Command::new("chmod")
-         .arg(setting)
-         .arg(path.as_ref().to_str().unwrap())
-         .output());
+    let result = try!(
+        Command::new("chmod")
+            .arg(setting)
+            .arg(path.as_ref().to_str().unwrap())
+            .output()
+    );
     super::cmd_success_or_err(&result, Kind::ChmodFailed)
 }
 
-pub fn chown_all<P: AsRef<Path>>(who: &str,
-                                 paths: &[P]) -> Result<(), DeliveryError> {
+pub fn chown_all<P: AsRef<Path>>(who: &str, paths: &[P]) -> Result<(), DeliveryError> {
     let mut command = Command::new("chown");
     command.arg("-R").arg(who);
     for p in paths {
@@ -68,10 +77,14 @@ pub fn chown_all<P: AsRef<Path>>(who: &str,
     let output = match command.output() {
         Ok(o) => o,
         Err(e) => {
-            return Err(DeliveryError{
+            return Err(DeliveryError {
                 kind: Kind::FailedToExecute,
-                detail: Some(format!("failed to execute chown: {}",
-                                     error::Error::description(&e)))}) },
+                detail: Some(format!(
+                    "failed to execute chown: {}",
+                    error::Error::description(&e)
+                )),
+            })
+        }
     };
     super::cmd_success_or_err(&output, Kind::ChmodFailed)
 }
@@ -79,7 +92,7 @@ pub fn chown_all<P: AsRef<Path>>(who: &str,
 pub fn privileged_process() -> bool {
     match unsafe { libc::getuid() } {
         0 => true,
-        _ => false
+        _ => false,
     }
 }
 

@@ -15,14 +15,14 @@
 // limitations under the License.
 //
 
-use std;
+use cli::checkout::CheckoutClapOptions;
+use command::Command;
+use config::Config;
 use fips;
 use git;
-use cli::checkout::CheckoutClapOptions;
+use std;
 use types::{DeliveryResult, ExitCode};
-use utils::say::{sayln, say};
-use config::Config;
-use command::Command;
+use utils::say::{say, sayln};
 
 pub struct CheckoutCommand<'n> {
     pub options: &'n CheckoutClapOptions<'n>,
@@ -51,7 +51,7 @@ impl<'n> Command for CheckoutCommand<'n> {
             "" | "latest" => {
                 sayln("white", " tracking latest changes");
                 "latest"
-            },
+            }
             p @ _ => {
                 say("white", " at patchset ");
                 sayln("yellow", p);

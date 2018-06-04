@@ -15,11 +15,11 @@
 // limitations under the License.
 //
 
-use cli::arguments::{api_port_arg, server_arg, value_of};
-use clap::{App, SubCommand, ArgMatches};
+use clap::{App, ArgMatches, SubCommand};
 use cli::Options;
-use types::DeliveryResult;
+use cli::arguments::{api_port_arg, server_arg, value_of};
 use config::Config;
+use types::DeliveryResult;
 
 pub const SUBCOMMAND_NAME: &'static str = "status";
 
@@ -52,8 +52,7 @@ impl<'n> StatusClapOptions<'n> {
 
 impl<'n> Options for StatusClapOptions<'n> {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
-        let new_config = config.set_api_port(&self.api_port)
-            .set_server(&self.server);
+        let new_config = config.set_api_port(&self.api_port).set_server(&self.server);
         Ok(new_config)
     }
 }
