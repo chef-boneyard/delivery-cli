@@ -1,0 +1,25 @@
+# Documentation available at https://expeditor.chef.io/
+
+# Slack channel in Chef Software slack to send notifications about build failures, etc
+slack:
+  notify_channel: delivery-cli-notify
+
+pipelines:
+  - verify:
+      description: Pull Request validation tests
+      env:
+        - USE_CHEFDK_LIBS: true
+
+github:
+  # Deletes the GitHub PR branch after successfully merged into the release branch
+  delete_branch_on_merge: true
+
+merge_actions:
+  - built_in:bump_version:
+      ignore_labels:
+        - "Version: Skip Bump"
+        - "Expeditor: Skip All"
+  - built_in:update_changelog:
+      ignore_labels:
+        - "Changelog: Skip Update"
+        - "Expeditor: Skip All"

@@ -1,0 +1,45 @@
+steps:
+
+  - label: cucumber_tests_stable
+    commands:
+      - asdf global rust stable
+      - bundle install
+      - bundle exec cucumber
+    env:
+      - CUCUMBER_TESTS: 1
+    plugins:
+      docker#v1.1.1:
+        image: "chefes/releng-base"
+
+  - label: cargo_tests_stable
+    commands:
+      - eval "$(/opt/chefdk/bin/chef shell-init bash)"
+      - asdf global rust stable
+      - make test
+    env:
+      - CARGO_TESTS_STABLE: 1
+    plugins:
+      docker#v1.1.1:
+        image: "chefes/releng-base"
+
+  - label: cargo_tests_beta
+    commands:
+      - eval "$(/opt/chefdk/bin/chef shell-init bash)"
+      - asdf global rust beta
+      - make test
+    env:
+      - CARGO_TESTS_BETA: 1
+    plugins:
+      docker#v1.1.1:
+        image: "chefes/releng-base"
+
+  - label: cargo_tests_defined
+    commands:
+      - eval "$(/opt/chefdk/bin/chef shell-init bash)"
+      - asdf global rust 1.26.0
+      - make test
+    env:
+      - CARGO_TESTS_DEFINED: 1
+    plugins:
+      docker#v1.1.1:
+        image: "chefes/releng-base"
