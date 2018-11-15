@@ -126,7 +126,7 @@ impl APIClient {
     // Use to make unauthenticated requests where you specify
     // the full route.
     pub fn from_config_with_basic_routing(config: &Config) -> DeliveryResult<APIClient> {
-        let host = try!(config.api_host_and_port());
+        let host = try!(config.api_base_resource());
         let proto_str = try!(config.api_protocol());
         let proto = try!(HProto::from_str(&proto_str));
         Ok(APIClient::new(proto, &host))
@@ -542,7 +542,7 @@ impl APIAuth {
             }
             None => try!(TokenStore::from_home()),
         };
-        let api_server = try!(config.api_host_and_port());
+        let api_server = try!(config.api_base_resource());
         let ent = try!(config.enterprise());
         let user = try!(config.user());
         APIAuth::from_token_store(tstore, &api_server, &ent, &user).or_else(|e| {

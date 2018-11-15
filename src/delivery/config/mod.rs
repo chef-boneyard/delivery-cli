@@ -183,6 +183,17 @@ impl Config {
         });
     }
 
+    /// Return the host and port, suffixed with the workflow resource if we are in A2 mode
+    pub fn api_base_resource(&self) -> DeliveryResult<String> {
+        let host_and_port = try!(self.api_host_and_port());
+        let resource_base = if self.a2_mode.unwrap_or(false) {
+            format!("{}/workflow", host_and_port)
+        } else {
+            host_and_port
+        };
+        return Ok(resource_base);
+    }
+
     /// Returns the SSH URL to talk to Delivery's Git
     pub fn delivery_git_ssh_url(&self) -> DeliveryResult<String> {
         if self.fips.unwrap_or(false) {
@@ -458,6 +469,39 @@ mod tests {
         let conf = Config::default();
         assert!(conf.server.is_none());
         assert!(conf.api_host_and_port().is_err());
+    }
+
+    #[test]
+    fn test_base_resource_with_port_without_a2() {
+        let mut conf = Config::default();
+        conf.server = Some("127.0.0.1".to_string());
+        conf.api_port = Some("2112".to_string());
+        assert_eq!(
+            "127.0.0.1:2112".to_string(),
+            conf.api_base_resource().unwrap()
+        );
+    }
+
+
+    #[test]
+    fn test_api_base_resource_with_port_with_a2() {
+        let mut conf = Config::default();
+        conf.server = Some("127.0.0.1".to_string());
+        conf.a2_mode = Some(true);
+        conf.api_port = Some("2112".to_string());
+        assert_eq!(
+            "127.0.0.1:2112/workflow".to_string(),
+            conf.api_base_resource().unwrap()
+        );
+    }
+
+    #[test]
+    fn test_api_base_resource_without_port_with_a2() {
+        let mut conf = Config::default();
+        conf.server = Some("127.0.0.1".to_string());
+        conf.a2_mode = Some(true);
+        assert!(conf.api_port.is_none());
+        assert_eq!("127.0.0.1/workflow".to_string(), conf.api_base_resource().unwrap());
     }
 
     #[test]

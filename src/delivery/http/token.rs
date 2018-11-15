@@ -63,7 +63,7 @@ impl TokenResponse {
 // that it is valid and has not yet expired. Otherwise it will return
 // false saying that a token needs to be regenerated
 pub fn verify(config: &Config) -> Result<bool, DeliveryError> {
-    let api_server = try!(config.api_host_and_port());
+    let api_server = try!(config.api_base_resource());
     let ent = try!(config.enterprise());
     let user = try!(config.user());
     let tstore = try!(TokenStore::from_home());
