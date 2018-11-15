@@ -48,6 +48,7 @@ pub struct Config {
     pub fips: Option<bool>,
     pub fips_git_port: Option<String>,
     pub fips_custom_cert_filename: Option<String>,
+    pub a2_mode: Option<bool>,
 }
 
 pub mod url_format;
@@ -73,10 +74,12 @@ impl Default for Config {
             fips: None,
             fips_git_port: None,
             fips_custom_cert_filename: None,
+            a2_mode: Some(false),
         }
     }
 }
 
+// TODO: Fix this up to handle bool type in config, so we can have saml, fips, a2_mode, etc
 macro_rules! config_accessor_for {
     ($name:ident, $set_name:ident, $err_msg:expr) => {
         impl Config {
@@ -160,7 +163,11 @@ config_accessor_for!(
     set_config_json,
     "config_json not set; set it in your cli.toml"
 );
-config_accessor_for!(fips_git_port, set_fips_git_port, "You did not set the fips_git_port. Set this value in your cli.toml or pass --fips-git-port.\nIt should be set to any port that is free and open on localhost (i.e. `fips_git_port = \"36534\"` in your cli.toml).");
+config_accessor_for!(
+    fips_git_port,
+    set_fips_git_port,
+    "You did not set the fips_git_port. Set this value in your cli.toml or pass --fips-git-port.\nIt should be set to any port that is free and open on localhost (i.e. `fips_git_port = \"36534\"` in your cli.toml)."
+);
 
 impl Config {
     /// Return the host and port at which we can access the Delivery
@@ -314,6 +321,9 @@ impl Config {
         if config.api_protocol.is_some() {
             self.api_protocol = config.api_protocol
         }
+        if config.a2_mode.is_some() {
+            self.a2_mode = config.a2_mode
+        }
     }
 
     fn check_dot_delivery_cli(path: PathBuf) -> Option<PathBuf> {
@@ -376,6 +386,7 @@ mod tests {
                 assert_eq!(None, config.saml);
                 assert_eq!(None, config.fips);
                 assert_eq!(None, config.fips_git_port);
+                assert_eq!(Some(false), config.a2_mode);
             }
             Err(e) => panic!("Failed to parse: {:?}", e.detail),
         }
@@ -397,6 +408,7 @@ mod tests {
             saml = true
             fips = true
             fips_git_port = "55555"
+            a2_mode = true
 "#;
         let config_result = Config::parse_config(toml);
         match config_result {
@@ -416,6 +428,7 @@ mod tests {
                 assert_eq!(Some(true), config.saml);
                 assert_eq!(Some(true), config.fips);
                 assert_eq!(Some("55555".to_string()), config.fips_git_port);
+                assert_eq!(Some(true), config.a2_mode);
             }
             Err(e) => panic!("Failed to parse: {:?}", e.detail),
         }
