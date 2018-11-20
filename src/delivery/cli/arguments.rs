@@ -117,6 +117,8 @@ fn_arg!(
     "-a --auto-bump 'Automatic cookbook version bump'"
 );
 
+fn_arg!(a2_mode_arg, "--a2-mode 'Interoperate with Automate 2'");
+
 fn_arg!(no_spinner_arg, "--no-spinner 'Disable the spinner'");
 
 fn_arg!(no_color_arg, "--no-color 'Disable colors in terminal'");

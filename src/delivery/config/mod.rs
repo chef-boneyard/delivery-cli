@@ -79,7 +79,7 @@ impl Default for Config {
     }
 }
 
-// TODO: Fix this up to handle bool type in config, so we can have saml, fips, a2_mode, etc
+
 macro_rules! config_accessor_for {
     ($name:ident, $set_name:ident, $err_msg:expr) => {
         impl Config {
@@ -102,6 +102,30 @@ macro_rules! config_accessor_for {
         }
     };
 }
+
+// TODO: DRY this up with above
+macro_rules! config_bool_accessor_for {
+    ($name:ident, $set_name:ident, $err_msg:expr) => {
+        impl Config {
+            pub fn $name(&self) -> DeliveryResult<bool> {
+                match self.$name {
+                    Some(ref v) => Ok(v.clone()),
+                    None => Err(DeliveryError {
+                        kind: Kind::MissingConfig,
+                        detail: Some(String::from($err_msg)),
+                    }),
+                }
+            }
+
+            pub fn $set_name(mut self, $name: bool) -> Config {
+                self.$name = Some($name);
+                self
+            }
+        }
+    };
+}
+
+
 
 config_accessor_for!(
     server,
@@ -168,6 +192,13 @@ config_accessor_for!(
     set_fips_git_port,
     "You did not set the fips_git_port. Set this value in your cli.toml or pass --fips-git-port.\nIt should be set to any port that is free and open on localhost (i.e. `fips_git_port = \"36534\"` in your cli.toml)."
 );
+
+config_bool_accessor_for!(
+    a2_mode,
+    set_a2_mode,
+    "You did not set the a2_mode. Set this value in your cli.toml."
+);
+
 
 impl Config {
     /// Return the host and port at which we can access the Delivery
