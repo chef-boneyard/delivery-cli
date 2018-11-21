@@ -74,7 +74,7 @@ impl Default for Config {
             fips: None,
             fips_git_port: None,
             fips_custom_cert_filename: None,
-            a2_mode: Some(false),
+            a2_mode: None
         }
     }
 }
