@@ -428,7 +428,7 @@ mod tests {
                 assert_eq!(None, config.saml);
                 assert_eq!(None, config.fips);
                 assert_eq!(None, config.fips_git_port);
-                assert_eq!(Some(false), config.a2_mode);
+                assert_eq!(None, config.a2_mode);
             }
             Err(e) => panic!("Failed to parse: {:?}", e.detail),
         }
