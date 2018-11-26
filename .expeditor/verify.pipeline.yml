@@ -2,6 +2,7 @@ steps:
 
   - label: cucumber_tests_stable
     commands:
+      - . /opt/asdf/asdf.sh
       - asdf global rust stable
       - bundle install
       - bundle exec cucumber
@@ -13,6 +14,7 @@ steps:
 
   - label: cargo_tests_stable
     commands:
+      - . /opt/asdf/asdf.sh
       - eval "$(/opt/chefdk/bin/chef shell-init bash)"
       - asdf global rust stable
       - make test
@@ -24,6 +26,7 @@ steps:
 
   - label: cargo_tests_beta
     commands:
+      - . /opt/asdf/asdf.sh
       - eval "$(/opt/chefdk/bin/chef shell-init bash)"
       - asdf global rust beta
       - make test
@@ -35,6 +38,7 @@ steps:
 
   - label: cargo_tests_defined
     commands:
+      - . /opt/asdf/asdf.sh
       - eval "$(/opt/chefdk/bin/chef shell-init bash)"
       - asdf global rust 1.26.0
       - make test
