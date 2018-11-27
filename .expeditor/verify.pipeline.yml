@@ -3,6 +3,7 @@ steps:
   - label: cucumber_tests_stable
     commands:
       - . /opt/asdf/asdf.sh
+      - useradd dbuild
       - asdf global rust stable
       - bundle install
       - bundle exec cucumber
@@ -16,6 +17,7 @@ steps:
     commands:
       - . /opt/asdf/asdf.sh
       - eval "$(/opt/chefdk/bin/chef shell-init bash)"
+      - useradd dbuild
       - asdf global rust stable
       - make test
     env:
@@ -28,6 +30,7 @@ steps:
     commands:
       - . /opt/asdf/asdf.sh
       - eval "$(/opt/chefdk/bin/chef shell-init bash)"
+      - useradd dbuild
       - asdf global rust beta
       - make test
     env:
@@ -40,6 +43,7 @@ steps:
     commands:
       - . /opt/asdf/asdf.sh
       - eval "$(/opt/chefdk/bin/chef shell-init bash)"
+      - useradd dbuild
       - asdf global rust 1.26.0
       - make test
     env:
