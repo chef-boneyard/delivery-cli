@@ -12,6 +12,9 @@ local-mode-cache
 Gemfile.lock
 .DS_Store
 
+# Vim
+*.swp
+
 # Cucumber Stuff
 tmp/
 /cookbooks/delivery_rust/cookbooks/
