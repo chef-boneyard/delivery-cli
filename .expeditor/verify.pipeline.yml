@@ -5,8 +5,7 @@ steps:
       - . /opt/asdf/asdf.sh
       - useradd dbuild
       - asdf global rust stable
-      - chef exec bundle install
-      - chef exec bundle exec cucumber
+      - make cucumber
     env:
       - CUCUMBER_TESTS: 1
     plugins:
