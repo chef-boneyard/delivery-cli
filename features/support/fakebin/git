@@ -12,7 +12,7 @@ features_dir=$( cd "$( dirname "${BASH_SOURCE[0]}" )/../.." && pwd )
 tmp_dir=$features_dir/tmp
 mkdir -p $tmp_dir
 
-upper_command=$(echo "$command" | tr '[:lower:]' '[:upper:]')
+upper_command=$(echo "$command" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
 eval mocked_var_reference="${upper_command}_MOCKED"
 if [[ $MOCK_ALL_BASH = true ]] || [[ ${!mocked_var_reference} = true ]]; then
     echo "Skipping mocked git call: $command"
