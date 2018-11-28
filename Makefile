@@ -142,3 +142,6 @@ cargo_check:
 ruby_check:
 	@which ruby >> /dev/null || \
 	(echo "Ruby is not installed. Install via your preferred method, or use rbenv if you are unsure how to get started.")
+
+container:
+	docker run -it --mount type=bind,source=$(PWD),target=/delivery-cli chefes/releng-base:latest /bin/bash
