@@ -1,7 +1,7 @@
 source 'https://rubygems.org'
 
 gem 'rake'
-gem 'rack'
+gem 'rack', '= 2.0.5'
 gem 'grape'
 gem 'cucumber', '~> 2.4'
 gem 'aruba'
