@@ -48,6 +48,7 @@ pub struct Config {
     pub fips: Option<bool>,
     pub fips_git_port: Option<String>,
     pub fips_custom_cert_filename: Option<String>,
+    pub a2_mode: Option<bool>,
 }
 
 pub mod url_format;
@@ -73,9 +74,11 @@ impl Default for Config {
             fips: None,
             fips_git_port: None,
             fips_custom_cert_filename: None,
+            a2_mode: None
         }
     }
 }
+
 
 macro_rules! config_accessor_for {
     ($name:ident, $set_name:ident, $err_msg:expr) => {
@@ -99,6 +102,30 @@ macro_rules! config_accessor_for {
         }
     };
 }
+
+// TODO: DRY this up with above
+macro_rules! config_bool_accessor_for {
+    ($name:ident, $set_name:ident, $err_msg:expr) => {
+        impl Config {
+            pub fn $name(&self) -> DeliveryResult<bool> {
+                match self.$name {
+                    Some(ref v) => Ok(v.clone()),
+                    None => Err(DeliveryError {
+                        kind: Kind::MissingConfig,
+                        detail: Some(String::from($err_msg)),
+                    }),
+                }
+            }
+
+            pub fn $set_name(mut self, $name: bool) -> Config {
+                self.$name = Some($name);
+                self
+            }
+        }
+    };
+}
+
+
 
 config_accessor_for!(
     server,
@@ -160,7 +187,18 @@ config_accessor_for!(
     set_config_json,
     "config_json not set; set it in your cli.toml"
 );
-config_accessor_for!(fips_git_port, set_fips_git_port, "You did not set the fips_git_port. Set this value in your cli.toml or pass --fips-git-port.\nIt should be set to any port that is free and open on localhost (i.e. `fips_git_port = \"36534\"` in your cli.toml).");
+config_accessor_for!(
+    fips_git_port,
+    set_fips_git_port,
+    "You did not set the fips_git_port. Set this value in your cli.toml or pass --fips-git-port.\nIt should be set to any port that is free and open on localhost (i.e. `fips_git_port = \"36534\"` in your cli.toml)."
+);
+
+config_bool_accessor_for!(
+    a2_mode,
+    set_a2_mode,
+    "You did not set the a2_mode. Set this value in your cli.toml."
+);
+
 
 impl Config {
     /// Return the host and port at which we can access the Delivery
@@ -174,6 +212,17 @@ impl Config {
             Some(ref p) => format!("{}:{}", s, p),
             None => s,
         });
+    }
+
+    /// Return the host and port, suffixed with the workflow resource if we are in A2 mode
+    pub fn api_base_resource(&self) -> DeliveryResult<String> {
+        let host_and_port = try!(self.api_host_and_port());
+        let resource_base = if self.a2_mode.unwrap_or(false) {
+            format!("{}/workflow", host_and_port)
+        } else {
+            host_and_port
+        };
+        return Ok(resource_base);
     }
 
     /// Returns the SSH URL to talk to Delivery's Git
@@ -314,6 +363,9 @@ impl Config {
         if config.api_protocol.is_some() {
             self.api_protocol = config.api_protocol
         }
+        if config.a2_mode.is_some() {
+            self.a2_mode = config.a2_mode
+        }
     }
 
     fn check_dot_delivery_cli(path: PathBuf) -> Option<PathBuf> {
@@ -376,6 +428,7 @@ mod tests {
                 assert_eq!(None, config.saml);
                 assert_eq!(None, config.fips);
                 assert_eq!(None, config.fips_git_port);
+                assert_eq!(None, config.a2_mode);
             }
             Err(e) => panic!("Failed to parse: {:?}", e.detail),
         }
@@ -397,6 +450,7 @@ mod tests {
             saml = true
             fips = true
             fips_git_port = "55555"
+            a2_mode = true
 "#;
         let config_result = Config::parse_config(toml);
         match config_result {
@@ -416,6 +470,7 @@ mod tests {
                 assert_eq!(Some(true), config.saml);
                 assert_eq!(Some(true), config.fips);
                 assert_eq!(Some("55555".to_string()), config.fips_git_port);
+                assert_eq!(Some(true), config.a2_mode);
             }
             Err(e) => panic!("Failed to parse: {:?}", e.detail),
         }
@@ -445,6 +500,39 @@ mod tests {
         let conf = Config::default();
         assert!(conf.server.is_none());
         assert!(conf.api_host_and_port().is_err());
+    }
+
+    #[test]
+    fn test_base_resource_with_port_without_a2() {
+        let mut conf = Config::default();
+        conf.server = Some("127.0.0.1".to_string());
+        conf.api_port = Some("2112".to_string());
+        assert_eq!(
+            "127.0.0.1:2112".to_string(),
+            conf.api_base_resource().unwrap()
+        );
+    }
+
+
+    #[test]
+    fn test_api_base_resource_with_port_with_a2() {
+        let mut conf = Config::default();
+        conf.server = Some("127.0.0.1".to_string());
+        conf.a2_mode = Some(true);
+        conf.api_port = Some("2112".to_string());
+        assert_eq!(
+            "127.0.0.1:2112/workflow".to_string(),
+            conf.api_base_resource().unwrap()
+        );
+    }
+
+    #[test]
+    fn test_api_base_resource_without_port_with_a2() {
+        let mut conf = Config::default();
+        conf.server = Some("127.0.0.1".to_string());
+        conf.a2_mode = Some(true);
+        assert!(conf.api_port.is_none());
+        assert_eq!("127.0.0.1/workflow".to_string(), conf.api_base_resource().unwrap());
     }
 
     #[test]

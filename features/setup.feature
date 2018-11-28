@@ -24,6 +24,7 @@ Scenario: setup with no additional data supplied
     api_protocol = "https"
     git_port = "8989"
     pipeline = "master"
+    a2_mode = false
 
     """
 
@@ -37,6 +38,7 @@ Scenario: setup with enterprise
     enterprise = "Foobar"
     git_port = "8989"
     pipeline = "master"
+    a2_mode = false
 
     """
 
@@ -50,6 +52,7 @@ Scenario: setup with organization
     organization = "Engineering"
     git_port = "8989"
     pipeline = "master"
+    a2_mode = false
 
     """
 
@@ -63,6 +66,7 @@ Scenario: setup with user
     user = "alice"
     git_port = "8989"
     pipeline = "master"
+    a2_mode = false
 
     """
 
@@ -75,6 +79,7 @@ Scenario: setup with pipeline
     api_protocol = "https"
     git_port = "8989"
     pipeline = "legacy"
+    a2_mode = false
 
     """
 
@@ -88,6 +93,7 @@ Scenario: setup with server
     api_protocol = "https"
     git_port = "8989"
     pipeline = "master"
+    a2_mode = false
 
     """
 
@@ -101,6 +107,24 @@ Scenario: setup with project
     project = "coffee_lover"
     git_port = "8989"
     pipeline = "master"
+    a2_mode = false
+
+    """
+
+# A2 projects can only be authenticated with SAML enabled
+# therefor by enabling a2-mode, it automatically enabled saml
+Scenario: setup an A2 project
+  When I successfully run `delivery setup --project=coffee_lover --a2-mode`
+  Then a directory named ".delivery" should exist
+  And a file named ".delivery/cli.toml" should exist
+  And the file ".delivery/cli.toml" should contain exactly:
+    """
+    api_protocol = "https"
+    project = "coffee_lover"
+    git_port = "8989"
+    pipeline = "master"
+    saml = true
+    a2_mode = true
 
     """
 
@@ -118,6 +142,7 @@ Scenario: setup with all the args
     project = "makeitwork"
     git_port = "8989"
     pipeline = "legacy"
+    a2_mode = false
 
     """
 
@@ -149,5 +174,6 @@ Scenario: setup when a config file already exists
     organization = "Engineering"
     git_port = "8989"
     pipeline = "master"
+    a2_mode = false
 
     """

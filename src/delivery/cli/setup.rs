@@ -16,7 +16,7 @@
 //
 use clap::{App, ArgMatches, SubCommand};
 use cli::Options;
-use cli::arguments::{config_path_arg, pipeline_arg, project_arg, u_e_s_o_args, value_of};
+use cli::arguments::{config_path_arg, pipeline_arg, project_arg, u_e_s_o_args, a2_mode_arg, value_of};
 use config::Config;
 use types::DeliveryResult;
 
@@ -31,6 +31,7 @@ pub struct SetupClapOptions<'n> {
     pub path: &'n str,
     pub pipeline: &'n str,
     pub project: &'n str,
+    pub a2_mode: bool
 }
 
 impl<'n> Default for SetupClapOptions<'n> {
@@ -43,6 +44,7 @@ impl<'n> Default for SetupClapOptions<'n> {
             path: "",
             pipeline: "master",
             project: "",
+            a2_mode: false,
         }
     }
 }
@@ -57,20 +59,25 @@ impl<'n> SetupClapOptions<'n> {
             path: value_of(&matches, "config-path"),
             pipeline: value_of(&matches, "pipeline"),
             project: value_of(&matches, "project"),
+            a2_mode: matches.is_present("a2-mode"),
         }
     }
 }
 
 impl<'n> Options for SetupClapOptions<'n> {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
-        let new_config = config
+        let mut new_config = config
             .set_server(&self.server)
             .set_user(&self.user)
             .set_enterprise(&self.ent)
             .set_organization(&self.org)
             .set_pipeline(&self.pipeline)
-            .set_project(&self.project);
-
+            .set_project(&self.project)
+            .set_a2_mode(self.a2_mode);
+        // A2 mode requires SAML right now
+        if self.a2_mode {
+            new_config.saml = Some(true)
+        }        
         Ok(new_config)
     }
 }
@@ -81,4 +88,5 @@ pub fn clap_subcommand<'c>() -> App<'c, 'c> {
         .args(&vec![config_path_arg(), project_arg()])
         .args(&pipeline_arg())
         .args(&u_e_s_o_args())
+        .args(&vec![a2_mode_arg()])
 }

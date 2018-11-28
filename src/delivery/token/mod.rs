@@ -87,7 +87,7 @@ impl TokenStore {
     }
 
     pub fn verify_token(config: &Config) -> DeliveryResult<String> {
-        let server = try!(config.api_host_and_port());
+        let server = try!(config.api_base_resource());
         let ent = try!(config.enterprise());
         let user = try!(config.user());
         let tstore = try!(TokenStore::from_home());
@@ -118,7 +118,7 @@ impl TokenStore {
         sayln("yellow", "Requesting Token");
         let ent = try!(config.enterprise());
         let user = try!(config.user());
-        let api_server = try!(config.api_host_and_port());
+        let api_server = try!(config.api_base_resource());
         let mut tstore = try!(TokenStore::from_home());
 
         let saml = match config.saml {
@@ -162,7 +162,7 @@ impl TokenStore {
     }
 
     fn web_token_url(config: &Config) -> Result<String, DeliveryError> {
-        let host = try!(config.api_host_and_port());
+        let host = try!(config.api_base_resource());
         let ent = try!(config.enterprise());
         let proto = try!(config.api_protocol());
         let path = "#/dashboard?token";
