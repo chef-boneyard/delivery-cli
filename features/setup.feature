@@ -111,6 +111,23 @@ Scenario: setup with project
 
     """
 
+# A2 projects can only be authenticated with SAML enabled
+# therefor by enabling a2-mode, it automatically enabled saml
+Scenario: setup an A2 project
+  When I successfully run `delivery setup --project=coffee_lover --a2-mode`
+  Then a directory named ".delivery" should exist
+  And a file named ".delivery/cli.toml" should exist
+  And the file ".delivery/cli.toml" should contain exactly:
+    """
+    api_protocol = "https"
+    project = "coffee_lover"
+    git_port = "8989"
+    pipeline = "master"
+    saml = true
+    a2_mode = true
+
+    """
+
 Scenario: setup with all the args
   When I successfully run `delivery setup --ent=Foobar --org=Engineering --for=legacy --server=delivery.mycompany.com --user=alice --project=makeitwork`
   Then a directory named ".delivery" should exist
