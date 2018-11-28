@@ -1,10 +1,11 @@
 source 'https://rubygems.org'
 
 gem 'rake'
-gem 'rack'
+gem 'rack', '= 2.0.5'
 gem 'grape'
 gem 'cucumber', '~> 2.4'
 gem 'aruba'
-gem 'chef-dk'
+gem 'chef', '= 14.6.47'
+gem 'chef-zero', '= 14.0.6'
 gem 'chefspec'
 gem 'berkshelf'

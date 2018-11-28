@@ -1,6 +1,7 @@
 require 'aruba/cucumber'
 require_relative "../support/api_server"
 require 'aruba/platform'
+require 'securerandom'
 
 # Path for fake binaries so we can test things like git
 # interaction. We're going to stick this early on the path so the CLI
@@ -14,6 +15,11 @@ system_git = `which git 2>/dev/null`.chomp
 # using.
 cli_dir = File.expand_path('../../../target/release', __FILE__)
 fixture_repos_dir = File.expand_path("../../fixtures/repos", __FILE__)
+# Create a temp directory with permissions for others to write in it
+# so that the dbuild user doesn't have problems, normally this is a
+# required setup for setting up a build_node/runner.
+tmp_dir = File.join(Dir.tmpdir, "cucumber-" + SecureRandom.hex)
+Dir.mkdir(tmp_dir, 0777)
 
 # Chances are high that we're running the tests from a delivery-cli
 # directory that already has a `.delivery/cli.toml` file present,
@@ -29,7 +35,7 @@ Aruba.configure do |config|
   # will alleviate this.
   #
   # We'll also categorically use this directory as $HOME in all tests.
-  config.root_directory     = Dir.mktmpdir
+  config.root_directory     = tmp_dir
   config.working_directory  = "delivery-cli/"
   config.home_directory     = File.join(config.root_directory, config.working_directory)
 

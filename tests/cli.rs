@@ -235,8 +235,8 @@ test!(job_verify_lint_with_public_supermarket_config {
     setup_change(&local_project.path(), "rust/test", "freaky");
     let mut command = delivery_verify_command(&job_root.path());
     assert_command_failed(&mut command, &local_project.path());
-    assert!(job_root.path().join_many(&["chef", "cookbooks", "httpd"]).is_dir());
-    assert!(job_root.path().join_many(&["chef", "cookbooks", "httpd", "templates", "default", "magic.erb"]).is_file());
+    assert!(job_root.path().join_many(&["chef", "cookbooks", "apache2"]).is_dir());
+    assert!(job_root.path().join_many(&["chef", "cookbooks", "apache2", "templates", "default", "web_app.conf.erb"]).is_file());
 });
 
 // TODO: This test requires internet access...
