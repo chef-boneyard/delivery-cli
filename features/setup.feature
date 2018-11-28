@@ -24,6 +24,7 @@ Scenario: setup with no additional data supplied
     api_protocol = "https"
     git_port = "8989"
     pipeline = "master"
+    a2_mode = false
 
     """
 
@@ -37,6 +38,7 @@ Scenario: setup with enterprise
     enterprise = "Foobar"
     git_port = "8989"
     pipeline = "master"
+    a2_mode = false
 
     """
 
@@ -50,6 +52,7 @@ Scenario: setup with organization
     organization = "Engineering"
     git_port = "8989"
     pipeline = "master"
+    a2_mode = false
 
     """
 
@@ -63,6 +66,7 @@ Scenario: setup with user
     user = "alice"
     git_port = "8989"
     pipeline = "master"
+    a2_mode = false
 
     """
 
@@ -75,6 +79,7 @@ Scenario: setup with pipeline
     api_protocol = "https"
     git_port = "8989"
     pipeline = "legacy"
+    a2_mode = false
 
     """
 
@@ -88,6 +93,7 @@ Scenario: setup with server
     api_protocol = "https"
     git_port = "8989"
     pipeline = "master"
+    a2_mode = false
 
     """
 
@@ -101,6 +107,7 @@ Scenario: setup with project
     project = "coffee_lover"
     git_port = "8989"
     pipeline = "master"
+    a2_mode = false
 
     """
 
@@ -118,6 +125,7 @@ Scenario: setup with all the args
     project = "makeitwork"
     git_port = "8989"
     pipeline = "legacy"
+    a2_mode = false
 
     """
 
@@ -149,5 +157,6 @@ Scenario: setup when a config file already exists
     organization = "Engineering"
     git_port = "8989"
     pipeline = "master"
+    a2_mode = false
 
     """
