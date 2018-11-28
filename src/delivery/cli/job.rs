@@ -18,7 +18,7 @@
 use clap::{App, Arg, ArgMatches, SubCommand};
 use cli::Options;
 use cli::arguments::{local_arg, patchset_arg, pipeline_arg, project_arg, project_specific_args,
-                     u_e_s_o_args, value_of};
+                     u_e_s_o_args, a2_mode_arg, value_of};
 use config::Config;
 use fips;
 use project;
@@ -49,6 +49,7 @@ pub struct JobClapOptions<'n> {
     pub fips: bool,
     pub fips_git_port: &'n str,
     pub fips_custom_cert_filename: &'n str,
+    pub a2_mode: bool,
 }
 
 impl<'n> Default for JobClapOptions<'n> {
@@ -75,6 +76,7 @@ impl<'n> Default for JobClapOptions<'n> {
             fips: false,
             fips_git_port: "",
             fips_custom_cert_filename: "",
+            a2_mode: false,
         }
     }
 }
@@ -103,6 +105,7 @@ impl<'n> JobClapOptions<'n> {
             fips: matches.is_present("fips"),
             fips_git_port: value_of(&matches, "fips-git-port"),
             fips_custom_cert_filename: value_of(&matches, "fips-custom-cert-filename"),
+            a2_mode: matches.is_present("a2-mode"),
         }
     }
 }
@@ -111,13 +114,19 @@ impl<'n> Options for JobClapOptions<'n> {
     fn merge_options_and_config(&self, config: Config) -> DeliveryResult<Config> {
         let project = try!(project::project_or_from_cwd(&self.project));
 
-        let new_config = config
+        let mut new_config = config
             .set_pipeline(&self.pipeline)
             .set_user(with_default(&self.user, "you", &&self.local))
             .set_server(with_default(&self.server, "localhost", &&self.local))
             .set_enterprise(with_default(&self.ent, "local", &&self.local))
             .set_organization(with_default(&self.org, "workstation", &&self.local))
-            .set_project(&project);
+            .set_project(&project)
+            .set_a2_mode(self.a2_mode);
+
+        // A2 mode requires SAML right now
+        if self.a2_mode {
+            new_config.saml = Some(true)
+        }
 
         fips::merge_fips_options_and_config(
             self.fips,
@@ -157,4 +166,5 @@ pub fn clap_subcommand<'c>() -> App<'c, 'c> {
         .args(&u_e_s_o_args())
         .args(&pipeline_arg())
         .args(&project_specific_args())
+		.args(&vec![a2_mode_arg()])
 }
