@@ -78,6 +78,11 @@ Scenario: Real job triggering; this command is exactly as we trigger jobs in Che
   And 'git remote add delivery ssh://cukes@skunkworks@delivery.mycompany.com:2828/skunkworks/engineering/phoenix_project' should not be run
   And the exit status should be 0
 
+Scenario: Real job triggering; specifying a2 mode works
+  Given I am in a blank workspace
+  When I run `delivery job build syntax --server delivery.mycompany.com --user cukes --ent skunkworks --org engineering --project phoenix_project --for master --change-id 80983bb0-5cb5-4ec9-a5f1-b023d4c14d69 --shasum 88782dfd260a2b8277b100ba5192c7131b81aa0a --git-url ssh://cukes@skunkworks@delivery.mycompany.com:2828/skunkworks/engineering/phoenix_project --a2-mode`
+  Then the exit status should be 0
+
 Scenario: Real job triggering; If you try to run a job outside of the git_repo and
           also without specifying a `--project` flag. We must fail.
   Given I am in a blank workspace
