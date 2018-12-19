@@ -50,10 +50,12 @@ impl TokenResponse {
     }
 
     pub fn parse_token_expired(content: &str) -> bool {
-        match content.find("token_expired") {
-            Some(_) => true,
-            None => false,
-        }
+        // Why do we check this specifically rather than trusting the
+        // HTTP 401/UNAUTHORIZED response? A2 gives token denied
+        // instead of specifically calling out expired. We could parse
+        // the JWT token contents and look for the expiration date,
+        // but that doesn't seem to add much value.
+        content.contains("token_expired") || content.contains("token_denied_by_a2") 
     }
 }
 
@@ -156,6 +158,10 @@ mod tests {
 
         let r_token_denied = "{\"error\":\"token_denied\"}";
         assert!(!TokenResponse::parse_token_expired(r_token_denied));
+
+        // A2 doesn't distinguish between expired and denied
+        let r_token_denied_by_a2 = "{\"error\":\"token_denied_by_a2\"}";
+        assert!(TokenResponse::parse_token_expired(r_token_denied_by_a2));
 
         let r_other = "{\"orgs\":\"[]\"}";
         assert!(!TokenResponse::parse_token_expired(r_other))
