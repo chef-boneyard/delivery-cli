@@ -1,11 +1,16 @@
 # Changelog
 
-<!-- latest_release 0.0.43 -->
+<!-- latest_release 0.0.44 -->
+## [0.0.44](https://github.com/chef/delivery-cli/tree/0.0.44) (2018-12-20)
+
+#### Merged Pull Requests
+- Remove the Travis badge since we use BuildKite now [#51](https://github.com/chef/delivery-cli/pull/51) ([tas50](https://github.com/tas50))
+<!-- latest_release -->
+
 ## [0.0.43](https://github.com/chef/delivery-cli/tree/0.0.43) (2018-11-30)
 
 #### Merged Pull Requests
 - Duplicate --a2-mode from setup to job [#56](https://github.com/chef/delivery-cli/pull/56) ([btm](https://github.com/btm))
-<!-- latest_release -->
 
 ## [0.0.42](https://github.com/chef/delivery-cli/tree/0.0.42) (2018-11-28)
 
