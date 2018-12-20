@@ -1,7 +1,5 @@
 # Delivery CLI
 
-[![Build Status](https://travis-ci.org/chef/delivery-cli.svg?branch=master)](https://travis-ci.org/chef/delivery-cli)
-
 A command line tool for continuous delivery workflow. The `delivery`
 command is a component of Chef Delivery. It can be used to setup and
 execute phase jobs as well as interact with a Chef Delivery server.
