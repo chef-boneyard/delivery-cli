@@ -1,11 +1,16 @@
 # Changelog
 
-<!-- latest_release 0.0.44 -->
+<!-- latest_release 0.0.45 -->
+## [0.0.45](https://github.com/chef/delivery-cli/tree/0.0.45) (2019-01-02)
+
+#### Merged Pull Requests
+- Fetch new token when A2 returns token_denied [#57](https://github.com/chef/delivery-cli/pull/57) ([markan](https://github.com/markan))
+<!-- latest_release -->
+
 ## [0.0.44](https://github.com/chef/delivery-cli/tree/0.0.44) (2018-12-20)
 
 #### Merged Pull Requests
 - Remove the Travis badge since we use BuildKite now [#51](https://github.com/chef/delivery-cli/pull/51) ([tas50](https://github.com/tas50))
-<!-- latest_release -->
 
 ## [0.0.43](https://github.com/chef/delivery-cli/tree/0.0.43) (2018-11-30)
 
