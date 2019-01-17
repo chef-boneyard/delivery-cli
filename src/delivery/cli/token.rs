@@ -15,8 +15,8 @@
 // limitations under the License.
 //
 use clap::{App, Arg, ArgMatches, SubCommand};
+use cli::arguments::{api_port_arg, u_e_s_o_args, a2_mode_arg, value_of};
 use cli::Options;
-use cli::arguments::{api_port_arg, u_e_s_o_args, value_of};
 use config::Config;
 use types::DeliveryResult;
 
@@ -32,7 +32,9 @@ pub struct TokenClapOptions<'n> {
     pub raw: bool,
     // if None, use what the server tells us on its /e/<ent>/saml/enabled endpoint
     pub saml: Option<bool>,
+    pub a2_mode: bool,
 }
+
 impl<'n> Default for TokenClapOptions<'n> {
     fn default() -> Self {
         TokenClapOptions {
@@ -43,6 +45,7 @@ impl<'n> Default for TokenClapOptions<'n> {
             verify: false,
             raw: false,
             saml: None,
+            a2_mode: false,
         }
     }
 }
@@ -61,6 +64,7 @@ impl<'n> TokenClapOptions<'n> {
                 "false" => Some(false),
                 _ => None,
             },
+            a2_mode: matches.is_present("a2-mode"),
         }
     }
 }
@@ -76,7 +80,10 @@ impl<'n> Options for TokenClapOptions<'n> {
         if self.saml.is_some() {
             new_config.saml = self.saml;
         }
-
+        // A2 mode requires SAML right now
+        if self.a2_mode {
+            new_config.saml = Some(true)
+        }
         Ok(new_config)
     }
 }
@@ -91,4 +98,5 @@ pub fn clap_subcommand<'c>() -> App<'c, 'c> {
             "--verify 'Verify the Token has expired'",
             "--saml=[true/false] 'Use SAML authentication (overrides Delivery server)'"
         ])
+        .args(&vec![a2_mode_arg()])
 }

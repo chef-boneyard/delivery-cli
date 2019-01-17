@@ -15,8 +15,10 @@
 // limitations under the License.
 //
 use clap::{App, ArgMatches, SubCommand};
+use cli::arguments::{
+    a2_mode_arg, config_path_arg, pipeline_arg, project_arg, u_e_s_o_args, value_of,
+};
 use cli::Options;
-use cli::arguments::{config_path_arg, pipeline_arg, project_arg, u_e_s_o_args, a2_mode_arg, value_of};
 use config::Config;
 use types::DeliveryResult;
 
@@ -31,7 +33,7 @@ pub struct SetupClapOptions<'n> {
     pub path: &'n str,
     pub pipeline: &'n str,
     pub project: &'n str,
-    pub a2_mode: bool
+    pub a2_mode: bool,
 }
 
 impl<'n> Default for SetupClapOptions<'n> {
@@ -77,7 +79,7 @@ impl<'n> Options for SetupClapOptions<'n> {
         // A2 mode requires SAML right now
         if self.a2_mode {
             new_config.saml = Some(true)
-        }        
+        }
         Ok(new_config)
     }
 }
