@@ -1,8 +1,10 @@
 # Documentation available at https://expeditor.chef.io/
 
 # Slack channel in Chef Software slack to send notifications about build failures, etc
-slack:
-  notify_channel: delivery-cli-notify
+# TEMPORARILY DIABLED. The delivery-cli-notify channel no longer exists, and expeditor has gotten stricter about that.
+# TODO: Decide what channel we should be putting these notifications into.
+#slack:
+#  notify_channel: delivery-cli-notify 
 
 pipelines:
   - verify:
