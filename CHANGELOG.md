@@ -1,11 +1,16 @@
 # Changelog
 
-<!-- latest_release 0.0.45 -->
+<!-- latest_release 0.0.46 -->
+## [0.0.46](https://github.com/chef/delivery-cli/tree/0.0.46) (2019-01-18)
+
+#### Merged Pull Requests
+- Disable expeditor slack posts [#61](https://github.com/chef/delivery-cli/pull/61) ([markan](https://github.com/markan))
+<!-- latest_release -->
+
 ## [0.0.45](https://github.com/chef/delivery-cli/tree/0.0.45) (2019-01-02)
 
 #### Merged Pull Requests
 - Fetch new token when A2 returns token_denied [#57](https://github.com/chef/delivery-cli/pull/57) ([markan](https://github.com/markan))
-<!-- latest_release -->
 
 ## [0.0.44](https://github.com/chef/delivery-cli/tree/0.0.44) (2018-12-20)
 
