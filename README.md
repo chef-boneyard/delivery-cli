@@ -113,9 +113,8 @@ These commands will never actuall execute until their mocks are refactored out o
 When a new version of Rust comes out and it is on homebrew, it's time to update the Rust
 version in this repo. There are a few spots to update:
 
-1. Very top of the Makefile
-2. omnibus-software's default version
-3. The default attributes for the build cookbook for this project
+1. At the very top of the Makefile, change RUST_VERSION
+2. omnibus-software's rust definitions default version (or override appropriately)
 
 You should also run `make release` to bump the `Cargo.lock` file to get new versions of our
 dependencies.
