@@ -25,7 +25,6 @@ use job::change::Change;
 use job::workspace::{Privilege, Workspace};
 use project;
 use std;
-use std::env;
 use std::io::prelude::*;
 use std::path::PathBuf;
 use std::process;
@@ -33,6 +32,7 @@ use types::{DeliveryResult, ExitCode};
 use utils::path_join_many::PathJoinMany;
 use utils::say::{say, sayln};
 use utils::{self, cwd, privileged_process};
+use dirs;
 
 pub struct JobCommand<'n> {
     pub options: &'n JobClapOptions<'n>,
@@ -78,7 +78,7 @@ impl<'n> Command for JobCommand<'n> {
         // If this process is not running as root via push-jobs-client, we'll
         // append ".delivery" to the user's $HOME location and use that as the
         // workspace path to avoid writing our working files directly into $HOME.
-        let ws_path = match env::home_dir() {
+        let ws_path = match dirs::home_dir() {
             Some(path) => if privileged_process() {
                 PathBuf::from(path)
             } else {

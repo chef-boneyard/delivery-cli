@@ -39,6 +39,8 @@ extern crate mime;
 #[cfg(test)]
 extern crate mockito;
 
+extern crate dirs;
+
 #[macro_export]
 macro_rules! validate {
     ($config:ident, $value:ident) => {
