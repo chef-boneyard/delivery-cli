@@ -1,11 +1,16 @@
 # Changelog
 
-<!-- latest_release 0.0.47 -->
+<!-- latest_release 0.0.48 -->
+## [0.0.48](https://github.com/chef/delivery-cli/tree/0.0.48) (2019-01-23)
+
+#### Merged Pull Requests
+- Security update for rack [#59](https://github.com/chef/delivery-cli/pull/59) ([markan](https://github.com/markan))
+<!-- latest_release -->
+
 ## [0.0.47](https://github.com/chef/delivery-cli/tree/0.0.47) (2019-01-23)
 
 #### Merged Pull Requests
 - Increase timeout on cucumber tests [#62](https://github.com/chef/delivery-cli/pull/62) ([markan](https://github.com/markan))
-<!-- latest_release -->
 
 ## [0.0.46](https://github.com/chef/delivery-cli/tree/0.0.46) (2019-01-18)
 
