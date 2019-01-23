@@ -1,11 +1,16 @@
 # Changelog
 
-<!-- latest_release 0.0.46 -->
+<!-- latest_release 0.0.47 -->
+## [0.0.47](https://github.com/chef/delivery-cli/tree/0.0.47) (2019-01-23)
+
+#### Merged Pull Requests
+- Increase timeout on cucumber tests [#62](https://github.com/chef/delivery-cli/pull/62) ([markan](https://github.com/markan))
+<!-- latest_release -->
+
 ## [0.0.46](https://github.com/chef/delivery-cli/tree/0.0.46) (2019-01-18)
 
 #### Merged Pull Requests
 - Disable expeditor slack posts [#61](https://github.com/chef/delivery-cli/pull/61) ([markan](https://github.com/markan))
-<!-- latest_release -->
 
 ## [0.0.45](https://github.com/chef/delivery-cli/tree/0.0.45) (2019-01-02)
 
