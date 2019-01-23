@@ -23,7 +23,7 @@ In particular, you will want to be familar with:
 To get started make sure you have the following installed:
 + [Homebrew](http://brew.sh/)
 + [Ruby 2.1.5](https://github.com/rbenv/rbenv)
-+ Rust 1.12.0 (`brew install rust`)
++ Rust 1.31.1 (`brew install rust`)
 + Openssl (`brew install openssl`)
 + [ChefDK 15.15 or later](https://downloads.chef.io/chef-dk/)
 

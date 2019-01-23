@@ -15,7 +15,7 @@
 ## limitations under the License.
 ##
 
-RUST_VERSION ?= 1.26.0
+RUST_VERSION ?= 1.31.1
 
 CARGO_OPTS ?=
 DELIV_CLI_VERSION = $(shell git describe --abbrev=0 --tags)
@@ -44,7 +44,7 @@ UNAME = $(shell uname)
 ifeq ($(USE_CHEFDK_LIBS), true)
 	OPENSSL_PREFIX ?= /opt/chefdk/embedded
         CARGO_ENV += OPENSSL_INCLUDE_DIR=$(OPENSSL_PREFIX)/include
-        CARGO_ENV += OPENSSL_LIB_DIR=$(OPENSSL_PREFIX)
+        CARGO_ENV += OPENSSL_LIB_DIR=$(OPENSSL_PREFIX)/lib
 else ifeq ($(UNAME),Darwin)
 	OPENSSL_PREFIX ?= /usr/local/opt/openssl
 	CARGO_ENV += OPENSSL_INCLUDE_DIR=$(OPENSSL_PREFIX)/include
@@ -128,7 +128,9 @@ rust_check:
 	(echo "\nRust is not installed at the proper version ($(RUST_VERSION)) on your machine.\n"\
 	"Please install at the right version (we recommend brew install rust).\n"\
 	"If the default version from homebrew is out of date,\n"\
-	"Please update the version of rust we ship with delivery-cli by following the instuctions in the readme under Updating Rust Version.\n")
+	"Please update the version of rust we ship with delivery-cli by following the instuctions in the readme under Updating Rust Version.\n"\
+	"Installed version is: " `rustc --version` "\n")
+
 
 cargo_check:
 	@which cargo >> /dev/null || \
