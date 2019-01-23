@@ -1,5 +1,5 @@
 Feature: token
-
+@token
 Scenario: happy path
 
   Given a file named ".delivery/cli.toml" with:
@@ -41,6 +41,50 @@ Scenario: happy path
   # These are secrets, and nobody else should be able to read 'em!
   # Also, this totally doesn't work now
   #And the mode of filesystem object ".delivery/api-tokens" should match "600"
+
+Scenario: happy path with a2
+
+  Given a file named ".delivery/cli.toml" with:
+    """
+    enterprise = "Foobar"
+    git_port = "8989"
+    organization = "Engineering"
+    pipeline = "master"
+    server = "localhost"
+    api_port = "8080"
+    user = "alice"
+    a2_mode = true
+    """
+  And the Delivery API server:
+    """
+      get('/workflow/api/v0/e/Foobar/saml/enabled') do
+        status 200
+        {
+            "enabled" => false
+        }
+      end
+      post('workflow/api/v0/e/Foobar/users/alice/get-token') do
+        status 200
+        {
+            "token" => "xOsqI8qiBrUCGGRttfFy768R8ZAMJ24RC+0UGyX9/II="
+        }
+      end
+    """
+  When I invoke a pseudo tty with command "delivery token"
+  And I expect for "Automate password" then type "my_secret_password"
+  And I run my ptty command
+  Then the ptty output should contain "Automate password"
+  Then the ptty output should contain "saved API token to"
+  Then the ptty exit status should be 0
+  And a file named ".delivery/api-tokens" should exist
+  And the file ".delivery/api-tokens" should contain:
+    """
+    localhost:8080/workflow,Foobar,alice|xOsqI8qiBrUCGGRttfFy768R8ZAMJ24RC+0UGyX9/II=
+    """
+  # These are secrets, and nobody else should be able to read 'em!
+  # Also, this totally doesn't work now
+  #And the mode of filesystem object ".delivery/api-tokens" should match "600"
+
 
 Scenario: SAML enabled API not yet available in Automate (old version)
 

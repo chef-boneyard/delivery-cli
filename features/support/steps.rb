@@ -83,6 +83,7 @@ Given(/^a dummy api-tokens file$/) do
   step %(a file named ".delivery/api-tokens" with:),
   """
   localhost:8080,dummy,link|this_is_a_fake_token
+  localhost:8080/workflow,dummy,link|this_is_a_fake_token
   """
 end
 
@@ -491,6 +492,113 @@ Given(/^a dummy Delivery API server/) do
     end
     desc 'Endpoint with unknown status code'
     get('/api/v0/e/dummy/endpoint_with_unknown_status_code') do
+      status 429
+    end
+  )
+  step %(the Delivery API server on port "8080":), endpoints
+end
+
+Given(/^a dummy A2 Workflow API server/) do
+  endpoints = %(
+    get('/workflow/api/v0/e/dummy/scm-providers') do
+      status 200
+      [
+        {
+          "name" => "GitHub",
+          "projectCreateUri" => "/github-projects",
+          "scmSetupConfigs" => [
+            true
+          ],
+          "type" => "github",
+          "verify_ssl" => true
+        },
+        {
+          "name" => "Bitbucket",
+          "projectCreateUri" => "/bitbucket-projects",
+          "scmSetupConfigs" => [
+            {
+              "_links" => {
+                "self" => {
+                  "href" => "https://127.0.0.1//workflow/api/v0/e/skinkworks/bitbucket-servers/dummy.bitbucket.com"
+                }
+              },
+              "root_api_url" => "https://dummy.bitbucket.com",
+              "user_id" => "dummy"
+            }
+          ],
+          "type" => "bitbucket"
+        }
+      ]
+    end
+    get('/workflow/api/v0/e/dummy/orgs') do # USED
+      status 200
+      { "orgs" => ["dummy"] }
+    end
+    get('/workflow/api/v0/e/dummy/orgs/dummy/projects/already-created') do
+      status 200
+    end
+    post('/workflow/api/v0/e/dummy/orgs/dummy/projects/already-created/pipelines') do
+      status 201
+      { "pipeline" => "master" }
+    end
+    get('/workflow/api/v0/e/dummy/orgs/dummy/projects/delivery-cli-init') do
+      status 201
+      { "error" => "not_found" }
+    end
+    post('/workflow/api/v0/e/dummy/orgs/dummy/projects') do
+      status 201
+      { "project" => "delivery-cli-init" }
+    end
+    post('/workflow/api/v0/e/dummy/orgs/dummy/projects/delivery-cli-init/pipelines') do
+      status 201
+      { "pipeline" => "master" }
+    end
+    post('/workflow/api/v0/e/dummy/orgs/dummy/bitbucket-projects') do
+      status 201
+      { "project" => "delivery-cli-init" }
+    end
+    post('/workflow/api/v0/e/dummy/orgs/dummy/github-projects') do
+      status 201
+      { "project" => "delivery-cli-init" }
+    end
+
+    desc 'Create an organization.'
+    params do
+      requires :name, type: String, desc: 'Org name'
+    end
+    post '/workflow/api/v0/e/dummy/orgs' do
+      if params[:name] == "new_org"
+	      status 201
+      elsif params[:name] == "existing_org"
+	      status 409
+      else
+	      status 500
+      end
+    end
+
+    desc 'Request a token for link user.'
+    post('/workflow/api/v0/e/dummy/users/link/get-token') do
+      status 200
+      {
+         "token" => "xOsqI8qiBrUCGGRttfFy768R8ZAMJ24RC+0UGyX9/II=",
+         "_links" => {
+           "revoke-user-token" => {
+             "href" => "/v0/e/bar/users/link/revoke-token"
+           }
+         }
+      }
+    end
+
+    desc 'Delete ganondorf organization'
+    delete('/workflow/api/v0/e/dummy/orgs/ganondorf') do
+      status 204
+    end
+    desc 'Invalid endpoint'
+    get('/workflow/api/v0/e/dummy/not_found') do
+      status 404
+    end
+    desc 'Endpoint with unknown status code'
+    get('/workflow/api/v0/e/dummy/endpoint_with_unknown_status_code') do
       status 429
     end
   )
