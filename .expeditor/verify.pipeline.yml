@@ -1,6 +1,7 @@
 steps:
 
   - label: cucumber_tests_stable
+    timeout_in_minutes: 20
     commands:
       - . /opt/asdf/asdf.sh
       - useradd dbuild
