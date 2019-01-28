@@ -36,6 +36,11 @@ Scenario: With all information specified in the configuration file, but overridi
   Then "git clone ssh://cukes@skunkworks@delivery-acceptance.mycompany.com:8989/skunkworks/engineering/phoenix_project phoenix_project" should be run
   And "git remote add delivery ssh://cukes@skunkworks@delivery-acceptance.mycompany.com:8989/skunkworks/engineering/phoenix_project" should be run
 
+Scenario: With all information specified in the configuration file, but with a2 mode
+  When I successfully run `delivery clone phoenix_project --a2-mode`
+  Then "git clone ssh://cukes@skunkworks@delivery.mycompany.com:8989/skunkworks/engineering/phoenix_project phoenix_project" should be run
+  And "git remote add delivery ssh://cukes@skunkworks@delivery.mycompany.com:8989/skunkworks/engineering/phoenix_project" should be run
+
 Scenario: With no configuration file and no arguments provided
   Given I remove the file ".delivery/cli.toml"
   When I run `delivery clone phoenix_project`

@@ -16,9 +16,11 @@
 //
 
 use clap::{App, Arg, ArgMatches, SubCommand};
+use cli::arguments::{
+    a2_mode_arg, local_arg, patchset_arg, pipeline_arg, project_arg, project_specific_args,
+    u_e_s_o_args, value_of,
+};
 use cli::Options;
-use cli::arguments::{local_arg, patchset_arg, pipeline_arg, project_arg, project_specific_args,
-                     u_e_s_o_args, a2_mode_arg, value_of};
 use config::Config;
 use fips;
 use project;
@@ -166,5 +168,5 @@ pub fn clap_subcommand<'c>() -> App<'c, 'c> {
         .args(&u_e_s_o_args())
         .args(&pipeline_arg())
         .args(&project_specific_args())
-		.args(&vec![a2_mode_arg()])
+        .args(&vec![a2_mode_arg()])
 }

@@ -15,8 +15,8 @@
 // limitations under the License.
 //
 use clap::{App, ArgMatches, SubCommand};
+use cli::arguments::{project_specific_args, u_e_s_o_args, a2_mode_arg, value_of};
 use cli::Options;
-use cli::arguments::{project_specific_args, u_e_s_o_args, value_of};
 use config::Config;
 use fips;
 use project;
@@ -35,6 +35,7 @@ pub struct CloneClapOptions<'n> {
     pub fips: bool,
     pub fips_git_port: &'n str,
     pub fips_custom_cert_filename: &'n str,
+    pub a2_mode: bool,
 }
 impl<'n> Default for CloneClapOptions<'n> {
     fn default() -> Self {
@@ -48,6 +49,7 @@ impl<'n> Default for CloneClapOptions<'n> {
             fips: false,
             fips_git_port: "",
             fips_custom_cert_filename: "",
+            a2_mode: false,
         }
     }
 }
@@ -64,6 +66,7 @@ impl<'n> CloneClapOptions<'n> {
             fips: matches.is_present("fips"),
             fips_git_port: value_of(&matches, "fips-git-port"),
             fips_custom_cert_filename: value_of(&matches, "fips-custom-cert-filename"),
+            a2_mode: matches.is_present("a2-mode"),
         }
     }
 }
@@ -75,8 +78,8 @@ impl<'n> Options for CloneClapOptions<'n> {
             .set_server(&self.server)
             .set_enterprise(&self.ent)
             .set_organization(&self.org)
-            .set_project(&self.project);
-
+            .set_project(&self.project)
+            .set_a2_mode(self.a2_mode);
         if new_config.project.is_none() {
             new_config.project = project::project_from_cwd().ok();
         }
@@ -100,4 +103,5 @@ pub fn clap_subcommand<'c>() -> App<'c, 'c> {
         )
         .args(&u_e_s_o_args())
         .args(&project_specific_args())
+        .args(&vec![a2_mode_arg()])
 }
