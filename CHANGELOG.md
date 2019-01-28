@@ -1,11 +1,16 @@
 # Changelog
 
-<!-- latest_release 0.0.49 -->
+<!-- latest_release 0.0.50 -->
+## [0.0.50](https://github.com/chef/delivery-cli/tree/0.0.50) (2019-01-28)
+
+#### Merged Pull Requests
+- Add a2-mode option to any command that takes --server [#58](https://github.com/chef/delivery-cli/pull/58) ([markan](https://github.com/markan))
+<!-- latest_release -->
+
 ## [0.0.49](https://github.com/chef/delivery-cli/tree/0.0.49) (2019-01-28)
 
 #### Merged Pull Requests
 - Ma/update deps [#60](https://github.com/chef/delivery-cli/pull/60) ([markan](https://github.com/markan))
-<!-- latest_release -->
 
 ## [0.0.48](https://github.com/chef/delivery-cli/tree/0.0.48) (2019-01-23)
 
