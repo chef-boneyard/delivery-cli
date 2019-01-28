@@ -145,7 +145,7 @@ module Delivery
             puts out if @debug
           end
         rescue Errno::EIO
-          puts "Errno:EIO that propably means the child process finished " +
+          puts "Errno:EIO that probably means the child process finished " +
                "and closed the stream" if @debug
         ensure
           Process.wait pid

@@ -38,6 +38,8 @@ pub mod test_paths;
 use crypto::digest::Digest;
 use crypto::md5::Md5;
 
+use dirs;
+
 #[cfg(not(target_os = "windows"))]
 pub use self::unix::*;
 
@@ -64,7 +66,7 @@ where
 }
 
 pub fn home_dir(to_append: &[&str]) -> Result<PathBuf, DeliveryError> {
-    match env::home_dir() {
+    match dirs::home_dir() {
         Some(home) => Ok(home.join_many(to_append)),
         None => {
             let msg = "unable to find home dir".to_string();

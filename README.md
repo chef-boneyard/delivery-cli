@@ -23,7 +23,7 @@ In particular, you will want to be familar with:
 To get started make sure you have the following installed:
 + [Homebrew](http://brew.sh/)
 + [Ruby 2.1.5](https://github.com/rbenv/rbenv)
-+ Rust 1.12.0 (`brew install rust`)
++ Rust 1.31.1 (`brew install rust`)
 + Openssl (`brew install openssl`)
 + [ChefDK 15.15 or later](https://downloads.chef.io/chef-dk/)
 
@@ -113,9 +113,8 @@ These commands will never actuall execute until their mocks are refactored out o
 When a new version of Rust comes out and it is on homebrew, it's time to update the Rust
 version in this repo. There are a few spots to update:
 
-1. Very top of the Makefile
-2. omnibus-software's default version
-3. The default attributes for the build cookbook for this project
+1. At the very top of the Makefile, change RUST_VERSION
+2. omnibus-software's rust definitions default version (or override appropriately)
 
 You should also run `make release` to bump the `Cargo.lock` file to get new versions of our
 dependencies.
