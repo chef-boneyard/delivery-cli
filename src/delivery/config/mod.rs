@@ -105,7 +105,7 @@ macro_rules! config_accessor_for {
 
 // TODO: DRY this up with above
 macro_rules! config_bool_accessor_for {
-    ($name:ident, $set_name:ident, $err_msg:expr) => {
+    ($name:ident, $err_msg:expr) => {
         impl Config {
             pub fn $name(&self) -> DeliveryResult<bool> {
                 match self.$name {
@@ -117,9 +117,23 @@ macro_rules! config_bool_accessor_for {
                 }
             }
 
-            pub fn $set_name(mut self, $name: bool) -> Config {
-                self.$name = Some($name);
-                self
+            paste::item! {
+                pub fn [<set_ $name _if_def>](mut self, $name: Option<bool>) -> Config {
+                    match $name {
+                        Some(_) =>
+                            self.$name = $name,
+                        None =>
+                            ()
+                    }
+                    self
+                }
+            }
+            
+            paste::item! {
+                pub fn [<set_ $name>](mut self, $name: bool) -> Config {
+                    self.$name = Some($name);
+                    self
+                }
             }
         }
     };
@@ -195,7 +209,6 @@ config_accessor_for!(
 
 config_bool_accessor_for!(
     a2_mode,
-    set_a2_mode,
     "You did not set the a2_mode. Set this value in your cli.toml."
 );
 

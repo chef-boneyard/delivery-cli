@@ -31,7 +31,7 @@ pub struct ApiClapOptions<'n> {
     pub api_port: &'n str,
     pub ent: &'n str,
     pub user: &'n str,
-    pub a2_mode: bool,
+    pub a2_mode: Option<bool>,
 }
 
 impl<'n> Default for ApiClapOptions<'n> {
@@ -44,7 +44,7 @@ impl<'n> Default for ApiClapOptions<'n> {
             api_port: "",
             ent: "",
             user: "",
-            a2_mode: false,
+            a2_mode: None,
         }
     }
 }
@@ -58,7 +58,7 @@ impl<'n> ApiClapOptions<'n> {
             api_port: value_of(&matches, "api-port"),
             ent: value_of(&matches, "ent"),
             user: value_of(&matches, "user"),
-            a2_mode: matches.is_present("a2-mode"),
+            a2_mode: if matches.is_present("a2-mode") { Some(true) } else { None },
         }
     }
 }
@@ -70,7 +70,7 @@ impl<'n> Options for ApiClapOptions<'n> {
             .set_server(&self.server)
             .set_api_port(&self.api_port)
             .set_enterprise(&self.ent)
-            .set_a2_mode(self.a2_mode);
+            .set_a2_mode_if_def(self.a2_mode);
         Ok(new_config)
     }
 }
