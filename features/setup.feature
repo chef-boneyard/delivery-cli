@@ -1,5 +1,5 @@
+@setup_cli
 Feature: setup
-
   The `setup` command will create a `.delivery/cli.toml` file in the
   current directory, which stores configuration values such as a
   project's enterprise, organization, pipeline, as well as the user's
@@ -24,8 +24,6 @@ Scenario: setup with no additional data supplied
     api_protocol = "https"
     git_port = "8989"
     pipeline = "master"
-    a2_mode = false
-
     """
 
 Scenario: setup with enterprise
@@ -38,7 +36,6 @@ Scenario: setup with enterprise
     enterprise = "Foobar"
     git_port = "8989"
     pipeline = "master"
-    a2_mode = false
 
     """
 
@@ -52,7 +49,6 @@ Scenario: setup with organization
     organization = "Engineering"
     git_port = "8989"
     pipeline = "master"
-    a2_mode = false
 
     """
 
@@ -66,7 +62,6 @@ Scenario: setup with user
     user = "alice"
     git_port = "8989"
     pipeline = "master"
-    a2_mode = false
 
     """
 
@@ -79,7 +74,6 @@ Scenario: setup with pipeline
     api_protocol = "https"
     git_port = "8989"
     pipeline = "legacy"
-    a2_mode = false
 
     """
 
@@ -93,7 +87,6 @@ Scenario: setup with server
     api_protocol = "https"
     git_port = "8989"
     pipeline = "master"
-    a2_mode = false
 
     """
 
@@ -107,7 +100,6 @@ Scenario: setup with project
     project = "coffee_lover"
     git_port = "8989"
     pipeline = "master"
-    a2_mode = false
 
     """
 
@@ -142,10 +134,8 @@ Scenario: setup with all the args
     project = "makeitwork"
     git_port = "8989"
     pipeline = "legacy"
-    a2_mode = false
 
     """
-
 Scenario: setup when a config file already exists
 
     If a configuration file is already present, invoking `setup` will
@@ -162,7 +152,6 @@ Scenario: setup when a config file already exists
     organization = "Engineering"
     git_port = "8989"
     pipeline = "master"
-
     """
   When I successfully run `delivery setup --ent=Bar`
   Then the file ".delivery/cli.toml" should contain exactly:
@@ -174,6 +163,25 @@ Scenario: setup when a config file already exists
     organization = "Engineering"
     git_port = "8989"
     pipeline = "master"
-    a2_mode = false
+
+    """
+
+# TESTING a2 overwrite
+Scenario: setup when a config file already exists and we setup with --a2-mode
+  Given a directory named ".delivery"
+  And I have a dummy cli.toml file
+  When I successfully run `delivery setup --ent=Bar --a2-mode`
+  Then the file ".delivery/cli.toml" should contain:
+    """
+    server = "localhost"
+    api_port = "8080"
+    api_protocol = "https"
+    user = "link"
+    enterprise = "Bar"
+    organization = "zelda"
+    git_port = "8989"
+    pipeline = "master"
+    saml = true
+    a2_mode = true
 
     """

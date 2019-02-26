@@ -79,6 +79,10 @@ Given(/^I have a dummy cli.toml file$/) do
   step %(a file named ".delivery/cli.toml" with:), dummy_cli_toml
 end
 
+Given(/^I have a dummy A2 cli.toml file$/) do
+  step %(a file named ".delivery/cli.toml" with:), dummy_a2_cli_toml
+end
+
 Given(/^a dummy api-tokens file$/) do
   step %(a file named ".delivery/api-tokens" with:),
   """
@@ -461,11 +465,11 @@ Given(/^a dummy Delivery API server/) do
     end
     post '/api/v0/e/dummy/orgs' do
       if params[:name] == "new_org"
-	      status 201
+              status 201
       elsif params[:name] == "existing_org"
-	      status 409
+              status 409
       else
-	      status 500
+              status 500
       end
     end
 
@@ -568,11 +572,11 @@ Given(/^a dummy A2 Workflow API server/) do
     end
     post '/workflow/api/v0/e/dummy/orgs' do
       if params[:name] == "new_org"
-	      status 201
+              status 201
       elsif params[:name] == "existing_org"
-	      status 409
+              status 409
       else
-	      status 500
+              status 500
       end
     end
 
