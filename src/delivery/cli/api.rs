@@ -15,7 +15,7 @@
 // limitations under the License.
 //
 use clap::{App, Arg, ArgMatches, SubCommand};
-use cli::arguments::{api_port_arg, config_path_arg, u_e_s_o_args, a2_mode_arg, value_of};
+use cli::arguments::{a2_mode_arg, api_port_arg, config_path_arg, u_e_s_o_args, value_of};
 use cli::Options;
 use config::Config;
 use types::DeliveryResult;
@@ -58,7 +58,11 @@ impl<'n> ApiClapOptions<'n> {
             api_port: value_of(&matches, "api-port"),
             ent: value_of(&matches, "ent"),
             user: value_of(&matches, "user"),
-            a2_mode: if matches.is_present("a2-mode") { Some(true) } else { None },
+            a2_mode: if matches.is_present("a2-mode") {
+                Some(true)
+            } else {
+                None
+            },
         }
     }
 }

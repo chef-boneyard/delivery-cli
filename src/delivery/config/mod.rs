@@ -74,11 +74,10 @@ impl Default for Config {
             fips: None,
             fips_git_port: None,
             fips_custom_cert_filename: None,
-            a2_mode: None
+            a2_mode: None,
         }
     }
 }
-
 
 macro_rules! config_accessor_for {
     ($name:ident, $set_name:ident, $err_msg:expr) => {
@@ -128,7 +127,7 @@ macro_rules! config_bool_accessor_for {
                     self
                 }
             }
-            
+
             paste::item! {
                 pub fn [<set_ $name>](mut self, $name: bool) -> Config {
                     self.$name = Some($name);
@@ -138,8 +137,6 @@ macro_rules! config_bool_accessor_for {
         }
     };
 }
-
-
 
 config_accessor_for!(
     server,
@@ -211,7 +208,6 @@ config_bool_accessor_for!(
     a2_mode,
     "You did not set the a2_mode. Set this value in your cli.toml."
 );
-
 
 impl Config {
     /// Return the host and port at which we can access the Delivery
@@ -526,7 +522,6 @@ mod tests {
         );
     }
 
-
     #[test]
     fn test_api_base_resource_with_port_with_a2() {
         let mut conf = Config::default();
@@ -545,7 +540,10 @@ mod tests {
         conf.server = Some("127.0.0.1".to_string());
         conf.a2_mode = Some(true);
         assert!(conf.api_port.is_none());
-        assert_eq!("127.0.0.1/workflow".to_string(), conf.api_base_resource().unwrap());
+        assert_eq!(
+            "127.0.0.1/workflow".to_string(),
+            conf.api_base_resource().unwrap()
+        );
     }
 
     #[test]

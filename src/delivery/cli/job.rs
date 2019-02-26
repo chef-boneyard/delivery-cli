@@ -107,7 +107,11 @@ impl<'n> JobClapOptions<'n> {
             fips: matches.is_present("fips"),
             fips_git_port: value_of(&matches, "fips-git-port"),
             fips_custom_cert_filename: value_of(&matches, "fips-custom-cert-filename"),
-            a2_mode: if matches.is_present("a2-mode") { Some(true) } else { None },
+            a2_mode: if matches.is_present("a2-mode") {
+                Some(true)
+            } else {
+                None
+            },
         }
     }
 }

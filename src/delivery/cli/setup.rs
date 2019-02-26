@@ -61,7 +61,11 @@ impl<'n> SetupClapOptions<'n> {
             path: value_of(&matches, "config-path"),
             pipeline: value_of(&matches, "pipeline"),
             project: value_of(&matches, "project"),
-            a2_mode: if matches.is_present("a2-mode") { Some(true) } else { None },
+            a2_mode: if matches.is_present("a2-mode") {
+                Some(true)
+            } else {
+                None
+            },
         }
     }
 }

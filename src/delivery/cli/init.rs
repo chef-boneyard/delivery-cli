@@ -16,8 +16,8 @@
 //
 use clap::{App, ArgMatches, SubCommand};
 use cli::arguments::{
-    config_path_arg, config_project_arg, local_arg, no_open_arg, pipeline_arg, project_arg,
-    project_specific_args, scp_args, u_e_s_o_args, a2_mode_arg, value_of,
+    a2_mode_arg, config_path_arg, config_project_arg, local_arg, no_open_arg, pipeline_arg,
+    project_arg, project_specific_args, scp_args, u_e_s_o_args, value_of,
 };
 use cli::Options;
 use config::Config;
@@ -97,7 +97,11 @@ impl<'n> InitClapOptions<'n> {
             fips: matches.is_present("fips"),
             fips_git_port: value_of(&matches, "fips-git-port"),
             fips_custom_cert_filename: value_of(&matches, "fips-custom-cert-filename"),
-            a2_mode: if matches.is_present("a2-mode") { Some(true) } else { None },
+            a2_mode: if matches.is_present("a2-mode") {
+                Some(true)
+            } else {
+                None
+            },
         }
     }
 }

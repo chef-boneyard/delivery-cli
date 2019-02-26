@@ -15,7 +15,7 @@
 // limitations under the License.
 //
 use clap::{App, ArgMatches, SubCommand};
-use cli::arguments::{project_specific_args, u_e_s_o_args, a2_mode_arg, value_of};
+use cli::arguments::{a2_mode_arg, project_specific_args, u_e_s_o_args, value_of};
 use cli::Options;
 use config::Config;
 use fips;
@@ -66,7 +66,11 @@ impl<'n> CloneClapOptions<'n> {
             fips: matches.is_present("fips"),
             fips_git_port: value_of(&matches, "fips-git-port"),
             fips_custom_cert_filename: value_of(&matches, "fips-custom-cert-filename"),
-            a2_mode: if matches.is_present("a2-mode") { Some(true) } else { None },
+            a2_mode: if matches.is_present("a2-mode") {
+                Some(true)
+            } else {
+                None
+            },
         }
     }
 }
@@ -80,7 +84,7 @@ impl<'n> Options for CloneClapOptions<'n> {
             .set_organization(&self.org)
             .set_project(&self.project)
             .set_a2_mode_if_def(self.a2_mode);
-        
+
         if new_config.project.is_none() {
             new_config.project = project::project_from_cwd().ok();
         }
