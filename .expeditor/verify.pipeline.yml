@@ -5,7 +5,7 @@ steps:
     commands:
       - . /opt/asdf/asdf.sh
       - useradd dbuild
-      - asdf global rust stable
+      - .expeditor/setup_rust stable
       - make cucumber
     env:
       - CUCUMBER_TESTS: 1
@@ -18,7 +18,7 @@ steps:
       - . /opt/asdf/asdf.sh
       - eval "$(/opt/chefdk/bin/chef shell-init bash)"
       - useradd dbuild
-      - asdf global rust stable
+      - .expeditor/setup_rust stable
       - make test
     env:
       - CARGO_TESTS_STABLE: 1
@@ -31,7 +31,7 @@ steps:
       - . /opt/asdf/asdf.sh
       - eval "$(/opt/chefdk/bin/chef shell-init bash)"
       - useradd dbuild
-      - asdf global rust beta
+      - .expeditor/setup_rust beta
       - make test
     env:
       - CARGO_TESTS_BETA: 1
@@ -44,7 +44,7 @@ steps:
       - . /opt/asdf/asdf.sh
       - eval "$(/opt/chefdk/bin/chef shell-init bash)"
       - useradd dbuild
-      - asdf global rust 1.26.0
+      - .expeditor/setup_rust 1.32.0
       - make test
     env:
       - CARGO_TESTS_DEFINED: 1
