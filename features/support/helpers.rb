@@ -113,6 +113,18 @@ user = "link"
 EOF
 end
 
+def dummy_a2_cli_toml
+<<EOF
+api_protocol = "https"
+enterprise = "dummy"
+api_port = "8080"
+organization = "zelda"
+server = "localhost"
+user = "link"
+a2_mode = true
+EOF
+end
+
 def valid_cli_toml
 <<EOF
 api_protocol = "https"

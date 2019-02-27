@@ -22,6 +22,18 @@ Scenario: make a basic call with a2_mode
       ]
     """
 
+Scenario: make a basic call with a2 config
+  Given a dummy api-tokens file
+  And I have a dummy A2 cli.toml file
+  And a dummy A2 Workflow API server
+  When I successfully run `delivery api get 'orgs' --server=localhost --api-port=8080 --ent=dummy --user=link --a2-mode`
+  Then the output should contain:
+    """
+      "orgs": [
+        "dummy"
+      ]
+    """
+
 Scenario: Submitting a POST request with data
   Given a dummy api-tokens file
   And a dummy Delivery API server

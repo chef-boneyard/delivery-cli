@@ -16,8 +16,8 @@
 //
 use clap::{App, ArgMatches, SubCommand};
 use cli::arguments::{
-    config_path_arg, config_project_arg, local_arg, no_open_arg, pipeline_arg, project_arg,
-    project_specific_args, scp_args, u_e_s_o_args, a2_mode_arg, value_of,
+    a2_mode_arg, config_path_arg, config_project_arg, local_arg, no_open_arg, pipeline_arg,
+    project_arg, project_specific_args, scp_args, u_e_s_o_args, value_of,
 };
 use cli::Options;
 use config::Config;
@@ -47,7 +47,7 @@ pub struct InitClapOptions<'n> {
     pub fips: bool,
     pub fips_git_port: &'n str,
     pub fips_custom_cert_filename: &'n str,
-    pub a2_mode: bool,
+    pub a2_mode: Option<bool>,
 }
 
 impl<'n> Default for InitClapOptions<'n> {
@@ -71,7 +71,7 @@ impl<'n> Default for InitClapOptions<'n> {
             fips: false,
             fips_git_port: "",
             fips_custom_cert_filename: "",
-            a2_mode: false,
+            a2_mode: None,
         }
     }
 }
@@ -97,7 +97,11 @@ impl<'n> InitClapOptions<'n> {
             fips: matches.is_present("fips"),
             fips_git_port: value_of(&matches, "fips-git-port"),
             fips_custom_cert_filename: value_of(&matches, "fips-custom-cert-filename"),
-            a2_mode: matches.is_present("a2-mode"),
+            a2_mode: if matches.is_present("a2-mode") {
+                Some(true)
+            } else {
+                None
+            },
         }
     }
 }
@@ -114,7 +118,7 @@ impl<'n> Options for InitClapOptions<'n> {
             .set_project(&project)
             .set_pipeline(&self.pipeline)
             .set_generator(&self.generator)
-            .set_a2_mode(self.a2_mode)
+            .set_a2_mode_if_def(self.a2_mode)
             .set_config_json(&self.config_json);
 
         fips::merge_fips_options_and_config(

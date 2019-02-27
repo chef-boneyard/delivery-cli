@@ -15,7 +15,7 @@
 // limitations under the License.
 //
 use clap::{App, Arg, ArgMatches, SubCommand};
-use cli::arguments::{api_port_arg, config_path_arg, u_e_s_o_args, a2_mode_arg, value_of};
+use cli::arguments::{a2_mode_arg, api_port_arg, config_path_arg, u_e_s_o_args, value_of};
 use cli::Options;
 use config::Config;
 use types::DeliveryResult;
@@ -31,7 +31,7 @@ pub struct ApiClapOptions<'n> {
     pub api_port: &'n str,
     pub ent: &'n str,
     pub user: &'n str,
-    pub a2_mode: bool,
+    pub a2_mode: Option<bool>,
 }
 
 impl<'n> Default for ApiClapOptions<'n> {
@@ -44,7 +44,7 @@ impl<'n> Default for ApiClapOptions<'n> {
             api_port: "",
             ent: "",
             user: "",
-            a2_mode: false,
+            a2_mode: None,
         }
     }
 }
@@ -58,7 +58,11 @@ impl<'n> ApiClapOptions<'n> {
             api_port: value_of(&matches, "api-port"),
             ent: value_of(&matches, "ent"),
             user: value_of(&matches, "user"),
-            a2_mode: matches.is_present("a2-mode"),
+            a2_mode: if matches.is_present("a2-mode") {
+                Some(true)
+            } else {
+                None
+            },
         }
     }
 }
@@ -70,7 +74,7 @@ impl<'n> Options for ApiClapOptions<'n> {
             .set_server(&self.server)
             .set_api_port(&self.api_port)
             .set_enterprise(&self.ent)
-            .set_a2_mode(self.a2_mode);
+            .set_a2_mode_if_def(self.a2_mode);
         Ok(new_config)
     }
 }

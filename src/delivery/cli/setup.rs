@@ -33,7 +33,7 @@ pub struct SetupClapOptions<'n> {
     pub path: &'n str,
     pub pipeline: &'n str,
     pub project: &'n str,
-    pub a2_mode: bool,
+    pub a2_mode: Option<bool>,
 }
 
 impl<'n> Default for SetupClapOptions<'n> {
@@ -46,7 +46,7 @@ impl<'n> Default for SetupClapOptions<'n> {
             path: "",
             pipeline: "master",
             project: "",
-            a2_mode: false,
+            a2_mode: None,
         }
     }
 }
@@ -61,7 +61,11 @@ impl<'n> SetupClapOptions<'n> {
             path: value_of(&matches, "config-path"),
             pipeline: value_of(&matches, "pipeline"),
             project: value_of(&matches, "project"),
-            a2_mode: matches.is_present("a2-mode"),
+            a2_mode: if matches.is_present("a2-mode") {
+                Some(true)
+            } else {
+                None
+            },
         }
     }
 }
@@ -75,9 +79,9 @@ impl<'n> Options for SetupClapOptions<'n> {
             .set_organization(&self.org)
             .set_pipeline(&self.pipeline)
             .set_project(&self.project)
-            .set_a2_mode(self.a2_mode);
+            .set_a2_mode_if_def(self.a2_mode);
         // A2 mode requires SAML right now
-        if self.a2_mode {
+        if new_config.a2_mode.unwrap_or(false) {
             new_config.saml = Some(true)
         }
         Ok(new_config)

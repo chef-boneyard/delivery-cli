@@ -51,7 +51,7 @@ pub struct JobClapOptions<'n> {
     pub fips: bool,
     pub fips_git_port: &'n str,
     pub fips_custom_cert_filename: &'n str,
-    pub a2_mode: bool,
+    pub a2_mode: Option<bool>,
 }
 
 impl<'n> Default for JobClapOptions<'n> {
@@ -78,7 +78,7 @@ impl<'n> Default for JobClapOptions<'n> {
             fips: false,
             fips_git_port: "",
             fips_custom_cert_filename: "",
-            a2_mode: false,
+            a2_mode: None,
         }
     }
 }
@@ -107,7 +107,11 @@ impl<'n> JobClapOptions<'n> {
             fips: matches.is_present("fips"),
             fips_git_port: value_of(&matches, "fips-git-port"),
             fips_custom_cert_filename: value_of(&matches, "fips-custom-cert-filename"),
-            a2_mode: matches.is_present("a2-mode"),
+            a2_mode: if matches.is_present("a2-mode") {
+                Some(true)
+            } else {
+                None
+            },
         }
     }
 }
@@ -123,10 +127,10 @@ impl<'n> Options for JobClapOptions<'n> {
             .set_enterprise(with_default(&self.ent, "local", &&self.local))
             .set_organization(with_default(&self.org, "workstation", &&self.local))
             .set_project(&project)
-            .set_a2_mode(self.a2_mode);
+            .set_a2_mode_if_def(self.a2_mode);
 
         // A2 mode requires SAML right now
-        if self.a2_mode {
+        if new_config.a2_mode.unwrap_or(false) {
             new_config.saml = Some(true)
         }
 
