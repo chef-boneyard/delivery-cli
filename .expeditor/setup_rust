@@ -1,0 +1,7 @@
+#!/bin/bash
+
+set -euxo pipefail
+
+asdf plugin-add rust
+asdf install rust $1
+asdf global rust $1
