@@ -159,27 +159,27 @@ end
 # Mock a build_cookbook.rb that doesn't generate a config.json
 def build_cookbook_rb
 <<EOF
-context = ChefDK::Generator.context
-delivery_project_dir = context.delivery_project_dir
-dot_delivery_dir = File.join(delivery_project_dir, ".delivery")
+context = ChefCLI::Generator.context
+workflow_project_dir = context.workflow_project_dir
+dot_delivery_dir = File.join(workflow_project_dir, ".delivery")
 directory dot_delivery_dir
 build_cookbook_dir = File.join(dot_delivery_dir, "build_cookbook")
 directory build_cookbook_dir
 template "\#{build_cookbook_dir}/metadata.rb" do
   source "build_cookbook/metadata.rb.erb"
-  helpers(ChefDK::Generator::TemplateHelper)
+  helpers(ChefCLI::Generator::TemplateHelper)
   action :create_if_missing
 end
 template "\#{build_cookbook_dir}/Berksfile" do
   source "build_cookbook/Berksfile.erb"
-  helpers(ChefDK::Generator::TemplateHelper)
+  helpers(ChefCLI::Generator::TemplateHelper)
   action :create_if_missing
 end
 directory "\#{build_cookbook_dir}/recipes"
 %w(default deploy functional lint provision publish quality security smoke syntax unit).each do |phase|
   template "\#{build_cookbook_dir}/recipes/\#{phase}.rb" do
     source 'build_cookbook/recipe.rb.erb'
-    helpers(ChefDK::Generator::TemplateHelper)
+    helpers(ChefCLI::Generator::TemplateHelper)
     variables phase: phase
     action :create_if_missing
   end
