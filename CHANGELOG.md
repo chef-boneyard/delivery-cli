@@ -1,11 +1,16 @@
 # Changelog
 
-<!-- latest_release 0.0.52 -->
+<!-- latest_release 0.0.53 -->
+## [0.0.53](https://github.com/chef/delivery-cli/tree/0.0.53) (2019-08-30)
+
+#### Merged Pull Requests
+- Upgrade rust to v1.37.0 [#65](https://github.com/chef/delivery-cli/pull/65) ([afiune](https://github.com/afiune))
+<!-- latest_release -->
+
 ## [0.0.52](https://github.com/chef/delivery-cli/tree/0.0.52) (2019-02-27)
 
 #### Merged Pull Requests
 - Fix option merging from config file [#63](https://github.com/chef/delivery-cli/pull/63) ([markan](https://github.com/markan))
-<!-- latest_release -->
 
 ## [0.0.51](https://github.com/chef/delivery-cli/tree/0.0.51) (2019-02-27)
 
