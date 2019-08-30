@@ -15,7 +15,7 @@
 ## limitations under the License.
 ##
 
-RUST_VERSION ?= 1.31.1
+RUST_VERSION ?= 1.37.0
 
 CARGO_OPTS ?=
 DELIV_CLI_VERSION = $(shell git describe --abbrev=0 --tags)

@@ -2,6 +2,10 @@ require_relative 'pty_spawn'
 require_relative 'helpers'
 require 'uri'
 
+Given(/we want to skip this scenario/) do
+  skip_this_scenario
+end
+
 Given(/^I invoke a pseudo tty with command "(.*)"$/) do |command|
   @current_pty = Delivery::PtySpawn.new(command, {
                   "pwd" => aruba.config.home_directory,

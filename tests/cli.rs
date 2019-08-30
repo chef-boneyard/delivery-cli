@@ -244,14 +244,14 @@ test!(job_verify_lint_with_public_supermarket_config {
 // will use the public one (verify the mock json file) perhaps we can customize
 // this in acceptance::functional and have an oficial private supermarket
 test!(job_verify_lint_with_private_supermarket_config {
-   let delivery_project_git = setup_mock_delivery_project_git("private_supermarket_config.json");
-   let local_project = setup_local_project_clone(&delivery_project_git.path());
-   let job_root = TempDir::new("job-root").unwrap();
-   setup_change(&local_project.path(), "rust/test", "freaky");
-   let mut command = delivery_verify_command(&job_root.path());
-   assert_command_successful(&mut command, &local_project.path());
-   assert!(job_root.path().join_many(&["chef", "cookbooks", "delivery-truck"]).is_dir());
-   assert!(job_root.path().join_many(&["chef", "cookbooks", "delivery-truck", "recipes", "lint.rb"]).is_file());
+    let delivery_project_git = setup_mock_delivery_project_git("private_supermarket_config.json");
+    let local_project = setup_local_project_clone(&delivery_project_git.path());
+    let job_root = TempDir::new("job-root").unwrap();
+    setup_change(&local_project.path(), "rust/test", "freaky");
+    let mut command = delivery_verify_command(&job_root.path());
+    assert_command_failed(&mut command, &local_project.path());
+    assert!(job_root.path().join_many(&["chef", "cookbooks", "apache2"]).is_dir());
+    assert!(job_root.path().join_many(&["chef", "cookbooks", "apache2", "templates", "default-site.conf.erb"]).is_file());
 });
 
 test!(job_verify_dna_json {

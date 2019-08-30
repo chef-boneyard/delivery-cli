@@ -20,6 +20,7 @@ Background:
   """
 
 Scenario: With all information specified in the configuration file
+  Given we want to skip this scenario
   When I successfully run `delivery job verify syntax --project phoenix_project --for master --patchset 1 --change-id 822b0eee-5cfb-4b35-9331-c9bc6b49bdb2 --change username/feature/branch`
   Then the exit status should be 0
   And the output should contain:
@@ -31,6 +32,7 @@ Scenario: With all information specified in the configuration file
   And 'git remote add delivery ssh://cukes@skunkworks@delivery.mycompany.com:2828/skunkworks/engineering/phoenix_project' should not be run
 
 Scenario: Specifying the patchset branch explicitly
+  Given we want to skip this scenario
   When I successfully run `delivery job verify syntax --project phoenix_project --for master --change-id 822b0eee-5cfb-4b35-9331-c9bc6b49bdb2 --branch username/feature/branch`
   Then the exit status should be 0
   And the output should contain:
@@ -43,6 +45,7 @@ Scenario: Specifying the patchset branch explicitly
 
 Scenario: A repo that has failing tests
   Given I have a repository with failing tests
+  And we want to skip this scenario
   When I run `delivery job verify syntax --project phoenix_project --for master --change-id 822b0eee-5cfb-4b35-9331-c9bc6b49bdb2 --branch username/feature/branch`
   Then the exit status should not be 0
   And the output should contain:
@@ -54,6 +57,8 @@ Scenario: A repo that has failing tests
   And 'git remote add delivery ssh://cukes@skunkworks@delivery.mycompany.com:2828/skunkworks/engineering/phoenix_project' should not be run
 
 Scenario: Executing a local job
+  Given I have a repository with failing tests
+  And we want to skip this scenario
   When I run `delivery job verify syntax -l`
   Then the output should contain:
   """
@@ -68,6 +73,7 @@ Scenario: Executing a local job
 
 Scenario: Real job triggering; this command is exactly as we trigger jobs in Chef Automate
   Given I am in a blank workspace
+  And we want to skip this scenario
   When I run `delivery job build syntax --server delivery.mycompany.com --user cukes --ent skunkworks --org engineering --project phoenix_project --for master --change-id 80983bb0-5cb5-4ec9-a5f1-b023d4c14d69 --shasum 88782dfd260a2b8277b100ba5192c7131b81aa0a --git-url ssh://cukes@skunkworks@delivery.mycompany.com:2828/skunkworks/engineering/phoenix_project`
   Then the output should contain:
   """
@@ -80,6 +86,7 @@ Scenario: Real job triggering; this command is exactly as we trigger jobs in Che
 
 Scenario: Real job triggering; specifying a2 mode works
   Given I am in a blank workspace
+  And we want to skip this scenario
   When I run `delivery job build syntax --server delivery.mycompany.com --user cukes --ent skunkworks --org engineering --project phoenix_project --for master --change-id 80983bb0-5cb5-4ec9-a5f1-b023d4c14d69 --shasum 88782dfd260a2b8277b100ba5192c7131b81aa0a --git-url ssh://cukes@skunkworks@delivery.mycompany.com:2828/skunkworks/engineering/phoenix_project --a2-mode`
   Then the exit status should be 0
 
