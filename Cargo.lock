@@ -358,6 +358,11 @@ version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "maybe-uninit"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "memchr"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -695,8 +700,11 @@ dependencies = [
 
 [[package]]
 name = "smallvec"
-version = "0.6.9"
+version = "0.6.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "maybe-uninit 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "solicit"
@@ -847,7 +855,7 @@ name = "unicode-normalization"
 version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "smallvec 0.6.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smallvec 0.6.13 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -998,6 +1006,7 @@ dependencies = [
 "checksum log 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)" = "e19e8d5c34a3e0e2223db8e060f9e8264aeeb5c5fc64a4ee9965c062211c024b"
 "checksum log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)" = "c84ec4b527950aa83a329754b01dbe3f58361d1c5efacd1f6d68c494d08a17c6"
 "checksum matches 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)" = "7ffc5c5338469d4d3ea17d269fa8ea3512ad247247c30bd2df69e68309ed0a08"
+"checksum maybe-uninit 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "60302e4db3a61da70c0cb7991976248362f30319e88850c487b9b95bbf059e00"
 "checksum memchr 2.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "2efc7bc57c883d4a4d6e3246905283d8dae951bb3bd32f49d6ef297f546e1c39"
 "checksum mime 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)" = "ba626b8a6de5da682e1caa06bdb42a335aee5a84db8e5046a3e8ab17ba0a3ae0"
 "checksum mime 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)" = "3e27ca21f40a310bd06d9031785f4801710d566c184a6e15bad4f1d9b65f9425"
@@ -1038,7 +1047,7 @@ dependencies = [
 "checksum serde 1.0.88 (registry+https://github.com/rust-lang/crates.io-index)" = "9f301d728f2b94c9a7691c90f07b0b4e8a4517181d9461be94c04bddeb4bd850"
 "checksum serde_derive 1.0.88 (registry+https://github.com/rust-lang/crates.io-index)" = "beed18e6f5175aef3ba670e57c60ef3b1b74d250d962a26604bff4c80e970dd4"
 "checksum serde_json 1.0.38 (registry+https://github.com/rust-lang/crates.io-index)" = "27dce848e7467aa0e2fcaf0a413641499c0b745452aaca1194d24dedde9e13c9"
-"checksum smallvec 0.6.9 (registry+https://github.com/rust-lang/crates.io-index)" = "c4488ae950c49d403731982257768f48fada354a5203fe81f9bb6f43ca9002be"
+"checksum smallvec 0.6.13 (registry+https://github.com/rust-lang/crates.io-index)" = "f7b0758c52e15a8b5e3691eae6cc559f08eee9406e548a4477ba4e67770a82b6"
 "checksum solicit 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)" = "172382bac9424588d7840732b250faeeef88942e37b6e35317dce98cafdd75b2"
 "checksum strsim 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "bb4f380125926a99e52bc279241539c018323fab05ad6368b56f93d9369ff550"
 "checksum syn 0.15.26 (registry+https://github.com/rust-lang/crates.io-index)" = "f92e629aa1d9c827b2bb8297046c1ccffc57c99b947a680d3ccff1f136a3bee9"
