@@ -44,7 +44,7 @@ steps:
       - . /opt/asdf/asdf.sh
       - eval "$(/opt/chefdk/bin/chef shell-init bash)"
       - useradd dbuild
-      - .expeditor/setup_rust 1.37.0
+      - .expeditor/setup_rust 1.39.0
       - make test
     env:
       - CARGO_TESTS_DEFINED: 1

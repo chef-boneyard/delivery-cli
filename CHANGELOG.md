@@ -10,7 +10,7 @@
 ## [0.0.53](https://github.com/chef/delivery-cli/tree/0.0.53) (2019-08-30)
 
 #### Merged Pull Requests
-- Upgrade rust to v1.37.0 [#65](https://github.com/chef/delivery-cli/pull/65) ([afiune](https://github.com/afiune))
+- Upgrade rust to v1.39.0 [#65](https://github.com/chef/delivery-cli/pull/65) ([afiune](https://github.com/afiune))
 
 ## [0.0.52](https://github.com/chef/delivery-cli/tree/0.0.52) (2019-02-27)
 

@@ -23,9 +23,9 @@ In particular, you will want to be familar with:
 To get started make sure you have the following installed:
 + [Homebrew](http://brew.sh/)
 + [Ruby 2.4+](https://github.com/rbenv/rbenv)
-+ Rust 1.37.0 (`brew install rust`)
++ Rust 1.39.0 (`brew install rust`)
 + Openssl (`brew install openssl`)
-+ [ChefDK 15.15 or later](https://downloads.chef.io/chef-dk/)
++ [ChefDK 3 or later](https://downloads.chef.io/chef-dk/)
 
 Main technologies used in this project:
 + Rust (learn more [here](http://doc.rust-lang.org/book/installing-rust.html))
