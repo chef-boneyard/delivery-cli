@@ -1,11 +1,16 @@
 # Changelog
 
-<!-- latest_release 0.0.54 -->
+<!-- latest_release 0.0.55 -->
+## [0.0.55](https://github.com/chef/delivery-cli/tree/0.0.55) (2021-05-05)
+
+#### Merged Pull Requests
+- update hyper [#150](https://github.com/chef/delivery-cli/pull/150) ([mwrock](https://github.com/mwrock))
+<!-- latest_release -->
+
 ## [0.0.54](https://github.com/chef/delivery-cli/tree/0.0.54) (2019-09-03)
 
 #### Merged Pull Requests
 - Uncomment job.feature cucumber tests [#67](https://github.com/chef/delivery-cli/pull/67) ([afiune](https://github.com/afiune))
-<!-- latest_release -->
 
 ## [0.0.53](https://github.com/chef/delivery-cli/tree/0.0.53) (2019-08-30)
 
