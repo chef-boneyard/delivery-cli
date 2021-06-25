@@ -1,11 +1,16 @@
 # Changelog
 
-<!-- latest_release 0.0.55 -->
+<!-- latest_release 0.0.56 -->
+## [0.0.56](https://github.com/chef/delivery-cli/tree/0.0.56) (2021-06-25)
+
+#### Merged Pull Requests
+- Upgrade to GitHub-native Dependabot [#148](https://github.com/chef/delivery-cli/pull/148) ([dependabot-preview[bot]](https://github.com/dependabot-preview[bot]))
+<!-- latest_release -->
+
 ## [0.0.55](https://github.com/chef/delivery-cli/tree/0.0.55) (2021-05-05)
 
 #### Merged Pull Requests
 - update hyper [#150](https://github.com/chef/delivery-cli/pull/150) ([mwrock](https://github.com/mwrock))
-<!-- latest_release -->
 
 ## [0.0.54](https://github.com/chef/delivery-cli/tree/0.0.54) (2019-09-03)
 
