@@ -16,12 +16,14 @@ github:
   # Deletes the GitHub PR branch after successfully merged into the release branch
   delete_branch_on_merge: true
 
-merge_actions:
-  - built_in:bump_version:
-      ignore_labels:
-        - "Version: Skip Bump"
-        - "Expeditor: Skip All"
-  - built_in:update_changelog:
-      ignore_labels:
-        - "Changelog: Skip Update"
-        - "Expeditor: Skip All"
+subscriptions:
+  - workload: pull_request_merged:{{github_repo}}:{{release_branch}}:*
+    actions:
+      - built_in:bump_version:
+          ignore_labels:
+            - "Version: Skip Bump"
+            - "Expeditor: Skip All"
+      - built_in:update_changelog:
+          ignore_labels:
+            - "Changelog: Skip Update"
+            - "Expeditor: Skip All"
