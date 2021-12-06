@@ -1,3 +1,7 @@
+# DEPRECATED ⛔️
+
+This utility is deprecated and will no longer be available in future versions of Chef Workstation.
+
 # Delivery CLI
 
 A command line tool for continuous delivery workflow. The `delivery`
